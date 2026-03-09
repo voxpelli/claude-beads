@@ -1,6 +1,6 @@
 ---
 name: retrospective
-description: "Run a sprint retrospective for this project. Use when the user says 'retrospective', 'retro', 'sprint review', 'what went well', or wants to reflect on recent work. Reads UPSTREAM-*.md files, recent git history, and conversation context to pre-populate the retrospective template."
+description: "Run a sprint retrospective for this project. Use when the user says 'retrospective', 'retro', 'sprint review', 'close out the sprint', 'what went well', or wants to generate a RETRO-NN.md file. Reads UPSTREAM-*.md files, recent git history, and conversation context to pre-populate the retrospective."
 user-invocable: true
 allowed-tools:
   - Read
@@ -40,8 +40,9 @@ Run these in parallel:
 **Recent commits since last retro:**
 
 ```bash
-# Find date of last retro file, then log commits since
-git log --oneline --since="$(git log -1 --format=%ci -- RETRO-*.md)" --no-merges
+# Anchor to the commit that created/last modified the previous RETRO file.
+# If no prior RETRO-*.md exists, this shows full history — correct for Sprint 1.
+git log --oneline "$(git log -1 --format=%H -- RETRO-*.md)"..HEAD --no-merges
 ```
 
 **Current upstream status:**
@@ -117,17 +118,17 @@ remaining entries.
 **Beads health:** Run `bd stats` and review issue hygiene:
 
 - Stale `in_progress` issues (claimed but not worked in 2+ sprints)
-- Completed work that was never closed (`bd list --status=in_progress`)
+- Completed work that was never closed (`bd list --status in_progress`)
 - Blocked issues whose blockers have been resolved (`bd blocked`)
 - Issues that should be compacted (`bd compact` for old closed issues)
 
-**Basic Memory graph health:**
+**Basic Memory graph health** (via Basic Memory MCP tools):
 
 1. Run the knowledge-gardener agent for automated audit (orphans, schema, stale notes, duplicates)
-2. Validate both schemas: `schema_validate(note_type="npm-package")` and `schema_validate(note_type="engineering")`
-3. Run `schema_diff` on both types to detect drift (new observation categories in use but not in schema, or schema fields rarely used)
-4. If notes cluster around a new unschemaed `type`, run `schema_infer` and consider creating a new schema
-5. Verify all notes have: frontmatter packages, `## Observations`, `## Relations`
+2. Validate both schemas: call `mcp__basic-memory__schema_validate` with `note_type="npm_package"` and again with `note_type="engineering"`
+3. Call `mcp__basic-memory__schema_diff` on both types to detect drift (new observation categories in use but not in schema, or schema fields rarely used)
+4. If notes cluster around a new unschemaed `type`, call `mcp__basic-memory__schema_infer` and consider creating a new schema
+5. Verify all notes have: frontmatter `type` and `tags`, `## Observations`, `## Relations`
 6. Flag notes missing any layer; fix or create beads issues
 
 **Basic Memory notes (project-independent knowledge base):** Basic Memory is a
@@ -136,7 +137,7 @@ engineering perspective, not referencing project-specific file paths, table name
 or project structure. Vendor package names (e.g., `@scope/vendor-package`) are
 fine since they're real npm packages. Mentioning this project by name is okay
 when genuinely relevant — just don't make notes only useful within this project.
-Search existing notes (`search_notes`) and:
+Call `mcp__basic-memory__search_notes` and:
 
 - Update notes that have been superseded by new learnings this sprint
 - Remove notes that are too project-specific — generalize or delete
@@ -149,23 +150,25 @@ Review the "What could improve" and "Lessons learned" sections for actionable
 items that aren't already tracked. Create beads issues for each:
 
 ```bash
-bd create --title="..." --description="..." --type=bug|task|feature --priority=N
+bd create "..." -t bug|task|feature|chore -p N --description "..."
 ```
 
-Include audit findings (a11y, performance, theming, responsive), code quality
-issues, and process improvements that need follow-up work. Skip items that are
-purely observational or already have open issues.
+(`-t` = type; `-p` = priority: 0=critical, 1=high, 2=medium, 3=low, 4=backlog)
 
-### 6.5. Knowledge gap audit
+Include code quality issues, process improvements, and any findings that need
+follow-up work. Skip items that are purely observational or already have open
+issues.
+
+### 6. Knowledge gap audit
 
 Run `/knowledge-gaps` (or manually):
 
 1. Parse `package.json` dependencies
-2. Cross-reference with Basic Memory notes via `search_notes`
+2. Cross-reference with Basic Memory notes via `mcp__basic-memory__search_notes`
 3. Include Tier 1 gaps in the retrospective under "What could improve"
 4. Create beads issues for top 3 undocumented packages
 
-### 6. Write project-independent learnings to Basic Memory
+### 7. Write project-independent learnings to Basic Memory
 
 Basic Memory is a **cross-project knowledge base** — it persists across all
 repositories and sessions. Notes written here must be generalizable engineering
@@ -174,7 +177,13 @@ me on a completely different project using the same technology?" If yes, write i
 If it only makes sense in the context of this codebase, it belongs in `MEMORY.md`
 or the project `CLAUDE.md` instead.
 
-Extract learnings using `write_note`. Organize by engineering domain:
+For each learning, search first, then create or update:
+
+- If no matching note exists: call `mcp__basic-memory__write_note` to create it
+- If a note exists with new content: call `mcp__basic-memory__edit_note` with
+  `find_replace` or `replace_section`
+
+Organize by engineering domain:
 
 | Directory | Topics |
 |-----------|--------|
@@ -188,7 +197,6 @@ Extract learnings using `write_note`. Organize by engineering domain:
 **Guidelines:**
 
 - Only write notes for patterns confirmed this sprint — not speculative
-- Check existing notes first (`search_notes`) to update rather than duplicate
 - Use concrete code examples, not abstract principles
 - Tag notes for discoverability
 - **No project-specific internals** — replace project file paths with generic
@@ -199,7 +207,7 @@ Extract learnings using `write_note`. Organize by engineering domain:
   Mentioning this project by name is okay when genuinely relevant — just
   don't make the note only useful within this project.
 
-### 7. Suggest documentation updates
+### 8. Suggest documentation updates
 
 After writing the retro, suggest updates to:
 

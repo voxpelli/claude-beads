@@ -1,12 +1,13 @@
 ---
 name: upstream-tracker
-description: "Manage upstream issue tracking for this project. Use this skill whenever the user encounters a bug, missing feature, API friction, or cross-vendor inconsistency in a vendor package or any npm dependency, wants to log an upstream issue, review or summarize open upstream items, curate the tracking files, do a trend review, or work on the upstream observations section of a sprint retrospective. Also trigger when the user says 'upstream', 'vendor issue', 'track this upstream', 'review upstream', 'trend review', 'cross-vendor', 'vendor inconsistency', or mentions friction with any upstream package even without using the word 'upstream'."
+description: "Manage upstream issue tracking for this project. Use when the user wants to log a bug or friction point in a vendor package or npm dependency, review open upstream items, resolve a tracked issue, run a trend review, or generate the upstream observations section of a sprint retrospective. Trigger phrases: 'upstream', 'track this', 'vendor issue', 'log this bug', 'review upstream', 'trend review', 'cross-vendor', 'this is a bug in X', or any mention of friction with an external package."
 user-invocable: true
 allowed-tools:
   - Read
   - Edit
   - Glob
   - Grep
+  - Bash
 ---
 
 # Upstream Tracker
@@ -64,8 +65,21 @@ have to re-explain something that's already visible in the session.
    (the code being discussed, the error encountered, or the workaround applied).
    This can be a vendor package OR a regular npm dependency.
 2. If the package is a non-vendor dependency and no `UPSTREAM-<package>.md`
-   file exists yet, create it with the standard section headings (Feature
-   Requests, Bugs, and optionally Cross-Vendor Inconsistencies / Trend Reviews)
+   file exists yet, create it with this template:
+
+   ```markdown
+   ## Feature Requests
+
+   _No entries yet._
+
+   ## Bugs
+
+   _No entries yet._
+   ```
+
+   Non-vendor files typically omit Cross-Vendor Inconsistencies and Trend
+   Reviews sections unless the project uses multiple vendor packages sharing
+   an API surface.
 3. Classify the entry:
    - **Bug** — unexpected behavior, something that doesn't work as documented
    - **Feature Request** — a missing capability the package should have
@@ -80,15 +94,21 @@ have to re-explain something that's already visible in the session.
 
 ```
 - **Short title** (YYYY-MM-DD) — Description of the desired behavior and why
-  it matters for the consuming app.
+  it matters for the consuming app. [upstream: <url>]
 ```
+
+Upstream URL is optional — add if you've filed a feature request upstream.
 
 **Entry format for Bugs:**
 
 ```
-- **Short title** (YYYY-MM-DD) — What happens, how to reproduce, and the
-  expected behavior.
+- **Short title** (YYYY-MM-DD) [blocking|degraded|minor] — What happens, how to
+  reproduce, and the expected behavior. [upstream: <url>]
 ```
+
+Severity tag is optional — use `blocking` (no workaround), `degraded` (workaround
+exists but costly), or `minor` (edge case). Upstream URL is optional — add if you
+file an issue or PR upstream.
 
 **Entry format for Cross-Vendor Inconsistencies:**
 
@@ -160,7 +180,14 @@ Every 4th sprint, perform a cross-cutting analysis of all tracking files.
    package supports but its siblings don't yet
 4. Evaluate continued validity — are any open items obsolete or already
    addressed? Delete resolved items (they're preserved in git history).
-5. Identify items that should be escalated (high impact, long-standing)
+5. Identify items that should be escalated, using these empirical timelines as
+   guidance:
+   - **Bugs** typically resolve in 5–10 sprints; items beyond 10 sprints warrant
+     escalation (upstream PR, issue, or workaround acceptance)
+   - **Feature requests** typically take 10–20 sprints; items beyond 20 sprints
+     may never land — consider permanent workarounds or forks
+   - **Cross-vendor inconsistencies** often resolve only on a next major version;
+     track with low urgency unless actively blocking development
 6. Add a Trend Review entry to each file's **Trend Reviews** section
 7. Delete non-vendor UPSTREAM files that have no remaining open entries
 8. Present findings to the user
@@ -173,7 +200,7 @@ Every 4th sprint, perform a cross-cutting analysis of all tracking files.
 - **Themes:** [common patterns across open items]
 - **Still valid:** [items confirmed as still relevant]
 - **Recommend closing:** [items that are obsolete or low-priority]
-- **Escalate:** [items that warrant upstream PRs or issues]
+- **Escalate:** [items past their expected resolution window — include upstream URL if filed]
 ```
 
 ### 5. Sprint retrospective support
