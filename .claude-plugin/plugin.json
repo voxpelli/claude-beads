@@ -1,0 +1,12 @@
+{
+  "name": "vp-beads",
+  "version": "0.1.0",
+  "description": "Sprint workflow automation: retrospectives, upstream vendor tracking, and vendor sync for projects using beads and Basic Memory.",
+  "author": {
+    "name": "Pelle Wessman",
+    "url": "https://github.com/voxpelli"
+  },
+  "repository": "https://github.com/voxpelli/claude-beads",
+  "license": "MIT",
+  "keywords": ["beads", "basic-memory", "sprint", "vendor-management", "retrospective"]
+}
