@@ -116,6 +116,16 @@ skill chains into `/knowledge-gaps` (from vp-knowledge) for the knowledge gap
 audit step. Both are available through the `vp-plugins` marketplace at
 `voxpelli/vp-claude`.
 
+## Releasing
+
+After bumping the version in `plugin.json` and `CHANGELOG.md`, also update the
+`vp-beads` entry in `vp-claude/.claude-plugin/marketplace.json`. The two repos
+are independent — the marketplace entry doesn't update automatically and will
+silently serve a stale version to anyone who installs via `vp-plugins`.
+
+Installed plugin caches also lag: after a release, users must reinstall to pick
+up the new version (`/plugin install vp-beads@vp-plugins`).
+
 ## Validation
 
 ```

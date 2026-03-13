@@ -187,6 +187,13 @@ skills/
 
 `vp-beads` and `vp-knowledge` are complementary plugins. The `retrospective` skill chains into `/knowledge-gaps` (from vp-knowledge) for the knowledge gap audit step, and writes sprint learnings to the same Basic Memory graph that vp-knowledge maintains. Install both for the full workflow.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history. When a new version is
+released, the `vp-beads` entry in
+[vp-claude's marketplace.json](https://github.com/voxpelli/vp-claude/blob/main/.claude-plugin/marketplace.json)
+must be bumped manually — the two repos are independent.
+
 ## Possible future additions
 
 - **`vendor-sync` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a beads issue rather than an immediate pull.
