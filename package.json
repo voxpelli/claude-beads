@@ -2,9 +2,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "npm run check:plugin && npm run check:md",
+    "check": "npm run check:plugin && npm run check:md && npm run check:sh",
     "check:plugin": "node validate-plugin.mjs",
-    "check:md": "remark . --quiet --frail"
+    "check:md": "remark . --quiet --frail",
+    "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh"
   },
   "devDependencies": {
     "js-yaml": "^4.1.0",

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0][] - 2026-03-13
+
+### Added
+
+- **`hooks/session-start.sh`** + **`hooks/hooks.json`** — `SessionStart` hook
+  that emits a one-line trend-review reminder when the upcoming sprint (next
+  sprint number divisible by 4) or current sprint (current count divisible by 4)
+  is a trend-review sprint. Silent in the common case — zero per-session overhead
+  for non-trend-review sprints.
+
+### Changed
+
+- **`skills/retrospective`** — Step 6 "Knowledge gap audit" updated to reflect
+  vp-knowledge v0.5.0+: `/knowledge-gaps` now scans all 6 package ecosystems
+  (npm, Rust, Go, PHP, Python, Ruby) and 5 tool manifest types (Brewfile, GitHub
+  Actions, Dockerfile, VSCode extensions). Manual npm-only fallback removed.
+- **`skills/upstream-tracker`** — Extended to non-npm tool tracking (Homebrew
+  formulae, casks, GitHub Actions, Docker images, VSCode extensions) using the
+  same ephemeral file pattern with `brew:`, `cask:`, `action:`, `docker:`,
+  `vscode:` prefix notation. New subsection "Non-npm tools (ephemeral files)"
+  added; file naming guideline extended with tool-type examples.
+- **`agents/sprint-review`** — Added cross-reference to the `session-reflector`
+  agent (vp-knowledge) in the Recommendation step, clarifying the mental model:
+  session-reflector for in-sprint capture, `/retrospective` for end-of-sprint
+  synthesis.
+
 ## [0.2.0][] - 2026-03-09
 
 ### Added
@@ -56,5 +82,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.3.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.3.0
 [0.2.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.2.0
 [0.1.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.1.0

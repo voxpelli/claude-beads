@@ -37,6 +37,14 @@ resolved** — there's no reason to keep an empty tracking file for a regular
 dependency. To discover existing non-vendor files, glob for `UPSTREAM-*.md` and
 exclude the known vendor files.
 
+### Non-npm tools (ephemeral files)
+
+Tools in the project's environment (Homebrew formulae, GitHub Actions, Docker
+images, VSCode extensions) can also accumulate friction worth tracking. Create
+an `UPSTREAM-<tool-type>--<name>.md` file on first encounter, using the same
+ephemeral pattern: delete when all entries are resolved. See the file naming
+convention in the Guidelines section for the tool-type prefix format.
+
 ### Shared structure
 
 All upstream files share the same structure:
@@ -63,7 +71,11 @@ have to re-explain something that's already visible in the session.
 
 1. Identify which upstream package is involved from the conversation context
    (the code being discussed, the error encountered, or the workaround applied).
-   This can be a vendor package OR a regular npm dependency.
+   This can be a vendor package OR a regular npm dependency. This can also be a
+   non-npm tool — a Homebrew formula, a Homebrew cask, a GitHub Action, a Docker
+   image, or a VSCode extension. Use the `brew:<name>`, `cask:<name>`,
+   `action:<owner>/<repo>`, `docker:<image>`, or `vscode:<ext>` prefix notation
+   when identifying tools (consistent with `/tool-intel` from vp-knowledge).
 2. If the package is a non-vendor dependency and no `UPSTREAM-<package>.md`
    file exists yet, create it with this template:
 
@@ -220,7 +232,10 @@ Help generate the "Upstream observations" section of a sprint retrospective.
 - **File naming convention.** Use `UPSTREAM-<package-name>.md` with slashes
   replaced by `--`. Scoped packages drop the `@` prefix: `@voxpelli/typed-utils`
   becomes `UPSTREAM-voxpelli--typed-utils.md`, `umzeption` stays
-  `UPSTREAM-umzeption.md`.
+  `UPSTREAM-umzeption.md`. For non-npm tools, prefix with the tool type:
+  `UPSTREAM-brew--ripgrep.md`, `UPSTREAM-cask--docker.md`,
+  `UPSTREAM-action--actions--checkout.md`, `UPSTREAM-docker--node.md`,
+  `UPSTREAM-vscode--dbaeumer.vscode-eslint.md`.
 - **Infer from context.** When the user asks to log an issue, look at what
   just happened in the session. Extract the relevant details — the package
   involved, the nature of the problem, the workaround used — rather than

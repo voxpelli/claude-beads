@@ -189,7 +189,6 @@ skills/
 
 ## Possible future additions
 
-- **`SessionStart` hook** — one-line reminder when a trend review is due (sprint count divisible by 4 since last `RETRO-*.md`). Held back until usage confirms the value justifies the per-session overhead.
 - **`vendor-sync` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a beads issue rather than an immediate pull.
 
 ## License

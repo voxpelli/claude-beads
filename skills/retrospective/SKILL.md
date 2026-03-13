@@ -161,12 +161,21 @@ issues.
 
 ### 6. Knowledge gap audit
 
-Run `/knowledge-gaps` (or manually):
+Run `/knowledge-gaps` (if vp-knowledge is installed):
 
-1. Parse `package.json` dependencies
-2. Cross-reference with Basic Memory notes via `mcp__basic-memory__search_notes`
-3. Include Tier 1 gaps in the retrospective under "What could improve"
-4. Create beads issues for top 3 undocumented packages
+`/knowledge-gaps` scans all package manifests in the project (npm, Rust crates,
+Go modules, PHP Composer, Python PyPI, Ruby gems) and tool manifests (Brewfile,
+GitHub Actions workflows, Dockerfile, VSCode extensions). It cross-references
+each dependency against Basic Memory notes to identify undocumented packages and
+tools.
+
+Steps:
+
+1. Run `/knowledge-gaps` — it handles all manifest types automatically. If
+   vp-knowledge is not installed, skip this step and note in the retrospective
+   under "What could improve" that knowledge gap coverage was not audited.
+2. Include Tier 1 gaps in the retrospective under "What could improve"
+3. Create beads issues for the top 3 undocumented packages or tools
 
 ### 7. Write project-independent learnings to Basic Memory
 

@@ -122,5 +122,7 @@ audit step. Both are available through the `vp-plugins` marketplace at
 npm run check
 ```
 
-Runs `check:plugin` (validate-plugin.mjs) + `check:md` (remark).
+Runs `check:plugin` (validate-plugin.mjs) + `check:md` (remark) +
+`check:sh` (shellcheck + shfmt on all `hooks/*.sh` files).
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
+Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`).

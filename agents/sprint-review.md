@@ -169,3 +169,11 @@ yourself — recommend them and let the user invoke them.
   without beads in non-beads projects
 - **Clean working tree with no new commits since last retro** — report honestly;
   do not fabricate activity
+- **`session-reflector` agent available (vp-knowledge)** — if the session has
+  been long or the user mentions losing context, suggest running it proactively
+  during active development to preserve in-sprint discoveries before they are
+  lost to context compaction. At sprint-close, `/retrospective` synthesises those
+  captured notes into the RETRO file. Mental model: session-reflector for
+  in-sprint capture, `/retrospective` for end-of-sprint synthesis. Do not suggest
+  it in every sprint-close — only when there is evidence the user has been through
+  a long session without prior capture.
