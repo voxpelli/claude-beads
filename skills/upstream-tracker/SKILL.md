@@ -4,6 +4,7 @@ description: "Manage upstream issue tracking for this project. Use when the user
 user-invocable: true
 allowed-tools:
   - Read
+  - Write
   - Edit
   - Glob
   - Grep

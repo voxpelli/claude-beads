@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0][] - 2026-03-13
+
+### Added
+
+- **`hooks/hooks.json` — `PreCompact` hook** — before context compaction, scans
+  the conversation for sprint-relevant insights worth preserving: upstream friction,
+  technical decisions, vendor discoveries. Writes findings to Basic Memory using
+  `mcp__basic-memory__edit_note` / `write_note` with `[decision]`, `[lesson]`,
+  `[gotcha]`, or `[friction]` observation categories. Does nothing if there is
+  nothing worth preserving.
+
+### Fixed
+
+- **`skills/upstream-tracker`** — Added `Write` to `allowed-tools`. The "Log a
+  new entry" workflow creates new `UPSTREAM-*.md` files for non-vendor packages on
+  first encounter; this requires `Write`, which was absent from the allowlist.
+
+### Changed
+
+- **`CLAUDE.md`** — Added `## Releasing` section documenting the cross-repo
+  `marketplace.json` bump requirement and plugin cache lag behaviour.
+- **`README.md`** — Added `## Changelog` section linking to this file and noting
+  the manual marketplace entry bump required after each release.
+
 ## [0.3.0][] - 2026-03-13
 
 ### Added
@@ -82,6 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.4.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.4.0
 [0.3.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.3.0
 [0.2.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.2.0
 [0.1.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.1.0
