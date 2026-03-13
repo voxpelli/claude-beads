@@ -20,7 +20,7 @@ skills/
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
 agents/
   sprint-review.md                    # Proactive end-of-sprint summary and retro gate
-hooks/                                # Empty — no automated hooks
+hooks/                                # SessionStart hook: trend-review reminder
 CLAUDE.md
 README.md
 CHANGELOG.md
