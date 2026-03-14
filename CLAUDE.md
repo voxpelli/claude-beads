@@ -20,7 +20,10 @@ skills/
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
 agents/
   sprint-review.md                    # Proactive end-of-sprint summary and retro gate
-hooks/                                # PreCompact + SessionStart hooks
+hooks/
+  hooks.json                          # Hook definitions (PreCompact + SessionStart)
+  precompact.sh                       # Emits additionalContext for sprint insight capture
+  session-start.sh                    # Trend-review reminder
 CLAUDE.md
 README.md
 CHANGELOG.md
@@ -118,10 +121,15 @@ audit step. Both are available through the `vp-plugins` marketplace at
 
 ## Releasing
 
-After bumping the version in `plugin.json` and `CHANGELOG.md`, also update the
-`vp-beads` entry in `vp-claude/.claude-plugin/marketplace.json`. The two repos
-are independent — the marketplace entry doesn't update automatically and will
-silently serve a stale version to anyone who installs via `vp-plugins`.
+1. Bump `plugin.json` version and add CHANGELOG entry
+2. Run `npm run check`
+3. Run `plugin-dev:skill-reviewer` agent on all modified skills — it catches
+   `allowed-tools` gaps and vocabulary inconsistencies that `npm run check` misses
+4. Bump `vp-beads` entry in `vp-claude/.claude-plugin/marketplace.json`
+5. Commit, push, tag, push tag
+
+The two repos are independent — the marketplace entry doesn't update automatically
+and will silently serve a stale version to anyone who installs via `vp-plugins`.
 
 Installed plugin caches also lag: after a release, users must reinstall to pick
 up the new version (`/plugin install vp-beads@vp-plugins`).
