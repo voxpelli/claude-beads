@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0][] - 2026-03-14
+
+### Fixed
+
+- **`hooks/hooks.json` — PreCompact hook converted from prompt to command** —
+  the previous `type: "prompt"` hook was non-functional: prompt hooks spawn a
+  separate Haiku instance with no MCP tool access, making the
+  `mcp__basic-memory__*` instructions unreachable. Now uses `type: "command"`
+  with a `precompact.sh` script that emits `additionalContext` JSON, injecting
+  reflection instructions into the main Claude session which has full MCP access.
+  Timeout drops from 30s to 5s (static JSON output). Also adds explicit
+  search-first / `overwrite` guard instructions for Basic Memory `write_note`
+  safety.
+
+### Added
+
+- **`skills/vendor-sync` — changelog-aware auto-resolution** — new step 7
+  parses the upstream `CHANGELOG.md` diff after a subtree pull and AI-matches
+  entries against open `UPSTREAM-*.md` items with confidence levels (high /
+  medium / low). High-confidence matches auto-resolve; medium are reported for
+  user decision.
+- **`skills/upstream-tracker` — enriched entry format** — optional structured
+  fields (`Severity:`, `Ownership:`, `Workaround:`) on a continuation line below
+  each entry. Backward-compatible — existing entries without these fields remain
+  valid. `Severity` (blocking/annoying/cosmetic) captures daily impact,
+  `Ownership` (upstream/us/shared) clarifies who acts, and `Workaround`
+  (none/partial/full) aids triage priority.
+
+### Changed
+
+- **`skills/retrospective` — Step 7 overwrite guard** — added explicit warning
+  against calling `write_note` on existing notes (requires `overwrite=True` and
+  risks data loss); reinforces the search-first pattern.
+- **`skills/retrospective` — Step 2 edge case documentation** — documented two
+  edge cases where `git log -- RETRO-*.md` returns empty (no prior RETRO files,
+  or RETRO files are gitignored), both resulting in full-history range — the
+  correct graceful behavior for a first retrospective.
+
 ## [0.4.0][] - 2026-03-13
 
 ### Added
@@ -106,6 +144,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.5.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.0
 [0.4.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.4.0
 [0.3.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.3.0
 [0.2.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.2.0

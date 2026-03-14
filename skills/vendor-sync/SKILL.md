@@ -107,7 +107,35 @@ npm install
 
 This updates workspace symlinks after subtree contents change.
 
-### 7. Cross-reference diff against UPSTREAM tracking files
+### 7. Cross-reference changelog against UPSTREAM tracking files
+
+For each pulled subtree that has a `CHANGELOG.md` (or `CHANGES.md`, `HISTORY.md`)
+in its prefix directory, extract the changelog entries added by the pull:
+
+```bash
+git diff HEAD~1 -- <prefix>/CHANGELOG.md
+```
+
+Parse the added lines (those starting with `+`) to identify new changelog entries
+(bug fixes, features, breaking changes). Compare each entry against the open items
+in the corresponding `UPSTREAM-<package>.md` file. If a changelog entry clearly
+addresses an open UPSTREAM item (matching keywords, issue references, or described
+behavior), flag it as a candidate for auto-resolution with your confidence level:
+
+- **High confidence** — changelog explicitly mentions the bug/feature by name or
+  references the same upstream issue URL
+- **Medium confidence** — changelog describes a fix/feature in the same area as
+  the UPSTREAM entry but doesn't reference it directly
+- **Low confidence** — only a vague topical match; mention but don't auto-resolve
+
+For high-confidence matches, proceed to resolve the entry in step 8. For medium
+confidence, note the match in the report and let the user decide. Skip low
+confidence matches in the resolution step but mention them in the report.
+
+If no changelog file exists in the pulled prefix, skip this step for that entry
+and rely solely on the code diff cross-reference in step 8.
+
+### 8. Cross-reference code diff against UPSTREAM tracking files
 
 This is the primary resolution mechanism — do not defer this to the retro.
 
@@ -130,7 +158,7 @@ changed). If an entry appears resolved by the diff:
 
 If no tracking file exists for a pulled package, skip this step for that entry.
 
-### 8. Verify
+### 9. Verify
 
 Check `package.json` scripts and run the most comprehensive available
 verification in order of preference:
@@ -142,7 +170,7 @@ verification in order of preference:
 Show the last 5 lines of output. If verification fails after a pull, report
 the errors. The user may need to adapt app code to upstream API changes.
 
-### 9. Report
+### 10. Report
 
 Summarize the results:
 
@@ -156,7 +184,7 @@ Summarize the results:
 
 - **Registry not found** — tell the user to create `.claude/vendor-registry.json`
   and point them to the format described above. Stop.
-- **No changes** — if a pull reports "Already up to date", skip steps 4–7 for
+- **No changes** — if a pull reports "Already up to date", skip steps 4–8 for
   that entry and note it in the report.
 - **npm install failures** — most commonly caused by stale `node_modules/`
   inside vendor directories (step 5). If install fails after cleaning those,

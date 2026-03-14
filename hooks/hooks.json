@@ -1,14 +1,14 @@
 {
-  "description": "Sprint workflow hooks: trend-review reminder at session start.",
+  "description": "Sprint workflow hooks: auto-reflect before compaction, trend-review reminder at session start.",
   "hooks": {
     "PreCompact": [
       {
         "matcher": "",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "Context is about to be compacted. Before losing conversation history, review the current conversation for sprint-relevant insights worth preserving:\n\n1. Were any friction points or bugs discovered in upstream packages (npm, brew, GitHub Actions, etc.)? → suggest /upstream-tracker log\n2. Were any technical decisions made that should survive the sprint? → write to Basic Memory\n3. Were any new vendor package issues discovered? → note for /retrospective\n\nFor each finding: use `mcp__basic-memory__edit_note` to append to the most relevant existing note, or `mcp__basic-memory__write_note` for a new note. Keep it concise — capture the insight, not the conversation. Use `[decision]`, `[lesson]`, `[gotcha]`, or `[friction]` observation categories.\n\nIf nothing worth preserving was discussed, do nothing.",
-            "timeout": 30
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/precompact.sh",
+            "timeout": 5
           }
         ]
       }

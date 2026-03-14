@@ -41,7 +41,11 @@ Run these in parallel:
 
 ```bash
 # Anchor to the commit that created/last modified the previous RETRO file.
-# If no prior RETRO-*.md exists, this shows full history — correct for Sprint 1.
+# Edge cases that both result in full-history range (correct for Sprint 1):
+#   1. No prior RETRO-*.md files exist yet
+#   2. RETRO files are gitignored — git log -- RETRO-*.md returns empty
+# In both cases the inner git log returns empty, making the range "..HEAD"
+# which shows all commits — the right behavior for a first retrospective.
 git log --oneline "$(git log -1 --format=%H -- RETRO-*.md)"..HEAD --no-merges
 ```
 
@@ -190,7 +194,8 @@ For each learning, search first, then create or update:
 
 - If no matching note exists: call `mcp__basic-memory__write_note` to create it
 - If a note exists with new content: call `mcp__basic-memory__edit_note` with
-  `find_replace` or `replace_section`
+  `find_replace` or `replace_section` — never call `write_note` on an existing
+  note (it requires `overwrite=True` and risks replacing the full note content)
 
 Organize by engineering domain:
 

@@ -108,6 +108,7 @@ have to re-explain something that's already visible in the session.
 ```
 - **Short title** (YYYY-MM-DD) — Description of the desired behavior and why
   it matters for the consuming app. [upstream: <url>]
+  Ownership: upstream|us|shared · Workaround: none|partial|full — description
 ```
 
 Upstream URL is optional — add if you've filed a feature request upstream.
@@ -117,18 +118,33 @@ Upstream URL is optional — add if you've filed a feature request upstream.
 ```
 - **Short title** (YYYY-MM-DD) [blocking|degraded|minor] — What happens, how to
   reproduce, and the expected behavior. [upstream: <url>]
+  Severity: blocking|annoying|cosmetic · Ownership: upstream|us|shared · Workaround: none|partial|full — description
 ```
 
-Severity tag is optional — use `blocking` (no workaround), `degraded` (workaround
-exists but costly), or `minor` (edge case). Upstream URL is optional — add if you
-file an issue or PR upstream.
+Severity tag in brackets is optional — use `blocking` (no workaround), `degraded`
+(workaround exists but costly), or `minor` (edge case). Upstream URL is optional —
+add if you file an issue or PR upstream.
 
 **Entry format for Cross-Vendor Inconsistencies:**
 
 ```
 - **Short title** (YYYY-MM-DD) — What the sibling package does, what this
   package lacks, and the consumer-side friction it causes.
+  Ownership: upstream|us|shared · Workaround: none|partial|full — description
 ```
+
+**Structured fields** (all optional — existing entries without them remain valid):
+
+| Field | Values | When to use |
+|-------|--------|-------------|
+| `Severity:` | `blocking` · `annoying` · `cosmetic` | Bugs only. How much this hurts day-to-day development. `blocking` = no workaround, `annoying` = workaround exists but adds friction, `cosmetic` = minor inconvenience |
+| `Ownership:` | `upstream` · `us` · `shared` | All entry types. Who needs to act: `upstream` = waiting on a release, `us` = we need to adapt or contribute a fix, `shared` = both sides need changes |
+| `Workaround:` | `none` · `partial` · `full` — description | All entry types. `none` = no mitigation, `partial` = mitigation exists but incomplete, `full` = fully mitigated (describe how). Helps prioritize: entries with `none` are more urgent |
+
+These fields go on a continuation line below the entry's main description line,
+indented to match. They are metadata for triage and trend review — the main
+description line remains the primary content. Omit fields that don't add useful
+signal (e.g., skip `Workaround: none` when the severity already says `blocking`).
 
 When adding the first entry to a section, replace the `_No entries yet._`
 placeholder. Keep entries concise — 1-3 sentences. The title should be
