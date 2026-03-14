@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1][] - 2026-03-14
+
+### Fixed
+
+- **`skills/vendor-sync` — added `Write` and `Grep` to `allowed-tools`** —
+  `Write` is needed for UPSTREAM file creation edge cases during cross-reference,
+  `Grep` for changelog keyword matching in Step 7. Same class of bug as the
+  v0.4.0 upstream-tracker `Write` omission.
+- **`skills/vendor-sync` — Step 7 changelog diff uses pre-pull hash** —
+  replaced fragile `git diff HEAD~1` with `$PRE_PULL_HEAD` captured before
+  Step 3. The previous approach broke when conflict resolution in Step 4
+  added extra commits.
+- **`skills/upstream-tracker` — aligned severity vocabulary** — the structured
+  `Severity:` field used `blocking/annoying/cosmetic` while the inline bracket
+  notation used `blocking/degraded/minor`. Unified to `blocking/degraded/minor`
+  (the established terms).
+
 ## [0.5.0][] - 2026-03-14
 
 ### Fixed
@@ -144,6 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.5.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.1
 [0.5.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.0
 [0.4.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.4.0
 [0.3.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.3.0

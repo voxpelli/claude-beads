@@ -118,7 +118,7 @@ Upstream URL is optional — add if you've filed a feature request upstream.
 ```
 - **Short title** (YYYY-MM-DD) [blocking|degraded|minor] — What happens, how to
   reproduce, and the expected behavior. [upstream: <url>]
-  Severity: blocking|annoying|cosmetic · Ownership: upstream|us|shared · Workaround: none|partial|full — description
+  Severity: blocking|degraded|minor · Ownership: upstream|us|shared · Workaround: none|partial|full — description
 ```
 
 Severity tag in brackets is optional — use `blocking` (no workaround), `degraded`
@@ -137,7 +137,7 @@ add if you file an issue or PR upstream.
 
 | Field | Values | When to use |
 |-------|--------|-------------|
-| `Severity:` | `blocking` · `annoying` · `cosmetic` | Bugs only. How much this hurts day-to-day development. `blocking` = no workaround, `annoying` = workaround exists but adds friction, `cosmetic` = minor inconvenience |
+| `Severity:` | `blocking` · `degraded` · `minor` | Bugs only. How much this hurts day-to-day development. `blocking` = no workaround, `degraded` = workaround exists but costly, `minor` = edge case or minor inconvenience |
 | `Ownership:` | `upstream` · `us` · `shared` | All entry types. Who needs to act: `upstream` = waiting on a release, `us` = we need to adapt or contribute a fix, `shared` = both sides need changes |
 | `Workaround:` | `none` · `partial` · `full` — description | All entry types. `none` = no mitigation, `partial` = mitigation exists but incomplete, `full` = fully mitigated (describe how). Helps prioritize: entries with `none` are more urgent |
 

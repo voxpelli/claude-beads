@@ -6,8 +6,10 @@ user-invocable: true
 allowed-tools:
   - Bash
   - Read
+  - Write
   - Edit
   - Glob
+  - Grep
 ---
 
 # Vendor Sync
@@ -57,6 +59,13 @@ Subtree pulls create merge commits; the working tree must be clean. If there
 are uncommitted changes, warn the user and ask whether to proceed.
 
 ### 3. Pull each subtree
+
+Before pulling, capture the current HEAD so later steps can diff accurately
+even if conflict resolution adds extra commits:
+
+```bash
+PRE_PULL_HEAD=$(git rev-parse HEAD)
+```
 
 For each selected entry, run:
 
@@ -113,7 +122,7 @@ For each pulled subtree that has a `CHANGELOG.md` (or `CHANGES.md`, `HISTORY.md`
 in its prefix directory, extract the changelog entries added by the pull:
 
 ```bash
-git diff HEAD~1 -- <prefix>/CHANGELOG.md
+git diff $PRE_PULL_HEAD -- <prefix>/CHANGELOG.md
 ```
 
 Parse the added lines (those starting with `+`) to identify new changelog entries
