@@ -132,6 +132,35 @@ skill chains into `/knowledge-gaps` (from vp-knowledge) for the knowledge gap
 audit step. Both are available through the `vp-plugins` marketplace at
 `voxpelli/vp-claude`.
 
+## Agent Guidelines
+
+### Non-interactive shell commands
+
+Shell commands like `cp`, `mv`, and `rm` may be aliased to include `-i`
+(interactive) mode, causing agents to hang. Always use force flags:
+
+```bash
+cp -f source dest       # NOT: cp source dest
+mv -f source dest       # NOT: mv source dest
+rm -f file              # NOT: rm file
+rm -rf directory        # NOT: rm -r directory
+```
+
+### Issue tracking with beads
+
+This project uses `bd` (beads) for all issue tracking. Do NOT use markdown TODOs
+or task lists. Run `bd ready` to find available work, `bd update <id> --claim` to
+claim it, `bd close <id>` to complete it.
+
+### Session completion
+
+Work is NOT complete until pushed. Before ending a session:
+
+1. `bd close` any finished issues
+2. `npm run check` (if code changed)
+3. `git push` — mandatory, never skip
+4. `bd dolt push` — sync beads to remote
+
 ## Releasing
 
 1. Bump `plugin.json` version and add CHANGELOG entry
