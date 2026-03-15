@@ -15,7 +15,7 @@
     ],
     "PostToolUseFailure": [
       {
-        "matcher": "mcp__basic-memory__write_note|mcp__basic-memory__edit_note|mcp__basic-memory__read_note|mcp__basic-memory__search_notes",
+        "matcher": "mcp__basic-memory__write_note|mcp__basic-memory__edit_note|mcp__basic-memory__read_note|mcp__basic-memory__search_notes|mcp__basic-memory__schema_validate|mcp__basic-memory__schema_diff|mcp__basic-memory__schema_infer",
         "hooks": [
           {
             "type": "prompt",

@@ -11,6 +11,7 @@ allowed-tools:
   - Bash
   - Skill
   - mcp__basic-memory__search_notes
+  - mcp__basic-memory__read_note
   - mcp__basic-memory__write_note
   - mcp__basic-memory__edit_note
   - mcp__basic-memory__schema_validate
@@ -199,7 +200,8 @@ or the project `CLAUDE.md` instead.
 For each learning, search first, then create or update:
 
 - If no matching note exists: call `mcp__basic-memory__write_note` to create it
-- If a note exists with new content: call `mcp__basic-memory__edit_note` with
+- If a note exists with new content: call `mcp__basic-memory__read_note` first
+  to get exact content, then call `mcp__basic-memory__edit_note` with
   `find_replace` or `replace_section` — never call `write_note` on an existing
   note (it requires `overwrite=True` and risks replacing the full note content)
 

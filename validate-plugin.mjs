@@ -212,7 +212,7 @@ for (const file of skillFiles) {
 
 const agentsDir = join(ROOT, 'agents')
 if (existsSync(agentsDir)) {
-  const agentFiles = (await readdir(agentsDir))
+  const agentFiles = (await readdir(agentsDir, { recursive: true }))
     .filter((f) => f.endsWith('.md'))
     .map((f) => join(agentsDir, f))
 
