@@ -1,6 +1,6 @@
 {
   "name": "vp-beads",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Sprint workflow automation: retrospectives, upstream vendor tracking, and vendor sync for projects using beads and Basic Memory.",
   "author": {
     "name": "Pelle Wessman",

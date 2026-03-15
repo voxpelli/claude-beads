@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2][] - 2026-03-15
+
+### Fixed
+
+- **`skills/retrospective` — added `mcp__basic-memory__read_note` to
+  `allowed-tools`** — step 7 instructs `edit_note` with `find_replace` on
+  existing notes, which requires reading the note first. Same class of bug
+  as the v0.6.0 `read_note` omission in upstream-tracker and vendor-sync.
+  Also updated step 7 prose to explicitly call `read_note` before `edit_note`.
+- **`validate-plugin.mjs` — recursive agent directory scan** — agent validation
+  now uses `readdir({ recursive: true })` to match the skills pattern. Prevents
+  agents in subdirectories from being silently skipped.
+- **`hooks/hooks.json` — expanded PostToolUseFailure matcher** — added
+  `schema_validate`, `schema_diff`, `schema_infer` to the BM error recovery
+  hook matcher. These tools are used during trend-review sprints.
+
 ## [0.6.1][] - 2026-03-15
 
 ### Added
@@ -231,6 +247,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.6.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.2
 [0.6.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.1
 [0.6.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.0
 [0.5.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.1
