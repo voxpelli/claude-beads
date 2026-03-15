@@ -56,6 +56,10 @@ const KNOWN_MCP_PREFIXES = [
   'mcp__raindrop__',
 ]
 
+const VALID_AGENT_COLORS = new Set(['blue', 'cyan', 'green', 'yellow', 'magenta', 'red'])
+
+const VALID_AGENT_MODELS = new Set(['inherit', 'sonnet', 'opus', 'haiku'])
+
 /**
  * @param {string} file
  * @param {string[]} tools
@@ -229,6 +233,12 @@ if (existsSync(agentsDir)) {
       if (!(field in fm)) {
         error(file, `Missing required frontmatter field: ${field}`)
       }
+    }
+    if ('color' in fm && !VALID_AGENT_COLORS.has(fm.color)) {
+      error(file, `Invalid agent color "${String(fm.color)}", must be one of: ${[...VALID_AGENT_COLORS].join(', ')}`)
+    }
+    if ('model' in fm && !VALID_AGENT_MODELS.has(fm.model)) {
+      error(file, `Invalid agent model "${String(fm.model)}", must be one of: ${[...VALID_AGENT_MODELS].join(', ')}`)
     }
     if ('tools' in fm && !Array.isArray(fm.tools)) {
       error(file, 'tools must be an array')
