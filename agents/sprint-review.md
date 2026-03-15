@@ -6,6 +6,7 @@ tools:
   - Read
   - Glob
   - Grep
+  - mcp__basic-memory__search_notes
 model: inherit
 color: cyan
 ---
@@ -124,6 +125,15 @@ Glob for all `UPSTREAM-*.md` files and read them. Report:
 If session context contains mentions of friction, bugs, or workarounds with
 upstream packages that are NOT yet tracked in any UPSTREAM file, flag those as
 "untracked friction" and suggest the user run `/upstream-tracker` before closing.
+
+If Basic Memory MCP tools are available: call `mcp__basic-memory__search_notes`
+for package names from `package.json` dependencies and check for notes with
+`## Upstream Friction` sections. If any exist for packages not already covered
+by local UPSTREAM files, report: "N Basic Memory friction notes for project
+dependencies have no local UPSTREAM file — consider `/upstream-tracker` workflow 7
+to sync cross-project friction." If all Basic Memory friction notes are already
+mirrored locally, or if Basic Memory tools are not available, skip this sub-step
+silently.
 
 ### Step 5 — Recommendation
 

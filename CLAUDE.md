@@ -40,7 +40,8 @@ No runtime code — pure markdown + JSON. No build step, no dependencies.
   UPSTREAM files, then gives a concise summary and one of four recommendations:
   not ready, close normally, do upstream work first, or trend-review sprint.
   Read-only — never writes files; defers to `/retrospective` and
-  `/upstream-tracker` for mutations.
+  `/upstream-tracker` for mutations. When Basic Memory is available, also
+  checks for cross-project friction notes on project dependencies.
 
 ### Skills (3)
 
@@ -49,13 +50,17 @@ No runtime code — pure markdown + JSON. No build step, no dependencies.
   a knowledge gap audit, writes generalizable learnings to Basic Memory, and
   suggests documentation updates. User-invocable as `/retrospective`.
 - **upstream-tracker** — Manages `UPSTREAM-*.md` files that track bugs, feature
-  requests, and friction discovered in upstream packages. Supports five workflows:
-  log, review-open, resolve, trend-review, sprint-retro-support. User-invocable
+  requests, and friction discovered in upstream packages. Supports seven workflows:
+  log, review-open, resolve, trend-review, sprint-retro-support,
+  promote-to-basic-memory, sync-from-basic-memory. The last two provide
+  bidirectional sync between project-local UPSTREAM files and cross-project
+  Basic Memory entity notes (`## Upstream Friction` sections). User-invocable
   as `/upstream-tracker`.
 - **vendor-sync** — Pulls latest upstream changes from git subtrees, resolves
   conflicts (always accept upstream), cleans stale node_modules, re-links
   workspaces, cross-references the sync diff against open `UPSTREAM-*.md`
-  entries to auto-resolve fixed issues, and verifies with check + test.
+  entries to auto-resolve fixed issues, annotates corresponding Basic Memory
+  friction entries on resolution, and verifies with check + test.
   Reads the subtree registry from `.claude/vendor-registry.json`. User-invocable
   as `/vendor-sync`.
 
@@ -98,19 +103,23 @@ The agent and skills form a lightweight cycle:
 
 ```
 sprint-review (agent)     → proactive summary at sprint boundary
-  ↓ recommends
+  ↓ recommends                (checks BM for cross-project friction)
 upstream-tracker (skill)  → log/resolve any untracked friction first
-  ↓ then
+  ↓ then                      (W1 checks BM on log, W3 annotates BM on resolve)
 retrospective (skill)     → generate RETRO-NN.md, write to Basic Memory
+  ↓ after retro               (step 7 defers package friction to W6)
+upstream-tracker W6       → promote generalizable friction to BM entity notes
   ↓ next sprint
 vendor-sync (skill)       → pull upstream changes, auto-resolve UPSTREAM entries
-  ↓ logs new friction to
-upstream-tracker (skill)  → repeat
+  ↓ annotates BM, logs new    (step 8b annotates BM on auto-resolve)
+upstream-tracker (skill)  → repeat (W7 discovers BM friction from other projects)
 ```
 
 `sprint-review` is the *gate* (read-only, proactive). `/retrospective` is the
 *generator* (user-invoked, writes files). They do not call each other — the user
-stays in control of when to commit to the full retro workflow.
+stays in control of when to commit to the full retro workflow. Basic Memory
+serves as the cross-project bridge: workflows 6 and 7 in upstream-tracker provide
+bidirectional sync between project-local UPSTREAM files and BM entity notes.
 
 ### Relationship to vp-knowledge
 

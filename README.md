@@ -14,7 +14,7 @@ Triggers automatically when a sprint closes and gives a concise summary with a s
 
 > "Should we do a retro? I've lost track of which sprint we're on."
 
-Reads git history, open beads issues, and `UPSTREAM-*.md` files, then recommends one of four actions:
+Reads git history, open beads issues, `UPSTREAM-*.md` files, and (when available) Basic Memory friction notes for cross-project awareness, then recommends one of four actions:
 
 | Recommendation | Condition |
 |---|---|
@@ -45,14 +45,16 @@ Manage `UPSTREAM-*.md` files that track bugs, feature requests, and API friction
 /upstream-tracker
 ```
 
-Supports five workflows:
+Supports seven workflows:
 
-- **Log** — infers the package and problem from conversation context; no re-explaining needed
+- **Log** — infers the package and problem from conversation context; checks Basic Memory for existing cross-project friction before logging
 - **Review** — summarize all open items across tracking files
-- **Resolve** — delete a fixed entry; `git rm` the file when empty (non-vendor only)
+- **Resolve** — delete a fixed entry; `git rm` the file when empty (non-vendor only); annotates the corresponding Basic Memory friction entry
 - **Trend review** — quarterly cross-cutting analysis, with empirical resolution timelines:
   bugs resolve in 5–10 sprints, FRs in 10–20, cross-vendor inconsistencies on next major version
 - **Sprint retro support** — draft the "Upstream observations" section
+- **Promote to Basic Memory** — promotes generalizable friction from project-local UPSTREAM files into cross-project Basic Memory entity notes (`## Upstream Friction` sections). Supports all target types: npm, brew, cask, GitHub Actions, Docker, VSCode extensions. When no BM note exists, flags for enrichment via `/package-intel` or `/tool-intel`
+- **Sync from Basic Memory** — discovers friction already known in Basic Memory for this project's dependencies but not yet tracked locally. Pull-based, user-invoked
 
 Entry formats support optional `[blocking|degraded|minor]` severity and `[upstream: url]` when you file an upstream issue or PR.
 
@@ -67,7 +69,7 @@ Pull latest upstream changes from one or all git subtrees:
 
 Reads `.claude/vendor-registry.json`, pulls each selected subtree with `--squash`, checks for conflicts before resolving them (always accept upstream), cleans stale vendor `node_modules`, re-links workspaces, and verifies with `npm run check` + `npm test`.
 
-Step 7 cross-references the full sync diff against open `UPSTREAM-*.md` entries — any issue visibly addressed in the diff is deleted immediately. This is the primary resolution mechanism; don't defer to the retro.
+Step 7 cross-references the full sync diff against open `UPSTREAM-*.md` entries — any issue visibly addressed in the diff is deleted immediately. This is the primary resolution mechanism; don't defer to the retro. Step 8b annotates the corresponding Basic Memory friction entries when available.
 
 ## Installation
 
@@ -143,6 +145,8 @@ File naming examples:
 
 - `@voxpelli/typed-utils` → `UPSTREAM-voxpelli--typed-utils.md`
 - `fastify` → `UPSTREAM-fastify.md`
+- `brew:ripgrep` → `UPSTREAM-brew--ripgrep.md`
+- `action:actions/checkout` → `UPSTREAM-action--actions--checkout.md`
 
 ## Plugin structure
 
@@ -177,9 +181,12 @@ skills/
 
  upstream friction       -> upstream-tracker skill-> UPSTREAM-<pkg>.md entry
  /upstream-tracker                                -> resolve / trend-review
+                                                  -> promote to Basic Memory
+                                                  -> sync from Basic Memory
 
  /vendor-sync [pkg]      -> vendor-sync skill     -> git subtree pull --squash
                                                   -> UPSTREAM auto-resolution
+                                                  -> BM friction annotation
                                                   -> npm install + verify
 ```
 

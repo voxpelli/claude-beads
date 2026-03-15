@@ -10,6 +10,9 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
+  - mcp__basic-memory__search_notes
+  - mcp__basic-memory__read_note
+  - mcp__basic-memory__edit_note
 ---
 
 # Vendor Sync
@@ -167,6 +170,25 @@ changed). If an entry appears resolved by the diff:
 
 If no tracking file exists for a pulled package, skip this step for that entry.
 
+### 8b. Annotate Basic Memory friction entries
+
+For each entry auto-resolved in steps 7–8, check whether a corresponding
+Basic Memory entity note exists with an `## Upstream Friction` section. If
+Basic Memory MCP tools are available:
+
+1. Call `mcp__basic-memory__search_notes` with the package name
+2. If a note exists, call `mcp__basic-memory__read_note` to check for a
+   matching friction entry
+3. If found, call `mcp__basic-memory__edit_note` with `find_replace` to append
+   `_(Resolved by vendor-sync YYYY-MM-DD)_` to the matching entry's line.
+   Use `expected_replacements=1`. Always match against the note's exact text.
+4. Annotation only — never delete entries, never move them to `### Resolved`.
+   The upstream-tracker's workflow 6 handles pruning during its prune pass.
+
+If Basic Memory tools are not available or no matching entry exists, skip
+silently. This annotation step is best-effort — vendor-sync works identically
+without it, and stale Basic Memory entries are caught by trend review.
+
 ### 9. Verify
 
 Check `package.json` scripts and run the most comprehensive available
@@ -193,7 +215,7 @@ Summarize the results:
 
 - **Registry not found** — tell the user to create `.claude/vendor-registry.json`
   and point them to the format described above. Stop.
-- **No changes** — if a pull reports "Already up to date", skip steps 4–8 for
+- **No changes** — if a pull reports "Already up to date", skip steps 4–8b for
   that entry and note it in the report.
 - **npm install failures** — most commonly caused by stale `node_modules/`
   inside vendor directories (step 5). If install fails after cleaning those,

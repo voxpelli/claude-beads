@@ -10,6 +10,12 @@ allowed-tools:
   - Grep
   - Bash
   - Skill
+  - mcp__basic-memory__search_notes
+  - mcp__basic-memory__write_note
+  - mcp__basic-memory__edit_note
+  - mcp__basic-memory__schema_validate
+  - mcp__basic-memory__schema_diff
+  - mcp__basic-memory__schema_infer
 ---
 
 # Sprint Retrospective
@@ -105,7 +111,7 @@ Create `RETRO-{N}.md` using this template:
   recurrence.
 - **Upstream observations** — summarize current state of all UPSTREAM files.
   Log any NEW friction discovered in the session to the appropriate UPSTREAM
-  file (use the upstream-tracker skill pattern). Note trends across packages.
+  file using `/upstream-tracker` (workflow 1). Note trends across packages.
   Flag stale items (>3 months old).
 - **Lessons learned** — reusable insights. Each should be a principle that
   future sessions can apply, not a one-off fact. Format: **Bold principle** —
@@ -220,6 +226,13 @@ Organize by engineering domain:
   `@scope/vendor-package`) is fine — they're real published packages.
   Mentioning this project by name is okay when genuinely relevant — just
   don't make the note only useful within this project.
+- **Division of labor with upstream-tracker.** This step writes `engineering/*`
+  notes (patterns, conventions, lessons learned). For upstream friction about
+  specific packages or tools, use `/upstream-tracker` workflow 6 (Promote to
+  Basic Memory) instead — it writes to the `## Upstream Friction` section of
+  entity notes (`npm/*`, `brew/*`, etc.), avoiding duplication. For packages
+  not yet in Basic Memory, suggest `/package-intel` or `/tool-intel` for
+  enrichment first.
 
 ### 8. Suggest documentation updates
 

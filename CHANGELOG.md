@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0][] - 2026-03-15
+
+### Added
+
+- **`skills/upstream-tracker` — Workflow 6 "Promote to Basic Memory"** —
+  promotes generalizable upstream friction from project-local UPSTREAM files
+  into cross-project Basic Memory entity notes. Supports all target types
+  (npm, brew, cask, action, docker, vscode, non-package repos). Filters by
+  Ownership (skips `us` entries), applies a generalization transform, and
+  targets `## Upstream Friction` sections with Bug/FR/Resolved subsections.
+  When no Basic Memory note exists, flags for enrichment via `/package-intel`
+  or `/tool-intel` instead of creating thin notes.
+- **`skills/upstream-tracker` — Workflow 7 "Sync from Basic Memory"** —
+  discovers friction already known in Basic Memory for this project's
+  dependencies but not yet tracked locally. Pull-based, user-invoked.
+- **`skills/upstream-tracker` — Workflow 1 BM deduplication pre-check** —
+  before logging a new entry, checks Basic Memory for existing friction on
+  the same package from other projects. Informational only.
+- **`skills/upstream-tracker` — Workflow 3 BM annotation on resolve** —
+  when an UPSTREAM entry is resolved, annotates the corresponding Basic Memory
+  friction entry with a resolved timestamp. Annotation only — workflow 6's
+  prune pass handles moves to Resolved.
+- **`skills/vendor-sync` — Step 8b BM annotation** — after auto-resolving
+  UPSTREAM entries via changelog/diff cross-reference, annotates the
+  corresponding Basic Memory friction entries. Best-effort, skips silently
+  when Basic Memory is unavailable.
+- **`agents/sprint-review` — Step 4 BM friction awareness** — when Basic
+  Memory tools are available, checks for friction notes on project
+  dependencies not covered by local UPSTREAM files and suggests workflow 7.
+
+### Fixed
+
+- **`skills/upstream-tracker` — vendor registry shape** — added missing
+  `package` field to the vendor registry object description (`{prefix, remote,
+  branch}` → `{prefix, remote, branch, package}`).
+- **`skills/retrospective` — added `mcp__basic-memory__*` tools to
+  `allowed-tools`** — steps 4 and 7 reference these tools in the skill body
+  but they were absent from the frontmatter allowlist.
+
+### Changed
+
+- **`skills/retrospective` — step 7 division-of-labor note** — clarifies
+  that step 7 writes `engineering/*` notes while upstream friction about
+  specific packages/tools should use `/upstream-tracker` workflow 6.
+- **`skills/retrospective` — step 3 alignment** — explicitly names
+  `/upstream-tracker` for logging new friction during retrospectives.
+- **`hooks/precompact.sh` — resolved entry awareness** — added prompt for
+  annotating Basic Memory when UPSTREAM entries are resolved during a session.
+
 ## [0.5.1][] - 2026-03-14
 
 ### Fixed
@@ -161,6 +210,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.6.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.0
 [0.5.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.1
 [0.5.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.0
 [0.4.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.4.0

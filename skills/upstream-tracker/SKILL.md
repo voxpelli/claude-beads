@@ -1,6 +1,6 @@
 ---
 name: upstream-tracker
-description: "Manage upstream issue tracking for this project. Use when the user wants to log a bug or friction point in a vendor package or npm dependency, review open upstream items, resolve a tracked issue, run a trend review, or generate the upstream observations section of a sprint retrospective. Trigger phrases: 'upstream', 'track this', 'vendor issue', 'log this bug', 'review upstream', 'trend review', 'cross-vendor', 'this is a bug in X', or any mention of friction with an external package."
+description: "Manage upstream issue tracking for this project. Use when the user wants to log a bug or friction point in a vendor package or npm dependency, review open upstream items, resolve a tracked issue, run a trend review, generate the upstream observations section of a sprint retrospective, promote upstream observations to Basic Memory, or discover known friction from other projects. Trigger phrases: 'upstream', 'track this', 'vendor issue', 'log this bug', 'review upstream', 'trend review', 'cross-vendor', 'this is a bug in X', 'promote to memory', 'promote upstream', 'sync from memory', 'known friction', 'resolved upstream', 'mark as fixed', 'tool issue', 'action bug', or any mention of friction with an external package."
 user-invocable: true
 allowed-tools:
   - Read
@@ -9,6 +9,9 @@ allowed-tools:
   - Glob
   - Grep
   - Bash
+  - mcp__basic-memory__search_notes
+  - mcp__basic-memory__read_note
+  - mcp__basic-memory__edit_note
 ---
 
 # Upstream Tracker
@@ -21,7 +24,7 @@ discovered in upstream packages while building this project.
 ### Vendor packages (permanent files)
 
 Vendor packages are declared in `.claude/vendor-registry.json` (if it exists) as
-an array of `{prefix, remote, branch}` objects, or as packages listed under
+an array of `{prefix, remote, branch, package}` objects, or as packages listed under
 `workspaces` in `package.json`. Each vendor package gets a permanent
 `UPSTREAM-<package-name>.md` tracking file that always exists, even when empty.
 
@@ -77,6 +80,13 @@ have to re-explain something that's already visible in the session.
    image, or a VSCode extension. Use the `brew:<name>`, `cask:<name>`,
    `action:<owner>/<repo>`, `docker:<image>`, or `vscode:<ext>` prefix notation
    when identifying tools (consistent with `/tool-intel` from vp-knowledge).
+1a. **Basic Memory pre-check.** If Basic Memory MCP tools are available, call
+   `mcp__basic-memory__search_notes` with the package name. If a matching note
+   exists and contains an `## Upstream Friction` section with entries related to
+   the issue being logged, surface them to the user: "This friction is already
+   tracked in Basic Memory from another project: \[summary]. Logging it locally
+   as well so this project tracks it." Proceed regardless — this is informational,
+   not a gate. If Basic Memory tools are not available, skip this step silently.
 2. If the package is a non-vendor dependency and no `UPSTREAM-<package>.md`
    file exists yet, create it with this template:
 
@@ -150,6 +160,10 @@ When adding the first entry to a section, replace the `_No entries yet._`
 placeholder. Keep entries concise — 1-3 sentences. The title should be
 scannable (e.g., "Missing session type export", not "Issue with types").
 
+If the logged observation looks generalizable beyond this project (about the
+package's behavior, not a project-specific integration choice), note that
+workflow 6 (Promote to Basic Memory) can share it across projects later.
+
 ### 2. Review open items
 
 Summarize the current state of all upstream tracking files (vendor and non-vendor).
@@ -195,6 +209,17 @@ preserves what was tracked and when it was removed.
 5. For non-vendor files: if the file has no remaining entries, **delete the
    file entirely** (`git rm`)
 6. Mention the resolution in your commit message so the git log captures it
+7. **Basic Memory annotation.** If Basic Memory MCP tools are available, call
+   `mcp__basic-memory__search_notes` for the package name. If a matching note
+   exists, call `mcp__basic-memory__read_note` to get its exact content. If the
+   note has an `## Upstream Friction` section containing the resolved entry,
+   call `mcp__basic-memory__edit_note` with `find_replace` to append
+   `_(Resolved YYYY-MM-DD)_` to the entry's line. Match against the note's
+   exact text from `read_note` — do not construct match strings from memory.
+   **Annotate, never delete** — only workflow 6 (Promote to Basic Memory) moves
+   entries to the `### Resolved` subsection during its prune pass. If no matching
+   Basic Memory entry exists (it was never promoted), skip silently. If Basic
+   Memory tools are not available, skip silently.
 
 ### 4. Trend review (quarterly)
 
@@ -220,6 +245,10 @@ Every 4th sprint, perform a cross-cutting analysis of all tracking files.
 6. Add a Trend Review entry to each file's **Trend Reviews** section
 7. Delete non-vendor UPSTREAM files that have no remaining open entries
 8. Present findings to the user
+9. **Promotion candidates.** Flag entries that have been open across multiple
+   trend reviews AND have `Ownership: upstream` or `shared` — these are strong
+   candidates for workflow 6 (Promote to Basic Memory). Suggest running it if
+   any are found.
 
 **Trend Review entry format:**
 
@@ -243,6 +272,144 @@ Help generate the "Upstream observations" section of a sprint retrospective.
    the session — workarounds, type issues, missing APIs, confusing behavior
 3. Log any untracked items discovered from context (workflow 1)
 4. Draft the upstream observations section for the retro
+5. Note any entries that appear generalizable beyond this project — the
+   retrospective may want to chain into workflow 6 (Promote to Basic Memory)
+   after the retro is written.
+
+### 6. Promote to Basic Memory
+
+Promote generalizable upstream friction observations from project-local
+UPSTREAM files into cross-project Basic Memory entity notes. This creates an
+`## Upstream Friction` section in the target entity note (e.g., `npm/<package>`,
+`brew/<name>`, `actions/<owner>/<repo>`). Use only MCP tools from this skill's
+`allowed-tools` — `mcp__basic-memory__search_notes`, `mcp__basic-memory__write_note`,
+`mcp__basic-memory__edit_note`. If Basic Memory MCP tools are not available,
+report that promotion is unavailable and suggest checking Basic Memory manually.
+
+**Steps:**
+
+1. **Scan for candidates.** Glob all `UPSTREAM-*.md` files and read them.
+   Identify entries that meet ALL of these criteria:
+   - `Ownership:` is `upstream` or `shared` (skip `us` entries — those are
+     integration choices, not package friction)
+   - The observation is about the package/tool itself, not about how this
+     specific project uses it
+   - The entry has enough detail to be useful without project context
+   - When ownership is absent, default to promoting unless clearly
+     project-specific
+2. **Present candidates to the user.** For each candidate, show:
+   - Package or tool name and target type (npm, brew, cask, action, etc.)
+   - Entry title and classification (Bug / Feature Request)
+   - A draft generalized version with project-specific file paths stripped
+   - Whether a Basic Memory note already exists for this package/tool
+   Let the user approve, edit, or skip each candidate. Never auto-promote.
+3. **Route by target type.** Search Basic Memory for an existing entity note:
+
+   | UPSTREAM target | BM search pattern | BM directory |
+   |---|---|---|
+   | npm packages | `npm:<package>` | `npm/` |
+   | `brew:` tools | `brew:<name>` | `brew/` |
+   | `cask:` tools | `cask:<name>` | `casks/` |
+   | `action:` tools | `action:<owner>/<repo>` | `actions/` |
+   | `docker:` tools | `docker:<image>` | varies |
+   | `vscode:` tools | `vscode:<ext>` | `vscode/` |
+   | Non-package repos | search by name | varies — search first |
+
+4. **Write or flag.** For each approved candidate:
+   - **Note exists, has `## Upstream Friction`** — call `mcp__basic-memory__edit_note`
+     with `find_replace` to append the entry under the correct subsection
+     (`### Bugs` or `### Feature Requests`). Anchor the match text to include
+     the next `###` heading for uniqueness. Use `expected_replacements=1`.
+     Always call `mcp__basic-memory__read_note` first and match against its
+     exact text.
+   - **Note exists, no `## Upstream Friction`** — call `mcp__basic-memory__edit_note`
+     with `insert_before_section` on `Relations` to add the full
+     `## Upstream Friction` section with the entry.
+   - **No note exists** — do NOT create a thin note. Flag for enrichment:
+     "No Basic Memory note for `<package>`. Run `/package-intel <package>`
+     (or `/tool-intel <tool>` for non-npm tools) to create one, then re-run
+     workflow 6 to attach friction entries."
+   - Deduplicate by entry title before appending — if the entry title already
+     appears in the friction section, skip it.
+   - **Never use `append` with `section`** — it appends to end of file, not
+     end of the section. Always use `find_replace` for mid-section edits.
+5. **Prune pass.** For entries in the Basic Memory note's `## Upstream Friction`
+   section that are annotated with `_(Resolved ...)_`, offer to move them to
+   the `### Resolved` subsection. The user confirms each. This is the only
+   path that moves entries to Resolved — workflow 3 only annotates.
+6. **Report.** Summarize what was promoted, pruned, skipped, and flagged for
+   enrichment. Suggest verifying notes with
+   `build_context("memory://npm/<package>")`.
+
+**Target section structure in Basic Memory notes** (same for all entity types):
+
+```markdown
+## Upstream Friction
+
+### Bugs
+
+- **Short title** — generalized description, mechanism, workaround. [upstream: <url>]
+
+### Feature Requests
+
+- **Short title** — what's missing and why it matters for consumers.
+
+### Resolved
+
+- **Short title** — fixed in vX.Y.Z. _(Resolved YYYY-MM-DD)_
+```
+
+**Generalization transform rules:**
+- Strip project-specific file paths; replace with generic descriptions
+  ("route handler", "test setup", "migration script")
+- Drop dates from active entries (UPSTREAM files track aging; Basic Memory
+  notes are evergreen)
+- Drop `Severity:` and `Workaround:` structured fields (these are project-local
+  triage metadata, not cross-project knowledge)
+- Keep: mechanism description, workaround pattern, upstream issue URL
+- Keep: `Ownership: shared` if applicable (indicates both sides need changes)
+
+**Division of labor:** This workflow owns the `## Upstream Friction` section of
+entity notes in Basic Memory. The retrospective skill's step 7 owns
+`engineering/*` notes (patterns, conventions, lessons). They do not overlap —
+upstream friction is package-specific, learnings are domain-specific. For
+upstream friction about specific packages or tools, use this workflow, not the
+retrospective.
+
+### 7. Sync from Basic Memory
+
+Discover friction already known in Basic Memory for packages and tools this
+project depends on, but not yet tracked in local UPSTREAM files. This is the
+reverse of workflow 6 — it pulls cross-project knowledge into the current
+project. If Basic Memory MCP tools are not available, report that sync is
+unavailable and suggest checking Basic Memory manually.
+
+**Steps:**
+
+1. **Identify project dependencies.** Read `package.json` (for npm deps and
+   workspace entries) and `.claude/vendor-registry.json` (for vendor packages).
+   Build a list of packages and tools to check.
+2. **Query Basic Memory.** For each dependency, call
+   `mcp__basic-memory__search_notes` with the package name. Filter results to
+   notes that contain an `## Upstream Friction` section with active (non-resolved)
+   entries.
+3. **Cross-reference with local UPSTREAM files.** For each Basic Memory friction
+   entry found, check whether the project already has a matching entry in a
+   local `UPSTREAM-*.md` file.
+4. **Surface unknown friction.** Present entries found in Basic Memory but not
+   tracked locally: "Basic Memory has known friction for `<package>` not tracked
+   in this project: \[entry title — summary]. Want to add it to your UPSTREAM
+   file?"
+5. **Flag missing notes.** For packages that have UPSTREAM entries locally but
+   no Basic Memory note, suggest `/package-intel <package>` or
+   `/tool-intel <tool>` for enrichment — this enables future promotion via
+   workflow 6.
+6. **User decides.** For each surfaced entry: add to local UPSTREAM file (via
+   workflow 1's logging steps), skip, or dismiss. The user stays in control.
+
+This workflow is pull-based, not automatic. Invoke it when starting a new sprint,
+onboarding to a project, or when you want cross-project awareness of known
+friction patterns.
 
 ## Guidelines
 
@@ -271,3 +438,7 @@ Help generate the "Upstream observations" section of a sprint retrospective.
 - **Keep files lean.** Delete resolved entries — they're preserved in git
   history. No duplicate entries, no stale placeholders mixed with real entries.
   For non-vendor files, delete the file itself when all entries are resolved.
+- **Basic Memory integration.** Workflows 1 and 3 check and annotate Basic
+  Memory entries opportunistically when MCP tools are available. Workflows 6
+  and 7 are dedicated Basic Memory operations — they require the MCP tools to
+  function and will report unavailability if the tools are missing.
