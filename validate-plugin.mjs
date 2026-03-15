@@ -68,6 +68,29 @@ function validateMcpPrefixes (file, tools) {
   }
 }
 
+/**
+ * Audit tool references in prose against declared tools list.
+ * @param {string} file
+ * @param {string} content
+ * @param {string[]} declaredTools
+ * @param {string} fieldName
+ */
+function auditToolReferences (file, content, declaredTools, fieldName) {
+  // Strip YAML frontmatter to avoid matching the allowlist itself
+  const prose = content.replace(/^---\n[\s\S]*?\n---/, '')
+  const toolSet = new Set(declaredTools)
+  // Match mcp__<server>__<tool> patterns in prose
+  const refs = prose.matchAll(/mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]+/g)
+  const seen = new Set()
+  for (const match of refs) {
+    const tool = match[0]
+    if (!seen.has(tool) && !toolSet.has(tool)) {
+      seen.add(tool)
+      error(file, `Tool "${tool}" referenced in prose but missing from ${fieldName}`)
+    }
+  }
+}
+
 // --- plugin.json ---
 
 const pluginPath = join(ROOT, '.claude-plugin', 'plugin.json')
@@ -181,6 +204,7 @@ for (const file of skillFiles) {
   }
   if (Array.isArray(fm['allowed-tools'])) {
     validateMcpPrefixes(file, /** @type {string[]} */ (fm['allowed-tools']))
+    auditToolReferences(file, content, /** @type {string[]} */ (fm['allowed-tools']), 'allowed-tools')
   }
 }
 
@@ -211,6 +235,7 @@ if (existsSync(agentsDir)) {
     }
     if (Array.isArray(fm.tools)) {
       validateMcpPrefixes(file, /** @type {string[]} */ (fm.tools))
+      auditToolReferences(file, content, /** @type {string[]} */ (fm.tools), 'tools')
     }
 
     // Gardener read-only invariant

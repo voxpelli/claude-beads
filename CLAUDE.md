@@ -16,14 +16,18 @@ promote project-local sprint workflow patterns into a shareable, installable plu
   plugin.json                         # Plugin manifest
 skills/
   retrospective/SKILL.md              # Sprint retrospective generator
-  upstream-tracker/SKILL.md           # Upstream issue tracking for vendor/npm packages
+  upstream-tracker/
+    SKILL.md                          # Upstream issue tracking + BM friction sync
+    references/
+      basic-memory-friction-format.md # BM section templates, routing, edit_note gotchas
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
 agents/
   sprint-review.md                    # Proactive end-of-sprint summary and retro gate
 hooks/
-  hooks.json                          # Hook definitions (PreCompact + SessionStart)
+  hooks.json                          # Hook definitions (4 event types)
   precompact.sh                       # Emits additionalContext for sprint insight capture
   session-start.sh                    # Trend-review reminder
+  post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt
 CLAUDE.md
 README.md
 CHANGELOG.md

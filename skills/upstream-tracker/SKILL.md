@@ -282,7 +282,7 @@ Promote generalizable upstream friction observations from project-local
 UPSTREAM files into cross-project Basic Memory entity notes. This creates an
 `## Upstream Friction` section in the target entity note (e.g., `npm/<package>`,
 `brew/<name>`, `actions/<owner>/<repo>`). Use only MCP tools from this skill's
-`allowed-tools` — `mcp__basic-memory__search_notes`, `mcp__basic-memory__write_note`,
+`allowed-tools` — `mcp__basic-memory__search_notes`, `mcp__basic-memory__read_note`,
 `mcp__basic-memory__edit_note`. If Basic Memory MCP tools are not available,
 report that promotion is unavailable and suggest checking Basic Memory manually.
 
@@ -303,18 +303,8 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
    - A draft generalized version with project-specific file paths stripped
    - Whether a Basic Memory note already exists for this package/tool
    Let the user approve, edit, or skip each candidate. Never auto-promote.
-3. **Route by target type.** Search Basic Memory for an existing entity note:
-
-   | UPSTREAM target | BM search pattern | BM directory |
-   |---|---|---|
-   | npm packages | `npm:<package>` | `npm/` |
-   | `brew:` tools | `brew:<name>` | `brew/` |
-   | `cask:` tools | `cask:<name>` | `casks/` |
-   | `action:` tools | `action:<owner>/<repo>` | `actions/` |
-   | `docker:` tools | `docker:<image>` | varies |
-   | `vscode:` tools | `vscode:<ext>` | `vscode/` |
-   | Non-package repos | search by name | varies — search first |
-
+3. **Route by target type.** Search Basic Memory for an existing entity note
+   using the routing table in `references/basic-memory-friction-format.md`.
 4. **Write or flag.** For each approved candidate:
    - **Note exists, has `## Upstream Friction`** — call `mcp__basic-memory__edit_note`
      with `find_replace` to append the entry under the correct subsection
@@ -331,8 +321,7 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
      workflow 6 to attach friction entries."
    - Deduplicate by entry title before appending — if the entry title already
      appears in the friction section, skip it.
-   - **Never use `append` with `section`** — it appends to end of file, not
-     end of the section. Always use `find_replace` for mid-section edits.
+   - See `references/basic-memory-friction-format.md` for `edit_note` gotchas.
 5. **Prune pass.** For entries in the Basic Memory note's `## Upstream Friction`
    section that are annotated with `_(Resolved ...)_`, offer to move them to
    the `### Resolved` subsection. The user confirms each. This is the only
@@ -341,33 +330,8 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
    enrichment. Suggest verifying notes with
    `build_context("memory://npm/<package>")`.
 
-**Target section structure in Basic Memory notes** (same for all entity types):
-
-```markdown
-## Upstream Friction
-
-### Bugs
-
-- **Short title** — generalized description, mechanism, workaround. [upstream: <url>]
-
-### Feature Requests
-
-- **Short title** — what's missing and why it matters for consumers.
-
-### Resolved
-
-- **Short title** — fixed in vX.Y.Z. _(Resolved YYYY-MM-DD)_
-```
-
-**Generalization transform rules:**
-- Strip project-specific file paths; replace with generic descriptions
-  ("route handler", "test setup", "migration script")
-- Drop dates from active entries (UPSTREAM files track aging; Basic Memory
-  notes are evergreen)
-- Drop `Severity:` and `Workaround:` structured fields (these are project-local
-  triage metadata, not cross-project knowledge)
-- Keep: mechanism description, workaround pattern, upstream issue URL
-- Keep: `Ownership: shared` if applicable (indicates both sides need changes)
+See `references/basic-memory-friction-format.md` for the target section structure,
+generalization transform rules, and `edit_note` gotchas.
 
 **Division of labor:** This workflow owns the `## Upstream Friction` section of
 entity notes in Basic Memory. The retrospective skill's step 7 owns

@@ -1,6 +1,30 @@
 {
-  "description": "Sprint workflow hooks: auto-reflect before compaction, trend-review reminder at session start.",
+  "description": "Sprint workflow hooks: auto-reflect before compaction, trend-review reminder at session start, BM error recovery, shell auto-formatting.",
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-file-edit.sh ${CLAUDE_PLUGIN_ROOT}",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "mcp__basic-memory__write_note|mcp__basic-memory__edit_note|mcp__basic-memory__read_note|mcp__basic-memory__search_notes",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "A Basic Memory tool just failed. This plugin uses Basic Memory for cross-project upstream friction tracking (upstream-tracker workflows 1, 3, 6, 7 and vendor-sync step 8b). Classify the failure and return actionable recovery context as a systemMessage:\n\n1. **Server unavailable** (connection refused, timeout) — suggest checking if the Basic Memory MCP server is running (`claude mcp list`). The upstream-tracker and vendor-sync workflows will skip BM operations silently when unavailable.\n2. **Invalid argument** (missing required field, malformed identifier) — identify which field is wrong and show the correct format. Common cause: note identifier mismatch between search results and edit target.\n3. **Note not found** (edit_note on a non-existent note) — the note may not have been created yet. Suggest running `/package-intel` or `/tool-intel` first to create the entity note, then retry.\n4. **Permission error** — suggest checking MCP server configuration.\n5. **Unknown error** — surface the raw error message.\n\nReturn a brief, actionable message. Do not retry the operation.",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "matcher": "",

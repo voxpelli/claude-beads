@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1][] - 2026-03-15
+
+### Added
+
+- **`validate-plugin.mjs` — tool-reference audit** — cross-checks `mcp__*__*`
+  patterns in skill/agent prose against `allowed-tools`/`tools` frontmatter.
+  Ported from vp-claude. Caught a real bug on first run (`write_note` referenced
+  in upstream-tracker prose but removed from allowlist).
+- **`hooks/hooks.json` — PostToolUseFailure hook for BM errors** — classifies
+  Basic Memory MCP tool failures into 5 categories (server unavailable, invalid
+  argument, note not found, permission error, unknown) with actionable recovery
+  guidance. Prompt hook, 10s timeout.
+- **`hooks/post-file-edit.sh` — PostToolUse shell auto-formatting** — auto-formats
+  `hooks/*.sh` with `shfmt -w` on every Edit/Write. Skips silently if shfmt not
+  installed. Pattern from vp-claude.
+- **`skills/upstream-tracker/references/` — progressive disclosure** — extracted
+  BM friction section template, routing table, generalization rules, and
+  `edit_note` gotchas from SKILL.md to
+  `references/basic-memory-friction-format.md`. SKILL.md dropped from 3,118 to
+  2,923 words.
+
 ## [0.6.0][] - 2026-03-15
 
 ### Added
@@ -210,6 +231,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.6.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.1
 [0.6.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.0
 [0.5.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.1
 [0.5.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.0
