@@ -186,3 +186,8 @@ Runs `check:plugin` (validate-plugin.mjs) + `check:md` (remark) +
 `check:sh` (shellcheck + shfmt on all `hooks/*.sh` files).
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
 Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`).
+
+`validate-plugin.mjs` includes a tool-reference audit: any `mcp__*__*` tool
+pattern mentioned in skill/agent prose but missing from the `allowed-tools` or
+`tools` frontmatter will fail validation. This catches the most common bug class
+in this plugin (missing `allowed-tools` entries).
