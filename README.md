@@ -14,12 +14,13 @@ Triggers automatically when a sprint closes and gives a concise summary with a s
 
 > "Should we do a retro? I've lost track of which sprint we're on."
 
-Reads git history, open beads issues, `UPSTREAM-*.md` files, and (when available) Basic Memory friction notes for cross-project awareness, then recommends one of four actions:
+Reads git history, open beads issues, `UPSTREAM-*.md` files, and (when available) Basic Memory friction notes for cross-project awareness, then recommends one of five actions:
 
 | Recommendation | Condition |
 |---|---|
 | **Not ready** | Fewer than 3 meaningful commits |
 | **Ready to close** — run `/retrospective` | Clean state, no gaps |
+| **Groom the backlog first** — run `/backlog-groomer` | Bloated or stale backlog (>30 open, carry-overs, stale issues) |
 | **Upstream work first** — run `/upstream-tracker` | Untracked friction detected |
 | **Trend-review sprint** | Every 4th sprint — full audit ahead |
 
@@ -36,6 +37,23 @@ Reads git history, open upstream tracking files, and your current conversation t
 Produces `RETRO-NN.md` covering what went well, what could improve, upstream observations, and lessons learned. Creates beads issues from findings, writes generalizable learnings to Basic Memory, and suggests documentation updates.
 
 On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, beads issue hygiene (`bd stats`, stale `in_progress` items, blocked issues), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
+
+### `/backlog-groomer` — Backlog triage and research
+
+Triage, prioritize, and research work tracked in beads:
+
+```
+/backlog-groomer
+/backlog-groomer rate limiting
+```
+
+Six workflows in two groups:
+
+**Grooming** — review and triage open issues, reprioritize based on sprint goals, suggest closures for stale/obsolete items. Cross-references Basic Memory for known friction and UPSTREAM files for vendor context.
+
+**Research** — investigate a topic using multi-source research (Basic Memory → DeepWiki → Tavily), create structured issues from findings with title conventions and dependency linking, or enrich an existing issue with research context.
+
+All mutations require explicit user approval. Complements sprint-review (which fires at sprint end) by operating at sprint start.
 
 ### `/upstream-tracker` — Upstream issue tracking
 
@@ -155,6 +173,10 @@ File naming examples:
 agents/
   sprint-review.md                      End-of-sprint assessment agent
 skills/
+  backlog-groomer/
+    SKILL.md                            Backlog triage and research workflow
+    references/
+      backlog-health-heuristics.md      Staleness, closure, priority heuristics
   retrospective/
     SKILL.md                            Sprint retrospective workflow
   upstream-tracker/
@@ -168,9 +190,13 @@ skills/
 ```
  User says / event        Triggers                 Output
  ──────────────────────   ──────────────────────   ──────────────────────────────
+ "groom" / "triage"      -> backlog-groomer skill -> triage table + proposals
+ "research X"            -> backlog-groomer skill -> research brief + issue creation
+
  "sprint done" / bd close -> sprint-review agent -> summary + recommendation
                                                      ├── "run /retrospective"
                                                      ├── "run /upstream-tracker first"
+                                                     ├── "run /backlog-groomer"
                                                      ├── "trend-review sprint"
                                                      └── "not ready yet"
 

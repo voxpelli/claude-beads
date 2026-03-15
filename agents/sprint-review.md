@@ -106,12 +106,26 @@ If `bd` is available:
 
 ```bash
 bd list --status in_progress 2>/dev/null
-bd list --status open 2>/dev/null | head -20
+bd list --status open 2>/dev/null | head -40
+bd blocked 2>/dev/null
+bd stale --days 60 2>/dev/null
 ```
 
 Flag any `in_progress` issues that were not completed this sprint (potential
-carry-overs), and report the total count of remaining open issues. Do not list
-every issue.
+carry-overs). Count total open issues and note the count explicitly.
+
+**Backlog health signals** — evaluate after running the commands above:
+
+- **Volume**: total open count above 20 is elevated; above 30 is a grooming
+  signal. Report the exact count.
+- **Staleness**: count issues from `bd stale`. Flag if any exist.
+- **Blocked chains**: if `bd blocked` returns issues, check whether any
+  blockers were resolved this sprint. If so, flag as "unblocked but not
+  actioned" — grooming candidates.
+- **In-progress pile-up**: 3+ `in_progress` issues not touched this sprint
+  indicates work claimed but not closed.
+
+Summarize signals in 2-3 lines. If no signals trip, skip the health summary.
 
 ### Step 4 — Upstream issue scan
 
@@ -143,7 +157,14 @@ Give ONE of these recommendations:
 just started. Suggest continuing work and circling back.
 
 **"Ready to close"** — Solid batch of commits, no obvious upstream gaps, no
-blocked carry-overs. Suggest running `/retrospective` when ready.
+blocked carry-overs, open count under 20. Suggest running `/retrospective` when
+ready. If open count is 20-30, append: "Backlog is moderately elevated — consider
+a grooming pass after the retro."
+
+**"Groom the backlog first"** — Open issue count above 30, OR 3+ in-progress
+carry-overs, OR stale issues flagged, OR unblocked chains detected. Suggest
+running `/backlog-groomer` before the retrospective. A bloated or stale backlog
+degrades retrospective quality.
 
 **"Close with upstream work first"** — Untracked friction was detected, or stale
 entries should be audited. Suggest running `/upstream-tracker` before the retro.
@@ -160,7 +181,7 @@ Present findings in this order:
 2. **Commits this sprint** — grouped summary (not raw log)
 3. **Open beads issues** — carry-overs and total count
 4. **Upstream status** — open counts, stale flags, untracked friction
-5. **Recommendation** — one of the four options above, with next-step command
+5. **Recommendation** — one of the five options above, with next-step command
 
 Keep total output under ~40 lines. Use markdown headers and bullet points.
 Do not write any files. Do not call `/retrospective` or `/upstream-tracker`

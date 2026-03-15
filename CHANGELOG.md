@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0][] - 2026-03-15
+
+### Added
+
+- **`skills/backlog-groomer` — new skill with 6 workflows** — triage, reprioritize,
+  suggest closures, investigate topics, create issues from findings, and enrich
+  existing issues. Orchestrates `bd` CLI primitives (stale, duplicates, search,
+  blocked) into guided grooming sessions. Research workflows use Basic Memory,
+  DeepWiki, and Tavily for multi-source investigation. All mutations require
+  explicit user approval. Includes `references/backlog-health-heuristics.md`
+  for staleness thresholds, closure criteria, priority/type assignment logic,
+  title conventions, and description templates.
+- **`agents/sprint-review` — backlog health signal in Step 3** — checks open
+  issue count (>20 elevated, >30 grooming trigger), stale issues (>60 days),
+  blocked chains, and in-progress pile-ups. New "Groom the backlog first"
+  recommendation (5th path) in Step 5.
+
 ## [0.6.2][] - 2026-03-15
 
 ### Fixed
@@ -208,8 +225,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`agents/sprint-review`** — Proactive, read-only end-of-sprint assessment.
   Triggers automatically when a sprint closes (`bd close`, "sprint done", etc.).
   Summarises commits, open beads issues, and UPSTREAM file state, then gives one
-  of four recommendations: not ready, close normally, upstream work first, or
-  trend-review sprint. Acts as the gate before `/retrospective`.
+  of five recommendations (as of v0.7.0): not ready, close normally, groom
+  backlog first, upstream work first, or trend-review sprint. Acts as the gate
+  before `/retrospective`.
 
 ### Changed
 
@@ -247,6 +265,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.7.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.7.0
 [0.6.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.2
 [0.6.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.1
 [0.6.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.0

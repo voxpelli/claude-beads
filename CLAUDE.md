@@ -20,6 +20,10 @@ skills/
     SKILL.md                          # Upstream issue tracking + BM friction sync
     references/
       basic-memory-friction-format.md # BM section templates, routing, edit_note gotchas
+  backlog-groomer/
+    SKILL.md                          # Backlog triage, research, issue creation
+    references/
+      backlog-health-heuristics.md    # Staleness, closure, priority, issue templates
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
 agents/
   sprint-review.md                    # Proactive end-of-sprint summary and retro gate
@@ -41,14 +45,20 @@ No runtime code — pure markdown + JSON. No build step, no dependencies.
 
 - **sprint-review** — Proactively triggers at end-of-sprint boundaries (`bd close`,
   "sprint done", "what did we accomplish"). Reads git history, beads state, and
-  UPSTREAM files, then gives a concise summary and one of four recommendations:
-  not ready, close normally, do upstream work first, or trend-review sprint.
+  UPSTREAM files, then gives a concise summary and one of five recommendations:
+  not ready, close normally, groom backlog first, do upstream work first, or
+  trend-review sprint.
   Read-only — never writes files; defers to `/retrospective` and
   `/upstream-tracker` for mutations. When Basic Memory is available, also
   checks for cross-project friction notes on project dependencies.
 
-### Skills (3)
+### Skills (4)
 
+- **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
+  Six workflows: review-and-triage, reprioritize, suggest-closures,
+  investigate-topic, create-issues-from-findings, enrich-existing-issue.
+  Cross-references Basic Memory for known friction and uses Tavily/DeepWiki for
+  external research. User-invocable as `/backlog-groomer`.
 - **retrospective** — Generates a sprint retrospective: reads git history,
   `UPSTREAM-*.md` files, and conversation context, creates `RETRO-NN.md`, runs
   a knowledge gap audit, writes generalizable learnings to Basic Memory, and
@@ -106,8 +116,14 @@ only include tools the skill actually calls.
 The agent and skills form a lightweight cycle:
 
 ```
-sprint-review (agent)     → proactive summary at sprint boundary
-  ↓ recommends                (checks BM for cross-project friction)
+(sprint start)
+backlog-groomer (skill)   → triage backlog, research new work, create issues
+  ↓ then
+bd ready                  → normal development cycle
+
+(sprint end)
+sprint-review (agent)     → proactive summary + backlog health signal
+  ↓ recommends                (checks BM, flags stale/skewed backlog)
 upstream-tracker (skill)  → log/resolve any untracked friction first
   ↓ then                      (W1 checks BM on log, W3 annotates BM on resolve)
 retrospective (skill)     → generate RETRO-NN.md, write to Basic Memory
