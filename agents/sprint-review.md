@@ -131,10 +131,14 @@ Summarize signals in 2-3 lines. If no signals trip, skip the health summary.
 
 Glob for all `UPSTREAM-*.md` files and read them. Report:
 
-- Total open entries across all files (count per file, grouped by section)
+- Total open entries across all files (count per file, grouped by section —
+  including Upstream Opportunities)
 - Any entries older than 90 days that have had no activity (stale candidates)
 - Any entries whose description closely matches language in recent commit messages
   (potential auto-resolutions the user should verify via `/vendor-sync`)
+- Upstream Opportunities with `Merge readiness: direct` and no `[upstream:]` URL —
+  flag separately as "contribution-ready, not yet submitted" (these are actionable
+  opportunities, not friction)
 
 If session context contains mentions of friction, bugs, or workarounds with
 upstream packages that are NOT yet tracked in any UPSTREAM file, flag those as
@@ -167,7 +171,9 @@ running `/backlog-groomer` before the retrospective. A bloated or stale backlog
 degrades retrospective quality.
 
 **"Close with upstream work first"** — Untracked friction was detected, or stale
-entries should be audited. Suggest running `/upstream-tracker` before the retro.
+entries should be audited, or Upstream Opportunities with `Merge readiness: direct`
+have no submitted PR (these are sprint-ready actions — consider submitting before
+closing). Suggest running `/upstream-tracker` before the retro.
 
 **"Trend-review sprint"** — This is every 4th sprint. Note that `/retrospective`
 will also run the full UPSTREAM trend review, beads health audit, and Basic Memory

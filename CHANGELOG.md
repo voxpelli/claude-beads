@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0][] - 2026-03-19
+
+### Added
+
+- **`skills/upstream-tracker` — "Upstream Opportunities" entry type** — new
+  first-class section (`## Upstream Opportunities`) for tracking contribution
+  candidates: downstream code (workarounds, extensions, enhancements) that should
+  be upstreamed. New fields `Source:` (local artifact) and `Merge readiness:`
+  (`direct`/`needs-redesign`/`proof-of-concept`). Distinct lifecycle from
+  bugs/FRs — resolves when the contribution is merged upstream. All 7 workflows
+  updated: W1 classification, W2 output format, W3 annotation branching, W4
+  escalation timelines, W5 retro support, W6 promotion filter override
+  (opportunities always eligible regardless of Ownership), W7 cross-project sync.
+- **`skills/upstream-tracker` — eager promotion for low-activity repos** — new
+  W1 step 6a detects project tempo via `git rev-list --count --since="90 days ago"
+  HEAD` (dormant ≤4, moderate 5–14, active 15+). In dormant/moderate repos, W1
+  offers inline BM promotion ("micro-W6") immediately after logging an entry,
+  preventing entries from staying trapped locally for months. Active repos see
+  no change — the normal sprint cadence handles promotion.
+- **`hooks/session-start.sh` — dormancy nudge** — when a low-activity repo has
+  UPSTREAM tracking files, emits a one-line systemMessage suggesting W2 review
+  or W6 promotion. Silent in active repos and repos without UPSTREAM files.
+- **`skills/upstream-tracker/references/` — Upstream Opportunities BM format** —
+  `### Upstream Opportunities` subsection in `## Upstream Friction` entity notes
+  with generalization transform rules and `edit_note` anchor guidance.
+- **`hooks/precompact.sh` — contribution opportunity prompt** — fifth reflection
+  item prompts for workarounds or extensions worth upstreaming.
+
+### Changed
+
+- **`skills/retrospective` — step 3 upstream observations** — now prompts for
+  contribution opportunities built during the sprint.
+- **`agents/sprint-review` — step 4 upstream scan** — counts Upstream
+  Opportunities, flags `direct` readiness entries with no submitted PR.
+- **`agents/sprint-review` — step 5 recommendation** — "upstream work first"
+  path now includes unsubmitted contribution opportunities as sprint-ready
+  actions.
+- **`skills/vendor-sync` — steps 7 and 8b** — detects contribution-resolved
+  events in changelog cross-reference; uses opportunity-specific BM annotation
+  text.
+
 ## [0.7.0][] - 2026-03-15
 
 ### Added
@@ -265,6 +306,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.8.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.0
 [0.7.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.7.0
 [0.6.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.2
 [0.6.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.1

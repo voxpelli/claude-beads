@@ -64,12 +64,14 @@ No runtime code — pure markdown + JSON. No build step, no dependencies.
   a knowledge gap audit, writes generalizable learnings to Basic Memory, and
   suggests documentation updates. User-invocable as `/retrospective`.
 - **upstream-tracker** — Manages `UPSTREAM-*.md` files that track bugs, feature
-  requests, and friction discovered in upstream packages. Supports seven workflows:
-  log, review-open, resolve, trend-review, sprint-retro-support,
-  promote-to-basic-memory, sync-from-basic-memory. The last two provide
-  bidirectional sync between project-local UPSTREAM files and cross-project
-  Basic Memory entity notes (`## Upstream Friction` sections). User-invocable
-  as `/upstream-tracker`.
+  requests, contribution opportunities, and friction discovered in upstream
+  packages. Supports seven workflows: log, review-open, resolve, trend-review,
+  sprint-retro-support, promote-to-basic-memory, sync-from-basic-memory. The
+  last two provide bidirectional sync between project-local UPSTREAM files and
+  cross-project Basic Memory entity notes (`## Upstream Friction` sections).
+  In low-activity repos, W1 offers eager inline promotion to Basic Memory to
+  prevent entries from staying trapped locally. User-invocable as
+  `/upstream-tracker`.
 - **vendor-sync** — Pulls latest upstream changes from git subtrees, resolves
   conflicts (always accept upstream), cleans stale node_modules, re-links
   workspaces, cross-references the sync diff against open `UPSTREAM-*.md`
