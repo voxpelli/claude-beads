@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1][] - 2026-03-27
+
+### Fixed
+
+- **`hooks/session-start.sh`** — guard `wc -l` pipelines with `|| count=0`
+  fallbacks so `set -e` does not treat the assignment as fatal; add explicit
+  `exit 0` to ensure the hook exits cleanly when no output is printed.
+
 ## [0.8.0][] - 2026-03-19
 
 ### Added
@@ -306,6 +314,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.8.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.1
 [0.8.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.0
 [0.7.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.7.0
 [0.6.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.2
