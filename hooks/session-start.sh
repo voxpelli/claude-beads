@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-count=$(find . -maxdepth 1 -name "RETRO-*.md" 2>/dev/null | wc -l | tr -d ' ')
+count=$(find . -maxdepth 1 -name "RETRO-*.md" 2>/dev/null | wc -l | tr -d ' ') || count=0
 
 # No retros yet — Sprint 1, no reminder needed
 if [ "$count" -eq 0 ]; then
@@ -22,7 +22,7 @@ elif [ "$mod" -eq 0 ]; then
 fi
 
 # Dormancy nudge: surface unreviewed UPSTREAM entries in low-activity repos
-upstream_count=$(find . -maxdepth 1 -name "UPSTREAM-*.md" 2>/dev/null | wc -l | tr -d ' ')
+upstream_count=$(find . -maxdepth 1 -name "UPSTREAM-*.md" 2>/dev/null | wc -l | tr -d ' ') || upstream_count=0
 if [ "$upstream_count" -gt 0 ]; then
 	recent=$(git rev-list --count --since="90 days ago" HEAD 2>/dev/null || echo "0")
 	if [ "$recent" -le 4 ]; then
@@ -31,3 +31,5 @@ if [ "$upstream_count" -gt 0 ]; then
 		printf '{"systemMessage": "Low-activity repo with %s UPSTREAM tracking file(s). Entries in dormant repos can stay trapped locally for months. Consider `/upstream-tracker` W2 (review) or W6 (promote to BM) so friction is discoverable from other projects."}\n' "$upstream_count"
 	fi
 fi
+
+exit 0
