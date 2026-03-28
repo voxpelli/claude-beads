@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0][] - 2026-03-28
+
+### Added
+
+- **`skills/synergy-tracker` — new skill** — manages `SYNERGY-*.md` files that
+  track cross-project patterns, divergences, extraction candidates, and
+  capability gaps between sibling projects. Three workflows: log a synergy
+  entry, review open synergies, compare with a sibling project. Permanent file
+  lifecycle with `.claude/synergy-registry.json` discovery. BM integration
+  (W4 trend review, W5 promote) planned for v0.10.0. Includes
+  `references/synergy-entry-format.md` with entry templates, field values,
+  naming convention, and registry schema.
+- **`hooks/session-start.sh` — sensitive-file git-tracking warning** — checks
+  if `.beads/interactions.jsonl` or `.beads/.beads-credential-key` are tracked
+  by git and emits a `systemMessage` warning with remediation commands. Fires
+  before the retro-count check to work in all repos.
+- **`hooks/session-start.sh` — SYNERGY dormancy nudge** — when a low-activity
+  repo has SYNERGY tracking files, emits a one-line systemMessage suggesting
+  `/synergy-tracker` review. Parallel to the existing UPSTREAM dormancy nudge.
+- **`hooks/precompact.sh` — synergy reflection item** — sixth reflection item
+  prompts for cross-project extraction opportunities identified during the
+  session.
+
+### Fixed
+
+- **`hooks/session-start.sh` — early-exit bug** — the `count -eq 0` guard
+  previously exited the entire script when no RETRO files existed, suppressing
+  the dormancy nudge in new repos. Restructured so dormancy nudge fires
+  before the retro-count check.
+
+### Changed
+
+- **`agents/sprint-review` — step 4 synergy scan** — globs `SYNERGY-*.md`
+  files alongside `UPSTREAM-*.md`, counts extraction candidates, flags entries
+  with `Readiness: ready` and stale entries.
+- **`skills/retrospective` — SYNERGY integration** — step 2 globs
+  `SYNERGY-*.md` alongside `UPSTREAM-*.md`; step 3 adds "Synergy observations"
+  section to the retro template with guideline; step 7 division-of-labor note
+  updated to mention synergy-tracker.
+- **`skills/backlog-groomer` — W1 step 5** — cross-references `SYNERGY-*.md`
+  alongside `UPSTREAM-*.md` to surface extraction candidates that should have
+  corresponding beads issues.
+- **`hooks/hooks.json` — PostToolUseFailure context** — recovery prompt now
+  mentions synergy-tracker as a Basic Memory consumer alongside upstream-tracker.
+- **`CLAUDE.md`** — Plugin Layout tree, Skills (4→5), synergy tracking
+  convention, synergy registry convention, sprint workflow cycle diagram updated.
+
 ## [0.8.1][] - 2026-03-27
 
 ### Fixed
@@ -314,6 +361,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.9.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.0
 [0.8.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.1
 [0.8.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.0
 [0.7.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.7.0

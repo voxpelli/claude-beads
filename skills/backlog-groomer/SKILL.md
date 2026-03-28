@@ -43,9 +43,9 @@ duplicates, blocked chains, and missing context.
 3. Run `bd duplicates` to detect content-hash matches (if available; if not,
    use `bd search` with keywords from suspicious titles for near-matches).
 4. Run `bd blocked` to identify issues stuck on unresolved dependencies.
-5. Cross-reference with `UPSTREAM-*.md` files if they exist (use `Glob` to
-   find them). Note any UPSTREAM friction that should have a corresponding
-   beads issue.
+5. Cross-reference with `UPSTREAM-*.md` and `SYNERGY-*.md` files if they exist
+   (use `Glob` to find them). Note any UPSTREAM friction or SYNERGY extraction
+   candidates that should have a corresponding beads issue.
 6. If Basic Memory MCP tools are available, call
    `mcp__basic-memory__search_notes` for key dependencies from `package.json`
    to surface known friction not yet in the backlog. Skip silently if

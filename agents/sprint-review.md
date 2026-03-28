@@ -140,6 +140,13 @@ Glob for all `UPSTREAM-*.md` files and read them. Report:
   flag separately as "contribution-ready, not yet submitted" (these are actionable
   opportunities, not friction)
 
+Also glob for all `SYNERGY-*.md` files and read them. Report:
+
+- Total open entries across all files (count per file, grouped by section)
+- Any Extraction Candidates with `Readiness: ready` — flag separately as
+  "extraction-ready, not yet acted on" (these are actionable opportunities)
+- Any entries older than 90 days with no activity (stale candidates)
+
 If session context contains mentions of friction, bugs, or workarounds with
 upstream packages that are NOT yet tracked in any UPSTREAM file, flag those as
 "untracked friction" and suggest the user run `/upstream-tracker` before closing.
@@ -186,7 +193,8 @@ Present findings in this order:
 1. **Sprint position** — current sprint number, date range covered
 2. **Commits this sprint** — grouped summary (not raw log)
 3. **Open beads issues** — carry-overs and total count
-4. **Upstream status** — open counts, stale flags, untracked friction
+4. **Upstream & synergy status** — open counts, stale flags, untracked friction;
+   SYNERGY extraction-ready candidates
 5. **Recommendation** — one of the five options above, with next-step command
 
 Keep total output under ~40 lines. Use markdown headers and bullet points.
@@ -199,6 +207,8 @@ yourself — recommend them and let the user invoke them.
   is not active in this project
 - **No `UPSTREAM-*.md` files** — note that upstream tracking is not yet set up;
   suggest creating files if vendor packages exist
+- **No `SYNERGY-*.md` files** — skip the SYNERGY sub-step in Step 4 silently;
+  note only if the user explicitly asks about synergy tracking
 - **No `RETRO-*.md` files** — treat this as Sprint 1; all commits are in scope
 - **Very large commit history** — limit to the 30 most recent commits; note the
   limit in your output

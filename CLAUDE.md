@@ -25,6 +25,10 @@ skills/
     references/
       backlog-health-heuristics.md    # Staleness, closure, priority, issue templates
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
+  synergy-tracker/
+    SKILL.md                          # Cross-project synergy tracking (sibling projects)
+    references/
+      synergy-entry-format.md         # Entry templates, field values, naming, registry schema
 agents/
   sprint-review.md                    # Proactive end-of-sprint summary and retro gate
 hooks/
@@ -52,7 +56,7 @@ No runtime code — pure markdown + JSON. No build step, no dependencies.
   `/upstream-tracker` for mutations. When Basic Memory is available, also
   checks for cross-project friction notes on project dependencies.
 
-### Skills (4)
+### Skills (5)
 
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
@@ -79,6 +83,13 @@ No runtime code — pure markdown + JSON. No build step, no dependencies.
   friction entries on resolution, and verifies with check + test.
   Reads the subtree registry from `.claude/vendor-registry.json`. User-invocable
   as `/vendor-sync`.
+- **synergy-tracker** — Manages `SYNERGY-*.md` files that track cross-project
+  patterns, divergences, extraction candidates, and capability gaps between
+  sibling projects. Supports three workflows: log, review, compare-with-sibling.
+  Complements upstream-tracker (which tracks dependency friction) by tracking
+  peer-project collaboration opportunities. BM integration (W4 trend review,
+  W5 promote) planned for a future release. User-invocable as
+  `/synergy-tracker`.
 
 ## Conventions
 
@@ -113,6 +124,16 @@ only include tools the skill actually calls.
 - Vendor packages declared in `.claude/vendor-registry.json` (preferred) or
   inferred from `workspaces` in `package.json`
 
+### Synergy tracking convention
+
+- Files named `SYNERGY-<project-name>.md` in the project root
+- Project name derived from sibling repo name: slashes → `--`, drop leading `@`
+- Permanent files — never deleted, even when all entries are resolved
+- Four sections: Shared Patterns, Divergences, Extraction Candidates,
+  They Have / We Don't
+- Synergy registry: `.claude/synergy-registry.json` — optional array of
+  `{ name, file, remote, bm-entity, relationship }` objects
+
 ### Sprint workflow cycle
 
 The agent and skills form a lightweight cycle:
@@ -128,6 +149,8 @@ sprint-review (agent)     → proactive summary + backlog health signal
   ↓ recommends                (checks BM, flags stale/skewed backlog)
 upstream-tracker (skill)  → log/resolve any untracked friction first
   ↓ then                      (W1 checks BM on log, W3 annotates BM on resolve)
+synergy-tracker (skill)   → log/review extraction candidates           [parallel]
+  ↓ then                      (ready candidates → act or carry forward)
 retrospective (skill)     → generate RETRO-NN.md, write to Basic Memory
   ↓ after retro               (step 7 defers package friction to W6)
 upstream-tracker W6       → promote generalizable friction to BM entity notes
@@ -142,6 +165,8 @@ upstream-tracker (skill)  → repeat (W7 discovers BM friction from other projec
 stays in control of when to commit to the full retro workflow. Basic Memory
 serves as the cross-project bridge: workflows 6 and 7 in upstream-tracker provide
 bidirectional sync between project-local UPSTREAM files and BM entity notes.
+synergy-tracker runs as a parallel track, advancing extraction candidates and
+cross-project patterns alongside the upstream friction workflow.
 
 ### Relationship to vp-knowledge
 

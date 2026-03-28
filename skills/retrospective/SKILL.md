@@ -61,6 +61,11 @@ git log --oneline "$(git log -1 --format=%H -- RETRO-*.md)"..HEAD --no-merges
 - Glob for all `UPSTREAM-*.md` files and read them
 - Count open items per file and per section
 
+**Current synergy status:**
+
+- Glob for all `SYNERGY-*.md` files and read them
+- Count open extraction candidates per file; note any with `Readiness: ready`
+
 **Recent conversation context:**
 
 - Review the current session for friction, workarounds, discoveries, and
@@ -97,6 +102,12 @@ Create `RETRO-{N}.md` using this template:
 
 - ...
 
+### Synergy observations
+
+<!-- Review SYNERGY-*.md files — any candidates ready to extract? Any new cross-project patterns? -->
+
+- ...
+
 ### Lessons learned
 
 - ...
@@ -117,6 +128,11 @@ Create `RETRO-{N}.md` using this template:
   self-contained enough to contribute back? If yes, log via `/upstream-tracker`
   workflow 1 with type "Upstream Opportunity". Note trends across packages.
   Flag stale items (>3 months old).
+- **Synergy observations** — summarize current state of all SYNERGY files.
+  Report extraction candidates with `Readiness: ready` as sprint-actionable.
+  If any candidates were acted on this sprint, record the outcome. If new
+  cross-project patterns or divergences were identified, log them via
+  `/synergy-tracker`. Flag stale entries (>3 months old).
 - **Lessons learned** — reusable insights. Each should be a principle that
   future sessions can apply, not a one-off fact. Format: **Bold principle** —
   supporting evidence from this sprint.
@@ -231,13 +247,15 @@ Organize by engineering domain:
   `@scope/vendor-package`) is fine — they're real published packages.
   Mentioning this project by name is okay when genuinely relevant — just
   don't make the note only useful within this project.
-- **Division of labor with upstream-tracker.** This step writes `engineering/*`
-  notes (patterns, conventions, lessons learned). For upstream friction about
-  specific packages or tools, use `/upstream-tracker` workflow 6 (Promote to
-  Basic Memory) instead — it writes to the `## Upstream Friction` section of
-  entity notes (`npm/*`, `brew/*`, etc.), avoiding duplication. For packages
-  not yet in Basic Memory, suggest `/package-intel` or `/tool-intel` for
-  enrichment first.
+- **Division of labor with upstream-tracker and synergy-tracker.** This step
+  writes `engineering/*` notes (patterns, conventions, lessons learned). For
+  upstream friction about specific packages or tools, use `/upstream-tracker`
+  workflow 6 (Promote to Basic Memory) instead — it writes to the
+  `## Upstream Friction` section of entity notes (`npm/*`, `brew/*`, etc.),
+  avoiding duplication. For cross-project extraction opportunities tracked in
+  `SYNERGY-*.md` files, use `/synergy-tracker` — it manages the extraction
+  lifecycle and any corresponding Basic Memory notes. For packages not yet in
+  Basic Memory, suggest `/package-intel` or `/tool-intel` for enrichment first.
 
 ### 8. Suggest documentation updates
 
