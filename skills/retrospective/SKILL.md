@@ -87,7 +87,8 @@ Run the first that exists and show the last 5 lines of output.
 
 ### 3. Draft the retrospective
 
-Create `RETRO-{N}.md` using this template:
+Create `RETRO-{N}.md` using this template (omit `### Synergy observations`
+if no SYNERGY-\*.md files were found in step 2):
 
 ```markdown
 ## Sprint {N} Retrospective — {YYYY-MM-DD}
@@ -108,9 +109,14 @@ Create `RETRO-{N}.md` using this template:
 
 ### Synergy observations
 
-<!-- Review SYNERGY-*.md files — any candidates ready to extract? Any new cross-project patterns? -->
+<!-- From SYNERGY-*.md: extraction-ready candidates first, then drifting
+     patterns, then active convergence paths. Omit if no SYNERGY files. -->
 
-- ...
+- **Extraction Candidates ready:** <!-- e.g. "validate-helpers (vp-knowledge) — Readiness: ready" or "none" -->
+- **Drifting shared patterns:** <!-- e.g. "BM note format — drifting since 2026-01" or "none" -->
+- **Active convergence paths:** <!-- e.g. "error handling — adopt-theirs from vp-knowledge" or "none" -->
+- **New patterns logged this sprint:** <!-- e.g. "Logged 2 new Extraction Candidates" or "none" -->
+- **Stale entries flagged:** <!-- entries >3 months old, or "none" -->
 
 ### Lessons learned
 
@@ -140,7 +146,8 @@ Create `RETRO-{N}.md` using this template:
   session work — did any implementation reveal shared patterns with sibling
   projects, or produce logic worth extracting into a shared package? If yes,
   log via `/synergy-tracker` (workflow 1). Note trends across sibling projects.
-  Flag stale entries (>3 months old).
+  Flag stale entries (>3 months old). If no SYNERGY files exist, omit this
+  section from the generated RETRO-NN.md entirely.
 - **Lessons learned** — reusable insights. Each should be a principle that
   future sessions can apply, not a one-off fact. Format: **Bold principle** —
   supporting evidence from this sprint.

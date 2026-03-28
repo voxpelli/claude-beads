@@ -103,14 +103,18 @@ being discussed, what pattern was noticed, what contrast was made.
 **Steps:**
 
 1. Identify which sibling project is involved from the conversation context.
-   Check `.claude/synergy-registry.json` first. If the registry does not
-   identify the sibling, glob for `SYNERGY-*.md` as a fallback. If neither
-   resolves it, ask the user.
-2. **Basic Memory pre-check.** If Basic Memory MCP tools are available, call
-   `mcp__basic-memory__search_notes` with the sibling project name. If a
-   matching note exists and contains synergy-related entries, surface them to
-   the user: "This pattern is already tracked in Basic Memory from another
-   context: \[summary\]. Logging it locally as well so this project tracks it."
+   If the user named a sibling project in their request (e.g., "compare with
+   vp-knowledge", "log this for vp-knowledge"), use that name directly — do
+   not ask again. Otherwise, check `.claude/synergy-registry.json` first. If
+   the registry does not identify the sibling, glob for `SYNERGY-*.md` as a
+   fallback. If neither resolves it, ask the user.
+2. **Basic Memory pre-check.** If Basic Memory MCP tools are available, make
+   two `mcp__basic-memory__search_notes` calls: one with the sibling project
+   name, one with 2-4 keywords describing the topic being logged (e.g.,
+   "PreCompact prompt command hook" or "edit_note append gotcha"). If either
+   search returns a matching note with synergy-related or engineering-pattern
+   content, surface it to the user: "This pattern is already tracked in Basic
+   Memory: \[summary\]. Logging it locally as well so this project tracks it."
    If Basic Memory tools are not available, skip this step silently.
 3. If no `SYNERGY-<project>.md` file exists yet, create it from the template
    in `references/synergy-entry-format.md` (four sections with placeholders).
@@ -150,7 +154,9 @@ field value definitions.
    ```
 
    Guard: skip if the repo has zero commits total
-   (`git log --oneline -1 2>/dev/null` returns empty).
+   (`git log --oneline -1 2>/dev/null` returns empty). Also skip if this is
+   the first entry in any SYNERGY file for this project (the user is still
+   learning the workflow — promotion is premature).
 
    | Tempo | Commits in 90 days | Promotion behavior |
    |-------|-------------------|--------------------|
@@ -213,7 +219,8 @@ Summarize the current state of all synergy tracking files.
 ```
 
 If all files are empty or no SYNERGY files exist, say so and suggest whether a
-comparison run (workflow 3) would be useful.
+comparison run (workflow 3) would be useful — note that W3 works best when the
+sibling repo is accessible at `../<project-name>` on disk.
 
 ### 3. Compare with sibling
 
@@ -222,7 +229,8 @@ unlogged synergy observations.
 
 **Steps:**
 
-1. Identify the sibling from the user's request or the `argument-hint`. Read
+1. Identify the sibling from the user's request or the `argument-hint` — if
+   the user named a project, use that name directly without re-asking. Read
    `.claude/synergy-registry.json` for the sibling's `remote` and any metadata.
    If no project is identified from the argument, registry, or existing SYNERGY
    files, ask the user which sibling project to compare with.

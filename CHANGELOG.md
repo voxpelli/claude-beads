@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2][] - 2026-03-28
+
+### Fixed
+
+- **`skills/synergy-tracker` — W1/W3 skip redundant sibling question** — when
+  the user names a sibling project in their request, use that name directly
+  instead of re-asking via registry/glob fallback.
+- **`skills/synergy-tracker` — W1 step 8 first-entry guard** — skip the BM
+  promotion offer when logging the very first SYNERGY entry (user is still
+  learning the workflow).
+- **`skills/synergy-tracker` — W1 step 2 dual-query pre-check** — BM
+  pre-check now makes a second `search_notes` call with topic keywords (not
+  just the sibling project name), catching engineering-pattern duplicates
+  under `engineering/*` paths.
+- **`agents/sprint-review` — UPSTREAM-absent noise suppression** — suppress
+  "upstream tracking not set up" when SYNERGY files exist (user has chosen
+  their tracking approach).
+- **`UPSTREAM-beads.md` → `UPSTREAM-brew--beads.md`** — renamed to follow
+  the `brew:` tool-type prefix convention. Resolved entry #2 (`bd memory
+  search`) — `bd memories <keyword>` already works. Kept entry #1 (gitignore
+  gap verified as real).
+
+### Changed
+
+- **`skills/synergy-tracker` — W2 fallback prerequisite note** — mentions
+  that W3 comparison works best when the sibling repo is on disk.
+- **`skills/retrospective` — Synergy observations template** — step 3
+  template uses 5 structured sub-bullets (Extraction Candidates ready,
+  Drifting shared patterns, Active convergence paths, New patterns logged,
+  Stale entries flagged). Section is conditionally omitted when no SYNERGY
+  files exist.
+
 ## [0.9.1][] - 2026-03-28
 
 ### Fixed
@@ -409,6 +441,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.9.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.2
 [0.9.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.1
 [0.9.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.0
 [0.8.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.1

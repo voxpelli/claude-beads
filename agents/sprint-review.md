@@ -211,8 +211,10 @@ yourself — recommend them and let the user invoke them.
 
 - **No `.beads/` directory** — skip all `bd` commands silently; note that beads
   is not active in this project
-- **No `UPSTREAM-*.md` files** — note that upstream tracking is not yet set up;
-  suggest creating files if vendor packages exist
+- **No `UPSTREAM-*.md` files** — if SYNERGY files exist, the user has chosen
+  their tracking approach; skip the upstream suggestion silently. Otherwise,
+  note that upstream tracking is not yet set up and suggest creating files if
+  vendor packages exist.
 - **No `SYNERGY-*.md` files** — skip the SYNERGY sub-step in Step 4 silently;
   note only if the user explicitly asks about synergy tracking
 - **No `RETRO-*.md` files** — treat this as Sprint 1; all commits are in scope
