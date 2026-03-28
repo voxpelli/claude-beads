@@ -133,19 +133,21 @@ if no SYNERGY-\*.md files were found in step 2):
   recurrence.
 - **Upstream observations** — summarize current state of all UPSTREAM files.
   Log any NEW friction discovered in the session to the appropriate UPSTREAM
-  file using `/upstream-tracker` (workflow 1). Review recent session work — did
-  any workarounds or local extensions get built this sprint that are
-  self-contained enough to contribute back? If yes, log via `/upstream-tracker`
-  workflow 1 with type "Upstream Opportunity". Note trends across packages.
+  file using `/upstream-tracker` workflow 1 (Log a new entry). Review recent
+  session work — did any workarounds or local extensions get built this sprint
+  that are self-contained enough to contribute back? If yes, log via
+  `/upstream-tracker` workflow 1 (Log a new entry) with type "Upstream
+  Opportunity". Note trends across packages.
   Flag stale items (>3 months old).
 - **Synergy observations** — summarize current state of all SYNERGY files.
   Log any NEW cross-project observations discovered in the session to the
-  appropriate SYNERGY file using `/synergy-tracker` (workflow 1). Report
+  appropriate SYNERGY file using `/synergy-tracker` workflow 1 (Log a synergy
+  entry). Report
   extraction candidates with `Readiness: ready` as sprint-actionable. If any
   candidates were acted on this sprint, record the outcome. Review recent
   session work — did any implementation reveal shared patterns with sibling
   projects, or produce logic worth extracting into a shared package? If yes,
-  log via `/synergy-tracker` (workflow 1). Note trends across sibling projects.
+  log via `/synergy-tracker` workflow 1 (Log a synergy entry). Note trends across sibling projects.
   Flag stale entries (>3 months old). If no SYNERGY files exist, omit this
   section from the generated RETRO-NN.md entirely.
 - **Lessons learned** — reusable insights. Each should be a principle that

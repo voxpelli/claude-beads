@@ -189,7 +189,8 @@ Basic Memory MCP tools are available:
    - **Upstream Opportunities:** `_(Contributed upstream, merged YYYY-MM-DD)_`
    Use `expected_replacements=1`. Always match against the note's exact text.
 4. Annotation only — never delete entries, never move them to `### Resolved`.
-   The upstream-tracker's workflow 6 handles pruning during its prune pass.
+   The upstream-tracker's workflow 6 (Promote to Basic Memory) handles pruning
+   during its prune pass.
 
 If Basic Memory tools are not available or no matching entry exists, skip
 silently. This annotation step is best-effort — vendor-sync works identically

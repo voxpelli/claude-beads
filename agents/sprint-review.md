@@ -157,7 +157,7 @@ If Basic Memory MCP tools are available: call `mcp__basic-memory__search_notes`
 for package names from `package.json` dependencies and check for notes with
 `## Upstream Friction` sections. If any exist for packages not already covered
 by local UPSTREAM files, report: "N Basic Memory friction notes for project
-dependencies have no local UPSTREAM file — consider `/upstream-tracker` workflow 7
+dependencies have no local UPSTREAM file — consider `/upstream-tracker` workflow 7 (Sync from Basic Memory)
 to sync cross-project friction." If all Basic Memory friction notes are already
 mirrored locally, or if Basic Memory tools are not available, skip this sub-step
 silently.

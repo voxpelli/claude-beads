@@ -421,7 +421,7 @@ generalization transform rules, and `edit_note` gotchas.
 **Division of labor:** This workflow owns the `## Upstream Friction` section of
 entity notes in Basic Memory. The retrospective skill's step 7 owns
 `engineering/*` notes (patterns, conventions, lessons). synergy-tracker (future
-W5) owns `## Cross-Project Synergy` in sibling project entity notes. These
+workflow 5 — Promote to Basic Memory) owns `## Cross-Project Synergy` in sibling project entity notes. These
 three sections never overlap — upstream friction is package-specific, synergy
 entries are cross-project, learnings are domain-specific. For upstream friction
 about specific packages or tools, use this workflow, not the retrospective.
