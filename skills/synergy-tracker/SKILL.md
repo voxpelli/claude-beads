@@ -219,7 +219,8 @@ Summarize the current state of all synergy tracking files.
 ```
 
 If all files are empty or no SYNERGY files exist, say so and suggest whether a
-comparison run (workflow 3) would be useful — note that W3 works best when the
+comparison run (workflow 3, compare with sibling) would be useful — note that it
+works best when the
 sibling repo is accessible at `../<project-name>` on disk.
 
 ### 3. Compare with sibling
