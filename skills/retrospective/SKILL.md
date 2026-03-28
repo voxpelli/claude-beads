@@ -64,7 +64,11 @@ git log --oneline "$(git log -1 --format=%H -- RETRO-*.md)"..HEAD --no-merges
 **Current synergy status:**
 
 - Glob for all `SYNERGY-*.md` files and read them
-- Count open extraction candidates per file; note any with `Readiness: ready`
+- Count open entries per file and per section
+- Highlight actionable items: Extraction Candidates with `Readiness: ready`,
+  Divergences with `Convergence path: adopt-theirs` or `propose-shared`,
+  They Have / We Don't with `Priority: adopt-soon`
+- Note any Shared Patterns with `Status: drifting`
 
 **Recent conversation context:**
 
@@ -129,10 +133,14 @@ Create `RETRO-{N}.md` using this template:
   workflow 1 with type "Upstream Opportunity". Note trends across packages.
   Flag stale items (>3 months old).
 - **Synergy observations** — summarize current state of all SYNERGY files.
-  Report extraction candidates with `Readiness: ready` as sprint-actionable.
-  If any candidates were acted on this sprint, record the outcome. If new
-  cross-project patterns or divergences were identified, log them via
-  `/synergy-tracker`. Flag stale entries (>3 months old).
+  Log any NEW cross-project observations discovered in the session to the
+  appropriate SYNERGY file using `/synergy-tracker` (workflow 1). Report
+  extraction candidates with `Readiness: ready` as sprint-actionable. If any
+  candidates were acted on this sprint, record the outcome. Review recent
+  session work — did any implementation reveal shared patterns with sibling
+  projects, or produce logic worth extracting into a shared package? If yes,
+  log via `/synergy-tracker` (workflow 1). Note trends across sibling projects.
+  Flag stale entries (>3 months old).
 - **Lessons learned** — reusable insights. Each should be a principle that
   future sessions can apply, not a one-off fact. Format: **Bold principle** —
   supporting evidence from this sprint.
@@ -144,6 +152,11 @@ If this is every 4th sprint (Sprint 4, 8, 12, ...), also perform a trend review:
 **UPSTREAM files:** Review all `UPSTREAM-*.md` files — identify common trends,
 evaluate whether open items are still valid, delete non-vendor files with no
 remaining entries.
+
+**SYNERGY files:** Review all `SYNERGY-*.md` files — identify stale entries
+(>3 months), evaluate whether Shared Patterns are still `aligned` or have
+drifted, check if Extraction Candidates with `Readiness: ready` have been acted
+on, and review whether `adopt-theirs` Divergences have been adopted.
 
 **Beads health:** Run `bd stats` and review issue hygiene:
 

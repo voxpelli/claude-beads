@@ -20,7 +20,7 @@ if git ls-files --error-unmatch .beads/.beads-credential-key 2>/dev/null; then
 	fi
 fi
 if [ -n "$tracked_sensitive" ]; then
-	printf '{"systemMessage": "WARNING: %s is tracked by git. These files contain local-only runtime data (conversation logs or credentials) and must not be committed. To fix: git rm --cached .beads/interactions.jsonl .beads/.beads-credential-key 2>/dev/null; echo interactions.jsonl >> .beads/.gitignore; echo .beads-credential-key >> .beads/.gitignore; git commit --no-gpg-sign -m chore: untrack beads sensitive files"}\n' "$tracked_sensitive"
+	printf '{"systemMessage": "WARNING: %s is tracked by git. These files contain local-only runtime data (conversation logs or credentials) and must not be committed. To fix: git rm --cached .beads/interactions.jsonl .beads/.beads-credential-key 2>/dev/null; echo interactions.jsonl >> .beads/.gitignore; echo .beads-credential-key >> .beads/.gitignore; git commit --no-gpg-sign -m \"chore: untrack beads sensitive files\""}\n' "$tracked_sensitive"
 fi
 # --- end sensitive-file check ---
 

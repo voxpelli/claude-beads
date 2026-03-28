@@ -87,9 +87,9 @@ No runtime code — pure markdown + JSON. No build step, no dependencies.
   patterns, divergences, extraction candidates, and capability gaps between
   sibling projects. Supports three workflows: log, review, compare-with-sibling.
   Complements upstream-tracker (which tracks dependency friction) by tracking
-  peer-project collaboration opportunities. BM integration (W4 trend review,
-  W5 promote) planned for a future release. User-invocable as
-  `/synergy-tracker`.
+  peer-project collaboration opportunities. BM integration via
+  `## Cross-Project Synergy` section in sibling entity notes planned for W5.
+  User-invocable as `/synergy-tracker`.
 
 ## Conventions
 
@@ -133,6 +133,20 @@ only include tools the skill actually calls.
   They Have / We Don't
 - Synergy registry: `.claude/synergy-registry.json` — optional array of
   `{ name, file, remote, bm-entity, relationship }` objects
+
+### Basic Memory section ownership
+
+Three skills own distinct sections in Basic Memory entity notes — they never
+overlap:
+
+- **upstream-tracker W6** owns `## Upstream Friction` in `npm/*`, `brew/*`,
+  `cask/*`, `actions/*`, `docker/*`, `vscode/*` entity notes
+- **synergy-tracker W5** (future) owns `## Cross-Project Synergy` in sibling
+  project entity notes
+- **retrospective step 7** owns `engineering/*` notes (patterns, conventions)
+
+Annotation-only writers (not owners): vendor-sync step 8b and upstream-tracker
+W3 annotate `## Upstream Friction` entries but never delete or move them.
 
 ### Sprint workflow cycle
 

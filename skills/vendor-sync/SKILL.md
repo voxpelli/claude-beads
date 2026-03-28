@@ -216,6 +216,21 @@ Summarize the results:
 - Whether verification passed
 - Any app-side implications from the upstream changes (API changes, new
   exports, behavioral differences visible in the diff)
+- If any resolved UPSTREAM entries overlap with Extraction Candidates in
+  `SYNERGY-*.md` files (e.g., a feature extracted to the shared upstream),
+  mention the overlap so the user can update the SYNERGY file via
+  `/synergy-tracker`
+
+## Guidelines
+
+- **Division of labor.** vendor-sync owns UPSTREAM auto-resolution during
+  subtree pulls. It does not modify SYNERGY files — cross-project pattern
+  tracking is managed by `/synergy-tracker`.
+- **Registry-first discovery.** Refuses to proceed without
+  `.claude/vendor-registry.json` — no guessing at subtree prefixes.
+- **Annotation semantics.** BM annotation-only (step 8b) — never delete or
+  move entries in `## Upstream Friction`. The upstream-tracker's workflow 6
+  handles pruning during its prune pass.
 
 ## Error handling
 

@@ -125,7 +125,23 @@ being discussed, what pattern was noticed, what contrast was made.
    implementation internals.
 7. Add the entry under the correct section heading, using today's date. When
    adding the first entry to a section, replace the `_No entries yet._`
-   placeholder.
+   placeholder. Keep entries concise — 1-3 sentences. The title should be
+   scannable.
+
+**Structured fields** (all optional — omit fields that add no signal):
+
+| Field | Values | Section |
+|-------|--------|---------|
+| `Status:` | `aligned` · `drifting` | Shared Patterns |
+| `Last verified:` | `YYYY-MM-DD` (use today's date for new entries) | Shared Patterns |
+| `Convergence path:` | `accept-difference` · `adopt-theirs` · `propose-shared` | Divergences |
+| `Readiness:` | `ready` · `needs-cleanup` · `proof-of-concept` | Extraction Candidates |
+| `Priority:` | `adopt-soon` · `consider` · `deferred` | They Have / We Don't |
+| `Effort:` | `trivial` · `moderate` · `significant` | Extraction Candidates, They Have / We Don't |
+
+See `references/synergy-entry-format.md` for full entry format templates and
+field value definitions.
+
 8. **Eager promotion check.** If Basic Memory MCP tools are available, assess
    the project's tempo:
 
@@ -151,6 +167,12 @@ being discussed, what pattern was noticed, what contrast was made.
    then `mcp__basic-memory__edit_note` with `find_replace` to append the
    generalized entry. If no BM note exists for the sibling, flag for enrichment
    instead of creating a thin note.
+
+   For `edit_note` safety: never use `append` with `section` (goes to EOF, not
+   section end), always `read_note` before `edit_note`, use
+   `expected_replacements=1`. See
+   `skills/upstream-tracker/references/basic-memory-friction-format.md` for
+   the full gotcha reference.
 
    If the user declines, or if Basic Memory tools are not available, or if the
    project is active, skip silently.
@@ -202,7 +224,11 @@ unlogged synergy observations.
 
 1. Identify the sibling from the user's request or the `argument-hint`. Read
    `.claude/synergy-registry.json` for the sibling's `remote` and any metadata.
-2. **Gather sibling context.** Read the sibling's key files if accessible:
+   If no project is identified from the argument, registry, or existing SYNERGY
+   files, ask the user which sibling project to compare with.
+2. **Gather sibling context.** To find the sibling repo on disk, check
+   `../<project-name>` relative to the current project root. If not found, ask
+   the user for the path. Read the sibling's key files if accessible:
    - `package.json` — dependencies, scripts, entry points
    - `CLAUDE.md` — conventions, architecture, workflow documentation
    - Skill files (`Glob` for `skills/**/SKILL.md`) — what skills exist, their
@@ -210,9 +236,10 @@ unlogged synergy observations.
    - Hook definitions (`hooks/hooks.json`) — event handling patterns
    - Agent files (`Glob` for `agents/*.md`) — what agents exist
 
-   If the sibling repo is not locally accessible, note the limitation and
-   proceed with whatever context is available in the conversation or Basic
-   Memory. Ask the user to provide relevant files if neither source works.
+   If neither local files, conversation context, nor Basic Memory provides
+   substantive information about the sibling, stop and tell the user that a
+   meaningful comparison requires access to the sibling repo or prior
+   knowledge. Do not generate speculative entries.
 3. **Diff patterns.** Compare against this project's equivalent files.
    Identify observations in each of the four categories:
    - Shared Patterns: conventions both projects use (same frontmatter fields,
@@ -227,9 +254,14 @@ unlogged synergy observations.
    draft text matching the format in `references/synergy-entry-format.md`. For
    each, ask: "Log this as a \[category\] entry for \[sibling\]?" The user
    approves, edits, or skips each candidate. **No mutations without approval.**
-5. Log confirmed entries via steps 4–7 of workflow 1. Skip step 8 (eager
-   promotion) for batch entries to avoid prompt fatigue. Offer a single summary
-   at the end: "N entries logged. Run workflow 2 to review the full picture."
+5. Log confirmed entries by classifying, reading the file, composing, and
+   adding per workflow 1 steps 4–7. Skip step 8 (eager promotion) for batch
+   entries to avoid prompt fatigue. Offer a single summary at the end:
+   "N entries logged. Run workflow 2 to review the full picture."
+
+   If the user skips all candidates, report that no entries were logged and
+   suggest whether a follow-up comparison with different focus areas would be
+   useful.
 
 ## Sprint Workflow Integration
 
@@ -242,9 +274,10 @@ boundaries:
 - **Sprint start:** session-start hook emits a dormancy nudge for SYNERGY files
   in low-activity repos.
 
-Workflows 4 (trend review) and 5 (promote to Basic Memory) are planned for a
-future release. Until then, use workflow 2 (review) periodically to keep entries
-current.
+Workflows 4 (trend review) and 5 (promote to Basic Memory) are planned for
+v0.10.0. Until then, run workflow 2 (review) at every trend-review sprint
+boundary (every 4th sprint) to manually assess staleness and promotion
+candidates.
 
 ## Guidelines
 

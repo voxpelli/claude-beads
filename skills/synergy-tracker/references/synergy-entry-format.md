@@ -8,7 +8,7 @@ workflow steps that reference this document.
 ```markdown
 # SYNERGY-<project-name>
 
-Tracking cross-project synergy with [<project-name>](<url>).
+Tracking cross-project synergy with [<project-name>](<remote-url>).
 
 ## Shared Patterns
 
@@ -26,6 +26,9 @@ _No entries yet._
 
 _No entries yet._
 ```
+
+If `remote` is not available from the registry, use the project name as plain
+text without a link: `Tracking cross-project synergy with <project-name>.`
 
 ## Entry formats
 
@@ -120,7 +123,10 @@ alongside UPSTREAM files.
 
 **Rules:**
 
-1. Start with the project's canonical short name (its repository name)
+1. Start with the project's canonical short name (its repository name). The
+   `name` field in `synergy-registry.json` is authoritative — the SYNERGY
+   filename always derives from it. Choose registry names that match repository
+   slugs to avoid confusion.
 2. Replace all `/` with `--`
 3. Drop leading `@`
 
@@ -158,7 +164,7 @@ projects have active synergy tracking relationships.
 | `name` | yes | Short display name for the related project |
 | `file` | yes | Exact filename of the SYNERGY tracking file |
 | `remote` | no | Canonical URL for the related project |
-| `bm-entity` | no | Basic Memory entity path (skips search when present) |
+| `bm-entity` | no | Basic Memory entity path — consumed by W5 (promote to BM, planned for v0.10.0); informational only in v0.9.x |
 | `relationship` | no | Free-form label: `sibling-plugin`, `shared-tooling`, `fork`, `consumer` |
 
 If `.claude/synergy-registry.json` does not exist, discover SYNERGY files by

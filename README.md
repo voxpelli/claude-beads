@@ -181,8 +181,19 @@ skills/
     SKILL.md                            Sprint retrospective workflow
   upstream-tracker/
     SKILL.md                            Upstream issue tracking workflow
+    references/
+      basic-memory-friction-format.md   BM section templates, routing, gotchas
   vendor-sync/
     SKILL.md                            Vendor subtree sync workflow
+  synergy-tracker/
+    SKILL.md                            Cross-project synergy tracking workflow
+    references/
+      synergy-entry-format.md           Entry templates, naming, registry schema
+hooks/
+  hooks.json                            Hook definitions (4 event types)
+  precompact.sh                         Sprint insight capture before compaction
+  session-start.sh                      Trend-review reminder + dormancy nudges
+  post-file-edit.sh                     Auto-format hooks/*.sh with shfmt
 ```
 
 ## How it fits together
@@ -209,6 +220,10 @@ skills/
  /upstream-tracker                                -> resolve / trend-review
                                                   -> promote to Basic Memory
                                                   -> sync from Basic Memory
+
+ "synergy" / "compare"   -> synergy-tracker skill -> SYNERGY-<project>.md entry
+ /synergy-tracker                                 -> review open synergies
+                                                  -> compare with sibling project
 
  /vendor-sync [pkg]      -> vendor-sync skill     -> git subtree pull --squash
                                                   -> UPSTREAM auto-resolution

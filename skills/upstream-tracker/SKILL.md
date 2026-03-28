@@ -77,6 +77,9 @@ have to re-explain something that's already visible in the session.
 
 1. Identify which upstream package is involved from the conversation context
    (the code being discussed, the error encountered, or the workaround applied).
+   If the observation is about a sibling project rather than an upstream package
+   or tool, redirect to `/synergy-tracker` — this skill only tracks upstream
+   dependency friction, not cross-project patterns.
    This can be a vendor package OR a regular npm dependency. This can also be a
    non-npm tool — a Homebrew formula, a Homebrew cask, a GitHub Action, a Docker
    image, or a VSCode extension. Use the `brew:<name>`, `cask:<name>`,
@@ -417,10 +420,11 @@ generalization transform rules, and `edit_note` gotchas.
 
 **Division of labor:** This workflow owns the `## Upstream Friction` section of
 entity notes in Basic Memory. The retrospective skill's step 7 owns
-`engineering/*` notes (patterns, conventions, lessons). They do not overlap —
-upstream friction is package-specific, learnings are domain-specific. For
-upstream friction about specific packages or tools, use this workflow, not the
-retrospective.
+`engineering/*` notes (patterns, conventions, lessons). synergy-tracker (future
+W5) owns `## Cross-Project Synergy` in sibling project entity notes. These
+three sections never overlap — upstream friction is package-specific, synergy
+entries are cross-project, learnings are domain-specific. For upstream friction
+about specific packages or tools, use this workflow, not the retrospective.
 
 ### 7. Sync from Basic Memory
 
@@ -498,3 +502,7 @@ friction patterns.
   repos get earlier promotion nudges at workflow 1 time because their normal
   sprint cadence is too slow to surface entries cross-project via Basic Memory.
   See step 6a in workflow 1 for the full decision matrix.
+- **Scope boundary with synergy-tracker.** Cross-project pattern observations
+  (shared approaches, divergences, extraction candidates between sibling
+  projects) belong in `/synergy-tracker`, not here. This skill tracks friction,
+  bugs, and contribution opportunities in upstream packages and tools.

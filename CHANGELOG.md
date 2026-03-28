@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1][] - 2026-03-28
+
+### Fixed
+
+- **`skills/synergy-tracker` — W3 error paths tightened** — stops instead of
+  speculating when no sibling context is available; adds sibling repo path
+  resolution (`../<project-name>`); handles "user declines all candidates"
+  and "no project identified" gracefully.
+- **`skills/synergy-tracker` — edit_note gotcha cross-reference** — W1 step 8
+  (eager promotion) now warns about the `append`+`section` BM bug and points
+  to upstream-tracker's reference doc for the full gotcha list.
+- **`skills/synergy-tracker/references/` — naming authority clarified** —
+  registry `name` field is authoritative for filename derivation; `bm-entity`
+  noted as v0.10.0-only; template URL fallback for missing `remote`.
+- **`skills/upstream-tracker` — W6 division-of-labor: two-way → three-way** —
+  now names synergy-tracker's `## Cross-Project Synergy` alongside
+  upstream-tracker's `## Upstream Friction` and retrospective's `engineering/*`.
+- **`hooks/session-start.sh` — commit command quoting** — remediation command
+  in the sensitive-file warning now correctly quotes the `-m` argument.
+
+### Changed
+
+- **`skills/synergy-tracker` — structured fields table** — consolidated table
+  of all entry fields (Status, Convergence path, Readiness, Priority, Effort,
+  Last verified) added inline in W1, with cross-reference to the reference doc.
+- **`skills/synergy-tracker` — interim W4/W5 workaround** — explicitly advises
+  running W2 at every 4th-sprint boundary until W4/W5 ship in v0.10.0.
+- **`skills/upstream-tracker` — synergy-tracker guard clause** — W1 step 1
+  redirects sibling-project observations to `/synergy-tracker`. New scope
+  boundary bullet in Guidelines.
+- **`agents/sprint-review` — SYNERGY scan depth** — step 4 now also reports
+  convergence-planned Divergences alongside extraction candidates. Step 5
+  "Close with upstream/synergy work first" recommendation includes SYNERGY
+  criteria with upstream-first ordering.
+- **`skills/retrospective` — SYNERGY depth parity** — step 2 gathers all 4
+  SYNERGY sections (not just extraction candidates); step 3 guideline expanded
+  to ~9 lines with "review session work" prompt and explicit `(workflow 1)`
+  reference; step 4 trend review now includes SYNERGY files subsection.
+- **`skills/vendor-sync` — Guidelines section** — new section with division of
+  labor, registry-first discovery, and annotation semantics. Step 10 report
+  now mentions SYNERGY overlap.
+- **`CLAUDE.md` — BM section ownership convention** — new Conventions subsection
+  documenting the three-way ownership model. synergy-tracker component
+  description now mentions planned `## Cross-Project Synergy` BM section.
+- **`README.md`** — Plugin structure tree updated with synergy-tracker,
+  upstream-tracker references, and hooks directory. "How it fits together"
+  diagram updated with synergy-tracker row.
+
 ## [0.9.0][] - 2026-03-28
 
 ### Added
@@ -361,6 +409,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.9.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.1
 [0.9.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.0
 [0.8.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.1
 [0.8.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.0

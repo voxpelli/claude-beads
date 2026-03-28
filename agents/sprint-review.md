@@ -145,6 +145,8 @@ Also glob for all `SYNERGY-*.md` files and read them. Report:
 - Total open entries across all files (count per file, grouped by section)
 - Any Extraction Candidates with `Readiness: ready` — flag separately as
   "extraction-ready, not yet acted on" (these are actionable opportunities)
+- Any Divergences with `Convergence path: adopt-theirs` or `propose-shared` —
+  these have active intent but may not have been progressed
 - Any entries older than 90 days with no activity (stale candidates)
 
 If session context contains mentions of friction, bugs, or workarounds with
@@ -177,10 +179,14 @@ carry-overs, OR stale issues flagged, OR unblocked chains detected. Suggest
 running `/backlog-groomer` before the retrospective. A bloated or stale backlog
 degrades retrospective quality.
 
-**"Close with upstream work first"** — Untracked friction was detected, or stale
-entries should be audited, or Upstream Opportunities with `Merge readiness: direct`
-have no submitted PR (these are sprint-ready actions — consider submitting before
-closing). Suggest running `/upstream-tracker` before the retro.
+**"Close with upstream/synergy work first"** — Untracked friction was detected,
+or stale entries should be audited, or Upstream Opportunities with
+`Merge readiness: direct` have no submitted PR, or SYNERGY Extraction Candidates
+with `Readiness: ready` have not been acted on, or convergence-planned
+Divergences (`adopt-theirs` or `propose-shared`) are still open. Suggest running
+`/upstream-tracker` and/or `/synergy-tracker` before the retro. When both
+upstream and synergy items are flagged, suggest upstream first — friction
+resolution has higher sprint-level urgency than synergy alignment.
 
 **"Trend-review sprint"** — This is every 4th sprint. Note that `/retrospective`
 will also run the full UPSTREAM trend review, beads health audit, and Basic Memory
