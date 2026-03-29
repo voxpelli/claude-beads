@@ -100,6 +100,13 @@ Required fields: `name`, `description`, `user-invocable`, `allowed-tools`. The
 when a user says something relevant. The `allowed-tools` list is an allowlist;
 only include tools the skill actually calls.
 
+### Workflow cross-references
+
+Skills reference each other's workflows as "workflow N (Name)" — always
+include the name parenthetically. Bare numbers (e.g., "workflow 6") are
+fragile and break silently if workflows are renumbered. Never use shorthand
+like "W3" or "W6" — the codebase spells it out.
+
 ### Retrospective file convention
 
 - Named `RETRO-NN.md` in the project root
@@ -248,3 +255,10 @@ Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`).
 pattern mentioned in skill/agent prose but missing from the `allowed-tools` or
 `tools` frontmatter will fail validation. This catches the most common bug class
 in this plugin (missing `allowed-tools` entries).
+
+### Hook type constraint
+
+All hooks must use `type: "command"` — prompt hooks spawn a separate Haiku
+instance with no MCP tool access, making them silently non-functional for
+any hook that needs BM or other MCP tools. The PostToolUseFailure hook is
+still a prompt hook (known bug, planned conversion in v0.10.0).
