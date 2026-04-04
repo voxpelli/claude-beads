@@ -2,13 +2,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "npm run check:plugin && npm run check:md && npm run check:sh",
+    "check": "run-p check:*",
     "check:plugin": "node validate-plugin.mjs",
     "check:md": "remark . --quiet --frail",
-    "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh"
+    "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
+    "check:hooks": "node scripts/check-hooks.mjs"
   },
   "devDependencies": {
     "js-yaml": "^4.1.0",
+    "npm-run-all2": "^7.0.0",
     "remark-cli": "^12.0.0",
     "remark-frontmatter": "^5.0.0",
     "remark-preset-lint-consistent": "^6.0.0",

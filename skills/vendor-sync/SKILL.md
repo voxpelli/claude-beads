@@ -3,6 +3,9 @@ name: vendor-sync
 description: "Pull latest upstream changes from vendor subtrees into this project. Use when the user says 'sync vendor', 'pull upstream', 'update subtrees', 'vendor pull', 'vendor sync', 'sync vendors', 'vendor changes', or wants to update any vendor package from its upstream repository. Also use when the user mentions a vendor package name followed by 'pull', 'sync', or 'update'."
 argument-hint: "[package-name]"
 user-invocable: true
+paths:
+  - ".claude/vendor-registry.json"
+  - "vendor/**"
 allowed-tools:
   - Bash
   - Read

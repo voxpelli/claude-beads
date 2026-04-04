@@ -9,6 +9,11 @@ tools:
   - mcp__basic-memory__search_notes
 model: inherit
 color: cyan
+effort: low
+maxTurns: 15
+disallowedTools:
+  - Write
+  - Edit
 ---
 
 # Sprint Review Agent
@@ -149,9 +154,12 @@ Also glob for all `SYNERGY-*.md` files and read them. Report:
   these have active intent but may not have been progressed
 - Any entries older than 90 days with no activity (stale candidates)
 
-If session context contains mentions of friction, bugs, or workarounds with
-upstream packages that are NOT yet tracked in any UPSTREAM file, flag those as
-"untracked friction" and suggest the user run `/upstream-tracker` before closing.
+Note: as a subagent, you cannot read the parent conversation transcript. To
+detect untracked friction, rely on file-based evidence: check recent commit
+messages for workaround language (e.g. "hack", "workaround", "upstream bug"),
+and cross-reference against UPSTREAM entries. If commit messages suggest
+friction not yet tracked, flag those as "possible untracked friction" and
+suggest the user run `/upstream-tracker` before closing.
 
 If Basic Memory MCP tools are available: call `mcp__basic-memory__search_notes`
 for package names from `package.json` dependencies and check for notes with
@@ -224,11 +232,12 @@ yourself — recommend them and let the user invoke them.
   without beads in non-beads projects
 - **Clean working tree with no new commits since last retro** — report honestly;
   do not fabricate activity
-- **`session-reflector` agent available (vp-knowledge)** — if the session has
-  been long or the user mentions losing context, suggest running it proactively
-  during active development to preserve in-sprint discoveries before they are
-  lost to context compaction. At sprint-close, `/retrospective` synthesises those
-  captured notes into the RETRO file. Mental model: session-reflector for
-  in-sprint capture, `/retrospective` for end-of-sprint synthesis. Do not suggest
-  it in every sprint-close — only when there is evidence the user has been through
-  a long session without prior capture.
+- **`/session-reflect` skill available (vp-knowledge)** — as a subagent you
+  cannot assess session length or detect context-loss signals from the parent
+  conversation. Instead, check whether any Basic Memory notes were written
+  during this sprint's date range (use `mcp__basic-memory__search_notes` with
+  a date filter matching the sprint window). If few or no BM captures exist
+  despite substantial commit activity, mention that `/session-reflect` can
+  capture in-sprint discoveries before they are lost to context compaction.
+  At sprint-close, `/retrospective` synthesises those captured notes into the
+  RETRO file.

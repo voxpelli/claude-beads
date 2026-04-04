@@ -146,14 +146,15 @@ like "W3" or "W6" — the codebase spells it out.
 Three skills own distinct sections in Basic Memory entity notes — they never
 overlap:
 
-- **upstream-tracker W6** owns `## Upstream Friction` in `npm/*`, `brew/*`,
+- **upstream-tracker workflow 6 (Promote)** owns `## Upstream Friction` in `npm/*`, `brew/*`,
   `cask/*`, `actions/*`, `docker/*`, `vscode/*` entity notes
-- **synergy-tracker W5** (future) owns `## Cross-Project Synergy` in sibling
+- **synergy-tracker workflow 5 (Promote)** (future) owns `## Cross-Project Synergy` in sibling
   project entity notes
 - **retrospective step 7** owns `engineering/*` notes (patterns, conventions)
 
 Annotation-only writers (not owners): vendor-sync step 8b and upstream-tracker
-W3 annotate `## Upstream Friction` entries but never delete or move them.
+workflow 3 (Resolve) annotate `## Upstream Friction` entries but never delete
+or move them.
 
 ### Sprint workflow cycle
 
@@ -169,16 +170,16 @@ bd ready                  → normal development cycle
 sprint-review (agent)     → proactive summary + backlog health signal
   ↓ recommends                (checks BM, flags stale/skewed backlog)
 upstream-tracker (skill)  → log/resolve any untracked friction first
-  ↓ then                      (W1 checks BM on log, W3 annotates BM on resolve)
+  ↓ then                      (workflow 1 (Log) checks BM, workflow 3 (Resolve) annotates BM)
 synergy-tracker (skill)   → log/review extraction candidates           [parallel]
   ↓ then                      (ready candidates → act or carry forward)
 retrospective (skill)     → generate RETRO-NN.md, write to Basic Memory
-  ↓ after retro               (step 7 defers package friction to W6)
-upstream-tracker W6       → promote generalizable friction to BM entity notes
+  ↓ after retro               (step 7 defers package friction to workflow 6 (Promote))
+upstream-tracker workflow 6 → promote generalizable friction to BM entity notes
   ↓ next sprint
 vendor-sync (skill)       → pull upstream changes, auto-resolve UPSTREAM entries
   ↓ annotates BM, logs new    (step 8b annotates BM on auto-resolve)
-upstream-tracker (skill)  → repeat (W7 discovers BM friction from other projects)
+upstream-tracker (skill)  → repeat (workflow 7 (Sync from BM) discovers friction)
 ```
 
 `sprint-review` is the *gate* (read-only, proactive). `/retrospective` is the
@@ -246,8 +247,10 @@ up the new version (`/plugin install vp-beads@vp-plugins`).
 npm run check
 ```
 
-Runs `check:plugin` (validate-plugin.mjs) + `check:md` (remark) +
-`check:sh` (shellcheck + shfmt on all `hooks/*.sh` files).
+Runs four checks in parallel via `run-p check:*` (`npm-run-all2`):
+`check:plugin` (validate-plugin.mjs) + `check:md` (remark) +
+`check:sh` (shellcheck + shfmt on all `hooks/*.sh` files) +
+`check:hooks` (hook integration tests via `scripts/check-hooks.mjs`).
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
 Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`).
 
@@ -260,5 +263,12 @@ in this plugin (missing `allowed-tools` entries).
 
 All hooks must use `type: "command"` — prompt hooks spawn a separate Haiku
 instance with no MCP tool access, making them silently non-functional for
-any hook that needs BM or other MCP tools. The PostToolUseFailure hook is
-still a prompt hook (known bug, planned conversion in v0.10.0).
+any hook that needs BM or other MCP tools. The validator warns on prompt
+hooks to prevent this bug class.
+
+### paths field convention
+
+Skills may declare a `paths` array in frontmatter listing glob patterns for
+files the skill operates on. These are activation hints — Claude Code uses
+them alongside the description to decide when to suggest the skill. Prefer
+specific project-structure patterns (`UPSTREAM-*.md`) over broad globs (`**/*`).

@@ -1,7 +1,11 @@
 ---
 name: retrospective
-description: "Run a sprint retrospective for this project. Use when the user says 'retrospective', 'retro', 'sprint review', 'close out the sprint', 'what went well', or wants to generate a RETRO-NN.md file. Reads UPSTREAM-*.md files, recent git history, and conversation context to pre-populate the retrospective."
+description: "Run a sprint retrospective for this project. Use when the user says 'retrospective', 'retro', 'close out the sprint', 'what went well', 'generate retro', or wants to generate a RETRO-NN.md file. Reads UPSTREAM-*.md files, recent git history, and conversation context to pre-populate the retrospective. Do NOT use for read-only sprint summaries — use the sprint-review agent for that."
 user-invocable: true
+paths:
+  - "RETRO-*.md"
+  - "UPSTREAM-*.md"
+  - "SYNERGY-*.md"
 allowed-tools:
   - Read
   - Edit

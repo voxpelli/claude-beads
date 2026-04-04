@@ -9,12 +9,23 @@ const ROOT = new URL('.', import.meta.url).pathname.replace(/\/$/, '')
 /** @type {string[]} */
 const errors = []
 
+/** @type {string[]} */
+const warnings = []
+
 /**
  * @param {string} file
  * @param {string} message
  */
 function error (file, message) {
   errors.push(`${relative(ROOT, file)}: ${message}`)
+}
+
+/**
+ * @param {string} file
+ * @param {string} message
+ */
+function warn (file, message) {
+  warnings.push(`${relative(ROOT, file)}: ${message}`)
 }
 
 /**
@@ -54,11 +65,16 @@ const KNOWN_MCP_PREFIXES = [
   'mcp__plugin_context7_context7__',
   'mcp__tavily__',
   'mcp__raindrop__',
+  'mcp__readwise__',
 ]
 
 const VALID_AGENT_COLORS = new Set(['blue', 'cyan', 'green', 'yellow', 'magenta', 'red'])
 
 const VALID_AGENT_MODELS = new Set(['inherit', 'sonnet', 'opus', 'haiku'])
+
+const VALID_HOOK_TYPES = new Set(['command', 'prompt'])
+
+const VALID_EFFORT_VALUES = new Set(['low', 'medium', 'high', 'max'])
 
 /**
  * @param {string} file
@@ -160,8 +176,11 @@ if (existsSync(hooksPath)) {
           }
           for (const hook of e.hooks) {
             const hk = /** @type {Record<string, unknown>} */ (hook)
-            if (hk.type !== 'prompt' && hk.type !== 'command') {
-              error(hooksPath, `hooks.${event}: hook type must be "prompt" or "command", got "${String(hk.type)}"`)
+            if (!VALID_HOOK_TYPES.has(String(hk.type))) {
+              error(hooksPath, `hooks.${event}: hook type must be one of: ${[...VALID_HOOK_TYPES].join(', ')}, got "${String(hk.type)}"`)
+            }
+            if (hk.type === 'prompt') {
+              warn(hooksPath, `hooks.${event}: prompt hooks spawn a separate Haiku instance with no MCP tool access — use type: "command" with additionalContext unless this hook intentionally requires no MCP tools`)
             }
             if (typeof hk.timeout !== 'number') {
               error(hooksPath, `hooks.${event}: hook missing "timeout" (number)`)
@@ -210,6 +229,12 @@ for (const file of skillFiles) {
     validateMcpPrefixes(file, /** @type {string[]} */ (fm['allowed-tools']))
     auditToolReferences(file, content, /** @type {string[]} */ (fm['allowed-tools']), 'allowed-tools')
   }
+  if ('paths' in fm && !Array.isArray(fm.paths)) {
+    error(file, 'paths must be an array of glob strings')
+  }
+  if ('effort' in fm && !VALID_EFFORT_VALUES.has(String(fm.effort))) {
+    warn(file, `effort "${String(fm.effort)}" is not a recognized value (${[...VALID_EFFORT_VALUES].join(', ')})`)
+  }
 }
 
 // --- Agents (optional) ---
@@ -248,6 +273,18 @@ if (existsSync(agentsDir)) {
       auditToolReferences(file, content, /** @type {string[]} */ (fm.tools), 'tools')
     }
 
+    if ('effort' in fm && !VALID_EFFORT_VALUES.has(String(fm.effort))) {
+      warn(file, `effort "${String(fm.effort)}" is not a recognized value (${[...VALID_EFFORT_VALUES].join(', ')})`)
+    }
+    if ('maxTurns' in fm) {
+      if (typeof fm.maxTurns !== 'number' || fm.maxTurns < 1) {
+        error(file, 'maxTurns must be a positive integer')
+      }
+    }
+    if ('disallowedTools' in fm && !Array.isArray(fm.disallowedTools)) {
+      error(file, 'disallowedTools must be an array')
+    }
+
     // Gardener read-only invariant
     if (file.endsWith('knowledge-gardener.md') && Array.isArray(fm.tools)) {
       const forbidden = ['write_note', 'edit_note', 'delete_note']
@@ -261,6 +298,14 @@ if (existsSync(agentsDir)) {
 }
 
 // --- Report ---
+
+if (warnings.length > 0) {
+  console.warn('Plugin validation warnings:\n')
+  for (const w of warnings) {
+    console.warn(`  ~ ${w}`)
+  }
+  console.warn('')
+}
 
 if (errors.length > 0) {
   console.error('Plugin validation failed:\n')

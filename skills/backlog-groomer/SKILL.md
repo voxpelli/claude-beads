@@ -1,8 +1,11 @@
 ---
 name: backlog-groomer
-description: "Manage the beads backlog for this project. Use when the user wants to review or triage open issues, reprioritize the backlog, identify obsolete issues to close, investigate a topic to inform future work, create new issues from research findings, or enrich an existing issue with external context. Trigger phrases: 'groom', 'triage', 'backlog review', 'reprioritize', 'stale issues', 'what should we close', 'too many issues', 'backlog health', 'investigate for backlog', 'research and create issues', 'add context to issue', 'enrich issue', 'plan the work for', 'break down into issues', or any request to audit, prune, or research work tracked in beads."
+description: "Manage the beads backlog for this project. Use when the user wants to review or triage open issues, reprioritize the backlog, identify obsolete issues to close, investigate a topic to inform future work, create new issues from research findings, or enrich an existing issue with external context. Trigger phrases: 'groom', 'triage', 'backlog review', 'reprioritize', 'stale issues', 'what should we close', 'too many issues', 'backlog health', 'investigate for backlog', 'research and create issues', 'add context to issue', 'enrich issue', 'plan the work for', 'break down into issues', 'start the sprint', 'plan the sprint', 'plan next sprint', 'what should we work on', or any request to audit, prune, or research work tracked in beads."
 argument-hint: "[topic]"
 user-invocable: true
+paths:
+  - ".beads/**"
+  - "RETRO-*.md"
 allowed-tools:
   - Bash
   - Read

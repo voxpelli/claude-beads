@@ -2,6 +2,9 @@
 name: upstream-tracker
 description: "Manage upstream issue tracking for this project. Use when the user wants to log a bug or friction point in a vendor package or npm dependency, review open upstream items, resolve a tracked issue, run a trend review, generate the upstream observations section of a sprint retrospective, promote upstream observations to Basic Memory, discover known friction from other projects, or track a contribution opportunity. Trigger phrases: 'upstream', 'track this', 'vendor issue', 'log this bug', 'review upstream', 'trend review', 'cross-vendor', 'this is a bug in X', 'promote to memory', 'promote upstream', 'sync from memory', 'known friction', 'resolved upstream', 'mark as fixed', 'tool issue', 'action bug', 'contribution opportunity', 'upstream this', 'contribute back', 'upstreamable', or any mention of friction with an external package."
 user-invocable: true
+paths:
+  - "UPSTREAM-*.md"
+  - ".claude/vendor-registry.json"
 allowed-tools:
   - Read
   - Write

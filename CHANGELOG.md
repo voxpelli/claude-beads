@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0][] - 2026-04-04
+
+### Fixed
+
+- **`hooks/hooks.json` — PostToolUseFailure conversion to command hook** — the
+  shell script `post-bm-failure-classify.sh` existed since v0.9.2 but was dead
+  code: `hooks.json` still declared `type: "prompt"`, meaning a Haiku instance
+  received BM recovery instructions it could never execute. Now correctly wired
+  as `type: "command"`. BM failure recovery is functional for the first time.
+- **`skills/retrospective` — remove 'sprint review' trigger overlap** — the
+  phrase 'sprint review' was in both the retrospective skill and the
+  sprint-review agent triggers. Removed from the skill to keep the agent as the
+  read-only gate and the skill as the write generator.
+- **`CLAUDE.md` — remove W-shorthand from sprint cycle diagram** — the diagram
+  used `W1`, `W3`, `W6`, `W7` shorthand despite the explicit convention
+  prohibiting it. Replaced with spelled-out workflow references.
+- **`agents/sprint-review` — fix degraded session-context references** — two
+  workflow steps referenced "session context" that agents cannot access (dead
+  code since the agent was created). Replaced with file-based heuristics:
+  commit-message workaround detection for untracked friction, BM-timestamp
+  check for `/session-reflect` suggestion. Also updated stale name
+  "session-reflector agent" to current "/session-reflect skill".
+
+### Added
+
+- **`scripts/check-hooks.mjs` — hook integration test suite** — 17 tests
+  covering all 4 hook scripts: single-JSON output verification, error
+  classification, silent-exit contracts, and multi-object detection. Added
+  `npm run check:hooks` to the validation pipeline. Adapted from the vp-claude
+  test framework pattern.
+- **`validate-plugin.mjs` — warning system** — new `warn()` function emits
+  non-fatal warnings alongside errors. Prompt hooks now trigger a warning about
+  Haiku's lack of MCP tool access. Also added: `VALID_HOOK_TYPES` Set,
+  `VALID_EFFORT_VALUES` Set, `mcp__readwise__` MCP prefix, and optional
+  validation for `paths`, `effort`, `maxTurns`, and `disallowedTools` fields.
+- **`agents/sprint-review` — new frontmatter fields** — `effort: low`,
+  `maxTurns: 15`, `disallowedTools: [Write, Edit]` enforce the read-only
+  invariant declaratively via Claude Code v2.1.84+ runtime support.
+- **All 5 skills — `paths` frontmatter field** — declares file patterns each
+  skill operates on, enabling Claude Code to suggest skills based on
+  file-activation signals in addition to description matching.
+- **`skills/backlog-groomer` — sprint-start trigger phrases** — added 'start
+  the sprint', 'plan the sprint', 'plan next sprint', 'what should we work on'.
+- **`CLAUDE.md` — paths field convention** — documents the `paths` frontmatter
+  field and its activation-hint semantics.
+
+### Changed
+
+- **`CLAUDE.md` — hook type constraint updated** — removed "known bug" language
+  about PostToolUseFailure now that the conversion is complete. Added note about
+  the validator's prompt-hook warning.
+- **`CLAUDE.md` — validation section** — documents the new `check:hooks` step.
+- **`CLAUDE.md` — BM section ownership** — workflow references use spelled-out
+  form consistent with the cross-reference convention.
+- **`package.json` — parallel checks via `npm-run-all2`** — `npm run check` now
+  runs all 4 check stages (`check:plugin`, `check:md`, `check:sh`, `check:hooks`)
+  in parallel via `run-p check:*` instead of sequential `&&` chaining.
+
 ## [0.9.2][] - 2026-03-28
 
 ### Fixed
@@ -441,6 +499,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.10.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.0
 [0.9.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.2
 [0.9.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.1
 [0.9.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.0

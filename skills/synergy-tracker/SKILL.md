@@ -3,6 +3,9 @@ name: synergy-tracker
 description: "Manage cross-project synergy tracking between sibling projects. Use when the user wants to log a shared pattern, a divergence, an extraction candidate, or something a sibling project has that this one doesn't. NOT for upstream dependency bugs or vendor friction (use /upstream-tracker for those). Trigger phrases: 'synergy', 'sibling project', 'cross-project', 'extraction candidate', 'compare with [project]', 'both projects do', 'they have X we don't', 'shared pattern', 'divergence', 'cross-project alignment', 'review synergies', 'log this pattern', 'we should extract this', 'they handle this differently', or any mention of patterns, divergences, or shared practices across related projects."
 user-invocable: true
 argument-hint: "[workflow] [project-name]"
+paths:
+  - "SYNERGY-*.md"
+  - ".claude/synergy-registry.json"
 allowed-tools:
   - Read
   - Write
