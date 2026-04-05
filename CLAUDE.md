@@ -34,14 +34,16 @@ agents/
 hooks/
   hooks.json                          # Hook definitions (4 event types)
   precompact.sh                       # Emits additionalContext for sprint insight capture
-  session-start.sh                    # Trend-review reminder
+  session-start.sh                    # Sensitive-file warning, dormancy nudge, trend-review reminder
   post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt
+  post-bm-failure-classify.sh         # Basic Memory error classification + recovery guidance
 CLAUDE.md
 README.md
 CHANGELOG.md
 ```
 
-No runtime code — pure markdown + JSON. No build step, no dependencies.
+No application code — skills are pure markdown, hooks are shell scripts.
+Dev tooling only: validation and linting via `npm run check`.
 
 ## Components
 

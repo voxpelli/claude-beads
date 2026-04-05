@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.0][] - 2026-04-04
+## [0.10.0][] - 2026-04-05
 
 ### Fixed
 
@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   code: `hooks.json` still declared `type: "prompt"`, meaning a Haiku instance
   received BM recovery instructions it could never execute. Now correctly wired
   as `type: "command"`. BM failure recovery is functional for the first time.
+- **`hooks/session-start.sh` — consolidate into single JSON output** — prior
+  versions emitted multiple separate `{"systemMessage": ...}` objects; Claude
+  Code reads only the first and silently drops the rest. Now accumulates all
+  messages (sensitive-file warning, dormancy nudge, trend-review reminder) into
+  a single `{"additionalContext": ...}` object using `jq` for proper JSON
+  escaping. Combined dormancy nudge when both UPSTREAM and SYNERGY files exist.
+  Requires `jq` at runtime (standard on macOS and most Linux).
 - **`skills/retrospective` — remove 'sprint review' trigger overlap** — the
   phrase 'sprint review' was in both the retrospective skill and the
   sprint-review agent triggers. Removed from the skill to keep the agent as the

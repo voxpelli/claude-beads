@@ -1,8 +1,17 @@
 #!/bin/bash
 # Session-start hook: sensitive-file warning, trend-review reminder,
 # dormancy nudge for UPSTREAM and SYNERGY files.
+#
+# Emits exactly ONE JSON object with all content merged into additionalContext.
+# Prior versions emitted multiple separate objects; Claude Code reads only the
+# first and silently drops the rest.
+#
+# Empty-state contract: if no conditions are met, emit nothing and exit 0.
 
 set -euo pipefail
+
+# Accumulate message parts in an array; join with double newline before emitting.
+parts=()
 
 # --- Sensitive-file git-tracking check ---
 # Warn if .beads/interactions.jsonl or .beads/.beads-credential-key are
@@ -20,46 +29,66 @@ if git ls-files --error-unmatch .beads/.beads-credential-key 2>/dev/null; then
 	fi
 fi
 if [ -n "$tracked_sensitive" ]; then
-	printf '{"systemMessage": "WARNING: %s is tracked by git. These files contain local-only runtime data (conversation logs or credentials) and must not be committed. To fix: git rm --cached .beads/interactions.jsonl .beads/.beads-credential-key 2>/dev/null; echo interactions.jsonl >> .beads/.gitignore; echo .beads-credential-key >> .beads/.gitignore; git commit --no-gpg-sign -m \"chore: untrack beads sensitive files\""}\n' "$tracked_sensitive"
+	parts+=("WARNING: ${tracked_sensitive} is tracked by git. These files contain local-only runtime data (conversation logs or credentials) and must not be committed. To fix: git rm --cached .beads/interactions.jsonl .beads/.beads-credential-key 2>/dev/null; echo interactions.jsonl >> .beads/.gitignore; echo .beads-credential-key >> .beads/.gitignore; git commit --no-gpg-sign -m \"chore: untrack beads sensitive files\"")
 fi
 # --- end sensitive-file check ---
 
-# Dormancy nudge: surface unreviewed UPSTREAM/SYNERGY entries in low-activity repos
-# Runs BEFORE the retro-count section so new repos (no RETRO files) still get nudged.
+# --- Dormancy nudge ---
+# Surface unreviewed UPSTREAM/SYNERGY entries in low-activity repos.
+# Runs before the retro-count section so repos with no RETRO files still get nudged.
 upstream_count=$(find . -maxdepth 1 -name "UPSTREAM-*.md" 2>/dev/null | wc -l | tr -d ' ') || upstream_count=0
 synergy_count=$(find . -maxdepth 1 -name "SYNERGY-*.md" 2>/dev/null | wc -l | tr -d ' ') || synergy_count=0
+
 if [ "$upstream_count" -gt 0 ] || [ "$synergy_count" -gt 0 ]; then
 	recent=$(git rev-list --count --since="90 days ago" HEAD 2>/dev/null || echo "0")
 	if [ "$recent" -le 4 ]; then
-		if [ "$upstream_count" -gt 0 ]; then
-			# Backticks are literal markdown, not command substitution
+		if [ "$upstream_count" -gt 0 ] && [ "$synergy_count" -gt 0 ]; then
 			# shellcheck disable=SC2016
-			printf '{"systemMessage": "Low-activity repo with %s UPSTREAM tracking file(s). Entries in dormant repos can stay trapped locally for months. Consider `/upstream-tracker` W2 (review) or W6 (promote to BM) so friction is discoverable from other projects."}\n' "$upstream_count"
-		fi
-		if [ "$synergy_count" -gt 0 ]; then
-			# Backticks are literal markdown, not command substitution
+			parts+=("Low-activity repo: ${upstream_count} UPSTREAM and ${synergy_count} SYNERGY tracking file(s). Entries and extraction candidates in dormant repos can stay trapped locally for months. Consider \`/upstream-tracker\` workflow 2 (review-open) or workflow 6 (promote-to-BM), and \`/synergy-tracker\` to review and advance ready candidates.")
+		elif [ "$upstream_count" -gt 0 ]; then
 			# shellcheck disable=SC2016
-			printf '{"systemMessage": "Low-activity repo with %s SYNERGY tracking file(s). Extraction candidates in dormant repos can stay unacted on for months. Consider `/synergy-tracker` to review and advance ready candidates."}\n' "$synergy_count"
+			parts+=("Low-activity repo with ${upstream_count} UPSTREAM tracking file(s). Entries in dormant repos can stay trapped locally for months. Consider \`/upstream-tracker\` workflow 2 (review-open) or workflow 6 (promote-to-BM) so friction is discoverable from other projects.")
+		else
+			# shellcheck disable=SC2016
+			parts+=("Low-activity repo with ${synergy_count} SYNERGY tracking file(s). Extraction candidates in dormant repos can stay unacted on for months. Consider \`/synergy-tracker\` to review and advance ready candidates.")
 		fi
 	fi
 fi
+# --- end dormancy nudge ---
 
-# Trend-review reminder (depends on retro count)
+# --- Trend-review reminder ---
+# RETRO files are gitignored; find correctly ignores .gitignore so the count
+# reflects files on disk.
 count=$(find . -maxdepth 1 -name "RETRO-*.md" 2>/dev/null | wc -l | tr -d ' ') || count=0
 
-# No retros yet — Sprint 1, no trend-review reminder needed
-if [ "$count" -eq 0 ]; then
+if [ "$count" -gt 0 ]; then
+	mod=$((count % 4))
+	if [ "$mod" -eq 3 ]; then
+		next=$((count + 1))
+		parts+=("Trend-review reminder: Sprint ${next} will be a trend-review sprint. When you close this sprint, /retrospective will also run the full UPSTREAM trend review, beads health audit (bd stats, stale issues, blocked issues), and Basic Memory graph audit (schema validation, drift detection, duplicate audit). Plan for a longer retrospective session.")
+	elif [ "$mod" -eq 0 ]; then
+		current=$((count + 1))
+		parts+=("Trend-review sprint: Sprint ${current} is a trend-review sprint. Running /retrospective will perform the full UPSTREAM trend review, beads health audit, and Basic Memory graph audit in addition to the standard retrospective. Plan for a longer session.")
+	fi
+fi
+# --- end trend-review reminder ---
+
+# Exit silently if nothing to report
+if [ "${#parts[@]}" -eq 0 ]; then
 	exit 0
 fi
 
-mod=$((count % 4))
+# Join parts with double newline and emit as a single JSON object.
+# jq --arg handles all quoting and escaping.
+message=""
+for part in "${parts[@]}"; do
+	if [ -n "$message" ]; then
+		message="${message}
 
-if [ "$mod" -eq 3 ]; then
-	next=$((count + 1))
-	printf '{"systemMessage": "Trend-review reminder: Sprint %d will be a trend-review sprint. When you close this sprint, /retrospective will also run the full UPSTREAM trend review, beads health audit (bd stats, stale issues, blocked issues), and Basic Memory graph audit (schema validation, drift detection, duplicate audit). Plan for a longer retrospective session."}\n' "$next"
-elif [ "$mod" -eq 0 ]; then
-	current=$((count + 1))
-	printf '{"systemMessage": "Trend-review sprint: Sprint %d is a trend-review sprint. Running /retrospective will perform the full UPSTREAM trend review, beads health audit, and Basic Memory graph audit in addition to the standard retrospective. Plan for a longer session."}\n' "$current"
-fi
+${part}"
+	else
+		message="$part"
+	fi
+done
 
-exit 0
+jq -n --arg msg "$message" '{"additionalContext": $msg}'

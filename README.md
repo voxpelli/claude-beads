@@ -192,8 +192,9 @@ skills/
 hooks/
   hooks.json                            Hook definitions (4 event types)
   precompact.sh                         Sprint insight capture before compaction
-  session-start.sh                      Trend-review reminder + dormancy nudges
+  session-start.sh                      Sensitive-file warning, dormancy nudges, trend-review
   post-file-edit.sh                     Auto-format hooks/*.sh with shfmt
+  post-bm-failure-classify.sh           BM error classification + recovery guidance
 ```
 
 ## How it fits together
