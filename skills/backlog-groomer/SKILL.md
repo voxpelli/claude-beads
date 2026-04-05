@@ -6,6 +6,8 @@ user-invocable: true
 paths:
   - ".beads/**"
   - "RETRO-*.md"
+  - "UPSTREAM-*.md"
+  - "SYNERGY-*.md"
 allowed-tools:
   - Bash
   - Read
@@ -138,13 +140,13 @@ or the `argument-hint`.
    If external tools are unavailable, proceed with what is available.
 7. Synthesize into a concise brief: what exists now, what needs to change, key
    technical decisions, known pitfalls. Cap at 4-6 bullet points.
-8. Flag items that should become issues (hand off to workflow 5) or enrich an
-   existing issue (hand off to workflow 6).
+8. Flag items that should become issues (hand off to workflow 5 (Create issues from findings)) or enrich an
+   existing issue (hand off to workflow 6 (Enrich an existing issue)).
 
 ### 5. Create issues from findings
 
 Turn research findings into structured beads issues. Takes output from
-workflow 4 or user-provided findings.
+workflow 4 (Investigate a topic) or user-provided findings.
 
 **Steps:**
 

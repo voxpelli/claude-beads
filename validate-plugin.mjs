@@ -72,7 +72,7 @@ const VALID_AGENT_COLORS = new Set(['blue', 'cyan', 'green', 'yellow', 'magenta'
 
 const VALID_AGENT_MODELS = new Set(['inherit', 'sonnet', 'opus', 'haiku'])
 
-const VALID_HOOK_TYPES = new Set(['command', 'prompt'])
+const VALID_HOOK_TYPES = new Set(['command', 'prompt', 'agent', 'http'])
 
 const VALID_EFFORT_VALUES = new Set(['low', 'medium', 'high', 'max'])
 
@@ -229,6 +229,9 @@ for (const file of skillFiles) {
     validateMcpPrefixes(file, /** @type {string[]} */ (fm['allowed-tools']))
     auditToolReferences(file, content, /** @type {string[]} */ (fm['allowed-tools']), 'allowed-tools')
   }
+  if ('user-invocable' in fm && typeof fm['user-invocable'] !== 'boolean') {
+    error(file, `user-invocable must be a boolean, got ${typeof fm['user-invocable']}`)
+  }
   if ('paths' in fm && !Array.isArray(fm.paths)) {
     error(file, 'paths must be an array of glob strings')
   }
@@ -283,6 +286,17 @@ if (existsSync(agentsDir)) {
     }
     if ('disallowedTools' in fm && !Array.isArray(fm.disallowedTools)) {
       error(file, 'disallowedTools must be an array')
+    }
+    if ('skills' in fm && !Array.isArray(fm.skills)) {
+      error(file, 'skills must be an array')
+    }
+    if ('skills' in fm && Array.isArray(fm.skills)) {
+      for (const skillName of /** @type {string[]} */ (fm.skills)) {
+        const skillPath = join(ROOT, 'skills', skillName, 'SKILL.md')
+        if (!existsSync(skillPath)) {
+          error(file, `Phantom skill reference: "${skillName}" — no file at skills/${skillName}/SKILL.md`)
+        }
+      }
     }
 
     // Gardener read-only invariant

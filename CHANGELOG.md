@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1][] - 2026-04-05
+
+### Changed
+
+- **Workflow reference convention** — fixed 16 bare-number and W-shorthand
+  references across 7 active plugin files. All cross-workflow references now
+  use the `workflow N (Name)` format consistently.
+- **`validate-plugin.mjs`** — added three checks converging with vp-knowledge:
+  `agent`/`http` hook types in VALID_HOOK_TYPES, `user-invocable` boolean type
+  validation, and agent `skills` array phantom resolution (verifies referenced
+  skills exist on disk).
+- **`hooks/post-file-edit.sh`** — convergence improvements: jq error handling
+  (`2>/dev/null || true`), explicit PLUGIN_ROOT guard with early exit, and
+  `scripts/*.sh` path matching alongside `hooks/*.sh`.
+- **`paths` frontmatter** — backlog-groomer now declares `UPSTREAM-*.md` and
+  `SYNERGY-*.md`; vendor-sync now declares `UPSTREAM-*.md`.
+
 ## [0.10.0][] - 2026-04-05
 
 ### Fixed
@@ -506,6 +523,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.10.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.1
 [0.10.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.0
 [0.9.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.2
 [0.9.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.1

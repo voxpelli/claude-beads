@@ -127,13 +127,13 @@ Add to `~/.claude/settings.json`:
 claude mcp add basic-memory -- basic-memory mcp
 ```
 
-### Optional
-
-**[vp-knowledge](https://github.com/voxpelli/vp-claude)** plugin — the retrospective skill chains into `/knowledge-gaps` for the knowledge gap audit step. Install via the same marketplace:
+**[vp-knowledge](https://github.com/voxpelli/vp-claude)** plugin — provides BM infrastructure that vp-beads relies on: write-validation hooks (schema enforcement after `write_note`/`edit_note`), note quality standards, and the `/knowledge-gaps` skill used by the retrospective workflow. Install via the same marketplace:
 
 ```bash
 /plugin install vp-knowledge@vp-plugins
 ```
+
+vp-beads intentionally does not duplicate vp-knowledge's BM hooks — see [How it fits together](#how-it-fits-together) and [Relationship to vp-knowledge](#relationship-to-vp-knowledge).
 
 ## Conventions
 
@@ -193,7 +193,7 @@ hooks/
   hooks.json                            Hook definitions (4 event types)
   precompact.sh                         Sprint insight capture before compaction
   session-start.sh                      Sensitive-file warning, dormancy nudges, trend-review
-  post-file-edit.sh                     Auto-format hooks/*.sh with shfmt
+  post-file-edit.sh                     Auto-format hooks/*.sh and scripts/*.sh with shfmt
   post-bm-failure-classify.sh           BM error classification + recovery guidance
 ```
 
@@ -234,7 +234,20 @@ hooks/
 
 ## Relationship to vp-knowledge
 
-`vp-beads` and `vp-knowledge` are complementary plugins. The `retrospective` skill chains into `/knowledge-gaps` (from vp-knowledge) for the knowledge gap audit step, and writes sprint learnings to the same Basic Memory graph that vp-knowledge maintains. Install both for the full workflow.
+`vp-beads` and `vp-knowledge` are complementary plugins that form a layered pair:
+
+- **vp-knowledge** owns BM infrastructure — write-validation hooks (`post-bm-write-validate.sh` triggers `schema_validate` after every `write_note`/`edit_note`), note quality standards (`vp-note-quality` skill), and graph health tooling.
+- **vp-beads** builds sprint workflows on top — retrospective, upstream-tracker, synergy-tracker, and vendor-sync all write to Basic Memory, relying on vp-knowledge's hooks to validate those writes.
+
+Concrete integration points:
+
+| vp-beads feature | vp-knowledge dependency |
+|---|---|
+| Retrospective step 6 | Chains into `/knowledge-gaps` |
+| All BM writes (upstream-tracker W6, vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema |
+| Sprint learnings | Written to the same BM graph vp-knowledge maintains |
+
+**Do not duplicate vp-knowledge hooks in vp-beads.** Both plugins are installed together; duplicating hooks causes double-fire (benign but wasteful) and creates a maintenance burden.
 
 ## Changelog
 

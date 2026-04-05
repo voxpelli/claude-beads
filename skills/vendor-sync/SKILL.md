@@ -6,6 +6,7 @@ user-invocable: true
 paths:
   - ".claude/vendor-registry.json"
   - "vendor/**"
+  - "UPSTREAM-*.md"
 allowed-tools:
   - Bash
   - Read
@@ -233,7 +234,7 @@ Summarize the results:
 - **Registry-first discovery.** Refuses to proceed without
   `.claude/vendor-registry.json` — no guessing at subtree prefixes.
 - **Annotation semantics.** BM annotation-only (step 8b) — never delete or
-  move entries in `## Upstream Friction`. The upstream-tracker's workflow 6
+  move entries in `## Upstream Friction`. The upstream-tracker's workflow 6 (Promote to Basic Memory)
   handles pruning during its prune pass.
 
 ## Error handling

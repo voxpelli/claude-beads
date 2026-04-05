@@ -207,7 +207,7 @@ scannable (e.g., "Missing session type export", not "Issue with types").
    |-------|-------------------|--------------------|
    | **Dormant** | 0–4 | Offer inline promotion for any promotable entry (`Ownership: upstream`/`shared`, or any Upstream Opportunity) |
    | **Moderate** | 5–14 | Offer inline promotion for high-urgency entries only: blocking bugs with `Ownership: upstream`, or Upstream Opportunities with `Merge readiness: direct` |
-   | **Active** | 15+ | Skip — the normal sprint cadence will handle promotion via workflow 6 |
+   | **Active** | 15+ | Skip — the normal sprint cadence will handle promotion via workflow 6 (Promote to Basic Memory) |
 
    When offering inline promotion, present: "This project has low commit
    frequency — UPSTREAM entries can sit unread for months before the normal
@@ -217,7 +217,7 @@ scannable (e.g., "Missing session type export", not "Issue with types").
    become harder to merge as upstream evolves — promoting sooner makes it
    discoverable from other projects."
 
-   If the user agrees, apply workflow 6 steps 3–4 scoped to this single entry
+   If the user agrees, apply workflow 6 (Promote to Basic Memory) steps 3–4 scoped to this single entry
    (route by target type, draft generalized form, user confirms text, write or
    flag). If the user declines, or if Basic Memory tools are not available, or
    if the project is active, skip silently.
@@ -325,7 +325,7 @@ Every 4th sprint, perform a cross-cutting analysis of all tracking files.
    candidates for workflow 6 (Promote to Basic Memory). Also flag Upstream
    Opportunities with `Merge readiness: direct` — these are particularly strong
    candidates because the cross-project signal (a proven approach exists) is
-   immediately actionable. Suggest running workflow 6 if any are found.
+   immediately actionable. Suggest running workflow 6 (Promote to Basic Memory) if any are found.
 
 **Trend Review entry format:**
 
@@ -406,14 +406,14 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
    - **No note exists** — do NOT create a thin note. Flag for enrichment:
      "No Basic Memory note for `<package>`. Run `/package-intel <package>`
      (or `/tool-intel <tool>` for non-npm tools) to create one, then re-run
-     workflow 6 to attach friction entries."
+     workflow 6 (Promote to Basic Memory) to attach friction entries."
    - Deduplicate by entry title before appending — if the entry title already
      appears in the friction section, skip it.
    - See `references/basic-memory-friction-format.md` for `edit_note` gotchas.
 5. **Prune pass.** For entries in the Basic Memory note's `## Upstream Friction`
    section that are annotated with `_(Resolved ...)_`, offer to move them to
    the `### Resolved` subsection. The user confirms each. This is the only
-   path that moves entries to Resolved — workflow 3 only annotates.
+   path that moves entries to Resolved — workflow 3 (Resolve) only annotates.
 6. **Report.** Summarize what was promoted, pruned, skipped, and flagged for
    enrichment. Suggest verifying notes with
    `build_context("memory://npm/<package>")`.
@@ -433,7 +433,7 @@ about specific packages or tools, use this workflow, not the retrospective.
 
 Discover friction already known in Basic Memory for packages and tools this
 project depends on, but not yet tracked in local UPSTREAM files. This is the
-reverse of workflow 6 — it pulls cross-project knowledge into the current
+reverse of workflow 6 (Promote to Basic Memory) — it pulls cross-project knowledge into the current
 project. If Basic Memory MCP tools are not available, report that sync is
 unavailable and suggest checking Basic Memory manually.
 
@@ -459,7 +459,7 @@ unavailable and suggest checking Basic Memory manually.
 5. **Flag missing notes.** For packages that have UPSTREAM entries locally but
    no Basic Memory note, suggest `/package-intel <package>` or
    `/tool-intel <tool>` for enrichment — this enables future promotion via
-   workflow 6.
+   workflow 6 (Promote to Basic Memory).
 6. **User decides.** For each surfaced entry: add to local UPSTREAM file (via
    workflow 1's logging steps), skip, or dismiss. The user stays in control.
 
@@ -502,9 +502,9 @@ friction patterns.
   how active the project is. Measure with
   `git rev-list --count --since="90 days ago" HEAD 2>/dev/null`: **dormant**
   (0–4 commits), **moderate** (5–14), **active** (15+). Dormant and moderate
-  repos get earlier promotion nudges at workflow 1 time because their normal
+  repos get earlier promotion nudges at workflow 1 (Log) time because their normal
   sprint cadence is too slow to surface entries cross-project via Basic Memory.
-  See step 6a in workflow 1 for the full decision matrix.
+  See step 6a in workflow 1 (Log) for the full decision matrix.
 - **Scope boundary with synergy-tracker.** Cross-project pattern observations
   (shared approaches, divergences, extraction candidates between sibling
   projects) belong in `/synergy-tracker`, not here. This skill tracks friction,

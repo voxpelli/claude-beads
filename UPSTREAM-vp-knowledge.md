@@ -5,17 +5,15 @@
   agent `skills` frontmatter preloading. Agents now inject the Note Quality
   Checklist automatically on launch.
 
-- **Agent model/effort defaults for note-writing operations** (2026-04-05) —
-  knowledge-gardener and knowledge-maintainer should default to `model: opus`
-  and `effort: max` when performing note writes. Lower-capability models and
-  effort levels correlate with higher rates of self-referential content and
-  factual fabrication in generated notes. The current `model: sonnet` in
-  knowledge-gardener is a deliberate choice for speed, but note quality
-  suffers.
-  Ownership: shared · Workaround: partial — parent can override model in
-  Agent tool call, but effort is not overridable from the parent.
-  Note: v0.21.0 added `effort`/`skills` preloading infrastructure, but the
-  default model for gardener remains `sonnet`. Partially addressed.
+- **Agent effort defaults not overridable from parent** (2026-04-05) —
+  v0.21.0 added `effort` frontmatter support and `skills` preloading, but
+  `effort` is not overridable from the parent Agent tool call. A parent
+  session wanting `effort: max` on a spawned knowledge-maintainer cannot
+  request it — only the agent's own frontmatter value applies.
+  Ownership: upstream (Claude Code platform) · Workaround: none — must set
+  effort in agent frontmatter, cannot tune per-invocation.
+  Note: The `model: sonnet` default in knowledge-gardener is a separate
+  deliberate choice (SYNERGY accept-difference), not part of this FR.
 
 - _(Resolved 2026-04-05, vp-knowledge v0.21.0)_ **package-intel should fetch
   npm download stats from the registry API** — v0.21.0 added download stats

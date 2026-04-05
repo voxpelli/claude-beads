@@ -164,7 +164,7 @@ projects have active synergy tracking relationships.
 | `name` | yes | Short display name for the related project |
 | `file` | yes | Exact filename of the SYNERGY tracking file |
 | `remote` | no | Canonical URL for the related project |
-| `bm-entity` | no | Basic Memory entity path — consumed by W5 (promote to BM, planned for v0.10.0); informational only in v0.9.x |
+| `bm-entity` | no | Basic Memory entity path — consumed by workflow 5 (Promote to Basic Memory, planned for v0.10.0); informational only in v0.9.x |
 | `relationship` | no | Free-form label: `sibling-plugin`, `shared-tooling`, `fork`, `consumer` |
 
 If `.claude/synergy-registry.json` does not exist, discover SYNERGY files by

@@ -95,7 +95,7 @@ Keep descriptions concise. If the issue needs extensive context, use workflow 6
 
 ## Creation Limits
 
-- **Per-topic cap**: If research (W4) yields >8 candidate issues, suggest splitting
+- **Per-topic cap**: If research (workflow 4 — Investigate a topic) yields >8 candidate issues, suggest splitting
   into multiple research sessions or grouping under a tracking issue
 - **Per-session cap**: Creating >15 issues in one grooming session is a signal that
   the topic needs higher-level scoping first (consider an epic)

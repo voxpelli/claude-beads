@@ -35,7 +35,7 @@ hooks/
   hooks.json                          # Hook definitions (4 event types)
   precompact.sh                       # Emits additionalContext for sprint insight capture
   session-start.sh                    # Sensitive-file warning, dormancy nudge, trend-review reminder
-  post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt
+  post-file-edit.sh                   # Auto-format hooks/*.sh and scripts/*.sh with shfmt
   post-bm-failure-classify.sh         # Basic Memory error classification + recovery guidance
 CLAUDE.md
 README.md
@@ -75,7 +75,7 @@ Dev tooling only: validation and linting via `npm run check`.
   sprint-retro-support, promote-to-basic-memory, sync-from-basic-memory. The
   last two provide bidirectional sync between project-local UPSTREAM files and
   cross-project Basic Memory entity notes (`## Upstream Friction` sections).
-  In low-activity repos, W1 offers eager inline promotion to Basic Memory to
+  In low-activity repos, workflow 1 (Log) offers eager inline promotion to Basic Memory to
   prevent entries from staying trapped locally. User-invocable as
   `/upstream-tracker`.
 - **vendor-sync** — Pulls latest upstream changes from git subtrees, resolves
@@ -90,7 +90,7 @@ Dev tooling only: validation and linting via `npm run check`.
   sibling projects. Supports three workflows: log, review, compare-with-sibling.
   Complements upstream-tracker (which tracks dependency friction) by tracking
   peer-project collaboration opportunities. BM integration via
-  `## Cross-Project Synergy` section in sibling entity notes planned for W5.
+  `## Cross-Project Synergy` section in sibling entity notes planned for workflow 5 (Promote to Basic Memory).
   User-invocable as `/synergy-tracker`.
 
 ## Conventions
@@ -177,7 +177,7 @@ synergy-tracker (skill)   → log/review extraction candidates           [parall
   ↓ then                      (ready candidates → act or carry forward)
 retrospective (skill)     → generate RETRO-NN.md, write to Basic Memory
   ↓ after retro               (step 7 defers package friction to workflow 6 (Promote))
-upstream-tracker workflow 6 → promote generalizable friction to BM entity notes
+upstream-tracker workflow 6 (Promote) → promote generalizable friction to BM entity notes
   ↓ next sprint
 vendor-sync (skill)       → pull upstream changes, auto-resolve UPSTREAM entries
   ↓ annotates BM, logs new    (step 8b annotates BM on auto-resolve)
@@ -187,17 +187,27 @@ upstream-tracker (skill)  → repeat (workflow 7 (Sync from BM) discovers fricti
 `sprint-review` is the *gate* (read-only, proactive). `/retrospective` is the
 *generator* (user-invoked, writes files). They do not call each other — the user
 stays in control of when to commit to the full retro workflow. Basic Memory
-serves as the cross-project bridge: workflows 6 and 7 in upstream-tracker provide
+serves as the cross-project bridge: workflows 6 (Promote) and 7 (Sync from BM) in upstream-tracker provide
 bidirectional sync between project-local UPSTREAM files and BM entity notes.
 synergy-tracker runs as a parallel track, advancing extraction candidates and
 cross-project patterns alongside the upstream friction workflow.
 
 ### Relationship to vp-knowledge
 
-`vp-beads` and `vp-knowledge` are complementary plugins. The `retrospective`
-skill chains into `/knowledge-gaps` (from vp-knowledge) for the knowledge gap
-audit step. Both are available through the `vp-plugins` marketplace at
-`voxpelli/vp-claude`.
+`vp-beads` and `vp-knowledge` form a layered plugin pair. vp-knowledge owns
+Basic Memory infrastructure: write-validation hooks (`post-bm-write-validate.sh`
+triggers `schema_validate` after every `write_note`/`edit_note`), note quality
+standards, and graph health tooling. vp-beads builds sprint workflows on top,
+relying on vp-knowledge's hooks to validate BM writes from upstream-tracker,
+synergy-tracker, vendor-sync, and retrospective.
+
+**Do not duplicate vp-knowledge hooks in vp-beads.** Both plugins are always
+co-installed; duplicating hooks causes double-fire and maintenance burden.
+
+Specific integration points: retrospective step 6 chains into `/knowledge-gaps`
+(from vp-knowledge); all BM writes are validated by vp-knowledge's PostToolUse
+hook; sprint learnings are written to the same BM graph. Both are available
+through the `vp-plugins` marketplace at `voxpelli/vp-claude`.
 
 ## Agent Guidelines
 
@@ -263,10 +273,11 @@ in this plugin (missing `allowed-tools` entries).
 
 ### Hook type constraint
 
-All hooks must use `type: "command"` — prompt hooks spawn a separate Haiku
-instance with no MCP tool access, making them silently non-functional for
-any hook that needs BM or other MCP tools. The validator warns on prompt
-hooks to prevent this bug class.
+All hooks in this plugin must use `type: "command"` — prompt hooks spawn a
+separate Haiku instance with no MCP tool access, making them silently
+non-functional for any hook that needs BM or other MCP tools. The validator
+warns on prompt hooks to prevent this bug class. The validator also accepts
+`agent` and `http` hook types (used by other plugins) without warning.
 
 ### paths field convention
 

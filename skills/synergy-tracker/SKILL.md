@@ -267,9 +267,9 @@ unlogged synergy observations.
    each, ask: "Log this as a \[category\] entry for \[sibling\]?" The user
    approves, edits, or skips each candidate. **No mutations without approval.**
 5. Log confirmed entries by classifying, reading the file, composing, and
-   adding per workflow 1 steps 4–7. Skip step 8 (eager promotion) for batch
+   adding per workflow 1 (Log) steps 4–7. Skip step 8 (eager promotion) for batch
    entries to avoid prompt fatigue. Offer a single summary at the end:
-   "N entries logged. Run workflow 2 to review the full picture."
+   "N entries logged. Run workflow 2 (Review) to review the full picture."
 
    If the user skips all candidates, report that no entries were logged and
    suggest whether a follow-up comparison with different focus areas would be
@@ -312,10 +312,10 @@ candidates.
   before being logged. Never write to SYNERGY files or Basic Memory without
   confirmation.
 - **Division of labor.** synergy-tracker owns `## Cross-Project Synergy` in
-  sibling project entity notes in Basic Memory (future W5). upstream-tracker
+  sibling project entity notes in Basic Memory (future workflow 5 — Promote to Basic Memory). upstream-tracker
   owns `## Upstream Friction` in npm/tool entity notes. retrospective owns
   `engineering/*` notes. These three sections never overlap.
 - **Project tempo classification.** Measure with
   `git rev-list --count --since="90 days ago" HEAD 2>/dev/null`: **dormant**
   (0–4 commits), **moderate** (5–14), **active** (15+). Dormant and moderate
-  repos get earlier promotion nudges at workflow 1 time.
+  repos get earlier promotion nudges at workflow 1 (Log) time.
