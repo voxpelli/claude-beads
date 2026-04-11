@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0][] - 2026-04-11
+
+### Added
+
+- **`skills/swarm-wave` — new skill with 5 workflows** — orchestrates
+  multi-agent development sprints using the swarm wave pattern. Workflows:
+  plan-sprint (file-disjoint wave partitioning with contention mapping),
+  execute-wave (parallel task agents with explicit file-scope isolation),
+  post-wave-gate (two-reviewer quality gate with fix loop),
+  file-contention-map (standalone file-to-issue matrix utility),
+  research-wave (parallel research with dedup and backlog-groomer handoff).
+  Includes 5 reference files covering wave planning, file contention,
+  review gate protocol, agent concurrency limits, and command patterns.
+  Manages ephemeral `SWARM-NN.md` sprint plan files (gitignored).
+
+### Changed
+
+- **`CLAUDE.md`** — Plugin Layout tree, Skills (5 to 6), sprint workflow cycle
+  diagram updated with swarm-wave as optional parallel track.
+- **`README.md`** — Plugin structure tree, "How it fits together" diagram, and
+  new `/swarm-wave` section with workflow descriptions.
+- **`.gitignore`** — added `SWARM-*.md` pattern.
+
 ## [0.10.1][] - 2026-04-05
 
 ### Changed
@@ -523,6 +546,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.11.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.11.0
 [0.10.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.1
 [0.10.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.0
 [0.9.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.2

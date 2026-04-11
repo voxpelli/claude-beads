@@ -29,6 +29,14 @@ skills/
     SKILL.md                          # Cross-project synergy tracking (sibling projects)
     references/
       synergy-entry-format.md         # Entry templates, field values, naming, registry schema
+  swarm-wave/
+    SKILL.md                          # Multi-agent wave orchestration
+    references/
+      wave-planning-checklist.md      # Pre/post-wave gates, anti-patterns
+      file-contention-and-clustering.md # Contention thresholds, wave sizing
+      review-gate-protocol.md         # Two-reviewer gate, confidence thresholds
+      agent-concurrency-limits.md     # Memory pressure, backpressure protocol
+      command-patterns.md             # Research agent selection, agent prompts
 agents/
   sprint-review.md                    # Proactive end-of-sprint summary and retro gate
 hooks/
@@ -58,7 +66,7 @@ Dev tooling only: validation and linting via `npm run check`.
   `/upstream-tracker` for mutations. When Basic Memory is available, also
   checks for cross-project friction notes on project dependencies.
 
-### Skills (5)
+### Skills (6)
 
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
@@ -92,6 +100,12 @@ Dev tooling only: validation and linting via `npm run check`.
   peer-project collaboration opportunities. BM integration via
   `## Cross-Project Synergy` section in sibling entity notes planned for workflow 5 (Promote to Basic Memory).
   User-invocable as `/synergy-tracker`.
+- **swarm-wave** — Orchestrates multi-agent development sprints with wave-based
+  parallelism. Five workflows: plan-sprint (file-disjoint wave partitioning),
+  execute-wave (parallel agent launches with file-scope isolation),
+  post-wave-gate (two-reviewer quality gate), file-contention-map (standalone
+  utility), research-wave (parallel research with backlog-groomer handoff).
+  Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
 
 ## Conventions
 
@@ -166,6 +180,8 @@ The agent and skills form a lightweight cycle:
 (sprint start)
 backlog-groomer (skill)   → triage backlog, research new work, create issues
   ↓ then
+swarm-wave (skill)        → plan waves, execute with parallel agents   [optional]
+  ↓ or                        (workflow 1 plans, workflows 2+3 loop per wave)
 bd ready                  → normal development cycle
 
 (sprint end)

@@ -89,6 +89,26 @@ Reads `.claude/vendor-registry.json`, pulls each selected subtree with `--squash
 
 Step 7 cross-references the full sync diff against open `UPSTREAM-*.md` entries — any issue visibly addressed in the diff is deleted immediately. This is the primary resolution mechanism; don't defer to the retro. Step 8b annotates the corresponding Basic Memory friction entries when available.
 
+### `/swarm-wave [workflow] [wave-number|topic]` — Multi-agent wave orchestration
+
+Orchestrate multi-agent development sprints using the swarm wave pattern:
+
+```
+/swarm-wave plan-sprint
+/swarm-wave execute-wave 1
+/swarm-wave post-wave-gate 1
+```
+
+Five workflows:
+
+- **Plan a swarm sprint** — reads `bd ready`, builds a file-contention map, groups file-disjoint issues into waves, and generates a `SWARM-NN.md` plan for approval
+- **Execute a wave** — claims issues, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
+- **Post-wave gate** — hard blocking quality gate: two review agents (code + domain-specific) in parallel with `npm run check`, sequential tests, fix loop, commit + close. After the final wave, offers `/retrospective` handoff
+- **Map file contention** — standalone utility to build a file-to-issue matrix and flag hot files
+- **Research wave** — parallel research orchestration with dedup, code validation, and handoff to `/backlog-groomer` for issue creation
+
+`SWARM-NN.md` files are ephemeral (gitignored). All wave execution requires explicit user approval. File isolation is enforced via exhaustive per-agent file lists — no directory globs.
+
 ## Installation
 
 ### Via slash commands
@@ -189,6 +209,14 @@ skills/
     SKILL.md                            Cross-project synergy tracking workflow
     references/
       synergy-entry-format.md           Entry templates, naming, registry schema
+  swarm-wave/
+    SKILL.md                            Multi-agent wave orchestration
+    references/
+      wave-planning-checklist.md        Pre/post-wave gates, anti-patterns
+      file-contention-and-clustering.md Contention thresholds, wave sizing
+      review-gate-protocol.md           Two-reviewer gate, confidence thresholds
+      agent-concurrency-limits.md       Memory pressure, backpressure protocol
+      command-patterns.md               Research agent selection, agent prompts
 hooks/
   hooks.json                            Hook definitions (4 event types)
   precompact.sh                         Sprint insight capture before compaction
@@ -225,6 +253,11 @@ hooks/
  "synergy" / "compare"   -> synergy-tracker skill -> SYNERGY-<project>.md entry
  /synergy-tracker                                 -> review open synergies
                                                   -> compare with sibling project
+
+ "swarm sprint" / "wave" -> swarm-wave skill      -> SWARM-NN.md wave plan
+ /swarm-wave                                      -> parallel agent execution
+                                                  -> post-wave quality gate
+                                                  -> chains to /retrospective
 
  /vendor-sync [pkg]      -> vendor-sync skill     -> git subtree pull --squash
                                                   -> UPSTREAM auto-resolution
