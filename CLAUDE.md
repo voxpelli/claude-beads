@@ -181,7 +181,7 @@ The agent and skills form a lightweight cycle:
 backlog-groomer (skill)   → triage backlog, research new work, create issues
   ↓ then
 swarm-wave (skill)        → plan waves, execute with parallel agents   [optional]
-  ↓ or                        (workflow 1 plans, workflows 2+3 loop per wave)
+  ↓ or                        (workflow 1 (Plan) plans, workflows 2 (Execute) + 3 (Gate) loop per wave)
 bd ready                  → normal development cycle
 
 (sprint end)

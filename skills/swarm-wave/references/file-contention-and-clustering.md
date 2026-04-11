@@ -51,12 +51,7 @@ earlier wave than their dependents.
 
 ## Wave Size by RAM
 
-| RAM | Max Code Agents | Max Research Agents | Notes |
-|---|---|---|---|
-| 8 GB | 3 | 5 | Sequential mode recommended for code agents |
-| 16 GB | 5 | 10 | Standard configuration |
-| 32 GB | 6 | 20 | Maximum code agent ceiling |
-| 64 GB+ | 6 | 37 | Research-only ceiling; code ceiling unchanged |
+For agent count ceilings by RAM, see `agent-concurrency-limits.md`.
 
 Code agent ceiling is 6 regardless of RAM — more agents increase merge
 coordination cost faster than they increase throughput.

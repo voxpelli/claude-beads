@@ -1,7 +1,7 @@
 # Wave Planning Checklist
 
-Reference material for swarm-wave workflows. See `SKILL.md` for the workflow
-steps.
+Reference material for swarm-wave workflow 1 (Plan a swarm sprint) and
+workflow 3 (Post-wave gate). See `SKILL.md` for the workflow steps.
 
 ## Pre-Wave Gate
 
@@ -82,4 +82,4 @@ Six steps, all blocking — the gate must fully pass before proceeding.
 | Fat agent prompts (>3 issues per agent) | Incomplete work, scope creep | 1-3 issues per agent |
 | No file-scope constraint in prompt | Agent wanders outside scope | Exhaustive file list required |
 | Parallelizing tests | Test interference, flaky results | Sequential tests after gate |
-| Closing sprint with open in\_progress issues | Phantom work, stale claims | Verify with `bd list --status in_progress` |
+| Closing sprint with open in_progress issues | Phantom work, stale claims | Verify with `bd list --status in_progress` |

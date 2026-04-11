@@ -1,7 +1,7 @@
 # Command Patterns
 
-Reference material for swarm-wave workflows. See `SKILL.md` for the workflow
-steps.
+Reference material for swarm-wave workflow 2 (Execute a wave) and
+workflow 5 (Research wave). See `SKILL.md` for the workflow steps.
 
 ## Research Agent Intent Matching
 

@@ -114,14 +114,17 @@ argument.
    wave number. Verify status is `pending` — if `committed`, report it is
    done; if `gate-pending` or `gate-passed`, redirect to workflow 3
    (Post-wave gate).
-2. Run the backpressure sequence from
-   `references/agent-concurrency-limits.md` — Phase 1 (kill orphans) and
-   Phase 3 (pressure check). If memory pressure is HIGH, reduce agent count
-   and note the reduction. If CRITICAL, stop and report.
-3. Claim all wave issues: run `bd update <id> --claim` for each issue ID in
+2. Run `git status` — if there are uncommitted changes, stop and report.
+   Stale staged files get swept into agent commits.
+3. Run the backpressure sequence from
+   `references/agent-concurrency-limits.md` — Phase 1 (kill orphans),
+   Phase 2 (GC cooldown — skip for waves with fewer than 5 agents), and
+   Phase 3 (pressure check). If memory pressure is HIGH, reduce agent
+   count and note the reduction. If CRITICAL, stop and report.
+4. Claim all wave issues: run `bd update <id> --claim` for each issue ID in
    the wave. Report the claimed IDs.
-4. Update the wave status to `running` in the SWARM file.
-5. Launch task agents in parallel. For each agent slot in the wave plan,
+5. Update the wave status to `running` in the SWARM file.
+6. Launch task agents in parallel. For each agent slot in the wave plan,
    use the Agent tool with a prompt built from the canonical template in
    `references/command-patterns.md`. Key elements:
    - Issue title and ID (from `bd show <id>`)
@@ -135,13 +138,13 @@ argument.
    separate file and do not modify source files.
 
    All agent launches go in a single response (parallel execution).
-6. Wait for all agents to complete. As each agent reports done, log it.
-7. Verify closures: run `bd list --status in_progress` to check for unclosed
+7. Wait for all agents to complete. As each agent reports done, log it.
+8. Verify closures: run `bd list --status in_progress` to check for unclosed
    issues. Any issue still `in_progress` means the agent did not complete —
    note it for the user (carry forward or retry in the next wave).
-8. Update wave status to `gate-pending` in the SWARM file.
-9. Suggest: "Wave N agents complete. Run `/swarm-wave post-wave-gate N` to
-   run the quality gate."
+9. Update wave status to `gate-pending` in the SWARM file.
+10. Suggest: "Wave N agents complete. Run `/swarm-wave post-wave-gate N` to
+    run the quality gate."
 
 ### 3. Post-wave gate
 
@@ -156,43 +159,44 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
 
 1. Read the active SWARM file. Find the wave. Verify status is
    `gate-pending` or `gate-passed`.
-2. Launch two review agents in parallel using the Agent tool:
+2. Launch two review agents and `npm run check` in parallel (Agent tool
+   calls + Bash in a single response):
    - **Code reviewer**: reads all files modified by the wave (derive from
      the file ownership map in the SWARM file). Reviews for correctness,
      edge cases, error handling, type safety.
    - **Domain reviewer**: specialized by wave theme. See
      `references/review-gate-protocol.md` for the domain specialization
      table. If the wave theme is unclear, use a second code reviewer.
-3. While review agents run, launch `npm run check` via Bash (not an agent —
-   it is fast and synchronous). Capture pass/fail.
-4. Wait for both review agents to complete. Read their findings.
-5. Tally the gate:
+   - **`npm run check`**: via Bash (not an agent — fast and synchronous).
+     Capture pass/fail.
+3. Wait for both review agents and the check to complete. Read findings.
+4. Tally the gate:
    - `npm run check` must pass (P0 — gate fails immediately on check errors).
-   - Code reviewer confidence must be 80+ (or 80+ for security-adjacent).
-   - Domain reviewer confidence must be 60+ (or 80+ for security-adjacent).
+   - Code reviewer confidence must be 80+.
+   - Domain reviewer confidence must be 60+ (80+ for security-adjacent).
    See `references/review-gate-protocol.md` for threshold details and
    severity handling.
-6. If the gate passes:
-   - 6a. Run tests sequentially (workspace-first, root-last if applicable).
-   - 6b. If tests pass: commit all wave changes with
+5. If the gate passes:
+   - 5a. Run tests sequentially (workspace-first, root-last if applicable).
+   - 5b. If tests pass: commit all wave changes with
      `git commit --no-gpg-sign -m "feat: wave N — [theme] (N issues)"`.
-   - 6c. Close any remaining wave issues with `bd close`.
-   - 6d. Update wave status to `committed` in the SWARM file.
-   - 6e. Report: "Wave N passed gate and committed. N issues closed."
-   - 6f. **If this is the final wave**: offer the retrospective handoff.
+   - 5c. Close any remaining wave issues with `bd close`.
+   - 5d. Update wave status to `committed` in the SWARM file.
+   - 5e. Report: "Wave N passed gate and committed. N issues closed."
+   - 5f. **If this is the final wave**: offer the retrospective handoff.
      "All waves committed. Run `/retrospective` to generate the sprint
      retro?" If the user confirms, invoke `/retrospective` via the Skill
      tool.
-7. If the gate fails:
-   - 7a. List specific failures (check errors, review concerns).
-   - 7b. For `npm run check` failures: fix inline (mechanical fixes).
-   - 7c. For HIGH-severity review findings: launch a targeted fix agent
+6. If the gate fails:
+   - 6a. List specific failures (check errors, review concerns).
+   - 6b. For `npm run check` failures: fix inline (mechanical fixes).
+   - 6c. For HIGH-severity review findings: launch a targeted fix agent
      scoped to the specific concern and affected files. After the fix
-     agent completes, re-gate from step 2.
-   - 7d. For MEDIUM/LOW findings: present to the user — accept risk and
+     agent completes, re-gate from step 1.
+   - 6d. For MEDIUM/LOW findings: present to the user — accept risk and
      commit, or fix first. See `references/review-gate-protocol.md` for
      the severity handling table.
-   - 7e. Never commit with an open HIGH-severity concern.
+   - 6e. Never commit with an open HIGH-severity concern.
 
 ### 4. Map file contention
 
