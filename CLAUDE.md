@@ -254,6 +254,24 @@ Work is NOT complete until pushed. Before ending a session:
 3. `git push` — mandatory, never skip
 4. `bd dolt push` — sync beads to remote
 
+### Do not run `bd setup claude`
+
+`bd setup claude --check` will report `⚠ CLAUDE.md exists but no beads section
+found` — this is intentional. Do not "fix" it by running `bd setup claude`.
+
+The `bd setup claude` command appends a ~50-line beads workflow template to
+`CLAUDE.md` (core rules, quick reference, workflow steps, issue types,
+priorities). vp-beads's `SessionStart` hook already injects equivalent
+workflow context dynamically (~1.5k tokens of `bd` commands plus all
+persistent memories). Adding the static template would double-inject the
+same guidance — once via always-loaded `CLAUDE.md` and once via the hook —
+wasting context tokens with no benefit.
+
+The `bd setup claude` template is the right choice for projects *without* a
+Claude Code plugin like vp-beads. Here, the plugin's hook is more current
+and project-tailored. The global hooks side (`~/.claude/settings.json`) is
+unrelated and may be installed via `bd setup claude --global` if missing.
+
 ## Releasing
 
 1. Bump `plugin.json` version and add CHANGELOG entry
