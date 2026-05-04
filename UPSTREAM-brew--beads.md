@@ -1,6 +1,6 @@
 # UPSTREAM-brew--beads
 
-Tracking friction with [brew:beads](https://github.com/steveyegge/beads) (the `bd` CLI).
+Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `bd` CLI). Repo transferred from `steveyegge/beads` to `gastownhall/beads` during the v1.0.0 cycle (2026-04-03); old URL still redirects, but the Homebrew formula `homepage` field still references the old URL as of 2026-05.
 
 ## Feature Requests
 
@@ -45,6 +45,37 @@ Tracking friction with [brew:beads](https://github.com/steveyegge/beads) (the `b
   the binary instead. Ownership: deepwiki (not beads) · Workaround: full —
   always cross-check `bd config list` or read source.
 
+- **Expose required-sections-per-type via `bd types --required-sections` or
+  similar** (2026-05-04) — Validation gates enforce per-type required
+  markdown sections (e.g. spike requires `## Goal` + `## Findings`, decision
+  requires `## Decision` + `## Rationale` + `## Alternatives Considered`,
+  epic requires `## Success Criteria`), but there is no CLI surface to query
+  these requirements. Discovery is by trial-and-error: attempt `bd create
+  --type=<type> --description="x" --json` and parse the error JSON. This is
+  fine for a human one-shot, but tooling/agents that want to generate
+  compliant issues at scale need a structured manifest. Concrete fix: add
+  `bd types --required-sections` (or extend `bd types --json` to include
+  required sections per type), so consumers can build issue templates that
+  pass validation on first try. Ownership: upstream · Workaround: partial
+  — discoverable empirically per-type by attempting creates with `--json`.
+
+- **Add `--type` flag to `bd dep add` for relationship typing** (2026-05-04)
+  — `bd dep add` only supports the implicit "blocks/depends-on" relationship
+  type. Other useful relationship types (`related`, `duplicates`,
+  `references`, `superseded-by`) must be tracked via labels or comment text
+  rather than as first-class typed dependencies. The upstream `/beads:decision`
+  slash command (in the `beads` Claude Code plugin, not vp-beads) documents
+  `bd dep add <new-id> <old-id> --type related` as part of its supersede
+  workflow — but the flag does not exist on the bd CLI binary (v1.0.3,
+  verified via `bd dep add --help`). The slash command's documented workflow
+  fails at this step. Concrete fix: add `--type <relationship>` flag to
+  `bd dep add` (with at minimum `blocks` and `related`; ideally extensible
+  via config like custom types/statuses). This would unblock the
+  `/beads:decision` supersede workflow without needing a slash-command-side
+  workaround. Ownership: upstream · Workaround: partial — manually use
+  `bd note <id>` or labels to record relationship type alongside the
+  untyped dependency.
+
 ## Bugs
 
 - **Inconsistent metadata-key validation across `--metadata` vs `--set-metadata`/`--unset-metadata`**
@@ -75,6 +106,59 @@ Tracking friction with [brew:beads](https://github.com/steveyegge/beads) (the `b
   Ownership: upstream · Workaround: partial — direct DB edit via `dolt sql`
   is theoretically possible but wildly disproportionate; in practice orphan
   keys persist as cosmetic clutter.
+
+- **`bd create --help` lists outdated `--type` allowed values** (2026-05-04)
+  — Help text for `bd create` reads
+  `Issue type (bug|feature|task|epic|chore|decision); custom types require
+  types.custom config`. The binary actually accepts three additional core
+  types added in v1.0.0: `spike`, `story`, `milestone` (verified via
+  `bd create --type=spike` succeeding without `types.custom` set, and
+  confirmed by `bd types` listing all nine as built-in core types). The help
+  text was not updated when the new types shipped. Confusing for agents that
+  read `--help` as authoritative — they may incorrectly add the new types
+  to `types.custom` thinking they're not built-in, or avoid the new types
+  entirely. Concrete fix: regenerate the help text from the same source as
+  `bd types` so they stay in sync. Severity: minor · Ownership: upstream
+  · Workaround: full — query `bd types` for the authoritative list.
+
+- **`/beads:decision` slash command's supersede workflow uses non-existent
+  `bd dep add --type related` syntax** (2026-05-04) — The
+  upstream `beads` Claude Code plugin (in `beads-marketplace`, ships
+  alongside the CLI from `gastownhall/beads`) includes a slash command at
+  `plugins/beads/skills/beads/commands/decision.md` documenting the
+  supersede workflow. Step 2 of supersede reads:
+  `bd dep add <new-id> <old-id> --type related`. The `--type` flag does
+  not exist on `bd dep add` (verified: `bd dep add --help` lists only
+  `--blocked-by` and `--depends-on` aliases; attempting the documented
+  command would fail with "unknown flag"). Net effect: any user/agent
+  following the documented supersede workflow hits an error at step 2.
+  Two possible fixes: (a) update the slash command to use what `bd dep add`
+  supports (e.g. drop the `--type` flag and accept the default blocking
+  relationship, or use a label/comment to capture the "related" semantic),
+  OR (b) add `--type` flag to `bd dep add` (see related Feature Request
+  above). Severity: degraded · Ownership: upstream · Workaround: partial
+  — document the working syntax manually and avoid running the slash
+  command's supersede helper.
+
+- **`bd doctor`'s "Claude Hook Completeness" check ignores plugin-provided
+  hooks** (2026-05-04) — `bd doctor` (v1.0.3) reports a "Missing hook
+  event(s): PreCompact" warning when checking for SessionStart and
+  PreCompact hooks, recommending `bd setup claude` as the fix. The check
+  appears to scan only `~/.claude/settings.json` (where `bd setup claude
+  --global` writes its hook config), and does not detect equivalent hooks
+  provided by Claude Code plugins like the upstream `beads` plugin (which
+  registers SessionStart + PreCompact running `bd prime`) or third-party
+  plugins like `vp-beads` (which registers SessionStart with custom
+  warnings/nudges and PreCompact). Net effect: users with the plugins
+  installed see a false-positive warning suggesting they install
+  redundant hooks that would actually double-fire (see related issue:
+  vp-beads-0e9.3 spike investigating bd prime double-fire). Concrete fix:
+  expand the check to also inspect `~/.claude/plugins/cache/*/plugin.json`
+  hook declarations, OR have the check report "no hooks detected from
+  settings.json — verify plugin coverage if installed" rather than
+  prescribing a specific install command. Severity: minor · Ownership:
+  upstream · Workaround: full — functionality is unaffected; only the
+  doctor report is a false positive.
 
 ## Upstream Opportunities
 
