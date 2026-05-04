@@ -13,9 +13,68 @@ Tracking friction with [brew:beads](https://github.com/steveyegge/beads) (the `b
   validation only runs as part of the default `bd doctor` check.
   Ownership: upstream · Workaround: full — manual gitignore + `git rm --cached`
 
+- **Add `validation.on-update` config key (template validation gap on update)**
+  (2026-05-04) — `bd` exposes `validation.on-create`, `validation.on-close`,
+  `validation.on-sync`, and `validation.metadata.mode` config keys, but no
+  `validation.on-update`. Result: an agent or user can call
+  `bd update <id> --description=…` and strip required sections (e.g.
+  `## Acceptance Criteria`, `## Steps to Reproduce`) without any validation
+  firing. The gate exists at create-time and close-time but the middle of the
+  issue's life is unguarded. DeepWiki cites regression tests
+  `TestBug11_UpdateAcceptsInvalidStatus` and `TestBug12_UpdateAcceptsEmptyTitle`
+  showing `bd update` has historically accepted states `bd create` rejects;
+  those were fixed for status/title but the template `RequiredSections` check
+  was never wired into update. Concrete fix: add `validation.on-update` with
+  the same `none`/`warn`/`error` enum, calling `LintIssue` after the update is
+  applied. With this configured (and `on-create=error` + `on-close=error`)
+  every state transition would be gated.
+  Ownership: upstream · Workaround: partial — `validation.on-close=error`
+  re-validates at close time so stripped acceptance criteria block the close;
+  `bd lint` catches it on demand. Neither covers the in-flight window.
+
+- **DeepWiki index lags binary on `validation.*` config keys** (2026-05-04) —
+  Asked DeepWiki for the full list of `validation.*` config keys; it returned
+  only `validation.on-create` and `validation.on-sync`. The installed binary
+  (v1.0.3) accepts `bd config set validation.on-close error` and
+  `bd config set validation.metadata.mode error` without complaint, and the
+  earlier DeepWiki response about `validation.metadata.mode` documented it
+  thoroughly — so the wiki's per-key answers are inconsistent. Likely cause:
+  DeepWiki's index is behind the current beads tagged release. Not a beads
+  bug per se, but worth flagging that downstream users (especially agents)
+  shouldn't trust DeepWiki for the current `validation.*` key set — query
+  the binary instead. Ownership: deepwiki (not beads) · Workaround: full —
+  always cross-check `bd config list` or read source.
+
 ## Bugs
 
-_No entries yet._
+- **Inconsistent metadata-key validation across `--metadata` vs `--set-metadata`/`--unset-metadata`**
+  (2026-05-04) — `bd update <id> --metadata '{"unknown-field": "x"}'` accepts the
+  hyphenated key without complaint; the resulting metadata stores
+  `unknown-field` as a regular field. But the granular flags
+  `--set-metadata` and `--unset-metadata` enforce regex
+  `[a-zA-Z_][a-zA-Z0-9_.]*` and reject hyphens with
+  `Error: invalid metadata key "unknown-field": must match [a-zA-Z_][a-zA-Z0-9_.]*`.
+  Net effect: a hyphenated key written via `--metadata` becomes uncleanable by
+  `--unset-metadata`, and `--set-metadata` / `--unset-metadata` and `--metadata`
+  do not agree on which keys are valid. Concrete fix: the JSON-blob path on
+  `--metadata` should run the same regex check (preferred), or the granular
+  flags should relax to match. Either way, one rule across the surface.
+  Ownership: upstream · Workaround: partial — use only `--set-metadata` /
+  `--unset-metadata` (and disciplined underscore-only key naming) to stay
+  consistent with bd's internal convention (`execution_agent_type` etc.).
+
+- **No way to delete a metadata key once set with a name `--unset-metadata` rejects**
+  (2026-05-04) — Continuation of the above bug. If a key with disallowed
+  characters (hyphens, etc.) ends up in metadata via the `--metadata` JSON
+  path, `--unset-metadata <key>` rejects on the regex. Setting the key to
+  JSON `null` via `--metadata '{"key":null}'` merges in as a literal `None`
+  value rather than deleting the key. Net effect: orphan keys are
+  uncleanable through any documented CLI path. Concrete fix: either accept
+  hyphenated keys in `--unset-metadata`, OR have JSON `null` in a `--metadata`
+  merge delete the key (the JSON-merge-patch convention from RFC 7396).
+  Ownership: upstream · Workaround: partial — direct DB edit via `dolt sql`
+  is theoretically possible but wildly disproportionate; in practice orphan
+  keys persist as cosmetic clutter.
 
 ## Upstream Opportunities
 

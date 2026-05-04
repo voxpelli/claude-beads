@@ -1,0 +1,9 @@
+[
+  {
+    "name": "vp-knowledge",
+    "file": "SYNERGY-vp-knowledge.md",
+    "remote": "https://github.com/voxpelli/vp-claude",
+    "bm-entity": "engineering/agents/vp-plugins-vp-beads-and-vp-knowledge",
+    "relationship": "sibling-plugin"
+  }
+]

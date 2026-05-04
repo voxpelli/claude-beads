@@ -52,3 +52,14 @@
 # - linear.api-key
 # - github.org
 # - github.repo
+
+validation:
+  on-create: error
+  on-close: error
+  metadata:
+    mode: error
+    fields:
+      cross_project_source:
+        type: string
+      upstream_source:
+        type: string

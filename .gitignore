@@ -1,8 +1,6 @@
 .DS_Store
 RETRO-*.md
-SYNERGY-*.md
 SWARM-*.md
-.claude/synergy-registry.json
 .claude/*.local.*
 node_modules/
 
