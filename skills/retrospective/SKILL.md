@@ -86,6 +86,7 @@ Check `package.json` scripts for a test command. Try in order:
 1. `npm test` (if a `test` script exists)
 2. `npm run test:node` (if a `test:node` script exists)
 3. `npm run test` (if a `test` script exists under another variant)
+4. `npm run check` (if a `check` script exists — used by validation-suite projects like this one, vp-knowledge, vp-git)
 
 Run the first that exists and show the last 5 lines of output.
 
