@@ -1,6 +1,6 @@
 ---
 name: backlog-groomer
-description: "Manage the beads backlog for this project. Use when the user wants to review or triage open issues, reprioritize the backlog, identify obsolete issues to close, investigate a topic to inform future work, create new issues from research findings, or enrich an existing issue with external context. Trigger phrases: 'groom', 'triage', 'backlog review', 'reprioritize', 'stale issues', 'what should we close', 'too many issues', 'backlog health', 'investigate for backlog', 'research and create issues', 'add context to issue', 'enrich issue', 'plan the work for', 'break down into issues', 'start the sprint', 'plan the sprint', 'plan next sprint', 'what should we work on', or any request to audit, prune, or research work tracked in beads."
+description: "Manage the beads backlog for this project. Use when the user wants to review or triage open issues, reprioritize the backlog, identify obsolete issues to close, investigate a topic to inform future work, create new issues from research findings, or enrich an existing issue with external context. Trigger phrases: 'groom', 'triage', 'backlog review', 'reprioritize', 'stale issues', 'what should we close', 'too many issues', 'backlog health', 'investigate for backlog', 'research and create issues', 'add context to issue', 'enrich issue', 'plan the work for', 'break down into issues', 'start the sprint', 'plan the sprint', 'plan next sprint', 'what should we work on', 'find duplicates', 'dedup backlog', 'near-duplicates', or any request to audit, prune, or research work tracked in beads."
 argument-hint: "[topic]"
 user-invocable: true
 paths:
@@ -254,9 +254,9 @@ work can begin.
 
 1. User identifies the issue by ID or title. Run `bd show <id>` to read the
    current state (title, description, status, priority, dependencies).
-2. Research the topic using the same pipeline as workflow 4: Basic Memory
-   search → Raindrop bookmarks → codebase scan → external research (DeepWiki,
-   Tavily) as needed.
+2. Research the topic using the same pipeline as workflow 4 (Investigate
+   topic as spike): Basic Memory search → Raindrop bookmarks → codebase
+   scan → external research (DeepWiki, Tavily) as needed.
 3. Draft an enriched description. Preserve the original description and append
    a `## Research Context` section with findings, relevant links, and suggested
    approach.

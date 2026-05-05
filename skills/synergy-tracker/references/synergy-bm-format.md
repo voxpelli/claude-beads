@@ -6,10 +6,11 @@ the BM cross-reference step. See `SKILL.md` for the workflow steps that will
 reference this document.
 
 This reference is the structural specification that makes workflow 5
-implementable. The `## Cross-Project Synergy` section described here is **owned
-by synergy-tracker workflow 5** and never overlaps with `## Upstream Friction`
-(owned by upstream-tracker workflow 6) or `engineering/*` notes (owned by
-retrospective step 7).
+(Promote to Basic Memory, planned) implementable. The `## Cross-Project Synergy`
+section described here is **owned by synergy-tracker workflow 5 (Promote to
+Basic Memory, planned)** and never overlaps with `## Upstream Friction`
+(owned by upstream-tracker workflow 6 (Promote to Basic Memory)) or
+`engineering/*` notes (owned by retrospective step 7).
 
 ## Target Type Routing
 

@@ -383,8 +383,8 @@ trend-review boundaries.
    before adding the entry.
 8. Present aggregate findings to the user. Suggest follow-up actions: open
    beads issues for stalled extractions, run workflow 5 (Promote to Basic
-   Memory) for promotion candidates once shipped, or downgrade stale
-   `adopt-soon` entries.
+   Memory, planned) for promotion candidates once that workflow ships, or
+   downgrade stale `adopt-soon` entries.
 
 **Trend Review entry format** (mirrors upstream-tracker workflow 4 (Trend Review)):
 

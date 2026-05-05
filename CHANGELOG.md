@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0][] - 2026-05-05
+
+### Added
+
+- **`skills/sibling-sync` — new skill with 4 workflows** — bilateral
+  reconciliation of `SYNERGY-*.md` and `UPSTREAM-*.md` files between this
+  project and its registered sibling vp-* projects. Workflows:
+  discover-siblings (registry resolution + path probing),
+  sync-sibling-synergy (reciprocal gaps, stale alignment claims, divergence
+  convergence-status drift), sync-sibling-upstream (duplicate friction,
+  complementary workarounds, sibling-only entries on shared dependencies),
+  apply-reciprocation-batch (opt-in `--auto-reciprocate` flag, per-entry
+  confirmation, writes only to the sibling side). Read-only by default.
+  Distinct from `/vendor-sync` (upstream → project drift, subtree pulls)
+  and `/synergy-tracker` (logging entries on this side); `/sibling-sync`
+  compares both sides without writing on this side.
+- **Synergy + vendor registry `local-path` schema extension** — new optional
+  `local-path` field in `.claude/synergy-registry.json` and
+  `.claude/vendor-registry.json` entries gives the on-disk path to the
+  sibling/subtree checkout (relative paths resolve from project root).
+  When absent, skills fall back to `../<name>/` (synergy) or `prefix`
+  (vendor) — backward compatible.
+- **`.claude/*.local.json` companion override files** — gitignored
+  `synergy-registry.local.json` and `vendor-registry.local.json` mirror the
+  `settings.local.json` convention. Per-entry merge by `name`/`package` key;
+  fields in `.local.json` win. Encodes machine-specific paths without
+  committing them. Consumed by sibling-sync workflow 1 (Discover sibling(s)),
+  synergy-tracker workflow 3 (Compare with sibling), and vendor-sync
+  workflow 1 (Determine scope).
+- **`skills/synergy-tracker/references/synergy-bm-format.md`** — new reference
+  doc covering BM `## Cross-Project Synergy` section templates, routing
+  rules, and `edit_note` gotchas. Mirrors the existing
+  `basic-memory-friction-format.md` pattern from upstream-tracker.
+- **`skills/backlog-groomer` enhancements** — beads v1.0+ vocabulary updates,
+  9-type issue table promoted to canonical project-wide reference, dedup
+  primitive (`bd find-duplicates`) folded into workflow 1 (Review and
+  triage), Charter scope-guard
+  documentation in workflow 1 (Plan a swarm sprint).
+- **`CLAUDE.md` — Issue Types (9 total) canonical table** — promoted from
+  brew-beads BM note as the project-wide reference for all 9 core types
+  (`task`, `bug`, `feature`, `chore`, `epic`, `decision`, `spike`, `story`,
+  `milestone`) with required-sections-per-type validation map.
+
+### Changed
+
+- **`skills/synergy-tracker/SKILL.md`** — workflow 3 (Compare with sibling)
+  now resolves sibling paths via the registry + `.local.json` merge instead
+  of hardcoding `../<sibling>/`. Cites the canonical staleness threshold
+  for sibling-sync to defer to.
+- **`skills/vendor-sync/SKILL.md`** — symmetric registry-load update for
+  vendor subtrees: workflow 1 (Determine scope) now merges
+  `vendor-registry.local.json` if present.
+- **`skills/swarm-wave/references/wave-planning-checklist.md`** — added
+  bd v1.0.0 Integration Charter scope-guard citation: cross-tracker
+  orchestration is out of bd's scope, so swarm-wave owns the
+  workflow-automation layer above it.
+- **`CLAUDE.md`** — Plugin Layout tree, Skills (6 to 7), sprint workflow
+  cycle diagram updated with sibling-sync as optional bilateral diagnostic
+  alongside synergy-tracker. Synergy/vendor registry conventions document
+  the new `local-path` field and `.local.json` companion pattern.
+- **`README.md`** — Plugin structure tree, "How it fits together" diagram,
+  and new `/sibling-sync` section.
+- **`agents/sprint-review.md`** — globs `SYNERGY-*.md` for extraction
+  candidates ready for action; recommends `/sibling-sync` as a parallel
+  diagnostic when sibling drift is suspected.
+
+### Fixed
+
+- **`skills/retrospective` test-command waterfall** — added `npm run check`
+  to the validation step waterfall so plugin projects (which don't have a
+  `test` script) are not skipped during retrospective generation.
+
 ## [0.11.0][] - 2026-04-11
 
 ### Added
@@ -546,6 +618,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.12.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.0
 [0.11.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.11.0
 [0.10.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.1
 [0.10.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.0

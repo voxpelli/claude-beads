@@ -1,6 +1,6 @@
 ---
 name: sibling-sync
-description: "Bilateral SYNERGY/UPSTREAM reconciliation across sibling projects. Use when the user wants to sync sibling SYNERGY/UPSTREAM files, compare both sides to surface drift, find reciprocation gaps (entries here but not there, or vice versa), flag stale-aligned rows, detect divergence convergence-status drift, or apply a reciprocation batch with --auto-reciprocate. NOT for logging entries on this side (use /synergy-tracker workflow 1 (Log a synergy entry)) — sibling-sync compares both sides without writing by default. NOT for upstream → project drift (use /vendor-sync); sibling-sync handles peer-to-peer drift between sibling vp-* projects. Trigger phrases: 'sibling sync', 'compare siblings', 'sync sibling', 'reconcile siblings', 'reciprocation gap', 'sync drift', 'bilateral sync', 'sync SYNERGY', 'sync UPSTREAM both ways', 'auto-reciprocate', 'check sibling drift', 'peer-to-peer drift', 'cross-project drift', 'sibling reconciliation'."
+description: "Bilateral SYNERGY/UPSTREAM reconciliation across sibling projects. Use when the user wants to sync sibling SYNERGY/UPSTREAM files, compare both sides to surface drift, find reciprocation gaps (entries here but not there, or vice versa), flag stale-aligned rows, detect status drift across sides, or apply a reciprocation batch with --auto-reciprocate. NOT for logging entries on this side (use /synergy-tracker workflow 1 (Log a synergy entry)) — sibling-sync compares both sides without writing by default. NOT for upstream → project drift (use /vendor-sync); sibling-sync handles peer-to-peer drift between sibling vp-* projects. Trigger phrases: 'sibling sync', 'compare siblings', 'sync sibling', 'reconcile siblings', 'reciprocation gap', 'sync drift', 'bilateral sync', 'sync SYNERGY', 'sync UPSTREAM both ways', 'auto-reciprocate', 'check sibling drift', 'peer-to-peer drift', 'cross-project drift', 'sibling reconciliation'."
 user-invocable: true
 argument-hint: "[--auto-reciprocate] [sibling-name]"
 paths:
@@ -23,10 +23,9 @@ allowed-tools:
 
 Bilateral reconciliation of `SYNERGY-*.md` and `UPSTREAM-*.md` files between
 this project and its sibling vp-* projects. Read-only by default — surfaces
-drift, reciprocal gaps, stale-aligned rows, and convergence-status divergence
-across both sides without mutating anything. The opt-in `--auto-reciprocate`
-flag writes reciprocal entries to the sibling's SYNERGY file via per-entry
-confirmation.
+drift, reciprocal gaps, stale-aligned rows, and status drift across sides
+without mutating anything. The opt-in `--auto-reciprocate` flag writes
+reciprocal entries to the sibling's SYNERGY file via per-entry confirmation.
 
 Companion to `/vendor-sync` (which handles upstream → project drift); this
 skill handles peer-to-peer drift between siblings registered in
@@ -158,28 +157,60 @@ no writes.
    zero entries.
 3. Parse each side's entries section-by-section (Shared Patterns,
    Divergences, Extraction Candidates, They Have / We Don't). Build a
-   bidirectional entry map keyed by **title** — case-insensitive,
-   whitespace-normalized.
+   bidirectional entry map keyed by **title**, normalized per the rule in
+   Guidelines below (2-pass matching: deterministic lead-clause pass, then
+   judgment pass on residuals).
+
+   **Section migration is its own signal — not silently merged.** Matching
+   is within-section: an entry's title is paired only with same-section
+   titles on the sibling. If an entry has migrated sections on one side
+   (e.g., Shared Pattern here, Divergence on sibling — typical when one
+   side promoted after noticing drift), it surfaces as (a) on the
+   originating section and (b) on the destination section, NOT as a
+   finding (d) Status drift. The section migration is itself the drift
+   signal worth surfacing, and the (a)/(b) framing tells the user
+   precisely which side moved. Finding (d) applies within-section only.
+
+   **Section asymmetry — excluded from findings (a)/(b):** the
+   `They Have / We Don't` section is intrinsically asymmetric. Entries here
+   describe what the *sibling* has that we don't; reciprocally on the
+   sibling's side, the same-named section describes what *we* have that
+   they don't — a different semantic set. Bilateral title comparison is
+   meaningless for this section. Skip its entries when computing findings
+   (a) and (b). The user can read the section directly to act on adoption
+   candidates; logging an adoption decision is `/synergy-tracker`'s job,
+   not /sibling-sync's.
+
 4. Walk the merged map and classify each entry into one of four findings:
 
    - **(a) Reciprocal gaps** — entries on this side with no matching title
      on the sibling. The sibling lacks the reciprocal entry. Candidates for
      workflow 4 (Apply reciprocation batch) under `--auto-reciprocate`.
+     Excludes entries from `They Have / We Don't` (asymmetric — see step 3).
    - **(b) Unreciprocated entries on sibling** — entries on the sibling
      with no matching title here. The user may want to invoke
      `/synergy-tracker` workflow 1 (Log a synergy entry) to log these on
      this side. /sibling-sync does NOT write to this side automatically.
+     Excludes entries from `They Have / We Don't` (asymmetric — see step 3).
    - **(c) Stale alignment claims** — entries with `Status: aligned` and
      `Last verified:` more than 8 sprints old (≈ two trend-review cycles).
      Inline threshold; canonical definition is `/synergy-tracker` workflow
      4 (Trend review (quarterly)). Treat 1 sprint ≈ 2 weeks if no other
      calibration is available; if the entry has no `Last verified:` field,
      fall back to the entry's date stamp.
-   - **(d) Divergence convergence-status drift** — entries with
-     `Convergence path: adopt-theirs` or `Convergence path: propose-shared`
-     whose `Status:` value differs between the two sides. One side may
-     have moved to "adopted" while the other still says "drifting", or
-     similar.
+   - **(d) Status drift** — matched entries whose `Status:` field differs
+     across sides. Applies to two cases:
+     1. **Shared Patterns** where one side records `aligned` and the other
+        records `drifting` or `diverging` (or any disagreement on the
+        Status value). Often signals that one side has converged or
+        re-diverged without the reciprocal note being refreshed.
+     2. **Divergences** with `Convergence path: adopt-theirs` or
+        `Convergence path: propose-shared` where one side has moved to
+        `adopted`/`converged` while the other still says `drifting` or
+        similar.
+
+     Excludes Divergences with `Convergence path: accept-difference` —
+     those are intended-asymmetric and have no drift signal to flag.
 
 5. Output a structured report grouped first by sibling, then by finding
    category. Include each entry's title, both sides' values where they
@@ -202,9 +233,11 @@ no writes.
 - "PreCompact prompt command hook" — Last verified: 2026-01-15 (here),
   2026-01-15 (sibling). Re-verify now.
 
-### (d) Divergence convergence-status drift
-- "BM section ownership scheme" (Divergences) — Convergence path:
-  propose-shared. Status here: drifting. Status sibling: aligned.
+### (d) Status drift
+- "npm-run-all2 parallel check stages" (Shared Patterns) — Status here:
+  diverging. Status sibling: aligned. Sibling converged; refresh this row.
+- "BM section ownership scheme" (Divergences, propose-shared) — Status
+  here: drifting. Status sibling: aligned.
 ```
 
 ### 3. Sync sibling UPSTREAM
@@ -220,8 +253,11 @@ sibling SYNERGY).
    these are the shared upstream dependencies.
 2. For each shared `UPSTREAM-<dep>.md`, read both copies and parse entries
    (Bugs, Feature Requests, Upstream Opportunities, Resolved). Build a
-   bidirectional entry map by **title** (case-insensitive,
-   whitespace-normalized).
+   bidirectional entry map by **title** using the same 2-pass matching
+   rule as workflow 2 (deterministic lead-clause Pass 1 + judgment Pass 2
+   on residuals — see Guidelines). UPSTREAM titles are typically more
+   structured than SYNERGY titles, so Pass 2 fires less often, but the
+   rule is identical for consistency.
 3. Walk the merged map and classify each entry:
 
    - **(a) Duplicate friction** — same title on both sides. Sanity check:
@@ -236,8 +272,8 @@ sibling SYNERGY).
    - **(d) Sibling-only entries** — friction the sibling tracks for a
      shared dependency that we don't. Potential adoption: invoke
      `/upstream-tracker` workflow 7 (Sync from Basic Memory) or workflow 1
-     (Log) to bring matching entries over here. /sibling-sync does NOT
-     write here automatically.
+     (Log a new entry) to bring matching entries over here. /sibling-sync
+     does NOT write here automatically.
 
 4. Output a structured report grouped by sibling, then by shared dependency,
    then by finding category. Use the same output shape as workflow 2 (Sync
@@ -259,8 +295,12 @@ Memory)'s per-entry confirmation pattern.
 **Steps:**
 
 1. Re-run workflow 2 (Sync sibling SYNERGY) finding (a) (reciprocal gaps)
-   for each accessible sibling. These are the entries on this side that
-   the sibling lacks.
+   for each accessible sibling, applying the stricter matching rules from
+   the Hard Limits section below: Pass 1 (deterministic) matches only;
+   any Pass 2 (judgment) matches from workflow 2 are added back to the
+   reciprocation queue with an extra disambiguation prompt rather than
+   suppressed silently. These are the entries on this side that the
+   sibling demonstrably lacks.
 2. For each reciprocal gap, in order:
    1. Read the source entry from this project's `SYNERGY-<sibling>.md`
       (full entry text including title, date, structured fields).
@@ -302,6 +342,22 @@ Memory)'s per-entry confirmation pattern.
   — `/upstream-tracker` workflow 7 (Sync from Basic Memory) is the right
   channel for cross-project UPSTREAM adoption (BM is the cross-project
   bridge for friction; SYNERGY is the cross-project bridge for patterns).
+- Never mirrors entries from `## They Have / We Don't`. The section is
+  intrinsically asymmetric (entries here describe sibling capabilities
+  WE lack; the sibling's same-named section describes the inverse
+  asymmetry). Workflow 2 already excludes this section from finding (a),
+  but this is restated here as a mutation-side guard: even if a future
+  edit relaxes the workflow 2 exclusion, workflow 4 must never write a
+  `They Have / We Don't` entry to the sibling.
+- The reciprocal-gap list is computed using **Pass 1 matches only**.
+  Entries that paired via Pass 2 (judgment) in workflow 2 are added back
+  to the reciprocation queue and presented to the user with a flag:
+  "This entry may already exist on the sibling as `<pass-2-matched-title>`
+  — does that match? \[y=skip / n=write reciprocal anyway / skip-rest]".
+  Defaulting to caution at the mutation boundary inverts the read-only
+  cost asymmetry: under `--auto-reciprocate`, suppressing a write that
+  should happen (false-positive Pass 2 match) is more expensive than
+  proposing a duplicate the user can reject (false-negative).
 - Never writes to `## Trend Reviews` sections on either side.
 - Never writes to this project's side. Reciprocal entries go to the
   sibling only — logging on this side is `/synergy-tracker` workflow 1
@@ -344,16 +400,53 @@ without commitment to any follow-up action.
   informational, not fatal. Continue with what's available and report what
   was skipped so the user can correct via
   `.claude/synergy-registry.local.json`.
-- **Title-keyed comparison, case-insensitive, whitespace-normalized.**
-  Entries are matched on title for both SYNERGY and UPSTREAM comparisons.
-  Be lenient on capitalization and whitespace; entries on the two sides are
-  written by different sessions and naturally drift in formatting.
+- **Title-keyed comparison runs in two explicit passes.** Entries on the
+  two sides are written by different sessions and naturally drift in title
+  formatting; deterministic matching catches the obvious wins, judgment
+  ratifies the residual ambiguous cases. The two passes are separate so
+  the deterministic rule stays testable and the judgment rule stays
+  bounded.
+
+  - **Pass 1 — deterministic lead-clause match.** For each title:
+    lowercase, collapse whitespace runs to a single space, then take the
+    **lead clause** = the substring before the first occurrence of `:`,
+    ` — `, ` -- `, or ` (` (whichever is earliest; if none of those
+    appears, the lead clause is the full normalized title). Two entries
+    pair in pass 1 iff their normalized lead clauses are byte-identical.
+    Examples that should pair here:
+    - `wc -l portability guard` ↔ `wc -l portability guard (|| count=0 + tr -d ' ')`
+    - `edit_note append-with-section gotcha: independently documented by both plugins` ↔ `edit_note append-with-section gotcha — independently documented`
+    - `Frontmatter features` ↔ `Frontmatter features (skills, user-invocable, effort)`
+  - **Pass 2 — judgment on residuals only.** For entries that did NOT
+    pair in pass 1, scan the still-unmatched residuals on the other side
+    once for qualifier-phrase reorderings or token rearrangements that
+    clearly describe the same idea. Pair only when the subjects are
+    unambiguously the same. Pass 2 examples:
+    - `PreCompact hook retired in vp-knowledge v0.28.0` ↔ `PreCompact hook retired in v0.28.0` (qualifier prepositional phrase)
+    - `Skill invocation layering: three levels vs two levels` ↔ `Skill invocation layering: two-level vs three-level` (token reordering after the colon)
+
+    Pass 2 may NEVER override or relax pass 1: do not unmatch a pair pass
+    1 produced, and do not collapse two pass-1-residual entries that have
+    a shared *prefix* but materially different scopes (`Hook validation`
+    vs `Hook validation regression test` → leave both as one-sided).
+    Rationale for the cost asymmetry: in **default read-only mode**, a
+    duplicate entry surviving on both sides outlives sprint cycles
+    silently, while an over-merge surfaces immediately at workflow 4
+    (Apply reciprocation batch)'s per-entry confirmation gate where the
+    user can reject. Under `--auto-reciprocate` this asymmetry inverts —
+    a false-positive pass-2 match can suppress a reciprocal entry that
+    should be written. Therefore: workflow 4 re-runs pass 1 only and
+    treats pass 2 matches as advisory candidates that REQUIRE the user's
+    per-entry confirmation to count as matches (mirrors the existing
+    write-confirmation gate; the spec defaults to caution at the mutation
+    boundary).
 - **Stale threshold is inline.** 8 sprints (≈ two trend-review cycles) for
   SYNERGY `Status: aligned` rows; 3 months for UPSTREAM entries. Canonical
   definitions live in `/synergy-tracker` workflow 4 (Trend review
-  (quarterly)) and `/upstream-tracker` workflow 4 (Trend review). When those
-  thresholds change, this skill must be updated to match — track via the
-  validate-plugin convention check (vp-beads-9we, planned) once it ships.
+  (quarterly)) and `/upstream-tracker` workflow 4 (Trend review
+  (quarterly)). When those thresholds change, this skill must be updated
+  to match — track via the validate-plugin convention check (vp-beads-9we,
+  planned) once it ships.
 - **No new SYNERGY/UPSTREAM sections.** /sibling-sync only writes entries
   into existing section schemas (`## Shared Patterns`, `## Divergences`, …).
   It does not introduce new section types. Schema evolution is
