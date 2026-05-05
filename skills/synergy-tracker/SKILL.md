@@ -87,7 +87,18 @@ Section semantics:
 - **Extraction Candidates** — code, patterns, or logic in this project that is
   a strong candidate for extraction into a shared package or library
 - **They Have / We Don't** — capabilities in the sibling project that this
-  project lacks and may want to adopt
+  project lacks and may want to adopt. Apply the **domain-fit test** before
+  logging:
+
+  > Pass test: "this project has the underlying need but lacks the implementation."
+  > Fail test: "the sibling has a capability in a different domain than this project's."
+
+  Without this test, every comparison run produces noise the user must
+  dismiss. Worked failures from Sprint 19: vp-beads's `swarm-wave` (sprint
+  orchestration is a different domain from vp-claude's research fan-outs)
+  and vp-beads's `vendor-sync` (vp-beads vendors content; vp-claude has no
+  vendored surface to sync) both passed the surface filter but failed the
+  domain-fit test.
 
 ## Workflows
 
@@ -148,6 +159,29 @@ being discussed, what pattern was noticed, what contrast was made.
 
 See `references/synergy-entry-format.md` for full entry format templates and
 field value definitions.
+
+**Bilateral reciprocation mandate.** When the sibling has already written
+entries from their side (check `../<sibling>/SYNERGY-<this-project>.md` if
+the sibling repo is accessible on disk), reciprocate by re-verifying each
+entry from this project's angle, recording your verification dates, and
+noting any drift you observe. Do not skip duplicates — the reciprocation IS
+the verification step. As captured in BM
+`engineering/agents/vp-plugins-vp-beads-and-vp-knowledge`:
+
+> SYNERGY entries describe two parallel implementations that *happen* to be
+> aligned, not one shared thing — both sides need their own record so each
+> can verify from their POV at their own cadence. "Reciprocation IS the
+> verification step."
+
+Sprint 19 evidence: vp-claude reciprocated 9 shared-pattern entries from
+vp-beads's `SYNERGY-vp-knowledge.md` to a new `SYNERGY-vp-beads.md`, and the
+re-verification surfaced 3 actively drifting artifacts
+(`validate-plugin.mjs` 358 vs 333 lines; `scripts/check-hooks.mjs` 366 vs
+284 lines; `npm-run-all2` since-converged) plus 1 stale `aligned` row
+(PreCompact retired post-v0.28.0 on the vp-claude side). When logging an
+entry with no reciprocal yet on the sibling, prompt the user to file the
+reciprocal entry on the sibling project (typically a follow-up task in the
+sibling repo's bd backlog).
 
 8. **Eager promotion check.** If Basic Memory MCP tools are available, assess
    the project's tempo:
@@ -275,6 +309,81 @@ unlogged synergy observations.
    suggest whether a follow-up comparison with different focus areas would be
    useful.
 
+### 4. Trend review (quarterly)
+
+Every 4th sprint, perform a cross-cutting analysis of all SYNERGY tracking
+files. This cadence aligns with the every-4th-sprint trend review used by
+`/retrospective` and `/upstream-tracker` (see CLAUDE.md and MEMORY.md). It
+replaces the interim workaround of running workflow 2 (Review) manually at
+trend-review boundaries.
+
+**Input signals:**
+
+1. Glob for all `SYNERGY-*.md` files and read them.
+2. For each file, count entries per section (Shared Patterns, Divergences,
+   Extraction Candidates, They Have / We Don't) and note the date of the last
+   Trend Review entry, if any.
+3. Compute entry aging from the parenthesized `(YYYY-MM-DD)` on each bullet.
+   Flag entries older than 3 months without a follow-up Trend Review note.
+
+**Processing steps:**
+
+1. **Drift audit.** For every Shared Patterns entry marked `Status: aligned`,
+   check whether the `Last verified:` date is more than two trend-review cycles
+   old (≈8 sprints). Flag stale `aligned` rows — alignment claims decay; the
+   Sprint 19 reciprocation pass on `SYNERGY-vp-knowledge.md` surfaced one such
+   row (PreCompact retired post-v0.28.0 on the sibling side) that had no way
+   to be detected without re-verification.
+2. **Reciprocation check.** For each shared-pattern entry, ask whether the
+   sibling project has a corresponding entry in its own `SYNERGY-<this>.md`.
+   Where the sibling repo is accessible at `../<project-name>`, glob for the
+   reciprocal file and grep for the entry title. Asymmetric tracking silently
+   misses drift — see workflow 1 (Log) bilateral reciprocation mandate.
+3. **Status sweep on Extraction Candidates.** List all Extraction Candidates
+   with `Readiness: ready` that have not moved (no annotation, no resolution)
+   for more than 2 trend-review cycles (≈8 sprints). These are either
+   stalled — escalate to a beads issue — or no longer relevant — recommend
+   closing.
+4. **They Have / We Don't sweep.** List entries with `Priority: adopt-soon`
+   older than one trend-review cycle (≈4 sprints). Either adopt now or
+   downgrade to `consider`/`deferred`.
+5. **BM cross-reference (planned).** Once workflow 5 (Promote to Basic Memory)
+   ships, also cross-reference each open entry against the
+   `## Cross-Project Synergy` section of the sibling's BM entity note to
+   identify entries already promoted (no need to re-promote) and entries that
+   should be promoted now.
+6. **Dormancy-aware scaling.** In projects with ≤4 commits in the last 90 days
+   (see project tempo in Guidelines), double the staleness thresholds — entries
+   in dormant repos age by calendar, not by sprint cadence.
+7. Add a per-file Trend Review entry to each SYNERGY file under a
+   **Trend Reviews** section. A Trend Review entry resets the staleness clock
+   for the entire file (see workflow 2 (Review) staleness rules). If no
+   **Trend Reviews** section exists at the bottom of the file, create it
+   before adding the entry.
+8. Present aggregate findings to the user. Suggest follow-up actions: open
+   beads issues for stalled extractions, run workflow 5 (Promote to Basic
+   Memory) for promotion candidates once shipped, or downgrade stale
+   `adopt-soon` entries.
+
+**Trend Review entry format** (mirrors upstream-tracker workflow 4 (Trend Review)):
+
+```
+### Review — YYYY-MM-DD (Sprint N)
+
+- **Themes:** [common patterns across open entries — e.g., recurring drift in
+  validation tooling, shared infra still un-extracted]
+- **Still valid:** [entries confirmed as still relevant this cycle]
+- **Recommend closing:** [entries obsolete, dismissed, or no longer applicable]
+- **Escalate:** [stalled Extraction Candidates needing beads issues; stale
+  `aligned` rows needing reciprocation refresh; `adopt-soon` items past their
+  window]
+```
+
+**Output integration with `/retrospective`:** at trend-review sprint boundaries
+(every 4th sprint), `/retrospective` chains into this workflow's per-file
+review entries and includes a "Synergy trend review" subsection summarizing
+themes and escalations across all SYNERGY files.
+
 ## Sprint Workflow Integration
 
 synergy-tracker runs as a parallel track to upstream-tracker at sprint
@@ -286,10 +395,10 @@ boundaries:
 - **Sprint start:** session-start hook emits a dormancy nudge for SYNERGY files
   in low-activity repos.
 
-Workflows 4 (trend review) and 5 (promote to Basic Memory) are planned for
-v0.10.0. Until then, run workflow 2 (review) at every trend-review sprint
-boundary (every 4th sprint) to manually assess staleness and promotion
-candidates.
+Workflow 5 (Promote to Basic Memory) is planned. Until it ships, workflow 4
+(Trend Review) handles staleness and surfaces promotion candidates without
+writing to BM; users promote selected entries manually via
+`mcp__basic-memory__edit_note`.
 
 ## Guidelines
 
@@ -319,3 +428,10 @@ candidates.
   `git rev-list --count --since="90 days ago" HEAD 2>/dev/null`: **dormant**
   (0–4 commits), **moderate** (5–14), **active** (15+). Dormant and moderate
   repos get earlier promotion nudges at workflow 1 (Log) time.
+- **Design rationale: why cross-project tracking lives in Basic Memory, not bd.**
+  The bd v1.0.0 Integration Charter (`gastownhall/beads@5d524cf7:docs/INTEGRATION_CHARTER.md`)
+  establishes a "no cross-tracker orchestration" rule — bd will never grow a
+  feature that routes a synergy item from project A's bd to project B's bd.
+  synergy-tracker's `SYNERGY-*.md` files plus the `## Cross-Project Synergy` BM
+  section (workflow 5 (Promote to Basic Memory), planned) are exactly the
+  workflow-automation layer the Charter punts to external tools.

@@ -103,6 +103,12 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
    approval.** After approval, suggest: "Run `/swarm-wave execute-wave 1` to
    start Wave 1."
 
+**Note:** GitHub-mirrored beads sync via `bd github sync` runs *post-wave* (or
+post-sprint), not as part of swarm-wave — the bd v1.0.0 Integration Charter
+(`gastownhall/beads@5d524cf7:docs/INTEGRATION_CHARTER.md`) explicitly punts
+cross-tracker orchestration out of bd's scope, and swarm-wave follows the same
+boundary.
+
 ### 2. Execute a wave
 
 Launch parallel task agents for a specific wave. Takes the wave number as

@@ -104,6 +104,17 @@ shared utility. The highest-leverage section.
 
 Documents capabilities the sibling project has that this project lacks.
 
+**Domain-fit test** (apply before logging):
+
+> Pass test: "this project has the underlying need but lacks the implementation."
+> Fail test: "the sibling has a capability in a different domain than this project's."
+
+Sprint 19 worked failures: vp-beads's `swarm-wave` (sprint orchestration ≠
+research fan-outs domain) and vp-beads's `vendor-sync` (vp-beads vendors
+content; vp-claude has no vendored surface to sync). Both passed the surface
+filter but failed the domain-fit test, and would have produced noise the
+user had to dismiss.
+
 ```
 - **Short title** (YYYY-MM-DD) — What the sibling has, why this project would
   benefit from it, and the estimated adoption cost.
