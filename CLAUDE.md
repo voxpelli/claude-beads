@@ -25,6 +25,7 @@ skills/
     references/
       backlog-health-heuristics.md    # Staleness, closure, priority, issue templates
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
+  sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
   synergy-tracker/
     SKILL.md                          # Cross-project synergy tracking (sibling projects)
     references/
@@ -66,7 +67,7 @@ Dev tooling only: validation and linting via `npm run check`.
   `/upstream-tracker` for mutations. When Basic Memory is available, also
   checks for cross-project friction notes on project dependencies.
 
-### Skills (6)
+### Skills (7)
 
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
@@ -93,6 +94,18 @@ Dev tooling only: validation and linting via `npm run check`.
   friction entries on resolution, and verifies with check + test.
   Reads the subtree registry from `.claude/vendor-registry.json`. User-invocable
   as `/vendor-sync`.
+- **sibling-sync** — Bilateral reconciliation of `SYNERGY-*.md` and
+  `UPSTREAM-*.md` files between this project and its registered sibling
+  vp-* projects. Four workflows: discover-siblings (registry resolution +
+  path probing), sync-sibling-synergy (reciprocal gaps, stale alignment
+  claims, divergence convergence-status drift), sync-sibling-upstream
+  (duplicate friction, complementary workarounds, sibling-only entries on
+  shared dependencies), apply-reciprocation-batch (opt-in `--auto-reciprocate`
+  flag, per-entry confirmation, writes only to the sibling side). Read-only
+  by default. Distinct from `/vendor-sync` (upstream → project drift,
+  subtree pulls) and `/synergy-tracker` (logging entries here on this side);
+  sibling-sync compares both sides without writing on this side. User-invocable
+  as `/sibling-sync`.
 - **synergy-tracker** — Manages `SYNERGY-*.md` files that track cross-project
   patterns, divergences, extraction candidates, and capability gaps between
   sibling projects. Supports three workflows: log, review, compare-with-sibling.
@@ -211,6 +224,11 @@ upstream-tracker (skill)  → log/resolve any untracked friction first
   ↓ then                      (workflow 1 (Log) checks BM, workflow 3 (Resolve) annotates BM)
 synergy-tracker (skill)   → log/review extraction candidates           [parallel]
   ↓ then                      (ready candidates → act or carry forward)
+                            ←→ sibling-sync (skill) — bilateral SYNERGY/UPSTREAM
+                               drift diagnostic [parallel, optional; read-only
+                               by default; --auto-reciprocate writes reciprocal
+                               entries to sibling side with per-entry
+                               confirmation; never writes on this side or to BM]
 retrospective (skill)     → generate RETRO-NN.md, write to Basic Memory
   ↓ after retro               (step 7 defers package friction to workflow 6 (Promote))
 upstream-tracker workflow 6 (Promote) → promote generalizable friction to BM entity notes
@@ -226,7 +244,11 @@ stays in control of when to commit to the full retro workflow. Basic Memory
 serves as the cross-project bridge: workflows 6 (Promote) and 7 (Sync from BM) in upstream-tracker provide
 bidirectional sync between project-local UPSTREAM files and BM entity notes.
 synergy-tracker runs as a parallel track, advancing extraction candidates and
-cross-project patterns alongside the upstream friction workflow.
+cross-project patterns alongside the upstream friction workflow. `sibling-sync`
+is an optional bilateral diagnostic that runs alongside synergy-tracker
+workflow 2 (Review) — or before workflow 4 (Trend Review) every 4th sprint —
+to detect SYNERGY/UPSTREAM drift between sibling repos; it never gates the
+linear sprint flow.
 
 ### Relationship to vp-knowledge
 
