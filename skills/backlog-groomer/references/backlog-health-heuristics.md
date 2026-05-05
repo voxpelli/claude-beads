@@ -34,13 +34,43 @@ An issue is a **closure candidate** when ANY of these apply:
 Duplicates are issues that describe the same work. Check for:
 
 - **Exact match**: `bd duplicates` finds issues with identical content hashes
-- **Near-match**: similar titles (shared keywords), same labels, or references
-  to the same commit/file. Use `bd search <keywords>` to surface candidates.
+- **Near-match (mechanical)**: `bd find-duplicates` (alias `find-dups`) with
+  the default `--method=mechanical` runs Jaccard tokenization across open
+  issues. Free, fast, no API calls.
+- **Near-match (semantic)**: `bd find-duplicates --method=ai` uses Claude to
+  compare candidate pairs that survive mechanical pre-filtering. Requires
+  `ai.api_key` config and **bills per call**. Opt-in only.
+- **Manual**: similar titles (shared keywords), same labels, or references to
+  the same commit/file. Use `bd search <keywords>` to surface candidates.
 - **Cross-status**: a closed issue may duplicate an open one if the fix was
   incomplete. `bd duplicates` checks within status groups.
 
+### Threshold guidance for `bd find-duplicates`
+
+| Threshold | When to use |
+|---|---|
+| `0.5` (default) | Balanced — catches obvious near-duplicates with low false-positive rate |
+| `0.4` | More recall — surfaces fuzzier matches; useful for small backlogs (<100 open) where reviewing extras is cheap |
+| `0.6+` | Higher precision — when you only want strong candidates and don't want to review borderline pairs |
+
+### AI cost caveat
+
+`--method=ai` bills per AI call against the configured `ai.api_key`. The
+mechanical pre-filter narrows the candidate set first, so cost scales with
+the number of mechanical near-matches, not the size of the backlog. Still:
+default to mechanical, only invoke `--method=ai` when the user explicitly
+requests it or the `BD_AI_DUPES=1` environment variable is set, and surface
+an estimated cost when the candidate set is large.
+
+### Resolving duplicates
+
 When merging, prefer the issue with more context (longer description, more
-comments, more dependency links). Use the `bd merge` command if available.
+comments, more dependency links). Apply per-pair recommendations using:
+
+- `bd supersede <loser> <winner>` — closes the loser as superseded, preserves
+  the link in history (preferred when both have meaningful comments/refs)
+- `bd duplicate <loser> <winner>` — marks loser as a duplicate without losing
+  the relationship metadata
 
 ## Priority Assignment Logic
 
@@ -60,13 +90,30 @@ comments, more dependency links). Use the `bd merge` command if available.
 
 ## Type Assignment Logic
 
-| Type | When to assign |
-|---|---|
-| `bug` | Something broken — unexpected behavior, regression, error |
-| `task` | Defined, bounded work — refactoring, docs, test coverage |
-| `feature` | New capability — user-facing or developer-facing |
-| `chore` | Maintenance — dependency updates, CI config, tooling |
-| `epic` | Large feature grouping — 3+ child issues, not directly workable |
+| Type | Required markdown sections | When to use |
+|---|---|---|
+| `task` | none | Defined, bounded work — refactoring, docs, test coverage (default) |
+| `bug` | `## Steps to Reproduce`, `## Acceptance Criteria` | Something broken — unexpected behavior, regression, error |
+| `feature` | `## Acceptance Criteria` | New system capability (system-centric framing) |
+| `chore` | none | Maintenance — dependency updates, CI config, tooling (no behavior change) |
+| `epic` | `## Success Criteria` | Large body of work that decomposes into child issues |
+| `decision` | `## Decision`, `## Rationale`, `## Alternatives Considered` | Architecture decision record (ADR) — outcome of deliberation |
+| `spike` | `## Goal`, `## Findings` | Timeboxed investigation that reduces uncertainty before a story |
+| `story` | `## Acceptance Criteria` | User-centric framing of a feature ("As a X, I want Y...") |
+| `milestone` | none | Release boundary or sprint marker — contains no work itself |
+
+All required sections are enforced by `validation.on-create=error` — a
+`bd create` will fail if the description is missing the literal markdown
+headings listed above. The authoritative source is the
+`### Issue Types (Core Vocabulary)` section of the Basic Memory note
+`brew/brew-beads`.
+
+**Picking between similar types:**
+
+- `task` vs `chore` — does it change user-visible behavior? Behavior change → task; pure maintenance → chore
+- `feature` vs `story` — system-centric vs user-centric framing of the same change. Both are valid; the distinction is audience
+- `epic` vs `milestone` — epics ARE work (decompose into children); milestones are markers (contain no work)
+- `spike` vs `decision` — spike is the investigation; decision is the recorded outcome. `spike → decision` is a common pair
 
 ## Issue Title Convention
 
@@ -91,11 +138,11 @@ The area prefix makes issues scannable in `bd list` output.
 ```
 
 Keep descriptions concise. If the issue needs extensive context, use workflow 6
-(Enrich) to add a `## Research Context` section after creation.
+(Enrich an existing issue) to add a `## Research Context` section after creation.
 
 ## Creation Limits
 
-- **Per-topic cap**: If research (workflow 4 — Investigate a topic) yields >8 candidate issues, suggest splitting
+- **Per-topic cap**: If research (workflow 4 (Investigate topic as spike)) yields >8 candidate issues, suggest splitting
   into multiple research sessions or grouping under a tracking issue
 - **Per-session cap**: Creating >15 issues in one grooming session is a signal that
   the topic needs higher-level scoping first (consider an epic)

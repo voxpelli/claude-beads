@@ -70,7 +70,7 @@ Dev tooling only: validation and linting via `npm run check`.
 
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
-  investigate-topic, create-issues-from-findings, enrich-existing-issue.
+  investigate-topic-as-spike, create-issues-from-findings, enrich-existing-issue.
   Cross-references Basic Memory for known friction and uses Tavily/DeepWiki for
   external research. User-invocable as `/backlog-groomer`.
 - **retrospective** — Generates a sprint retrospective: reads git history,
@@ -244,6 +244,22 @@ rm -rf directory        # NOT: rm -r directory
 This project uses `bd` (beads) for all issue tracking. Do NOT use markdown TODOs
 or task lists. Run `bd ready` to find available work, `bd update <id> --claim` to
 claim it, `bd close <id>` to complete it.
+
+### Issue types (9 total)
+
+All issue types are validated on creation with `validation.on-create=error`. Authoritative source: BM `brew/brew-beads` `### Issue Types (Core Vocabulary)`. Provenance: `engineering/agents/cli-validation-discovery-via-json-error-probing`.
+
+| Type | Required markdown sections | When to use |
+| --- | --- | --- |
+| `task` | *(none)* | Single atomic unit of work |
+| `bug` | `## Steps to Reproduce`, `## Acceptance Criteria` | Something in production/main broke |
+| `feature` | `## Acceptance Criteria` | New user-facing capability |
+| `chore` | *(none)* | Internal maintenance, cleanup, refactor |
+| `epic` | `## Success Criteria` | Large initiative spanning 5+ issues; tracks work across sprints |
+| `decision` | `## Decision`, `## Rationale`, `## Alternatives Considered` | Record an architectural or product choice with reasoning |
+| `spike` | `## Goal`, `## Findings` | Timeboxed investigation (1–3 days) to answer a question before committing to work. Always closes with findings, not code. |
+| `story` | `## Acceptance Criteria` | User-centric reframing of a feature: "As a \[user], I can \[action] so that \[outcome]" |
+| `milestone` | *(none)* | Structural marker (e.g., `v1.0`, `public-alpha`, `launch-date`). No effort, no assignment. Groups related issues. |
 
 ### Session completion
 

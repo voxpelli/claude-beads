@@ -30,7 +30,37 @@ explicit user approval before execution.
 
 Determine which workflow the user needs based on their request. If ambiguous,
 default to workflow 1 (review and triage) for grooming requests, or workflow 4
-(investigate) for research requests.
+(Investigate topic as spike) for research requests.
+
+## Issue Types Reference
+
+Beads v1.0+ defines nine core issue types. Pick the type that matches the
+*shape* of the work, not just its size. The `validation.on-create=error` gate
+enforces required markdown sections per type — a `bd create` will fail if the
+required sections are missing.
+
+| Type | Required markdown sections | When to use |
+|---|---|---|
+| `task` | none | General work item (default) |
+| `bug` | `## Steps to Reproduce`, `## Acceptance Criteria` | Defect — behavior diverges from intended |
+| `feature` | `## Acceptance Criteria` | New system capability (system-centric framing) |
+| `chore` | none | Maintenance / housekeeping with no user-visible behavior change |
+| `epic` | `## Success Criteria` | Large body of work that decomposes into child issues |
+| `decision` | `## Decision`, `## Rationale`, `## Alternatives Considered` | Architecture decision record (ADR) — outcome of deliberation |
+| `spike` | `## Goal`, `## Findings` | Timeboxed investigation that reduces uncertainty before a story |
+| `story` | `## Acceptance Criteria` | User-centric framing of a feature ("As a X, I want Y...") |
+| `milestone` | none | Structural marker; contains no work itself |
+
+**Authoritative source:** the `### Issue Types (Core Vocabulary)` section of
+the Basic Memory note `brew/brew-beads`. The required-sections table was
+discovered empirically per the
+`engineering/agents/cli-validation-discovery-via-json-error-probing` Basic
+Memory note (probe each type with `bd create --json` and parse the error).
+
+Type-pair conventions worth knowing: `spike → story` and `spike → decision`
+(investigation precedes commitment); `epic ⊃ stories ⊃ tasks` (containment
+hierarchy); `milestone ⊐ {epics, stories, tasks}` (set marker for release
+boundaries).
 
 ## Grooming Workflows
 
@@ -47,15 +77,29 @@ duplicates, blocked chains, and missing context.
    issues stale >30 days as "stalled."
 3. Run `bd duplicates` to detect content-hash matches (if available; if not,
    use `bd search` with keywords from suspicious titles for near-matches).
-4. Run `bd blocked` to identify issues stuck on unresolved dependencies.
-5. Cross-reference with `UPSTREAM-*.md` and `SYNERGY-*.md` files if they exist
+4. Run `bd find-duplicates` (alias `find-dups`) to surface near-duplicates that
+   `bd duplicates` misses. Two-stage similarity architecture:
+   - **Mechanical Jaccard tokenization** is the default
+     (`--method=mechanical`, threshold `0.5`). Free, fast, pre-filters AI calls.
+     Drop to `--threshold=0.4` for more recall when the backlog is small.
+   - **AI semantic comparison** is opt-in (`--method=ai`). Requires
+     `ai.api_key` config and bills per call (mechanical pre-filter limits
+     spend). Only invoke when the user explicitly requests it or
+     `BD_AI_DUPES=1` is set in the environment.
+   - Distinct from `bd duplicates` (which catches only exact content matches).
+   - Present each candidate pair with a merge or supersede recommendation
+     using `bd supersede <loser> <winner>` (preserves history) or
+     `bd duplicate <loser> <winner>` (marks duplicate without closing).
+     Apply only with explicit per-pair user approval.
+5. Run `bd blocked` to identify issues stuck on unresolved dependencies.
+6. Cross-reference with `UPSTREAM-*.md` and `SYNERGY-*.md` files if they exist
    (use `Glob` to find them). Note any UPSTREAM friction or SYNERGY extraction
    candidates that should have a corresponding beads issue.
-6. If Basic Memory MCP tools are available, call
+7. If Basic Memory MCP tools are available, call
    `mcp__basic-memory__search_notes` for key dependencies from `package.json`
    to surface known friction not yet in the backlog. Skip silently if
    unavailable.
-7. Present a structured triage table:
+8. Present a structured triage table:
 
    ```
    | ID | Title | Age | Priority | Flags |
@@ -63,7 +107,7 @@ duplicates, blocked chains, and missing context.
    | vp-beads-xxx | ... | 45d | P3 | stale, missing description |
    ```
 
-8. Suggest per-issue actions: close, reprioritize, merge with duplicate, refine
+9. Suggest per-issue actions: close, reprioritize, merge with duplicate, refine
    scope, or leave as-is. **No mutations without explicit per-item approval.**
 
 ### 2. Reprioritize
@@ -111,10 +155,19 @@ staleness thresholds.
 
 ## Research Workflows
 
-### 4. Investigate a topic
+### 4. Investigate topic as spike
 
-Research a topic to inform future work. Takes a topic from the user's request
-or the `argument-hint`.
+*(formerly: investigate-topic)*
+
+Research a topic to inform future work — a timeboxed investigation that
+reduces uncertainty before committing to a story or decision. When the
+investigation is itself worth tracking in beads (e.g. multi-session research),
+the result is a `spike` issue with `## Goal` + `## Findings` sections. When the
+investigation immediately produces actionable items, hand off to workflow 5
+(Create issues from findings) which will create the appropriate downstream
+types (`story`, `feature`, `task`, `decision`, etc.).
+
+Takes a topic from the user's request or the `argument-hint`.
 
 **Steps:**
 
@@ -146,7 +199,7 @@ or the `argument-hint`.
 ### 5. Create issues from findings
 
 Turn research findings into structured beads issues. Takes output from
-workflow 4 (Investigate a topic) or user-provided findings.
+workflow 4 (Investigate topic as spike) or user-provided findings.
 
 **Steps:**
 
@@ -156,20 +209,38 @@ workflow 4 (Investigate a topic) or user-provided findings.
    existing issues. Surface near-matches for the user to review.
 3. Propose structured issues. For each:
    - **Title**: `[Area] Action verb + subject` convention
-   - **Type**: bug / task / feature / chore (see reference file for logic)
+   - **Type**: pick from the nine core types — `task`, `bug`, `feature`,
+     `chore`, `epic`, `decision`, `spike`, `story`, `milestone`. See the
+     **Issue Types Reference** above for the full table; consult
+     `references/backlog-health-heuristics.md` for assignment logic
    - **Priority**: 0-4 with explicit reasoning
-   - **Description**: problem + why it matters + suggested first step
+   - **Description**: must include the type's required sections (e.g. `bug`
+     needs `## Steps to Reproduce` + `## Acceptance Criteria`; `spike` needs
+     `## Goal` + `## Findings`; `decision` needs `## Decision` +
+     `## Rationale` + `## Alternatives Considered`). The
+     `validation.on-create=error` gate will reject creates that miss these
+     headings. Beyond required sections, follow the problem + why it matters
+     + suggested first step pattern
 4. If >3 related issues emerge from one topic: propose a tracking issue
    (`bd create -t epic`) as a group container, with child issues linked.
-5. If >8 issues from one topic: suggest splitting into multiple research
+   Use `milestone` instead of `epic` if the parent represents a release
+   boundary or set of work with no decomposition of its own.
+5. If the investigation itself yielded enough output to warrant a record but
+   not yet enough to commit to downstream work, create a `spike` capturing
+   `## Goal` and `## Findings` rather than forcing premature `story` or
+   `feature` issues.
+6. If >8 issues from one topic: suggest splitting into multiple research
    sessions rather than creating a sprawling epic.
-6. User approves, edits, or rejects each proposed issue before any `bd create`
+7. User approves, edits, or rejects each proposed issue before any `bd create`
    command runs. Present the full list first, then confirm.
-7. Run `bd create "title" -t <type> -p <priority> --description "..."` per
-   approved issue.
-8. Add dependencies where natural ordering exists: `bd dep add <child> <parent>`.
-9. Report: created issue IDs, dependency graph, and suggested first issue to
-   start (highest priority with no unsatisfied dependencies).
+8. Run `bd create "title" -t <type> -p <priority> --description "..."` per
+   approved issue. The description string must include the literal required
+   markdown headings for the chosen type.
+9. Add dependencies where natural ordering exists: `bd dep add <child> <parent>`.
+   Common type-pair patterns: `spike → story`, `spike → decision`,
+   `story → task`, `epic ⊃ stories`.
+10. Report: created issue IDs, dependency graph, and suggested first issue to
+    start (highest priority with no unsatisfied dependencies).
 
 See `references/backlog-health-heuristics.md` for title conventions, description
 templates, and creation limits.
