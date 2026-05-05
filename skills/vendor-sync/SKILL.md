@@ -40,15 +40,52 @@ entry has the shape:
 - **package** — the npm package name; maps to `UPSTREAM-<name>.md` filename
   (slashes → `--`, drop leading `@`): e.g. `@voxpelli/pkg` → `UPSTREAM-voxpelli--pkg.md`
 
+Optional fields:
+
+- **local-path** — alternative on-disk path for the subtree if it does not
+  live at `prefix` (rare; used for monorepo layouts or CI checkout paths).
+  When absent, skills use `prefix` as the on-disk location.
+
 If `.claude/vendor-registry.json` does not exist, tell the user and stop. Do
 not attempt to read the subtree table from any other source.
+
+### Local override file
+
+`.claude/vendor-registry.local.json` is a gitignored companion that overrides
+fields in the committed `.claude/vendor-registry.json`. It mirrors the
+`settings.local.json` convention: machine-specific state stays out of version
+control, while the committed registry documents the shared schema.
+
+```json
+[
+  { "package": "@scope/pkg-name", "local-path": "/abs/path/to/checkout" }
+]
+```
+
+Resolution rules:
+
+1. Read `.claude/vendor-registry.json`.
+2. If `.claude/vendor-registry.local.json` exists, read it and merge on top,
+   matching entries by the `package` key (the most stable identifier across
+   machines). Fields present in `.local.json` win; absent fields keep the
+   base value.
+3. Entries in `.local.json` whose `package` does not appear in the base
+   registry are ignored — the base registry remains the authoritative source
+   of which subtrees exist.
+
+Vendor subtrees almost always live at their `prefix` and don't need local
+overrides — this companion exists for symmetry with `synergy-registry.local.json`
+and for the rare monorepo or non-standard checkout case. Never commit
+`.claude/vendor-registry.local.json`: it encodes machine-specific paths.
 
 ## Workflow
 
 ### 1. Determine scope
 
-Read and parse `.claude/vendor-registry.json`. Then determine which subtrees
-to pull:
+Read and parse `.claude/vendor-registry.json`. If
+`.claude/vendor-registry.local.json` exists, read it and merge on top per the
+resolution rules in the Registry section above (per-entry merge by `package`
+key; fields in `.local.json` win). Then determine which subtrees to pull:
 
 - If the user names a specific package (by prefix directory, remote alias, or
   package name), pull only that entry

@@ -2,6 +2,8 @@
 RETRO-*.md
 SWARM-*.md
 .claude/*.local.*
+.claude/synergy-registry.local.json
+.claude/vendor-registry.local.json
 node_modules/
 
 # Dolt database files (added by bd init)

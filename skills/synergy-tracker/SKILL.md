@@ -161,8 +161,11 @@ See `references/synergy-entry-format.md` for full entry format templates and
 field value definitions.
 
 **Bilateral reciprocation mandate.** When the sibling has already written
-entries from their side (check `../<sibling>/SYNERGY-<this-project>.md` if
-the sibling repo is accessible on disk), reciprocate by re-verifying each
+entries from their side (resolve the sibling path via the registry-with-override
+pattern from workflow 3 (Compare with sibling) — `local-path` from the merged
+registry, falling back to `../<sibling>/`; check
+`<resolved-path>/SYNERGY-<this-project>.md` if the sibling repo is accessible
+on disk), reciprocate by re-verifying each
 entry from this project's angle, recording your verification dates, and
 noting any drift you observe. Do not skip duplicates — the reciprocation IS
 the verification step. As captured in BM
@@ -256,9 +259,10 @@ Summarize the current state of all synergy tracking files.
 ```
 
 If all files are empty or no SYNERGY files exist, say so and suggest whether a
-comparison run (workflow 3, compare with sibling) would be useful — note that it
-works best when the
-sibling repo is accessible at `../<project-name>` on disk.
+comparison run (workflow 3 (Compare with sibling)) would be useful — note that it
+works best when the sibling repo is accessible on disk at the registry-resolved
+path (`local-path` from the merged `.claude/synergy-registry.json` +
+`.claude/synergy-registry.local.json`, falling back to `../<project-name>`).
 
 ### 3. Compare with sibling
 
@@ -268,13 +272,27 @@ unlogged synergy observations.
 **Steps:**
 
 1. Identify the sibling from the user's request or the `argument-hint` — if
-   the user named a project, use that name directly without re-asking. Read
-   `.claude/synergy-registry.json` for the sibling's `remote` and any metadata.
-   If no project is identified from the argument, registry, or existing SYNERGY
-   files, ask the user which sibling project to compare with.
-2. **Gather sibling context.** To find the sibling repo on disk, check
-   `../<project-name>` relative to the current project root. If not found, ask
-   the user for the path. Read the sibling's key files if accessible:
+   the user named a project, use that name directly without re-asking. Load
+   the registry with override merge:
+
+   1. Read `.claude/synergy-registry.json` for the sibling's `remote` and any
+      metadata.
+   2. If `.claude/synergy-registry.local.json` exists, read it and merge it on
+      top of the base registry. Match entries by the `name` key (the
+      human-stable identifier across machines and BM entity paths); for each
+      matched entry, fields present in `.local.json` win. Entries in
+      `.local.json` with no matching `name` in the base registry are ignored
+      (the base registry is the authoritative source of which siblings exist).
+
+   If no project is identified from the argument, merged registry, or existing
+   SYNERGY files, ask the user which sibling project to compare with.
+2. **Gather sibling context.** Resolve the sibling's local path: prefer the
+   `local-path` field on the merged registry entry (relative paths are resolved
+   from the current project root); if absent, fall back to `../<project-name>`
+   relative to the current project root. If the resolved path is not
+   accessible, ask the user for the path (and suggest they record it in
+   `.claude/synergy-registry.local.json` to avoid re-prompting). Read the
+   sibling's key files if accessible:
    - `package.json` — dependencies, scripts, entry points
    - `CLAUDE.md` — conventions, architecture, workflow documentation
    - Skill files (`Glob` for `skills/**/SKILL.md`) — what skills exist, their
@@ -336,9 +354,12 @@ trend-review boundaries.
    to be detected without re-verification.
 2. **Reciprocation check.** For each shared-pattern entry, ask whether the
    sibling project has a corresponding entry in its own `SYNERGY-<this>.md`.
-   Where the sibling repo is accessible at `../<project-name>`, glob for the
-   reciprocal file and grep for the entry title. Asymmetric tracking silently
-   misses drift — see workflow 1 (Log) bilateral reciprocation mandate.
+   Resolve the sibling path via the registry-with-override pattern from
+   workflow 3 (Compare with sibling) — `local-path` on the merged registry
+   entry, falling back to `../<project-name>`. Where the resolved path is
+   accessible, glob for the reciprocal file and grep for the entry title.
+   Asymmetric tracking silently misses drift — see workflow 1 (Log) bilateral
+   reciprocation mandate.
 3. **Status sweep on Extraction Candidates.** List all Extraction Candidates
    with `Readiness: ready` that have not moved (no annotation, no resolution)
    for more than 2 trend-review cycles (≈8 sprints). These are either
@@ -421,7 +442,7 @@ writing to BM; users promote selected entries manually via
   before being logged. Never write to SYNERGY files or Basic Memory without
   confirmation.
 - **Division of labor.** synergy-tracker owns `## Cross-Project Synergy` in
-  sibling project entity notes in Basic Memory (future workflow 5 — Promote to Basic Memory). upstream-tracker
+  sibling project entity notes in Basic Memory (future workflow 5 (Promote to Basic Memory)). upstream-tracker
   owns `## Upstream Friction` in npm/tool entity notes. retrospective owns
   `engineering/*` notes. These three sections never overlap.
 - **Project tempo classification.** Measure with

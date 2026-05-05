@@ -137,6 +137,16 @@ like "W3" or "W6" — the codebase spells it out.
 - **remote** — git remote alias (e.g. `"my-pkg"`)
 - **branch** — upstream branch to pull (e.g. `"main"`)
 - **package** — npm package name; maps to the `UPSTREAM-*.md` filename
+- **local-path** (optional) — alternative on-disk path for the subtree if it
+  does not live at `prefix`. When absent, skills use `prefix` as the on-disk
+  location.
+- Local override file: `.claude/vendor-registry.local.json` — gitignored
+  companion mirroring the `settings.local.json` convention. Per-entry merge
+  by the `package` key; fields in `.local.json` win. Skills load the base
+  registry first, then merge the override on top. Entries in `.local.json`
+  whose `package` is not in the base registry are ignored. Used by vendor-sync
+  workflow 1 (Determine scope). Never committed — encodes machine-specific
+  paths.
 
 ### Upstream tracking convention
 
@@ -155,7 +165,17 @@ like "W3" or "W6" — the codebase spells it out.
 - Four sections: Shared Patterns, Divergences, Extraction Candidates,
   They Have / We Don't
 - Synergy registry: `.claude/synergy-registry.json` — optional array of
-  `{ name, file, remote, bm-entity, relationship }` objects
+  `{ name, file, remote, bm-entity, relationship, local-path }` objects.
+  `local-path` (optional) gives the on-disk path to the sibling checkout
+  (relative paths resolve from this project root); when absent, skills fall
+  back to `../<name>/`.
+- Local override file: `.claude/synergy-registry.local.json` — gitignored
+  companion mirroring the `settings.local.json` convention. Per-entry merge
+  by the `name` key; fields in `.local.json` win. Skills load the base
+  registry first, then merge the override on top. Entries in `.local.json`
+  whose `name` is not in the base registry are ignored. Used by synergy-tracker
+  workflow 3 (Compare with sibling). Never committed — encodes
+  machine-specific paths.
 
 ### Basic Memory section ownership
 

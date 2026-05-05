@@ -177,10 +177,42 @@ projects have active synergy tracking relationships.
 | `remote` | no | Canonical URL for the related project |
 | `bm-entity` | no | Basic Memory entity path — consumed by workflow 5 (Promote to Basic Memory, planned for v0.10.0); informational only in v0.9.x |
 | `relationship` | no | Free-form label: `sibling-plugin`, `shared-tooling`, `fork`, `consumer` |
+| `local-path` | no | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
 
 If `.claude/synergy-registry.json` does not exist, discover SYNERGY files by
 globbing `SYNERGY-*.md`. The registry is optional but recommended for projects
 with multiple synergy relationships.
+
+### Local override file
+
+`.claude/synergy-registry.local.json` is a gitignored companion that overrides
+fields in the committed `.claude/synergy-registry.json`. It mirrors the
+`settings.local.json` convention used elsewhere in Claude Code: machine-specific
+state stays out of version control, while the committed file documents the
+shared schema.
+
+```json
+[
+  {
+    "name": "vp-knowledge",
+    "local-path": "../vp-claude"
+  }
+]
+```
+
+Resolution rules:
+
+1. Skills first read `.claude/synergy-registry.json`.
+2. If `.claude/synergy-registry.local.json` exists, skills read it and merge it
+   on top, matching entries by the `name` key. Fields present in `.local.json`
+   win; fields absent from `.local.json` keep the value from the base registry.
+3. Entries in `.local.json` whose `name` does not appear in the base registry
+   are ignored — the base registry remains the authoritative source of which
+   siblings exist.
+
+Use this file to record local checkouts that don't follow the `../<name>/`
+convention (different parent directory, monorepo subdirectories, CI checkout
+paths). Never commit it: it encodes machine-specific paths.
 
 ## Lifecycle rules
 
