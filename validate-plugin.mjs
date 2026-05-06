@@ -111,6 +111,78 @@ function auditToolReferences (file, content, declaredTools, fieldName) {
   }
 }
 
+/**
+ * Replace each character of `slice` with a space, preserving newlines.
+ * Used to mask out regions (frontmatter, code fences, headings, quoted strings)
+ * while keeping byte/line offsets stable so match positions still map back to
+ * the original file line/column.
+ * @param {string} slice
+ * @returns {string}
+ */
+function blankPreservingNewlines (slice) {
+  return slice.replace(/[^\n]/g, ' ')
+}
+
+/**
+ * Audit naked `workflow N` cross-references missing the `(Name)` parenthetical.
+ *
+ * Convention (CLAUDE.md "Workflow cross-references"): every cross-reference of
+ * `workflow N` MUST include the workflow name parenthetically — e.g.,
+ * `workflow 3 (Post-wave gate)`. Bare references like `workflow 6` or
+ * `workflow 1 step 3` break silently if workflows are renumbered.
+ *
+ * Stripping (positions preserved by replacing with spaces):
+ *   1. YAML frontmatter at file top.
+ *   2. Fenced code blocks (triple-backtick).
+ *   3. Headings (lines starting with `#`).
+ *   4. Single- and double-quoted string literals (the convention discusses
+ *      `"workflow 6"` and `'workflow 6'` as meta-examples — and skill
+ *      descriptions contain quoted trigger phrases).
+ *
+ * Match: /workflow\s+\d+/i not followed by `\s*\(`. Whitespace-tolerant on the
+ * lookahead so line-wrapped `workflow 3\n   (Name)` is treated as well-formed.
+ *
+ * @param {string} file
+ * @param {string} content
+ */
+function auditWorkflowReferences (file, content) {
+  let masked = content
+
+  // 1. Strip YAML frontmatter (file top only).
+  masked = masked.replace(/^---\n[\s\S]*?\n---/, blankPreservingNewlines)
+
+  // 2. Strip fenced code blocks (``` ... ```).
+  masked = masked.replace(/```[\s\S]*?```/g, blankPreservingNewlines)
+
+  // 3. Strip headings (lines starting with #).
+  masked = masked.replace(/^#.*$/gm, blankPreservingNewlines)
+
+  // 4. Strip single- and double-quoted string literals (no embedded newlines).
+  masked = masked.replace(/'[^'\n]*'/g, blankPreservingNewlines)
+  masked = masked.replace(/"[^"\n]*"/g, blankPreservingNewlines)
+
+  // Find naked `workflow N` references — case-insensitive (capitalized at
+  // sentence start is fine), digits+, not followed by `\s*\(`.
+  const pattern = /\bworkflow\s+\d+\b(?!\s*\()/gi
+
+  for (const match of masked.matchAll(pattern)) {
+    const offset = /** @type {number} */ (match.index)
+    const before = content.slice(0, offset)
+    const line = before.split('\n').length
+    const lastNewline = before.lastIndexOf('\n')
+    const column = offset - (lastNewline + 1) + 1
+    // Pull the original line for context.
+    const lineStart = lastNewline + 1
+    const lineEndRel = content.slice(lineStart).indexOf('\n')
+    const lineEnd = lineEndRel === -1 ? content.length : lineStart + lineEndRel
+    const contextLine = content.slice(lineStart, lineEnd)
+    error(
+      file,
+      `${line}:${column} — naked workflow reference: "${match[0]}". Convention: workflow N (Name). Context: ${contextLine.trim()}`,
+    )
+  }
+}
+
 // --- plugin.json ---
 
 const pluginPath = join(ROOT, '.claude-plugin', 'plugin.json')
@@ -229,6 +301,7 @@ for (const file of skillFiles) {
     validateMcpPrefixes(file, /** @type {string[]} */ (fm['allowed-tools']))
     auditToolReferences(file, content, /** @type {string[]} */ (fm['allowed-tools']), 'allowed-tools')
   }
+  auditWorkflowReferences(file, content)
   if ('user-invocable' in fm && typeof fm['user-invocable'] !== 'boolean') {
     error(file, `user-invocable must be a boolean, got ${typeof fm['user-invocable']}`)
   }
@@ -275,6 +348,7 @@ if (existsSync(agentsDir)) {
       validateMcpPrefixes(file, /** @type {string[]} */ (fm.tools))
       auditToolReferences(file, content, /** @type {string[]} */ (fm.tools), 'tools')
     }
+    auditWorkflowReferences(file, content)
 
     if ('effort' in fm && !VALID_EFFORT_VALUES.has(String(fm.effort))) {
       warn(file, `effort "${String(fm.effort)}" is not a recognized value (${[...VALID_EFFORT_VALUES].join(', ')})`)
@@ -309,6 +383,14 @@ if (existsSync(agentsDir)) {
       }
     }
   }
+}
+
+// --- CLAUDE.md (workflow-reference audit only) ---
+
+const claudeMdPath = join(ROOT, 'CLAUDE.md')
+if (existsSync(claudeMdPath)) {
+  const claudeContent = await readFile(claudeMdPath, 'utf8')
+  auditWorkflowReferences(claudeMdPath, claudeContent)
 }
 
 // --- Report ---

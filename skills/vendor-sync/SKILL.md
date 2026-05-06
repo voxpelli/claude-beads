@@ -158,7 +158,8 @@ only at the residuals.
    - `.local.json` entry, when written, must have `package` and `local-path`.
 
    On base-registry parse failure or missing required fields, abort
-   workflow 0 entirely — report the failure and offer to re-run. On
+   workflow 0 (Bootstrap registry) entirely — report the failure and offer
+   to re-run. On
    `.local.json` parse failure only, warn and continue without the local
    override (the base registry alone is still usable).
 
@@ -182,7 +183,7 @@ only at the residuals.
 The `UPSTREAM-<package>.md` filename for each new entry follows the standard
 convention: slashes → `--`, drop leading `@` (e.g. `@scope/pkg` →
 `UPSTREAM-scope--pkg.md`). Workflow 1 (Determine scope) and downstream steps
-will create these files lazily; workflow 0 does not pre-create them.
+will create these files lazily; workflow 0 (Bootstrap registry) does not pre-create them.
 
 ### 1. Determine scope
 
@@ -382,8 +383,8 @@ Summarize the results:
 
 - **Registry not found** — tell the user this project has no
   `.claude/vendor-registry.json` and offer to run workflow 0 (Bootstrap
-  registry) to create it interactively. If the user agrees, run workflow
-  0, then resume. Otherwise stop.
+  registry) to create it interactively. If the user agrees, run workflow 0
+  (Bootstrap registry), then resume. Otherwise stop.
 - **No changes** — if a pull reports "Already up to date", skip steps 4–8b for
   that entry and note it in the report.
 - **npm install failures** — most commonly caused by stale `node_modules/`

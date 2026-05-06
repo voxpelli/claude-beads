@@ -334,8 +334,9 @@ sibling repo's bd backlog).
 
    If the user agrees, defer to workflow 5 (Promote to Basic Memory) for the
    actual write — invoke its single-entry path scoped to this entry (steps 3-4
-   of workflow 5). Step 8 only **offers** promotion; workflow 5 **performs**
-   it. This split keeps `## Cross-Project Synergy` writes within workflow 5's
+   of workflow 5 (Promote to Basic Memory)). Step 8 only **offers** promotion;
+   workflow 5 (Promote to Basic Memory) **performs** it. This split keeps
+   `## Cross-Project Synergy` writes within workflow 5 (Promote to Basic Memory)'s
    sole-owner boundary.
 
    If the user declines, or if Basic Memory tools are not available, or if the
@@ -503,8 +504,8 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
      the title already appears in the subsection, skip. If `find_replace`
      returns zero replacements despite `expected_replacements=1`, the note was
      edited between `read_note` and `edit_note` — do NOT annotate the local
-     entry; report "BM note changed since read — re-run workflow 5 for this
-     entry" and continue with the next candidate.
+     entry; report "BM note changed since read — re-run workflow 5 (Promote
+     to Basic Memory) for this entry" and continue with the next candidate.
    - **Note exists, no `## Cross-Project Synergy` section** — call
      `mcp__basic-memory__edit_note` with `insert_before_section` on
      `Relations` to add the full section block (all five subsections per the
@@ -630,7 +631,7 @@ boundaries:
   in low-activity repos.
 
 Workflow 5 (Promote to Basic Memory) is invocable as
-`/synergy-tracker workflow 5` and writes generalized synergy entries into
+`/synergy-tracker workflow 5 (Promote to Basic Memory)` and writes generalized synergy entries into
 the `## Cross-Project Synergy` section of sibling project entity notes.
 Workflow 4 (Trend Review) feeds it by surfacing promotion candidates at
 trend-review boundaries.

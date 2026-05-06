@@ -70,7 +70,7 @@ this project's side of the SYNERGY/UPSTREAM files.
   sibling SYNERGY) below cites it. Per RETRO-10 YAGNI guard: extract this to
   a shared helper only when a third skill needs the same logic.
 - **Surfacing reciprocal-friction findings is in scope; acting on them is
-  not.** Workflow 3 Mode B (see below) reads the sibling's
+  not.** Workflow 3 (Sync sibling UPSTREAM) Mode B (see below) reads the sibling's
   `UPSTREAM-<this-project>.md` to surface friction the sibling tracks about
   this project. Filing the resulting work as bugs/features/opportunities on
   this side is `/upstream-tracker` workflow 1 (Log a new entry)'s job.
@@ -414,7 +414,7 @@ Memory)'s per-entry confirmation pattern.
 1. Re-run workflow 2 (Sync sibling SYNERGY) finding (a) (reciprocal gaps)
    for each accessible sibling, applying the stricter matching rules from
    the Hard Limits section below: Pass 1 (deterministic) matches only;
-   any Pass 2 (judgment) matches from workflow 2 are added back to the
+   any Pass 2 (judgment) matches from workflow 2 (Sync sibling SYNERGY) are added back to the
    reciprocation queue with an extra disambiguation prompt rather than
    suppressed silently. These are the entries on this side that the
    sibling demonstrably lacks.
@@ -470,12 +470,12 @@ Memory)'s per-entry confirmation pattern.
 - Never mirrors entries from `## They Have / We Don't`. The section is
   intrinsically asymmetric (entries here describe sibling capabilities
   WE lack; the sibling's same-named section describes the inverse
-  asymmetry). Workflow 2 already excludes this section from finding (a),
+  asymmetry). Workflow 2 (Sync sibling SYNERGY) already excludes this section from finding (a),
   but this is restated here as a mutation-side guard: even if a future
-  edit relaxes the workflow 2 exclusion, workflow 4 must never write a
+  edit relaxes the workflow 2 (Sync sibling SYNERGY) exclusion, workflow 4 (Apply reciprocation batch) must never write a
   `They Have / We Don't` entry to the sibling.
 - The reciprocal-gap list is computed using **Pass 1 matches only**.
-  Entries that paired via Pass 2 (judgment) in workflow 2 are added back
+  Entries that paired via Pass 2 (judgment) in workflow 2 (Sync sibling SYNERGY) are added back
   to the reciprocation queue and presented to the user with a flag:
   "This entry may already exist on the sibling as `<pass-2-matched-title>`
   — does that match? \[y=skip / n=write reciprocal anyway / skip-rest]".
@@ -560,23 +560,23 @@ without commitment to any follow-up action.
     (Apply reciprocation batch)'s per-entry confirmation gate where the
     user can reject. Under `--auto-reciprocate` this asymmetry inverts —
     a false-positive pass-2 match can suppress a reciprocal entry that
-    should be written. Therefore: workflow 4 re-runs pass 1 only and
+    should be written. Therefore: workflow 4 (Apply reciprocation batch) re-runs pass 1 only and
     treats pass 2 matches as advisory candidates that REQUIRE the user's
     per-entry confirmation to count as matches (mirrors the existing
     write-confirmation gate; the spec defaults to caution at the mutation
     boundary).
 - **Stale threshold is inline.** 8 sprints (≈ two trend-review cycles) for
   SYNERGY `Status: aligned` rows; 3 months for UPSTREAM entries; 6 months
-  for the workflow 3 Mode B "shipped" look-back horizon (findings (g) and
+  for the workflow 3 (Sync sibling UPSTREAM) Mode B "shipped" look-back horizon (findings (g) and
   (h)). Canonical definitions for the 8-sprint and 3-month thresholds
   live in `/synergy-tracker` workflow 4 (Trend review (quarterly)) and
   `/upstream-tracker` workflow 4 (Trend review (quarterly)). The 6-month
   Mode B horizon is /sibling-sync's own choice — broader than the
   staleness flag because it requires cross-side evidence, not just age.
   When the canonical thresholds change, this skill must be updated to
-  match — track via the validate-plugin convention check (vp-beads-9we,
-  planned) once it ships.
-- **Canonical project-name derivation.** Workflow 3 Mode B needs this
+  match — the validate-plugin convention check (vp-beads-9we) catches
+  bare workflow refs but not threshold drift.
+- **Canonical project-name derivation.** Workflow 3 (Sync sibling UPSTREAM) Mode B needs this
   project's own name to compute `UPSTREAM-<this-name>.md` at the sibling's
   root; workflow 4 (Apply reciprocation batch) needs it to name
   `SYNERGY-<this-project>.md` on the sibling. Derivation uses a four-tier
@@ -594,7 +594,7 @@ without commitment to any follow-up action.
 - **Companion to /vendor-sync.** vendor-sync handles upstream → project
   drift (subtree pulls, UPSTREAM auto-resolve). sibling-sync handles
   peer-to-peer drift along two axes: SYNERGY reciprocation/status
-  divergence (workflow 2), and UPSTREAM friction tracked across both sides
+  divergence (workflow 2 (Sync sibling SYNERGY)), and UPSTREAM friction tracked across both sides
   (workflow 3 (Sync sibling UPSTREAM) — both shared-dependency Mode A and
   reciprocal-friction Mode B). Both skills default to reporting / read-only paths and gate
   mutations on explicit user intent.
@@ -626,6 +626,6 @@ without commitment to any follow-up action.
   gaps to apply" and exit cleanly without touching any file.
 - **Project-name not derivable** — if both `.claude-plugin/plugin.json` is
   absent (or has no `name`) AND the project root directory basename is
-  empty (e.g., the working directory is `/`), skip workflow 3 Mode B for
-  every sibling and report the limitation in the workflow 3 output. Mode A
-  still runs normally; SYNERGY workflow 2 is unaffected.
+  empty (e.g., the working directory is `/`), skip workflow 3 (Sync sibling UPSTREAM) Mode B for
+  every sibling and report the limitation in the workflow 3 (Sync sibling UPSTREAM) output. Mode A
+  still runs normally; SYNERGY workflow 2 (Sync sibling SYNERGY) is unaffected.
