@@ -99,13 +99,18 @@ Dev tooling only: validation and linting via `npm run check`.
   vp-* projects. Four workflows: discover-siblings (registry resolution +
   path probing), sync-sibling-synergy (reciprocal gaps, stale alignment
   claims, divergence convergence-status drift), sync-sibling-upstream
-  (duplicate friction, complementary workarounds, sibling-only entries on
-  shared dependencies), apply-reciprocation-batch (opt-in `--auto-reciprocate`
-  flag, per-entry confirmation, writes only to the sibling side). Read-only
-  by default. Distinct from `/vendor-sync` (upstream → project drift,
-  subtree pulls) and `/synergy-tracker` (logging entries here on this side);
-  sibling-sync compares both sides without writing on this side. User-invocable
-  as `/sibling-sync`.
+  (two pairing modes — Mode A: shared-dependency basename intersection
+  surfacing duplicate friction, complementary workarounds, sibling-only
+  entries; Mode B: reciprocal sibling-friction pairs `UPSTREAM-<sibling>.md`
+  here ↔ `UPSTREAM-<this>.md` there, surfacing friction the sibling tracks
+  about us, our open friction against them, and cross-side staleness from
+  shipped fixes), apply-reciprocation-batch (opt-in `--auto-reciprocate`
+  flag, per-entry confirmation, writes only to the sibling side; SYNERGY
+  finding (a) only — never UPSTREAM). Read-only by default. Distinct from
+  `/vendor-sync` (upstream → project drift, subtree pulls) and
+  `/synergy-tracker` (logging entries here on this side); sibling-sync
+  compares both sides without writing on this side. User-invocable as
+  `/sibling-sync`.
 - **synergy-tracker** — Manages `SYNERGY-*.md` files that track cross-project
   patterns, divergences, extraction candidates, and capability gaps between
   sibling projects. Supports three workflows: log, review, compare-with-sibling.
@@ -173,7 +178,14 @@ like "W3" or "W6" — the codebase spells it out.
 ### Synergy tracking convention
 
 - Files named `SYNERGY-<project-name>.md` in the project root
-- Project name derived from sibling repo name: slashes → `--`, drop leading `@`
+- Project name derived via the four-tier algorithm in
+  `skills/synergy-tracker/references/project-name-derivation.md`
+  (sibling-registry back-pointer → plugin manifest → package manifest /
+  registry `name` → directory basename); normalization rules
+  (slashes → `--`, drop leading `@`) live in
+  `skills/synergy-tracker/references/synergy-entry-format.md` "Naming
+  convention". Both `/synergy-tracker` and `/sibling-sync` use the same
+  algorithm
 - Permanent files — never deleted, even when all entries are resolved
 - Four sections: Shared Patterns, Divergences, Extraction Candidates,
   They Have / We Don't

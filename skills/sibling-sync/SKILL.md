@@ -1,6 +1,6 @@
 ---
 name: sibling-sync
-description: "Bilateral SYNERGY/UPSTREAM reconciliation across sibling projects. Use when the user wants to sync sibling SYNERGY/UPSTREAM files, compare both sides to surface drift, find reciprocation gaps (entries here but not there, or vice versa), flag stale-aligned rows, detect status drift across sides, or apply a reciprocation batch with --auto-reciprocate. NOT for logging entries on this side (use /synergy-tracker workflow 1 (Log a synergy entry)) — sibling-sync compares both sides without writing by default. NOT for upstream → project drift (use /vendor-sync); sibling-sync handles peer-to-peer drift between sibling vp-* projects. Trigger phrases: 'sibling sync', 'compare siblings', 'sync sibling', 'reconcile siblings', 'reciprocation gap', 'sync drift', 'bilateral sync', 'sync SYNERGY', 'sync UPSTREAM both ways', 'auto-reciprocate', 'check sibling drift', 'peer-to-peer drift', 'cross-project drift', 'sibling reconciliation'."
+description: "Bilateral SYNERGY/UPSTREAM reconciliation across sibling projects. Use when the user wants to sync sibling SYNERGY/UPSTREAM files, compare both sides to surface drift, find reciprocation gaps (entries here but not there, or vice versa), flag stale-aligned rows, detect status drift across sides, surface friction the sibling tracks ABOUT this project (their UPSTREAM-<this>.md), or apply a reciprocation batch with --auto-reciprocate. Workflow 3 covers two UPSTREAM pairing modes: shared third-party dependencies AND reciprocal sibling-friction pairs (UPSTREAM-<sibling>.md here ↔ UPSTREAM-<this>.md there). NOT for logging entries on this side (use /synergy-tracker workflow 1 (Log a synergy entry)) — sibling-sync compares both sides without writing by default. NOT for upstream → project drift (use /vendor-sync); sibling-sync handles peer-to-peer drift between sibling vp-* projects. Trigger phrases: 'sibling sync', 'compare siblings', 'sync sibling', 'reconcile siblings', 'reciprocation gap', 'sync drift', 'bilateral sync', 'sync SYNERGY', 'sync UPSTREAM both ways', 'auto-reciprocate', 'check sibling drift', 'peer-to-peer drift', 'cross-project drift', 'sibling reconciliation', 'sibling has friction about us', 'what does the sibling say about us', 'reconcile sibling-tracked friction', 'reciprocal upstream friction', 'friction filed against this project'."
 user-invocable: true
 argument-hint: "[--auto-reciprocate] [sibling-name]"
 paths:
@@ -69,6 +69,14 @@ this project's side of the SYNERGY/UPSTREAM files.
   `/synergy-tracker` workflow 4 (Trend review (quarterly)) — workflow 2 (Sync
   sibling SYNERGY) below cites it. Per RETRO-10 YAGNI guard: extract this to
   a shared helper only when a third skill needs the same logic.
+- **Surfacing reciprocal-friction findings is in scope; acting on them is
+  not.** Workflow 3 Mode B (see below) reads the sibling's
+  `UPSTREAM-<this-project>.md` to surface friction the sibling tracks about
+  this project. Filing the resulting work as bugs/features/opportunities on
+  this side is `/upstream-tracker` workflow 1 (Log a new entry)'s job.
+  Annotating the sibling's entry as resolved is `/upstream-tracker` workflow
+  3 (Resolve an entry)'s job, performed on the sibling's side. /sibling-sync
+  reports only.
 
 ## Registry and path resolution
 
@@ -242,23 +250,53 @@ no writes.
 
 ### 3. Sync sibling UPSTREAM
 
-For each accessible sibling, identify shared `UPSTREAM-*.md` dependencies and
-compare friction tracking. Same report-only contract as workflow 2 (Sync
-sibling SYNERGY).
+For each accessible sibling, build two kinds of UPSTREAM file pairs and
+compare friction tracking on each. Same report-only contract as workflow 2
+(Sync sibling SYNERGY).
+
+**Two pairing modes coexist; both can fire on a single sibling:**
+
+- **Mode A — shared-dependency pairing.** Both sides have `UPSTREAM-<dep>.md`
+  with the same basename (e.g., both have `UPSTREAM-basic-memory.md`). The
+  files describe the same third-party dependency `<dep>`. Findings (a)–(d).
+- **Mode B — reciprocal sibling-friction pairing.** This project has
+  `UPSTREAM-<sibling-name>.md` (friction we log about the sibling) AND/OR the
+  sibling has `UPSTREAM-<this-name>.md` (friction the sibling logs about us).
+  Different basenames; same bilateral relationship. Owner-side semantics
+  invert relative to Mode A: an entry in the sibling's `UPSTREAM-<this-name>.md`
+  with `Ownership: upstream` means THIS project is the upstream that must
+  act. Findings (e)–(h).
 
 **Steps:**
 
-1. Glob this project for `UPSTREAM-*.md`. Glob the sibling's resolved
-   `local-path` for `UPSTREAM-*.md`. Compute the intersection by basename —
-   these are the shared upstream dependencies.
-2. For each shared `UPSTREAM-<dep>.md`, read both copies and parse entries
-   (Bugs, Feature Requests, Upstream Opportunities, Resolved). Build a
-   bidirectional entry map by **title** using the same 2-pass matching
-   rule as workflow 2 (deterministic lead-clause Pass 1 + judgment Pass 2
-   on residuals — see Guidelines). UPSTREAM titles are typically more
-   structured than SYNERGY titles, so Pass 2 fires less often, but the
-   rule is identical for consistency.
-3. Walk the merged map and classify each entry:
+1. **Build Mode A pairs.** Glob this project for `UPSTREAM-*.md`. Glob the
+   sibling's resolved `local-path` for `UPSTREAM-*.md`. Compute the
+   intersection by basename — each match is one Mode A pair. Record both
+   sides' full UPSTREAM basename lists for use in step 2.
+2. **Detect Mode B pair.** Derive this project's canonical name per the
+   four-tier algorithm in
+   `skills/synergy-tracker/references/project-name-derivation.md` to
+   compute `<this-name>`. Apply the same algorithm (tier 3 for the sibling
+   subject) to the registry `name` field for `<sibling-name>`. Then check:
+   - Does the sibling have `<resolved-local-path>/UPSTREAM-<this-name>.md`?
+   - Does this project have `UPSTREAM-<sibling-name>.md`?
+
+   If either file exists, this sibling has a Mode B pair (one-sided or
+   two-sided). Both files absent is normal — no reciprocal friction tracked
+   on either side. Skip Mode B for this sibling and continue.
+
+   The Mode B file pair is `<this-root>/UPSTREAM-<sibling-name>.md` ↔
+   `<sibling-root>/UPSTREAM-<this-name>.md`. By construction these basenames
+   differ from any Mode A pair's basename (Mode A keys on shared
+   third-party dep names; Mode B keys on sibling project names that appear
+   in the synergy registry). No deduplication guard needed.
+3. **Process Mode A pairs.** For each Mode A pair, read both copies and
+   parse entries (Bugs, Feature Requests, Upstream Opportunities,
+   Resolved). Build a bidirectional entry map by **title** using the same
+   2-pass matching rule as workflow 2 (deterministic lead-clause Pass 1 +
+   judgment Pass 2 on residuals — see Guidelines). UPSTREAM titles are
+   typically more structured than SYNERGY titles, so Pass 2 fires less
+   often, but the rule is identical for consistency. Classify each entry:
 
    - **(a) Duplicate friction** — same title on both sides. Sanity check:
      are the workarounds, dates, and status fields aligned? If not, it's a
@@ -274,16 +312,90 @@ sibling SYNERGY).
      `/upstream-tracker` workflow 7 (Sync from Basic Memory) or workflow 1
      (Log a new entry) to bring matching entries over here. /sibling-sync
      does NOT write here automatically.
+4. **Process Mode B pair.** Read whichever side(s) of the pair exist.
+   Parse entries the same way as step 3. Match titles bidirectionally with
+   the same 2-pass rule. Classify each entry:
 
-4. Output a structured report grouped by sibling, then by shared dependency,
-   then by finding category. Use the same output shape as workflow 2 (Sync
-   sibling SYNERGY).
+   - **(e) Sibling's unresolved friction against this project** — entries
+     in `<sibling-root>/UPSTREAM-<this-name>.md` that are NOT prefixed with
+     `_(Resolved ...)_` and NOT in a `## Resolved` section if one exists.
+     `Ownership: upstream` on these entries means THIS project owns the
+     fix (we are upstream from the sibling's perspective). Surface ALL
+     unresolved entries — every one is a request directed at us. Action
+     hint: file beads issues here or address inline; consider logging a
+     cross-reference in our `UPSTREAM-<sibling-name>.md` if a workaround
+     is built.
+   - **(f) Our unresolved friction against the sibling** — entries in
+     `<this-root>/UPSTREAM-<sibling-name>.md` that are unresolved on our
+     side and have no corresponding `_(Resolved ...)_` annotation on
+     either side. Informational: documents work blocked on the sibling.
+     Action hint: check sibling release notes or changelog for shipped
+     fixes the sibling forgot to annotate.
+   - **(g) Cross-side staleness — our entry, sibling may have shipped.**
+     Entry in `<this-root>/UPSTREAM-<sibling-name>.md` unresolved on our
+     side, but the sibling shows a "shipped" signal (see "What 'shipped'
+     means" below). Use 6 months as the look-back horizon for git-log
+     scanning. Action hint: re-verify against the sibling's current
+     release; annotate with `_(Resolved ...)_` via `/upstream-tracker`
+     workflow 3 (Resolve an entry) if confirmed shipped.
+   - **(h) Reverse cross-side staleness — sibling tracks us, we may have
+     shipped.** Entry in `<sibling-root>/UPSTREAM-<this-name>.md` unresolved
+     on the sibling's side, but this project shows a "shipped" signal
+     (recent CHANGELOG entry, `_(Resolved ...)_` in our cross-reference,
+     or git tag/commit subject within 6 months matching the entry title).
+     Read-only finding: /sibling-sync cannot write the sibling's file.
+     Action hint: notify sibling maintainer, or raise on their side via
+     `/upstream-tracker` workflow 3 (Resolve an entry) so they can
+     annotate.
 
-**Note on UPSTREAM coverage gaps:** if this project has an `UPSTREAM-<dep>.md`
-that the sibling doesn't, that's not surfaced here — it's the sibling's
-responsibility to discover via `/upstream-tracker` workflow 7 (Sync from
-Basic Memory) on its own. /sibling-sync only addresses the symmetric case
-of shared `UPSTREAM-*.md` files.
+   **What "shipped" means** (pinned definition for findings (g) and (h)):
+   a fix is shipped when (1) a CHANGELOG or `_(Resolved ...)_` annotation
+   exists on the owner's side, OR (2) the feature/fix is referenced in a
+   git tag message or commit subject within the relevant release window
+   (use `git -C <owner-path> log --oneline --since="6 months ago"` as a
+   heuristic proxy — string-match the entry title or its lead clause; do
+   not parse). A `Workaround: full` on the filing side without a
+   corresponding shipped version on the owner's side is NOT sufficient;
+   that is the filing project's mitigation, not upstream resolution.
+5. **Output.** Report Mode A findings first (grouped by sibling, then by
+   shared dependency, then by finding category), then Mode B findings
+   (grouped by sibling) under a separate header. This ordering keeps the
+   existing Mode A output shape intact and adds Mode B as an additive
+   block.
+
+**Note on UPSTREAM coverage gaps:** /sibling-sync now handles two cases:
+shared third-party dependencies (Mode A, basename intersection) and
+reciprocal sibling-friction pairs (Mode B, inverse-name detection).
+One-sided UPSTREAM files about non-sibling, non-shared dependencies are
+still out of scope — those are the sibling's responsibility to discover
+via `/upstream-tracker` workflow 7 (Sync from Basic Memory) on its own.
+
+**Output format additions for Mode B:**
+
+```
+## UPSTREAM reciprocal-friction — vp-knowledge
+
+(Mode B: this-side UPSTREAM-vp-knowledge.md ↔ sibling-side UPSTREAM-vp-beads.md)
+
+### (e) Sibling's unresolved friction against this project (we should action)
+- "vp-beads: new /sibling-sync skill" (Feature Requests, 2026-05-04) — sibling
+  marks Workaround: partial; we shipped in v0.12.0. See finding (h).
+- "synergy-tracker: mandate bilateral reciprocation" (Feature Requests, 2026-05-04)
+  Ownership on their side: upstream (us) · Workaround on their side: full
+  → file beads issue or address inline
+
+### (f) Our unresolved friction against the sibling
+- "Agent effort defaults not overridable from parent" (Feature Requests, 2026-04-05)
+  Ownership: upstream (them) · Workaround: none
+
+### (g) Cross-side staleness: our entry the sibling may have shipped
+- (none this run)
+
+### (h) Reverse staleness: sibling tracks us but we may have shipped
+- "vp-beads: new /sibling-sync skill" — v0.12.0 tag (2026-05-05) matches.
+  Sibling should annotate _(Resolved 2026-05-05, vp-beads v0.12.0)_.
+  → notify sibling maintainer; cannot write their file from here
+```
 
 ### 4. Apply reciprocation batch
 
@@ -305,9 +417,12 @@ Memory)'s per-entry confirmation pattern.
    1. Read the source entry from this project's `SYNERGY-<sibling>.md`
       (full entry text including title, date, structured fields).
    2. Determine the destination file at the sibling:
-      `<resolved-local-path>/SYNERGY-<this-project>.md`. If it does not
-      exist yet, plan to `Write` a new file using the four-section template
-      from `/synergy-tracker` references/synergy-entry-format.md.
+      `<resolved-local-path>/SYNERGY-<this-project>.md` (derive
+      `<this-project>` per
+      `skills/synergy-tracker/references/project-name-derivation.md`).
+      If it does not exist yet, plan to `Write` a new file using the
+      four-section template from
+      `skills/synergy-tracker/references/synergy-entry-format.md`.
    3. Determine the destination section from the source entry's section
       (a Shared Pattern on this side becomes a Shared Pattern on the
       sibling, etc.).
@@ -342,6 +457,11 @@ Memory)'s per-entry confirmation pattern.
   — `/upstream-tracker` workflow 7 (Sync from Basic Memory) is the right
   channel for cross-project UPSTREAM adoption (BM is the cross-project
   bridge for friction; SYNERGY is the cross-project bridge for patterns).
+  This applies equally to Mode A findings (a)–(d) AND Mode B findings
+  (e)–(h): finding (e) entries get filed natively on this side via
+  `/upstream-tracker` workflow 1 (Log a new entry), not mirrored;
+  finding (h) annotations get written by the sibling via their own
+  `/upstream-tracker` workflow 3 (Resolve an entry), not by us.
 - Never mirrors entries from `## They Have / We Don't`. The section is
   intrinsically asymmetric (entries here describe sibling capabilities
   WE lack; the sibling's same-named section describes the inverse
@@ -441,20 +561,38 @@ without commitment to any follow-up action.
     write-confirmation gate; the spec defaults to caution at the mutation
     boundary).
 - **Stale threshold is inline.** 8 sprints (≈ two trend-review cycles) for
-  SYNERGY `Status: aligned` rows; 3 months for UPSTREAM entries. Canonical
-  definitions live in `/synergy-tracker` workflow 4 (Trend review
-  (quarterly)) and `/upstream-tracker` workflow 4 (Trend review
-  (quarterly)). When those thresholds change, this skill must be updated
-  to match — track via the validate-plugin convention check (vp-beads-9we,
+  SYNERGY `Status: aligned` rows; 3 months for UPSTREAM entries; 6 months
+  for the workflow 3 Mode B "shipped" look-back horizon (findings (g) and
+  (h)). Canonical definitions for the 8-sprint and 3-month thresholds
+  live in `/synergy-tracker` workflow 4 (Trend review (quarterly)) and
+  `/upstream-tracker` workflow 4 (Trend review (quarterly)). The 6-month
+  Mode B horizon is /sibling-sync's own choice — broader than the
+  staleness flag because it requires cross-side evidence, not just age.
+  When the canonical thresholds change, this skill must be updated to
+  match — track via the validate-plugin convention check (vp-beads-9we,
   planned) once it ships.
+- **Canonical project-name derivation.** Workflow 3 Mode B needs this
+  project's own name to compute `UPSTREAM-<this-name>.md` at the sibling's
+  root; workflow 4 (Apply reciprocation batch) needs it to name
+  `SYNERGY-<this-project>.md` on the sibling. Derivation uses a four-tier
+  precedence (sibling-registry back-pointer → plugin manifest → package
+  manifest → directory basename), followed by normalization. Full
+  algorithm, worked examples, and limitations:
+  `skills/synergy-tracker/references/project-name-derivation.md`. The
+  same algorithm computes `<sibling-name>` from this project's
+  `synergy-registry.json` (tier 3 for the sibling subject). If derivation
+  fails, see Error handling below.
 - **No new SYNERGY/UPSTREAM sections.** /sibling-sync only writes entries
   into existing section schemas (`## Shared Patterns`, `## Divergences`, …).
   It does not introduce new section types. Schema evolution is
   `/synergy-tracker`'s job.
 - **Companion to /vendor-sync.** vendor-sync handles upstream → project
   drift (subtree pulls, UPSTREAM auto-resolve). sibling-sync handles
-  peer-to-peer drift (reciprocation, status divergence). Both default to
-  reporting / read-only paths and gate mutations on explicit user intent.
+  peer-to-peer drift along two axes: SYNERGY reciprocation/status
+  divergence (workflow 2), and UPSTREAM friction tracked across both sides
+  (workflow 3 — both shared-dependency Mode A and reciprocal-friction
+  Mode B). Both skills default to reporting / read-only paths and gate
+  mutations on explicit user intent.
 - **Project tempo classification.** When a sibling has been dormant for
   more than 90 days (`git -C <sibling-path> rev-list --count --since="90 days ago"
   HEAD` returns 0), surface findings under that sibling with a
@@ -478,3 +616,8 @@ without commitment to any follow-up action.
   of the sibling's UPSTREAM files.
 - **`--auto-reciprocate` with zero reciprocal gaps** — report "no reciprocal
   gaps to apply" and exit cleanly without touching any file.
+- **Project-name not derivable** — if both `.claude-plugin/plugin.json` is
+  absent (or has no `name`) AND the project root directory basename is
+  empty (e.g., the working directory is `/`), skip workflow 3 Mode B for
+  every sibling and report the limitation in the workflow 3 output. Mode A
+  still runs normally; SYNERGY workflow 2 is unaffected.

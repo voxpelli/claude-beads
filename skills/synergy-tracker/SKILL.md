@@ -41,13 +41,18 @@ project is involved before proceeding.
 
 ### File naming
 
-Files are named `SYNERGY-<project-name>.md`. The project name is taken from the
-`name` field in the registry. For projects outside the registry, derive the name
-from the repo slug or directory name: slashes → `--`, drop leading `@`.
-Examples: `vp-knowledge` → `SYNERGY-vp-knowledge.md`,
-`@scope/shared-utils` → `SYNERGY-scope--shared-utils.md`.
+Files are named `SYNERGY-<project-name>.md`. The project name is taken from
+the `name` field in the registry (tier 3 of the canonical derivation
+algorithm — synergy-tracker's subject is always sibling). For projects
+outside the registry, fall back to tier 4 (directory basename), then
+normalize. Full algorithm:
+`references/project-name-derivation.md`. Examples: `vp-knowledge` →
+`SYNERGY-vp-knowledge.md`, `@scope/shared-utils` →
+`SYNERGY-scope--shared-utils.md`.
 
-See `references/synergy-entry-format.md` for the full naming convention.
+See `references/synergy-entry-format.md` for the full naming convention
+(normalization rules) and `references/project-name-derivation.md` for the
+tiered derivation algorithm shared with `/sibling-sync`.
 
 ### Lifecycle
 
