@@ -139,50 +139,74 @@ comparisons through the registry rather than re-asking each time.
 - **Confirm the sibling name** resolved from step 1. If step 1 deferred to
   asking the user, defer this step too — only proceed once a name is in
   hand.
+- **Derive both project names before proceeding.**
+  - `<sibling>` — the name confirmed in step 1. In practice this is already
+    the tier-3 registry `name` field (or, for unregistered siblings, the
+    directory basename: tier 4). No additional derivation is needed; just
+    carry the value forward.
+  - `<this-project>` — this project's own canonical name, derived using
+    the four-tier algorithm in
+    `skills/synergy-tracker/references/project-name-derivation.md` (self
+    subject: tiers 1-4, starting with the sibling's back-pointer). In the
+    common case — `vp-beads` with a registered sibling — tier 1 or tier 2
+    resolves immediately. Use the normalized result as `<this-project>`
+    everywhere below: in the `bm-entity` value and in any reciprocal file
+    references.
 - **Auto-derive the four registry fields** that have unambiguous defaults:
   - `name` — already known from step 1.
-  - `file` — mechanical: `SYNERGY-<name>.md`.
+  - `file` — mechanical: `SYNERGY-<sibling>.md`.
   - `remote` — probe the sibling's git origin if the sibling repo is
-    accessible on disk at `../<name>/`:
+    accessible on disk at `../<sibling>/`:
 
     ```bash
-    git -C ../<name> remote get-url origin 2>/dev/null | sed 's/\.git$//'
+    git -C ../<sibling> remote get-url origin 2>/dev/null | sed 's/\.git$//'
     ```
 
     If the command fails or the path is not accessible, leave `remote` as
     an empty string in the preview.
   - `bm-entity` — apply the canonical convention
-    `engineering/agents/vp-plugins-<this>-and-<sibling>` (where `<this>`
-    is this project's name; see the `bm-entity` naming rule in
+    `engineering/agents/vp-plugins-<this-project>-and-<sibling>` (see
     `references/synergy-entry-format.md`).
 - **Prompt only the residuals.** At most two `AskUserQuestion` calls
   (Anthropic SDK caps the `header` field at 12 characters):
   - One call with `header: "Relationship"` (12 chars) — multi-choice with
     options `sibling-plugin` (default), `shared-tooling`, `fork`,
     `consumer`, and `(other — type your own)`.
-  - Only when `../<name>/` does not resolve to an accessible directory, a
+  - Only when `../<sibling>/` does not resolve to an accessible directory, a
     second call with `header: "Local path"` (10 chars) — free-text or
     skip. If the user provides a path, it goes into
     `.claude/synergy-registry.local.json`, never into the base registry.
 - **Preview both files in a single message** before writing anything. Use
   this shape (omit the `.local.json` block when no local-path was
-  supplied):
+  supplied). Show BOTH the placeholder schema and a worked substitution so
+  the user can see how `<this-project>` and `<sibling>` resolve:
 
   ```
-  Proposed .claude/synergy-registry.json:
+  Proposed .claude/synergy-registry.json (schema):
   [
     {
-      "name": "<name>",
-      "file": "SYNERGY-<name>.md",
+      "name": "<sibling>",
+      "file": "SYNERGY-<sibling>.md",
       "remote": "<derived-or-blank>",
-      "bm-entity": "engineering/agents/vp-plugins-<this>-and-<sibling>",
+      "bm-entity": "engineering/agents/vp-plugins-<this-project>-and-<sibling>",
       "relationship": "<chosen>"
+    }
+  ]
+
+  Worked example (this-project = vp-beads, sibling = vp-knowledge):
+  [
+    {
+      "name": "vp-knowledge",
+      "file": "SYNERGY-vp-knowledge.md",
+      "remote": "https://github.com/voxpelli/vp-claude",
+      "bm-entity": "engineering/agents/vp-plugins-vp-beads-and-vp-knowledge",
+      "relationship": "sibling-plugin"
     }
   ]
 
   Proposed .claude/synergy-registry.local.json (only if local-path given):
   [
-    { "name": "<name>", "local-path": "<path>" }
+    { "name": "<sibling>", "local-path": "<path>" }
   ]
 
   Confirm? [yes / edit / skip]
@@ -308,17 +332,11 @@ sibling repo's bd backlog).
    frequency — SYNERGY entries can sit unread for months. This entry looks
    promotable to Basic Memory. Want to promote it now?"
 
-   If the user agrees: call `mcp__basic-memory__search_notes` for the sibling
-   project name, then `mcp__basic-memory__read_note` to get the exact content,
-   then `mcp__basic-memory__edit_note` with `find_replace` to append the
-   generalized entry. If no BM note exists for the sibling, flag for enrichment
-   instead of creating a thin note.
-
-   For `edit_note` safety: never use `append` with `section` (goes to EOF, not
-   section end), always `read_note` before `edit_note`, use
-   `expected_replacements=1`. See
-   `skills/upstream-tracker/references/basic-memory-friction-format.md` for
-   the full gotcha reference.
+   If the user agrees, defer to workflow 5 (Promote to Basic Memory) for the
+   actual write — invoke its single-entry path scoped to this entry (steps 3-4
+   of workflow 5). Step 8 only **offers** promotion; workflow 5 **performs**
+   it. This split keeps `## Cross-Project Synergy` writes within workflow 5's
+   sole-owner boundary.
 
    If the user declines, or if Basic Memory tools are not available, or if the
    project is active, skip silently.
@@ -428,6 +446,100 @@ unlogged synergy observations.
    suggest whether a follow-up comparison with different focus areas would be
    useful.
 
+### 5. Promote to Basic Memory
+
+Promote generalizable cross-project synergy entries from project-local
+`SYNERGY-*.md` files into sibling project entity notes in Basic Memory. This
+creates or extends a `## Cross-Project Synergy` section in the target sibling
+note (typically at `engineering/agents/vp-plugins-<this-project>-and-<sibling>`).
+Use only MCP tools from this skill's `allowed-tools` —
+`mcp__basic-memory__search_notes`, `mcp__basic-memory__read_note`,
+`mcp__basic-memory__edit_note`. If Basic Memory MCP tools are not available,
+report that promotion is unavailable and suggest checking Basic Memory manually.
+
+**Steps:**
+
+1. **Scan for candidates.** Glob all `SYNERGY-*.md` files and read them.
+   Filter eligible entries by section + structured fields:
+   - Extraction Candidates with `Readiness: ready` (always)
+   - Shared Patterns with `Status: aligned` (always)
+   - Shared Patterns with `Status: drifting` (flag the drift in the draft)
+   - Extraction Candidates with `Readiness: needs-cleanup` or
+     `proof-of-concept` (lower priority — surface but mark as such)
+   - Divergences with `Convergence path: adopt-theirs` or `propose-shared`
+     (skip `accept-difference` — by definition not promotion-worthy)
+   - They Have / We Don't with `Priority: adopt-soon` (skip `deferred`)
+   - **Skip any entry already annotated with `_(Promoted YYYY-MM-DD)_`** —
+     that annotation is the dedup signal written in step 4 below.
+2. **Present candidates to the user.** Per-entry, never auto-promote. For
+   each candidate, show:
+   - Sibling project name and target BM note path
+   - Section (Shared Pattern / Divergence / Extraction Candidate / They
+     Have / We Don't) and entry title
+   - A draft generalized version. Apply the transforms documented in
+     `references/synergy-bm-format.md`: strip dates from titles,
+     project-specific file paths, sprint numbers, and bd issue IDs;
+     rewrite the prose from a neutral symmetric POV (so any sibling can
+     read the entry as authoritative); keep `Status:`, `Convergence path:`,
+     `Readiness:`, `Priority:`, and `Effort:` fields verbatim because they
+     carry cross-project meaning.
+   - Whether a Basic Memory note already exists for this sibling.
+   Let the user approve, edit, or skip each candidate.
+3. **Route by target.** For each approved candidate, look up the sibling's
+   `bm-entity` value from `.claude/synergy-registry.json` (with
+   `.claude/synergy-registry.local.json` merged on top by the `name` key).
+   If `bm-entity` is present, use it as the BM note path. If absent, call
+   `mcp__basic-memory__search_notes` with the sibling project name and
+   surface the candidate matches to the user. The full routing table —
+   including the fallback search order (`projects/` first, then any
+   directory matching the name) — lives in
+   `references/synergy-bm-format.md`.
+4. **Write or flag.** Three branches per approved candidate:
+   - **Note exists, has `## Cross-Project Synergy` with target subsection** —
+     call `mcp__basic-memory__read_note` first to fetch exact content, then
+     `mcp__basic-memory__edit_note` with `find_replace` anchored to the next
+     `###` heading for uniqueness, `expected_replacements=1`. Deduplicate by
+     entry title (case-insensitive, whitespace-trimmed) before appending — if
+     the title already appears in the subsection, skip. If `find_replace`
+     returns zero replacements despite `expected_replacements=1`, the note was
+     edited between `read_note` and `edit_note` — do NOT annotate the local
+     entry; report "BM note changed since read — re-run workflow 5 for this
+     entry" and continue with the next candidate.
+   - **Note exists, no `## Cross-Project Synergy` section** — call
+     `mcp__basic-memory__edit_note` with `insert_before_section` on
+     `Relations` to add the full section block (all five subsections per the
+     template in `references/synergy-bm-format.md`).
+   - **No note exists** — do NOT create a thin note. Flag for enrichment:
+     "No Basic Memory note for `<sibling>`. Enrich it first (manual creation
+     under `engineering/agents/`), then re-run workflow 5 (Promote to Basic
+     Memory)."
+   - **After successful write,** annotate the local SYNERGY entry with
+     `_(Promoted YYYY-MM-DD)_` via the `Edit` tool. This is the dedup signal
+     that step 1 consults on subsequent runs.
+   - See `references/synergy-bm-format.md` for `edit_note` gotchas (never
+     use `append` with `section`, always `read_note` first, anchor
+     `find_replace` matches to the next `###` heading).
+5. **Prune pass.** For entries already annotated `_(Resolved ...)_` in the
+   local SYNERGY file, offer to move the corresponding BM entry to the
+   `### Resolved` subsection of `## Cross-Project Synergy` in the sibling
+   note. The user confirms each. Mirrors upstream-tracker workflow 6
+   (Promote to Basic Memory) prune-pass behavior.
+6. **Report.** Summarize: promoted count, pruned count, skipped count
+   (already-promoted), and flagged-for-enrichment count. Suggest verifying
+   the result with
+   `build_context("memory://engineering/agents/vp-plugins-<this-project>-and-<sibling>")`.
+
+See `references/synergy-bm-format.md` for the target section structure,
+generalization transform rules, and `edit_note` gotchas.
+
+**Division of labor:** This workflow owns the `## Cross-Project Synergy`
+section of sibling project entity notes in Basic Memory. The
+upstream-tracker skill's workflow 6 (Promote to Basic Memory) owns
+`## Upstream Friction` in package/tool entity notes. The retrospective
+skill's step 7 owns `engineering/*` notes (patterns, conventions, lessons).
+These three sections never overlap — synergy entries are cross-project,
+upstream friction is package-specific, learnings are domain-specific.
+
 ### 4. Trend review (quarterly)
 
 Every 4th sprint, perform a cross-cutting analysis of all SYNERGY tracking
@@ -454,7 +566,7 @@ trend-review boundaries.
    row (PreCompact retired post-v0.28.0 on the sibling side) that had no way
    to be detected without re-verification.
 2. **Reciprocation check.** For each shared-pattern entry, ask whether the
-   sibling project has a corresponding entry in its own `SYNERGY-<this>.md`.
+   sibling project has a corresponding entry in its own `SYNERGY-<this-project>.md`.
    Resolve the sibling path via the registry-with-override pattern from
    workflow 3 (Compare with sibling) — `local-path` on the merged registry
    entry, falling back to `../<project-name>`. Where the resolved path is
@@ -469,11 +581,11 @@ trend-review boundaries.
 4. **They Have / We Don't sweep.** List entries with `Priority: adopt-soon`
    older than one trend-review cycle (≈4 sprints). Either adopt now or
    downgrade to `consider`/`deferred`.
-5. **BM cross-reference (planned).** Once workflow 5 (Promote to Basic Memory)
-   ships, also cross-reference each open entry against the
-   `## Cross-Project Synergy` section of the sibling's BM entity note to
-   identify entries already promoted (no need to re-promote) and entries that
-   should be promoted now.
+5. **BM cross-reference.** Cross-reference each open entry against the
+   `## Cross-Project Synergy` section in the corresponding BM entity note
+   (workflow 5 (Promote to Basic Memory) populates this) to identify
+   entries already promoted (no need to re-promote) and entries that should
+   be promoted now.
 6. **Dormancy-aware scaling.** In projects with ≤4 commits in the last 90 days
    (see project tempo in Guidelines), double the staleness thresholds — entries
    in dormant repos age by calendar, not by sprint cadence.
@@ -484,8 +596,8 @@ trend-review boundaries.
    before adding the entry.
 8. Present aggregate findings to the user. Suggest follow-up actions: open
    beads issues for stalled extractions, run workflow 5 (Promote to Basic
-   Memory, planned) for promotion candidates once that workflow ships, or
-   downgrade stale `adopt-soon` entries.
+   Memory) for promotion candidates, or downgrade stale `adopt-soon`
+   entries.
 
 **Trend Review entry format** (mirrors upstream-tracker workflow 4 (Trend Review)):
 
@@ -517,10 +629,11 @@ boundaries:
 - **Sprint start:** session-start hook emits a dormancy nudge for SYNERGY files
   in low-activity repos.
 
-Workflow 5 (Promote to Basic Memory) is planned. Until it ships, workflow 4
-(Trend Review) handles staleness and surfaces promotion candidates without
-writing to BM; users promote selected entries manually via
-`mcp__basic-memory__edit_note`.
+Workflow 5 (Promote to Basic Memory) is invocable as
+`/synergy-tracker workflow 5` and writes generalized synergy entries into
+the `## Cross-Project Synergy` section of sibling project entity notes.
+Workflow 4 (Trend Review) feeds it by surfacing promotion candidates at
+trend-review boundaries.
 
 ## Guidelines
 
@@ -543,7 +656,7 @@ writing to BM; users promote selected entries manually via
   before being logged. Never write to SYNERGY files or Basic Memory without
   confirmation.
 - **Division of labor.** synergy-tracker owns `## Cross-Project Synergy` in
-  sibling project entity notes in Basic Memory (future workflow 5 (Promote to Basic Memory)). upstream-tracker
+  sibling project entity notes in Basic Memory (workflow 5 (Promote to Basic Memory)). upstream-tracker
   owns `## Upstream Friction` in npm/tool entity notes. retrospective owns
   `engineering/*` notes. These three sections never overlap.
 - **Project tempo classification.** Measure with
@@ -555,5 +668,5 @@ writing to BM; users promote selected entries manually via
   establishes a "no cross-tracker orchestration" rule — bd will never grow a
   feature that routes a synergy item from project A's bd to project B's bd.
   synergy-tracker's `SYNERGY-*.md` files plus the `## Cross-Project Synergy` BM
-  section (workflow 5 (Promote to Basic Memory), planned) are exactly the
+  section (workflow 5 (Promote to Basic Memory)) are exactly the
   workflow-automation layer the Charter punts to external tools.

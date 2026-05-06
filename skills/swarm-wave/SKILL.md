@@ -278,8 +278,8 @@ the parallelism and deduplication.
   outside their scope create the same conflict problems as shared-file
   agents. When in doubt, give an agent a narrower scope and create a
   follow-up issue for the remaining work.
-- **The gate is a hard block.** The post-wave gate (workflow 3) must fully
-  pass before the next wave launches. Never commit wave work that has not
+- **The gate is a hard block.** The post-wave gate (workflow 3 (Post-wave
+  gate)) must fully pass before the next wave launches. Never commit wave work that has not
   passed the gate. "Fix it later" is how parallel agent work produces
   cascading failures.
 - **Beads is required.** All swarm-wave workflows assume beads is available.

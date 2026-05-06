@@ -347,7 +347,7 @@ Help generate the "Upstream observations" section of a sprint retrospective.
 1. Read all `UPSTREAM-*.md` files to understand current state
 2. Review the conversation history for any vendor friction encountered during
    the session — workarounds, type issues, missing APIs, confusing behavior
-3. Log any untracked items discovered from context (workflow 1)
+3. Log any untracked items discovered from context (workflow 1 (Log a new entry))
 4. Draft the upstream observations section for the retro
 5. Note any entries that appear generalizable beyond this project — the
    retrospective may want to chain into workflow 6 (Promote to Basic Memory)
@@ -424,7 +424,7 @@ generalization transform rules, and `edit_note` gotchas.
 **Division of labor:** This workflow owns the `## Upstream Friction` section of
 entity notes in Basic Memory. The retrospective skill's step 7 owns
 `engineering/*` notes (patterns, conventions, lessons). synergy-tracker
-workflow 5 (Promote to Basic Memory, planned) owns `## Cross-Project Synergy` in sibling project entity notes. These
+workflow 5 (Promote to Basic Memory) owns `## Cross-Project Synergy` in sibling project entity notes. These
 three sections never overlap — upstream friction is package-specific, synergy
 entries are cross-project, learnings are domain-specific. For upstream friction
 about specific packages or tools, use this workflow, not the retrospective.
@@ -461,7 +461,7 @@ unavailable and suggest checking Basic Memory manually.
    `/tool-intel <tool>` for enrichment — this enables future promotion via
    workflow 6 (Promote to Basic Memory).
 6. **User decides.** For each surfaced entry: add to local UPSTREAM file (via
-   workflow 1's logging steps), skip, or dismiss. The user stays in control.
+   workflow 1 (Log a new entry)'s logging steps), skip, or dismiss. The user stays in control.
 
 This workflow is pull-based, not automatic. Invoke it when starting a new sprint,
 onboarding to a project, or when you want cross-project awareness of known

@@ -9,10 +9,12 @@ Two consumers cite this reference:
 
 - **`/synergy-tracker`** — derives the **sibling**'s name when creating or
   resolving `SYNERGY-<project-name>.md` files. Subject is always the sibling.
-- **`/sibling-sync`** — derives **this project's** name (workflow 3 Mode B
-  inverse-file lookup at the sibling; workflow 4 SYNERGY destination on the
-  sibling) AND the sibling's name (workflow 3 Mode B local lookup; workflow 2
-  bidirectional comparison). Subject is both, depending on the workflow step.
+- **`/sibling-sync`** — derives **this project's** name (workflow 3 (Sync
+  sibling UPSTREAM) Mode B inverse-file lookup at the sibling; workflow 4
+  (Apply reciprocation batch) SYNERGY destination on the sibling) AND the
+  sibling's name (workflow 3 (Sync sibling UPSTREAM) Mode B local lookup;
+  workflow 2 (Sync sibling SYNERGY) bidirectional comparison). Subject is
+  both, depending on the workflow step.
 
 The algorithm is a single four-tier precedence applied uniformly; the
 **subject** (self vs sibling) determines which tiers are reachable in
@@ -26,7 +28,7 @@ Keep them disjoint — conflating them is the predictable failure mode:
 | Domain | What it names | Authoritative source | Who uses it |
 |---|---|---|---|
 | **Sibling** | A peer project (e.g., another vp-* plugin) | `synergy-registry.json` `name` field on the asking side | `/synergy-tracker`, `/sibling-sync` |
-| **Self** | This project, as the sibling sees us | The sibling's `synergy-registry.json` `name` field for our entry; falls back to our manifests | `/sibling-sync` only (workflow 3 Mode B, workflow 4) |
+| **Self** | This project, as the sibling sees us | The sibling's `synergy-registry.json` `name` field for our entry; falls back to our manifests | `/sibling-sync` only (workflow 3 (Sync sibling UPSTREAM) Mode B, workflow 4 (Apply reciprocation batch)) |
 | **Vendor** | A third-party dependency (npm, brew, etc.) | `vendor-registry.json` `package` field | `/upstream-tracker`, `/vendor-sync` |
 
 This document covers the **sibling** and **self** domains. Vendor names are
@@ -213,9 +215,9 @@ Tier 3 wins; SYNERGY filename is `SYNERGY-vp-knowledge.md`.
 |---|---|---|---|
 | `/synergy-tracker` workflow 1 (Log a synergy entry) | sibling | tier 3 (registry `name`), tier 4 (dir basename for unregistered siblings) | Auto-creates `SYNERGY-<sibling>.md` files when missing. Tiers 1/2 unreachable for the sibling subject in this workflow. |
 | `/synergy-tracker` workflows 2 (Review open synergies), 3 (Compare with sibling), 4 (Trend review) | sibling | tier 3 only | Read existing files via registry; never auto-create. |
-| `/sibling-sync` workflow 2 (Sync sibling SYNERGY) | sibling | tier 3 (this project's registry) | Bidirectional title comparison; same as synergy-tracker workflows 2–4. |
-| `/sibling-sync` workflow 3 Mode B step 2 (Detect Mode B pair) | self + sibling | tiers 1–4 (self), tier 3 (sibling) | The self-subject use site that motivates tier 1 (sibling-registry back-pointer). |
-| `/sibling-sync` workflow 4 step 2.2 (Determine destination file) | self | tiers 1–4 | Constructs `<sibling>/SYNERGY-<this-project>.md` for opt-in reciprocation writes. |
+| `/sibling-sync` workflow 2 (Sync sibling SYNERGY) | sibling | tier 3 (this project's registry) | Bidirectional title comparison; same as synergy-tracker workflows 2 (Review open synergies), 3 (Compare with sibling), 4 (Trend review). |
+| `/sibling-sync` workflow 3 (Sync sibling UPSTREAM) Mode B step 2 (Detect Mode B pair) | self + sibling | tiers 1–4 (self), tier 3 (sibling) | The self-subject use site that motivates tier 1 (sibling-registry back-pointer). |
+| `/sibling-sync` workflow 4 (Apply reciprocation batch) step 2.2 (Determine destination file) | self | tiers 1–4 | Constructs `<sibling>/SYNERGY-<this-project>.md` for opt-in reciprocation writes. |
 
 When in doubt, prefer the highest tier that yields a value. Tier 1 is
 specifically for the cross-side case where the sibling's authoritative

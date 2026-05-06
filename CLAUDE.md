@@ -113,10 +113,11 @@ Dev tooling only: validation and linting via `npm run check`.
   `/sibling-sync`.
 - **synergy-tracker** — Manages `SYNERGY-*.md` files that track cross-project
   patterns, divergences, extraction candidates, and capability gaps between
-  sibling projects. Supports three workflows: log, review, compare-with-sibling.
+  sibling projects. Supports five workflows: log, review, compare-with-sibling,
+  trend-review, promote-to-basic-memory.
   Complements upstream-tracker (which tracks dependency friction) by tracking
   peer-project collaboration opportunities. BM integration via
-  `## Cross-Project Synergy` section in sibling entity notes planned for workflow 5 (Promote to Basic Memory).
+  `## Cross-Project Synergy` section in sibling entity notes via workflow 5 (Promote to Basic Memory).
   User-invocable as `/synergy-tracker`.
 - **swarm-wave** — Orchestrates multi-agent development sprints with wave-based
   parallelism. Five workflows: plan-sprint (file-disjoint wave partitioning),
@@ -209,7 +210,7 @@ overlap:
 
 - **upstream-tracker workflow 6 (Promote)** owns `## Upstream Friction` in `npm/*`, `brew/*`,
   `cask/*`, `actions/*`, `docker/*`, `vscode/*` entity notes
-- **synergy-tracker workflow 5 (Promote)** (future) owns `## Cross-Project Synergy` in sibling
+- **synergy-tracker workflow 5 (Promote)** owns `## Cross-Project Synergy` in sibling
   project entity notes
 - **retrospective step 7** owns `engineering/*` notes (patterns, conventions)
 

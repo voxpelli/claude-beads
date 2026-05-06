@@ -175,7 +175,7 @@ projects have active synergy tracking relationships.
 | `name` | yes | Short display name for the related project |
 | `file` | yes | Exact filename of the SYNERGY tracking file |
 | `remote` | no | Canonical URL for the related project |
-| `bm-entity` | no | Basic Memory entity path — consumed by workflow 5 (Promote to Basic Memory, planned); informational until that workflow ships |
+| `bm-entity` | no | Basic Memory entity path — consumed by `/synergy-tracker` workflow 5 (Promote to Basic Memory) |
 | `relationship` | no | Free-form label: `sibling-plugin`, `shared-tooling`, `fork`, `consumer` |
 | `local-path` | no | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
 

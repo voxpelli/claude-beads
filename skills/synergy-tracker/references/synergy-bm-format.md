@@ -1,14 +1,14 @@
 # Basic Memory Synergy Integration Reference
 
-Reference material for synergy-tracker workflow 5 (Promote to Basic Memory),
-planned for a future release. Also consumed by workflow 4 (Trend Review) for
-the BM cross-reference step. See `SKILL.md` for the workflow steps that will
+Reference material for synergy-tracker workflow 5 (Promote to Basic Memory).
+Also consumed by workflow 4 (Trend review (quarterly)) for the BM
+cross-reference step. See `SKILL.md` for the workflow steps that
 reference this document.
 
 This reference is the structural specification that makes workflow 5
-(Promote to Basic Memory, planned) implementable. The `## Cross-Project Synergy`
+(Promote to Basic Memory) implementable. The `## Cross-Project Synergy`
 section described here is **owned by synergy-tracker workflow 5 (Promote to
-Basic Memory, planned)** and never overlaps with `## Upstream Friction`
+Basic Memory)** and never overlaps with `## Upstream Friction`
 (owned by upstream-tracker workflow 6 (Promote to Basic Memory)) or
 `engineering/*` notes (owned by retrospective step 7).
 
@@ -71,9 +71,26 @@ same four-subsection structure that mirrors the SYNERGY file layout:
 The `### Resolved` subsection collects entries whose synergy outcome has
 landed (e.g. an Extraction Candidate that became a shared package, a
 Divergence that converged on one approach). Manual inline annotation precedes
-a periodic prune pass (no Resolve workflow yet — planned for a future release)
-— matching the upstream-tracker convention where workflow 3 (Resolve) handles
-annotation.
+a periodic prune pass (no dedicated Resolve workflow yet) — matching the
+upstream-tracker convention where workflow 3 (Resolve) handles annotation.
+
+## Promotion annotation
+
+When workflow 5 (Promote to Basic Memory) successfully writes an entry to
+the BM sibling note's `## Cross-Project Synergy` section, it annotates the
+**local** SYNERGY entry by appending `_(Promoted YYYY-MM-DD)_` after the
+entry body. This serves as the dedup signal:
+
+- Workflow 5 step 1 (Scan for candidates) skips entries already carrying
+  this annotation — preventing repeated promotion of the same row.
+- Mirrors the `_(Resolved YYYY-MM-DD)_` annotation pattern from
+  upstream-tracker workflow 3 (Resolve) (see
+  `skills/upstream-tracker/references/basic-memory-friction-format.md`).
+- Title-keyed dedup at the BM side is the **secondary** defense: workflow 5
+  must `read_note` the target sibling note and scan its existing
+  `## Cross-Project Synergy` section before appending. If the entry's title
+  already appears in the section, skip the write and report — never produce
+  duplicate titles in BM.
 
 ## Generalization Transform Rules
 
@@ -119,7 +136,11 @@ upstream-tracker promotion workflow:
   end of the named section. This is a confirmed bug/behavior. Use `find_replace`
   or `insert_before_section` instead.
 - Use `insert_before_section` on `Relations` for initial `## Cross-Project Synergy`
-  section creation in sibling project notes that don't have one yet.
+  section creation in sibling project notes that don't have one yet. **If the
+  note has no `## Relations` section** (a valid state for notes created without
+  one), `insert_before_section` will fail — fall back to `mcp__basic-memory__edit_note`
+  with `operation="append"` (no `section` parameter) to place the new
+  `## Cross-Project Synergy` section at the end of the note.
 - Use `find_replace` anchored to include the next `###` heading for uniqueness
   when appending entries to a subsection. For `### They Have / We Don't`, the
   anchor is `### Resolved` (which always follows). For initial creation of

@@ -56,7 +56,7 @@ this project's side of the SYNERGY/UPSTREAM files.
 - **Does NOT pull upstream subtrees.** `/vendor-sync` owns subtree pulls and
   the upstream → project drift workflow.
 - **Does NOT write Basic Memory notes.** `/synergy-tracker` workflow 5
-  (Promote to Basic Memory, planned) owns `## Cross-Project Synergy` writes
+  (Promote to Basic Memory) owns `## Cross-Project Synergy` writes
   to sibling entity notes; `/upstream-tracker` workflow 6 (Promote to Basic
   Memory) owns `## Upstream Friction` writes. Basic Memory write tools are
   intentionally absent from this skill's `allowed-tools`.
@@ -488,8 +488,8 @@ Memory)'s per-entry confirmation pattern.
   sibling only — logging on this side is `/synergy-tracker` workflow 1
   (Log a synergy entry)'s job.
 - Never writes to Basic Memory (no BM edit tooling allowed in this skill).
-  BM writes are `/synergy-tracker` workflow 5 (Promote to Basic Memory,
-  planned) and `/upstream-tracker` workflow 6 (Promote to Basic Memory)'s
+  BM writes are `/synergy-tracker` workflow 5 (Promote to Basic Memory)
+  and `/upstream-tracker` workflow 6 (Promote to Basic Memory)'s
   territory.
 
 ## Sprint Workflow Integration
@@ -595,8 +595,8 @@ without commitment to any follow-up action.
   drift (subtree pulls, UPSTREAM auto-resolve). sibling-sync handles
   peer-to-peer drift along two axes: SYNERGY reciprocation/status
   divergence (workflow 2), and UPSTREAM friction tracked across both sides
-  (workflow 3 — both shared-dependency Mode A and reciprocal-friction
-  Mode B). Both skills default to reporting / read-only paths and gate
+  (workflow 3 (Sync sibling UPSTREAM) — both shared-dependency Mode A and
+  reciprocal-friction Mode B). Both skills default to reporting / read-only paths and gate
   mutations on explicit user intent.
 - **Project tempo classification.** When a sibling has been dormant for
   more than 90 days (`git -C <sibling-path> rev-list --count --since="90 days ago"
