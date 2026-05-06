@@ -14,6 +14,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
+  - AskUserQuestion
   - mcp__basic-memory__search_notes
   - mcp__basic-memory__read_note
   - mcp__basic-memory__edit_note
@@ -79,6 +80,108 @@ and for the rare monorepo or non-standard checkout case. Never commit
 `.claude/vendor-registry.local.json`: it encodes machine-specific paths.
 
 ## Workflow
+
+### 0. Bootstrap registry
+
+Run this workflow when the user wants to create `.claude/vendor-registry.json`
+from scratch, or when workflow 1 (Determine scope) redirects here because no
+registry exists. The flow derives most fields from the working tree and prompts
+only at the residuals.
+
+1. **Detect candidate vendor directories.**
+
+   ```bash
+   find vendor/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort
+   ```
+
+   If the command returns nothing (no `vendor/` directory at all, or it is
+   empty), ask the user for an explicit subtree path. If multiple candidates
+   are returned, process them one at a time — one preview-confirm cycle per
+   entry — rather than batching, so each entry can be derived and corrected
+   independently.
+
+2. **Auto-derive fields for each candidate.** For a candidate at `<dir>`:
+
+   - `prefix` — the directory path itself (e.g. `vendor/foo`).
+   - `branch` — query the upstream branch from the candidate remote once it
+     is known (see step 3):
+
+     ```bash
+     git remote show <remote> 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}'
+     ```
+
+     If the command fails, returns empty, or yields the literal `(unknown)`
+     (which `git remote show` emits when the remote has no HEAD set), default
+     to `main`. Treat any captured value containing parentheses or other
+     non-`[A-Za-z0-9._/-]` characters the same way.
+   - `package` — read `<dir>/package.json` if present:
+
+     ```bash
+     node -e "try{const p=require('./<dir>/package.json');const n=(p&&typeof p==='object'?p.name:'')||'';if(n)console.log(n)}catch{}"
+     ```
+
+     If the output is blank (empty or whitespace only), ask the user for
+     the package name.
+
+3. **Prompt only the residuals.** Use at most two `AskUserQuestion` calls (each
+   `header` field stays within the 12-character SDK cap):
+
+   - `header: "Remote"` — present a menu of remote aliases gathered from
+     `git remote -v | awk '{print $1}' | sort -u | grep -v '^origin$'`. If
+     the list is empty, ask the user to type both an alias and the upstream
+     URL, and instruct them to run `git remote add <alias> <url>` themselves
+     before continuing — do not run `git remote add` automatically.
+   - `header: "Local path"` — only ask when the on-disk subtree lives
+     somewhere other than `prefix` (rare monorepo or alt-checkout case). The
+     answer feeds `.claude/vendor-registry.local.json`, never the committed
+     base registry.
+
+4. **Preview both files in a single message** before writing. Show the
+   proposed `.claude/vendor-registry.json` entry and, when a `local-path` was
+   provided, the proposed `.claude/vendor-registry.local.json` entry. Ask
+   `Confirm? [yes / edit / skip]`. On `edit`, re-prompt the affected derived
+   field individually. On `skip`, abort without writing. On `yes`, proceed.
+
+5. **Write both files** via the `Write` tool. Always write base and
+   `.local.json` separately — never embed `local-path` in the committed
+   registry. If the base registry already exists (returning user adding a
+   second entry), this workflow does not append; that case is tracked
+   separately and falls back to manual editing for now.
+
+6. **Verify round-trip parse.** Use the `Read` tool to re-read each written
+   file, then validate the JSON via
+   `node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' <path>`
+   (any non-zero exit signals invalid JSON). Confirm the required fields
+   are present:
+   - Base entry must have `prefix`, `remote`, `branch`, `package`.
+   - `.local.json` entry, when written, must have `package` and `local-path`.
+
+   On base-registry parse failure or missing required fields, abort
+   workflow 0 entirely — report the failure and offer to re-run. On
+   `.local.json` parse failure only, warn and continue without the local
+   override (the base registry alone is still usable).
+
+7. **Check `.local.json` gitignore status.** When a `.local.json` was
+   written, run:
+
+   ```bash
+   git check-ignore -q .claude/vendor-registry.local.json
+   ```
+
+   Exit status semantics: `0` = file is gitignored (no action); `1` = file
+   is **not** gitignored (warn the user that `.claude/*.local.*` should be
+   added to `.gitignore`; do not auto-edit it — `.gitignore` is user-owned);
+   `128` = the check itself failed (not a git repo, or another git error)
+   — report the underlying error and skip the gitignore warning rather
+   than emitting a false-positive.
+
+8. **Resume to workflow 1 (Determine scope).** Once verification passes, the
+   newly created registry is ready for the rest of the sync flow.
+
+The `UPSTREAM-<package>.md` filename for each new entry follows the standard
+convention: slashes → `--`, drop leading `@` (e.g. `@scope/pkg` →
+`UPSTREAM-scope--pkg.md`). Workflow 1 (Determine scope) and downstream steps
+will create these files lazily; workflow 0 does not pre-create them.
 
 ### 1. Determine scope
 

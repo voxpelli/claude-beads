@@ -13,6 +13,7 @@ allowed-tools:
   - Glob
   - Grep
   - Bash
+  - AskUserQuestion
   - mcp__basic-memory__search_notes
   - mcp__basic-memory__read_note
   - mcp__basic-memory__edit_note
@@ -127,6 +128,100 @@ being discussed, what pattern was noticed, what contrast was made.
    not ask again. Otherwise, check `.claude/synergy-registry.json` first. If
    the registry does not identify the sibling, glob for `SYNERGY-*.md` as a
    fallback. If neither resolves it, ask the user.
+
+**Step 1b — Guided registry creation (only when
+`.claude/synergy-registry.json` is absent AND a sibling has been named in
+step 1).** If the registry file already exists, skip this step silently
+and proceed to step 2 — do not modify hand-written registries. Otherwise,
+run the following bootstrap so the project can route future syncs and
+comparisons through the registry rather than re-asking each time.
+
+- **Confirm the sibling name** resolved from step 1. If step 1 deferred to
+  asking the user, defer this step too — only proceed once a name is in
+  hand.
+- **Auto-derive the four registry fields** that have unambiguous defaults:
+  - `name` — already known from step 1.
+  - `file` — mechanical: `SYNERGY-<name>.md`.
+  - `remote` — probe the sibling's git origin if the sibling repo is
+    accessible on disk at `../<name>/`:
+
+    ```bash
+    git -C ../<name> remote get-url origin 2>/dev/null | sed 's/\.git$//'
+    ```
+
+    If the command fails or the path is not accessible, leave `remote` as
+    an empty string in the preview.
+  - `bm-entity` — apply the canonical convention
+    `engineering/agents/vp-plugins-<this>-and-<sibling>` (where `<this>`
+    is this project's name; see the `bm-entity` naming rule in
+    `references/synergy-entry-format.md`).
+- **Prompt only the residuals.** At most two `AskUserQuestion` calls
+  (Anthropic SDK caps the `header` field at 12 characters):
+  - One call with `header: "Relationship"` (12 chars) — multi-choice with
+    options `sibling-plugin` (default), `shared-tooling`, `fork`,
+    `consumer`, and `(other — type your own)`.
+  - Only when `../<name>/` does not resolve to an accessible directory, a
+    second call with `header: "Local path"` (10 chars) — free-text or
+    skip. If the user provides a path, it goes into
+    `.claude/synergy-registry.local.json`, never into the base registry.
+- **Preview both files in a single message** before writing anything. Use
+  this shape (omit the `.local.json` block when no local-path was
+  supplied):
+
+  ```
+  Proposed .claude/synergy-registry.json:
+  [
+    {
+      "name": "<name>",
+      "file": "SYNERGY-<name>.md",
+      "remote": "<derived-or-blank>",
+      "bm-entity": "engineering/agents/vp-plugins-<this>-and-<sibling>",
+      "relationship": "<chosen>"
+    }
+  ]
+
+  Proposed .claude/synergy-registry.local.json (only if local-path given):
+  [
+    { "name": "<name>", "local-path": "<path>" }
+  ]
+
+  Confirm? [yes / edit / skip]
+  ```
+
+- **Handle the user's response.** On `yes`, proceed to write. On `edit`,
+  re-prompt each derived field individually so the user can correct
+  `name`, `remote`, `bm-entity`, `relationship`, or the optional
+  `local-path`, then re-render the preview. On `skip`, continue the
+  workflow without writing the registry — resume to step 2.
+- **Write the files using the `Write` tool.** Always write
+  `.claude/synergy-registry.json`, and additionally write
+  `.claude/synergy-registry.local.json` only when a `local-path` was
+  provided. The `.local.json` is always a separate file — never embed
+  `local-path` in the committed base registry.
+- **Verify round-trip.** Use the `Read` tool to re-read each written file,
+  then validate the JSON via
+  `node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' <path>`
+  (any non-zero exit signals invalid JSON). Confirm: base registry contains
+  entries with `name` and `file` set; if `.local.json` was written, it
+  contains `name` and `local-path`. On base-registry parse failure or
+  missing required fields, abort step 1b — report the problem and offer to
+  re-run; do not proceed to step 2 with a broken base registry. On
+  `.local.json` parse failure only, warn and continue without the local
+  override (the base registry is still usable).
+- **Check that `.local.json` is gitignored** when one was written:
+
+  ```bash
+  git check-ignore -q .claude/synergy-registry.local.json
+  ```
+
+  Exit status semantics: `0` = file is gitignored (no action); `1` = file
+  is **not** gitignored (warn the user that `.claude/*.local.*` should be
+  ignored — see the `.gitignore` convention; do not auto-edit `.gitignore`,
+  it is user-owned); `128` = the check itself failed (not a git repo, or
+  another git error) — report the underlying error and skip the gitignore
+  warning rather than emitting a false-positive.
+- **Resume to step 2** (Basic Memory pre-check).
+
 2. **Basic Memory pre-check.** If Basic Memory MCP tools are available, make
    two `mcp__basic-memory__search_notes` calls: one with the sibling project
    name, one with 2-4 keywords describing the topic being logged (e.g.,
@@ -291,6 +386,7 @@ unlogged synergy observations.
 
    If no project is identified from the argument, merged registry, or existing
    SYNERGY files, ask the user which sibling project to compare with.
+   If no registry exists at all, also offer to create one via workflow 1 (Log a synergy entry) step 1b before proceeding with the comparison.
 2. **Gather sibling context.** Resolve the sibling's local path: prefer the
    `local-path` field on the merged registry entry (relative paths are resolved
    from the current project root); if absent, fall back to `../<project-name>`
