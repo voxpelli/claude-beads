@@ -5,6 +5,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1][] - 2026-05-06
+
+### Added
+
+- **`skills/synergy-tracker/references/project-name-derivation.md`** — new
+  shared reference doc specifying the canonical four-tier project-name
+  derivation algorithm (sibling-registry back-pointer → plugin manifest
+  → package manifest / registry `name` → directory basename), followed
+  by normalization (delegated to `synergy-entry-format.md`). Includes
+  worked examples for vp-beads (self) and vp-knowledge (sibling), known
+  limitations for non-npm ecosystems, and a Consumer Summary table
+  mapping each consumer to the tiers it actually exercises. Both
+  `/sibling-sync` and `/synergy-tracker` cite it as the single source of
+  truth, eliminating algorithm drift between them.
+
+### Changed
+
+- **`/sibling-sync` workflow 3 Mode B step 2** — derives `<this-name>`
+  via the four-tier algorithm in the new reference doc (was a 2-tier
+  inline algorithm: `plugin.json` → dir basename). Adds the
+  sibling-registry back-pointer as the new tier 1, honoring the
+  registry-is-authoritative rule from `synergy-entry-format.md` for
+  cross-side naming. Strict upgrade — no SYNERGY/UPSTREAM filename
+  changes for existing siblings.
+- **`/sibling-sync` workflow 4 step 2.2** — `<this-project>` derivation
+  made explicit via cross-reference to the new doc (was an implicit
+  placeholder). Same line: fixes informal cross-ref style
+  (`/synergy-tracker references/...` →
+  `skills/synergy-tracker/references/...`).
+- **`/sibling-sync` Guidelines "Canonical project-name derivation"
+  bullet** — replaces 16-line inline algorithm with 6-line summary +
+  cross-reference to the new doc. Tier 1 explicitly named so readers
+  see the algorithm changed (not just got refactored).
+- **`/synergy-tracker` File naming** — upgraded from manifest-unaware
+  "repo slug or directory name" rule to convention-aligned tier 3/4
+  derivation (registry `name` → directory basename → normalize). Strict
+  upgrade for the realistic case; deterministic fallback for
+  unregistered siblings replaces the previous wording's ambiguity.
+- **`CLAUDE.md` "Synergy tracking convention"** — replaces inline naming
+  algorithm with cross-references to the two reference docs.
+- **`skills/synergy-tracker/references/synergy-entry-format.md`** —
+  bm-entity example corrected to `engineering/agents/vp-plugins-<this>-and-<sibling>`
+  (was `npm/<name>`, which conflated the relationship-note convention
+  with the package-friction-note convention owned by
+  `/upstream-tracker` workflow 6 (Promote to Basic Memory)). Real
+  registry already used the correct form; this aligns the reference doc
+  example. Adds an explicit naming-rule note after the field table.
+  (vp-beads-2ck)
+
+### Fixed
+
+- **`/sibling-sync` workflow 3 — reciprocal sibling-friction UPSTREAM
+  pair detection** (vp-beads-l82). Previously workflow 3 used basename
+  intersection to pair UPSTREAM files between siblings, which silently
+  missed the case where each side tracks friction about the OTHER
+  (`UPSTREAM-<sibling>.md` here ↔ `UPSTREAM-<this>.md` there — different
+  basenames, same bilateral relationship). Now detects two pairing modes:
+  Mode A (shared-dependency basename intersection, current behavior) and
+  Mode B (reciprocal sibling-friction inverse-name pairs, new). Mode B
+  introduces findings (e)/(f)/(g)/(h) covering friction the sibling
+  tracks about this project, our open friction against them, and
+  cross-side staleness signals from shipped fixes on either side. Pinned
+  "shipped" definition (CHANGELOG/`_(Resolved ...)_` annotation OR git
+  tag/commit subject within 6 months matching the entry title).
+
 ## [0.12.0][] - 2026-05-05
 
 ### Added
@@ -618,6 +683,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.12.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.1
 [0.12.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.0
 [0.11.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.11.0
 [0.10.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.1
