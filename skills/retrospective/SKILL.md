@@ -283,6 +283,13 @@ Organize by engineering domain:
   `SYNERGY-*.md` files, use `/synergy-tracker` — it manages the extraction
   lifecycle and any corresponding Basic Memory notes. For packages not yet in
   Basic Memory, suggest `/package-intel` or `/tool-intel` for enrichment first.
+  **NEVER write to `engineering/agents/vp-plugins-*` paths from this step**
+  — those are sibling-relationship notes owned by `/synergy-tracker` workflow 5
+  (Promote to Basic Memory). For cross-project lessons that touch a
+  sibling-relationship, log via `/synergy-tracker` workflow 1 (Log a synergy
+  entry) and let workflow 5 (Promote to Basic Memory) promote them; do not
+  shortcut the relationship-note ownership boundary by writing
+  `engineering/agents/vp-plugins-*` directly here.
 
 ### 8. Suggest documentation updates
 

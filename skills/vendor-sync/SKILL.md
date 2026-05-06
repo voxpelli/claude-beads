@@ -89,6 +89,13 @@ from scratch, or when workflow 1 (Determine scope) redirects here because no
 registry exists. The flow derives most fields from the working tree and prompts
 only at the residuals.
 
+> **Precondition: the vendor subtree must already exist on disk under
+> `vendor/`.** This workflow registers an existing subtree; it does NOT
+> add new ones. To add a new subtree, first run
+> `git subtree add --prefix vendor/<name> <remote> <branch> --squash`
+> (the user runs this themselves), then invoke workflow 0 (Bootstrap
+> registry) to register it.
+
 1. **Detect candidate vendor directories.**
 
    ```bash
@@ -141,7 +148,11 @@ only at the residuals.
    proposed `.claude/vendor-registry.json` entry and, when a `local-path` was
    provided, the proposed `.claude/vendor-registry.local.json` entry. Ask
    `Confirm? [yes / edit / skip]`. On `edit`, re-prompt the affected derived
-   field individually. On `skip`, abort without writing. On `yes`, proceed.
+   field individually. On `skip`, **discard this candidate (do not write)
+   and continue to the next candidate** in the multi-candidate batch — do
+   NOT abort the entire workflow on a per-entry skip. After all candidates
+   are processed, the final report (step 8 below) lists which entries were
+   written and which were skipped. On `yes`, proceed to step 5.
 
 5. **Write both files** via the `Write` tool. Always write base and
    `.local.json` separately — never embed `local-path` in the committed
@@ -171,11 +182,14 @@ only at the residuals.
    ```
 
    Exit status semantics: `0` = file is gitignored (no action); `1` = file
-   is **not** gitignored (warn the user that `.claude/*.local.*` should be
-   added to `.gitignore`; do not auto-edit it — `.gitignore` is user-owned);
-   `128` = the check itself failed (not a git repo, or another git error)
-   — report the underlying error and skip the gitignore warning rather
-   than emitting a false-positive.
+   is **not** gitignored — warn the user with the exact line to add: "Add
+   `.claude/*.local.json` to your `.gitignore` (covers both
+   vendor-registry.local.json and synergy-registry.local.json, and is
+   forward-compatible with future `.local.json` registries)." Do not
+   auto-edit `.gitignore` — it is user-owned. `128` = the check itself
+   failed (not a git repo, or another git error) — report the underlying
+   error and skip the gitignore warning rather than emitting a
+   false-positive.
 
 8. **Resume to workflow 1 (Determine scope).** Once verification passes, the
    newly created registry is ready for the rest of the sync flow.

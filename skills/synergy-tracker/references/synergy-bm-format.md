@@ -14,31 +14,47 @@ Basic Memory)** and never overlaps with `## Upstream Friction`
 
 ## Target Type Routing
 
-Synergy entries promote to **sibling project entity notes** in Basic Memory —
-not to package or tool notes. The routing source is the
-`.claude/synergy-registry.json` `bm-entity` field.
+Synergy entries promote to **sibling-relationship notes** in Basic Memory
+(canonically `engineering/agents/vp-plugins-<this-project>-and-<sibling>`)
+— not to package or tool notes, and not to single-project entity notes.
+A SYNERGY file tracks how *two projects relate to each other*, so the
+target note describes the relationship, not the sibling-as-package.
+The routing source is the `.claude/synergy-registry.json` `bm-entity`
+field, which by convention points to the relationship note.
+
+> **Fallback paths (`projects/`, `npm/`) are last-resort for unregistered
+> siblings only** — they exist for backward compatibility with older
+> registries. Registered siblings should always have `bm-entity` set to
+> the canonical `engineering/agents/vp-plugins-<this-project>-and-<sibling>`
+> form. Do not promote a synergy entry to a single-project entity note
+> when a relationship note exists.
 
 | SYNERGY target | BM search pattern | BM directory |
 |---|---|---|
-| Registered sibling with `bm-entity` | exact path from `bm-entity` field | as specified (e.g. `npm/`, `projects/`) |
-| Registered sibling without `bm-entity` | search by sibling `name` | `projects/` first, then fall back to `npm/` |
-| Unregistered sibling (SYNERGY file only) | search by project name derived from filename | `projects/` first, then any directory matching the name |
+| Registered sibling with `bm-entity` | exact path from `bm-entity` field | as specified (canonically `engineering/agents/`) |
+| Registered sibling with stale `bm-entity` (read_note returns not-found) | warn + fall through to `search_notes` by sibling `name` | `engineering/agents/` first, then `projects/` / `npm/` as fallback |
+| Registered sibling without `bm-entity` | search by sibling `name` | `engineering/agents/` first, then `projects/` / `npm/` as fallback |
+| Unregistered sibling (SYNERGY file only) | search by project name derived from filename | `engineering/agents/` first, then any directory matching the name |
 
-**Fallback behavior when `bm-entity` is absent:** call
+**Fallback behavior when `bm-entity` is absent OR stale:** call
 `mcp__basic-memory__search_notes` with the sibling project name. If a single
-matching note exists in `projects/`, use it. If multiple match, surface the
-candidates to the user and ask which note should receive the section. If no
-note exists, **flag for enrichment** (e.g. via `/package-intel` or
-`/tool-intel`) instead of creating a thin sibling note — never create a thin
-sibling note as a side effect of synergy promotion.
+matching relationship note exists under `engineering/agents/`, use it.
+If multiple match (or matches appear in `projects/` / `npm/` as legacy
+single-project notes), surface the candidates to the user and ask which
+note should receive the section. If no note exists, **flag for enrichment**
+(e.g. via manual creation under `engineering/agents/`, or `/package-intel` /
+`/tool-intel` for legacy single-project entity notes) instead of creating
+a thin sibling note — never create a thin sibling note as a side effect of
+synergy promotion.
 
 This mirrors upstream-tracker's "no thin BM notes" policy: the BM graph stays
 clean by refusing side-effect note creation.
 
 ## Target Section Structure
 
-The `## Cross-Project Synergy` section in sibling project entity notes uses the
-same four-subsection structure that mirrors the SYNERGY file layout:
+The `## Cross-Project Synergy` section in sibling-relationship notes
+(canonically `engineering/agents/vp-plugins-<this-project>-and-<sibling>`)
+uses the same four-subsection structure that mirrors the SYNERGY file layout:
 
 ```markdown
 ## Cross-Project Synergy
@@ -81,14 +97,16 @@ the BM sibling note's `## Cross-Project Synergy` section, it annotates the
 **local** SYNERGY entry by appending `_(Promoted YYYY-MM-DD)_` after the
 entry body. This serves as the dedup signal:
 
-- Workflow 5 step 1 (Scan for candidates) skips entries already carrying
-  this annotation — preventing repeated promotion of the same row.
+- Workflow 5 (Promote to Basic Memory) step 1 (Scan for candidates) skips
+  entries already carrying this annotation — preventing repeated promotion
+  of the same row.
 - Mirrors the `_(Resolved YYYY-MM-DD)_` annotation pattern from
   upstream-tracker workflow 3 (Resolve) (see
   `skills/upstream-tracker/references/basic-memory-friction-format.md`).
-- Title-keyed dedup at the BM side is the **secondary** defense: workflow 5
-  must `read_note` the target sibling note and scan its existing
-  `## Cross-Project Synergy` section before appending. If the entry's title
+- Title-keyed dedup at the BM side is the **secondary** defense:
+  workflow 5 (Promote to Basic Memory) must `read_note` the target
+  sibling note and scan its existing `## Cross-Project Synergy` section
+  before appending. If the entry's title
   already appears in the section, skip the write and report — never produce
   duplicate titles in BM.
 

@@ -313,6 +313,21 @@ for (const file of skillFiles) {
   }
 }
 
+// --- Skill reference files (audit-only pass for naked workflow refs) ---
+// Reference files in skills/*/references/ are authoritative spec text — bare
+// 'workflow N' references there cause the same silent-renumbering risk as in
+// SKILL.md. They have no SKILL.md frontmatter, so we only run the workflow-ref
+// audit, not the frontmatter / tool-reference checks.
+
+const referenceFiles = (await readdir(join(ROOT, 'skills'), { recursive: true }))
+  .filter((f) => f.includes('/references/') && f.endsWith('.md'))
+  .map((f) => join(ROOT, 'skills', f))
+
+for (const file of referenceFiles) {
+  const content = await readFile(file, 'utf8')
+  auditWorkflowReferences(file, content)
+}
+
 // --- Agents (optional) ---
 
 const agentsDir = join(ROOT, 'agents')

@@ -112,7 +112,7 @@ unclear scope:
    issues
 3. Hand off enriched findings to `/backlog-groomer workflow 6 (Enrich an
    existing issue)`
-4. Then run workflow 1 with the enriched backlog
+4. Then run workflow 1 (Plan a swarm sprint) with the enriched backlog
 
 ## Post-Sprint Research Pattern
 

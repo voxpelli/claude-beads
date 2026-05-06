@@ -1,6 +1,6 @@
 ---
 name: synergy-tracker
-description: "Manage cross-project synergy tracking between sibling projects. Use when the user wants to log a shared pattern, a divergence, an extraction candidate, or something a sibling project has that this one doesn't. NOT for upstream dependency bugs or vendor friction (use /upstream-tracker for those). Trigger phrases: 'synergy', 'sibling project', 'cross-project', 'extraction candidate', 'compare with [project]', 'both projects do', 'they have X we don't', 'shared pattern', 'divergence', 'cross-project alignment', 'review synergies', 'log this pattern', 'we should extract this', 'they handle this differently', or any mention of patterns, divergences, or shared practices across related projects."
+description: "Manage cross-project synergy tracking between sibling projects. Use when the user wants to log a shared pattern, a divergence, an extraction candidate, or something a sibling project has that this one doesn't. Also use when the user wants to promote synergy entries to Basic Memory (workflow 5). NOT for upstream dependency bugs or vendor friction (use /upstream-tracker for those). Trigger phrases: 'synergy', 'sibling project', 'cross-project', 'extraction candidate', 'compare with [project]', 'both projects do', 'they have X we don't', 'shared pattern', 'divergence', 'cross-project alignment', 'review synergies', 'log this pattern', 'we should extract this', 'they handle this differently', 'promote synergy', 'promote to basic memory', 'promote synergy entries', 'sync synergy to memory', or any mention of patterns, divergences, shared practices, or BM promotion across related projects."
 user-invocable: true
 argument-hint: "[workflow] [project-name]"
 paths:
@@ -131,10 +131,16 @@ being discussed, what pattern was noticed, what contrast was made.
 
 **Step 1b — Guided registry creation (only when
 `.claude/synergy-registry.json` is absent AND a sibling has been named in
-step 1).** If the registry file already exists, skip this step silently
-and proceed to step 2 — do not modify hand-written registries. Otherwise,
-run the following bootstrap so the project can route future syncs and
-comparisons through the registry rather than re-asking each time.
+step 1).** If the registry file already exists (returning user adding a
+second sibling, or any case where a registry was hand-written), skip this
+step silently and proceed to step 2 — do not modify hand-written
+registries. **Append-to-existing is not supported**; that case falls back
+to manual editing of `.claude/synergy-registry.json` (add a new
+`{name, file, remote, bm-entity, relationship}` entry per the schema in
+`references/synergy-entry-format.md`). Tracked separately as a future
+enhancement (`vp-beads-bma`). Otherwise, run the following bootstrap so
+the project can route future syncs and comparisons through the registry
+rather than re-asking each time.
 
 - **Confirm the sibling name** resolved from step 1. If step 1 deferred to
   asking the user, defer this step too — only proceed once a name is in
@@ -179,7 +185,11 @@ comparisons through the registry rather than re-asking each time.
 - **Preview both files in a single message** before writing anything. Use
   this shape (omit the `.local.json` block when no local-path was
   supplied). Show BOTH the placeholder schema and a worked substitution so
-  the user can see how `<this-project>` and `<sibling>` resolve:
+  the user can see how `<this-project>` and `<sibling>` resolve. **Annotate
+  auto-derived fields with their source** as inline comments after rendering
+  (e.g. `"remote": "https://github.com/voxpelli/vp-claude"  # from <sibling>
+  git origin`, `"bm-entity": "engineering/agents/..."  # canonical
+  convention`) so the user can spot derivation errors before approving:
 
   ```
   Proposed .claude/synergy-registry.json (schema):
@@ -239,11 +249,14 @@ comparisons through the registry rather than re-asking each time.
   ```
 
   Exit status semantics: `0` = file is gitignored (no action); `1` = file
-  is **not** gitignored (warn the user that `.claude/*.local.*` should be
-  ignored — see the `.gitignore` convention; do not auto-edit `.gitignore`,
-  it is user-owned); `128` = the check itself failed (not a git repo, or
-  another git error) — report the underlying error and skip the gitignore
-  warning rather than emitting a false-positive.
+  is **not** gitignored — warn the user with the exact line to add: "Add
+  `.claude/*.local.json` to your `.gitignore` (covers both
+  synergy-registry.local.json and vendor-registry.local.json, and is
+  forward-compatible with future `.local.json` registries)." Do not
+  auto-edit `.gitignore` — it is user-owned. `128` = the check itself
+  failed (not a git repo, or another git error) — report the underlying
+  error and skip the gitignore warning rather than emitting a
+  false-positive.
 - **Resume to step 2** (Basic Memory pre-check).
 
 2. **Basic Memory pre-check.** If Basic Memory MCP tools are available, make
@@ -491,10 +504,15 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
    `.claude/synergy-registry.local.json` merged on top by the `name` key).
    If `bm-entity` is present, use it as the BM note path. If absent, call
    `mcp__basic-memory__search_notes` with the sibling project name and
-   surface the candidate matches to the user. The full routing table —
-   including the fallback search order (`projects/` first, then any
-   directory matching the name) — lives in
-   `references/synergy-bm-format.md`.
+   surface the candidate matches to the user. **Stale `bm-entity` fallback:**
+   if `bm-entity` is present but step 4's `read_note` returns not-found
+   (the registry path has been renamed or deleted), warn the user
+   ("BM note not found at `<bm-entity>` — registry may be stale") and
+   fall through to `mcp__basic-memory__search_notes` exactly as the
+   absent-`bm-entity` row does. The full routing table — including the
+   fallback search order (`engineering/agents/` for relationship notes,
+   then `projects/` and `npm/` as last-resort fallbacks for unregistered
+   siblings) — lives in `references/synergy-bm-format.md`.
 4. **Write or flag.** Three branches per approved candidate:
    - **Note exists, has `## Cross-Project Synergy` with target subsection** —
      call `mcp__basic-memory__read_note` first to fetch exact content, then
@@ -504,8 +522,12 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
      the title already appears in the subsection, skip. If `find_replace`
      returns zero replacements despite `expected_replacements=1`, the note was
      edited between `read_note` and `edit_note` — do NOT annotate the local
-     entry; report "BM note changed since read — re-run workflow 5 (Promote
-     to Basic Memory) for this entry" and continue with the next candidate.
+     entry; defer this candidate (increment a deferred-count) and continue
+     with the next candidate. The step 6 report includes deferred entries
+     under "deferred (BM note changed mid-write): N entries — re-run
+     workflow 5 (Promote to Basic Memory) once BM writes settle." Do NOT
+     re-invoke workflow 5 (Promote to Basic Memory) automatically inside
+     the same run; persistent contention would otherwise loop.
    - **Note exists, no `## Cross-Project Synergy` section** — call
      `mcp__basic-memory__edit_note` with `insert_before_section` on
      `Relations` to add the full section block (all five subsections per the

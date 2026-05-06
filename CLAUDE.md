@@ -102,7 +102,7 @@ Dev tooling only: validation and linting via `npm run check`.
   (two pairing modes — Mode A: shared-dependency basename intersection
   surfacing duplicate friction, complementary workarounds, sibling-only
   entries; Mode B: reciprocal sibling-friction pairs `UPSTREAM-<sibling>.md`
-  here ↔ `UPSTREAM-<this>.md` there, surfacing friction the sibling tracks
+  here ↔ `UPSTREAM-<this-project>.md` there, surfacing friction the sibling tracks
   about us, our open friction against them, and cross-side staleness from
   shipped fixes), apply-reciprocation-batch (opt-in `--auto-reciprocate`
   flag, per-entry confirmation, writes only to the sibling side; SYNERGY
@@ -210,8 +210,10 @@ overlap:
 
 - **upstream-tracker workflow 6 (Promote)** owns `## Upstream Friction` in `npm/*`, `brew/*`,
   `cask/*`, `actions/*`, `docker/*`, `vscode/*` entity notes
-- **synergy-tracker workflow 5 (Promote)** owns `## Cross-Project Synergy` in sibling
-  project entity notes
+- **synergy-tracker workflow 5 (Promote)** owns `## Cross-Project Synergy` in
+  sibling-relationship notes (canonically
+  `engineering/agents/vp-plugins-<this-project>-and-<sibling>` — these are
+  bilateral relationship notes, NOT single-project entity notes)
 - **retrospective step 7** owns `engineering/*` notes (patterns, conventions)
 
 Annotation-only writers (not owners): vendor-sync step 8b and upstream-tracker

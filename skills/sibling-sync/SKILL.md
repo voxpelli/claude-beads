@@ -1,6 +1,6 @@
 ---
 name: sibling-sync
-description: "Bilateral SYNERGY/UPSTREAM reconciliation across sibling projects. Use when the user wants to sync sibling SYNERGY/UPSTREAM files, compare both sides to surface drift, find reciprocation gaps (entries here but not there, or vice versa), flag stale-aligned rows, detect status drift across sides, surface friction the sibling tracks ABOUT this project (their UPSTREAM-<this>.md), or apply a reciprocation batch with --auto-reciprocate. Workflow 3 covers two UPSTREAM pairing modes: shared third-party dependencies AND reciprocal sibling-friction pairs (UPSTREAM-<sibling>.md here ↔ UPSTREAM-<this>.md there). NOT for logging entries on this side (use /synergy-tracker workflow 1 (Log a synergy entry)) — sibling-sync compares both sides without writing by default. NOT for upstream → project drift (use /vendor-sync); sibling-sync handles peer-to-peer drift between sibling vp-* projects. Trigger phrases: 'sibling sync', 'compare siblings', 'sync sibling', 'reconcile siblings', 'reciprocation gap', 'sync drift', 'bilateral sync', 'sync SYNERGY', 'sync UPSTREAM both ways', 'auto-reciprocate', 'check sibling drift', 'peer-to-peer drift', 'cross-project drift', 'sibling reconciliation', 'sibling has friction about us', 'what does the sibling say about us', 'reconcile sibling-tracked friction', 'reciprocal upstream friction', 'friction filed against this project'."
+description: "Bilateral SYNERGY/UPSTREAM reconciliation across sibling projects. Use when the user wants to sync sibling SYNERGY/UPSTREAM files, compare both sides to surface drift, find reciprocation gaps (entries here but not there, or vice versa), flag stale-aligned rows, detect status drift across sides, surface friction the sibling tracks ABOUT this project (their UPSTREAM-<this-project>.md), or apply a reciprocation batch with --auto-reciprocate. Workflow 3 covers two UPSTREAM pairing modes: shared third-party dependencies AND reciprocal sibling-friction pairs (UPSTREAM-<sibling>.md here ↔ UPSTREAM-<this-project>.md there). NOT for logging entries on this side (use /synergy-tracker workflow 1 (Log a synergy entry)) — sibling-sync compares both sides without writing by default. NOT for upstream → project drift (use /vendor-sync); sibling-sync handles peer-to-peer drift between sibling vp-* projects. Trigger phrases: 'sibling sync', 'compare siblings', 'sync sibling', 'reconcile siblings', 'reciprocation gap', 'sync drift', 'bilateral sync', 'sync SYNERGY', 'sync UPSTREAM both ways', 'auto-reciprocate', 'check sibling drift', 'peer-to-peer drift', 'cross-project drift', 'sibling reconciliation', 'sibling has friction about us', 'what does the sibling say about us', 'reconcile sibling-tracked friction', 'reciprocal upstream friction', 'friction filed against this project'."
 user-invocable: true
 argument-hint: "[--auto-reciprocate] [sibling-name]"
 paths:
@@ -123,9 +123,15 @@ Resolve which siblings will participate in this run.
    tell the user no sibling registry is configured and offer to invoke
    `/synergy-tracker` workflow 1 (Log a synergy entry), which will run the
    guided registry creation flow at step 1b for the first sibling. If the
-   user names a sibling now, run the synergy-tracker creation flow inline
-   (see `skills/synergy-tracker/SKILL.md` workflow 1 (Log a synergy entry)
-   step 1b), then resume from step 2 below. Otherwise stop.
+   user names a sibling now, follow the synergy-tracker step 1b prose from
+   this conversation (re-reading
+   `skills/synergy-tracker/SKILL.md` workflow 1 (Log a synergy entry) step 1b
+   and applying its logic in-session — Claude Code has no actual
+   inline-skill-invocation mechanism, so this means executing step 1b's
+   instructions verbatim from sibling-sync's context). After the registry
+   is created, resume from step 2 below. Otherwise stop, and instruct the
+   user to invoke `/synergy-tracker` directly with the sibling name and
+   then re-run `/sibling-sync`.
 2. If `.claude/synergy-registry.local.json` exists, merge it on top per the
    per-entry merge rules in the Registry section above.
 3. If the user named a specific sibling in their request or argument, filter
@@ -282,7 +288,15 @@ compare friction tracking on each. Same report-only contract as workflow 2
    four-tier algorithm in
    `skills/synergy-tracker/references/project-name-derivation.md` to
    compute `<this-name>`. Apply the same algorithm (tier 3 for the sibling
-   subject) to the registry `name` field for `<sibling-name>`. Then check:
+   subject) to the registry `name` field for `<sibling-name>`.
+   **Stale `local-path` guard:** if the registry entry specifies a
+   `local-path` that does not resolve to an accessible directory, tier 1
+   (sibling-registry back-pointer) silently falls through to tier 2
+   (this project's `plugin.json`). Warn the user before falling through:
+   "Sibling local-path is not accessible — tier 1 derivation skipped;
+   `<this-name>` may diverge from how the sibling registered this project.
+   Update `.claude/synergy-registry.local.json` if the sibling moved."
+   Then check:
    - Does the sibling have `<resolved-local-path>/UPSTREAM-<this-name>.md`?
    - Does this project have `UPSTREAM-<sibling-name>.md`?
 
@@ -611,8 +625,13 @@ without commitment to any follow-up action.
   `.claude/synergy-registry.json`. Offer to redirect to
   `/synergy-tracker` workflow 1 (Log a synergy entry), which includes
   guided registry creation at step 1b. If the user names a sibling
-  inline, run step 1b directly, then resume this skill from workflow 1
-  (Discover sibling(s)) step 2. Otherwise stop.
+  inline, follow step 1b's instructions verbatim from this conversation
+  (Claude Code has no real cross-skill handoff, so this means executing
+  step 1b's prose in-session by re-reading
+  `skills/synergy-tracker/SKILL.md`), then resume this skill from
+  workflow 1 (Discover sibling(s)) step 2. Otherwise stop, and direct
+  the user to invoke `/synergy-tracker` first and re-run `/sibling-sync`
+  afterwards.
 - **All siblings inaccessible** — report which paths were tried and stop.
   Suggest `.claude/synergy-registry.local.json` for per-machine path
   overrides.
