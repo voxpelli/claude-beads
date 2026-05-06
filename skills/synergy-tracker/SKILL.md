@@ -504,7 +504,20 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
    `.claude/synergy-registry.local.json` merged on top by the `name` key).
    If `bm-entity` is present, use it as the BM note path. If absent, call
    `mcp__basic-memory__search_notes` with the sibling project name and
-   surface the candidate matches to the user. **Stale `bm-entity` fallback:**
+   surface the candidate matches to the user. **Legacy `bm-entity` form
+   warning:** if the registered `bm-entity` does NOT start with
+   `engineering/agents/vp-plugins-` (the canonical convention from v0.12.1
+   onward), warn the user before proceeding: "Registered bm-entity
+   `<value>` does not match the canonical
+   `engineering/agents/vp-plugins-<this-project>-and-<sibling>` form. This
+   may be a pre-v0.12.1 registry pointing at a single-project entity note
+   (e.g. `npm/<sibling>`) — workflow 5 (Promote to Basic Memory) will
+   write to that legacy location, which may scatter cross-project content.
+   Recommended: update the registry to the canonical form and migrate any
+   existing `## Cross-Project Synergy` content to
+   `engineering/agents/vp-plugins-<this-project>-and-<sibling>` first." Ask
+   the user whether to proceed anyway, abort, or migrate. **Stale
+   `bm-entity` fallback:**
    if `bm-entity` is present but step 4's `read_note` returns not-found
    (the registry path has been renamed or deleted), warn the user
    ("BM note not found at `<bm-entity>` — registry may be stale") and

@@ -161,6 +161,11 @@ function auditWorkflowReferences (file, content) {
   masked = masked.replace(/'[^'\n]*'/g, blankPreservingNewlines)
   masked = masked.replace(/"[^"\n]*"/g, blankPreservingNewlines)
 
+  // 5. Strip backtick inline code (defensive — meta-discussion of the
+  // convention may use forms like `workflow 6`; without this strip those
+  // would emit false-positive violations).
+  masked = masked.replace(/`[^`\n]*`/g, blankPreservingNewlines)
+
   // Find naked `workflow N` references — case-insensitive (capitalized at
   // sentence start is fine), digits+, not followed by `\s*\(`.
   const pattern = /\bworkflow\s+\d+\b(?!\s*\()/gi

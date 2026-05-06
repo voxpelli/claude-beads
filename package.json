@@ -4,7 +4,7 @@
   "scripts": {
     "check": "run-p check:*",
     "check:plugin": "node validate-plugin.mjs",
-    "check:md": "remark . --quiet --frail",
+    "check:md": "remark . --quiet --frail --ignore-path .gitignore",
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
     "check:hooks": "node scripts/check-hooks.mjs"
   },
