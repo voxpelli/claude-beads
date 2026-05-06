@@ -164,7 +164,7 @@ projects have active synergy tracking relationships.
     "name": "vp-knowledge",
     "file": "SYNERGY-vp-knowledge.md",
     "remote": "https://github.com/voxpelli/vp-claude",
-    "bm-entity": "npm/vp-knowledge",
+    "bm-entity": "engineering/agents/vp-plugins-vp-beads-and-vp-knowledge",
     "relationship": "sibling-plugin"
   }
 ]
@@ -178,6 +178,16 @@ projects have active synergy tracking relationships.
 | `bm-entity` | no | Basic Memory entity path — consumed by workflow 5 (Promote to Basic Memory, planned); informational until that workflow ships |
 | `relationship` | no | Free-form label: `sibling-plugin`, `shared-tooling`, `fork`, `consumer` |
 | `local-path` | no | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
+
+> **`bm-entity` naming rule:** Use
+> `engineering/agents/vp-plugins-<this-project>-and-<sibling>` — a
+> relationship note path, not an entity path. The `npm/<name>` form
+> (seen in some older examples) is incorrect for synergy relationships;
+> those `npm/` paths are for package-friction notes owned by
+> `/upstream-tracker` workflow 6 (Promote to Basic Memory). A SYNERGY
+> file tracks how *two projects relate to each other*, not facts about
+> the sibling as a software package — so the relationship note belongs
+> in `engineering/agents/`.
 
 If `.claude/synergy-registry.json` does not exist, discover SYNERGY files by
 globbing `SYNERGY-*.md`. The registry is optional but recommended for projects
