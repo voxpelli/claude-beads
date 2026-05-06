@@ -1,6 +1,6 @@
 {
   "name": "vp-beads",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Sprint workflow automation: backlog grooming, retrospectives, upstream vendor tracking, cross-project synergy tracking, swarm wave orchestration, vendor sync, and bilateral sibling reconciliation for projects using beads and Basic Memory.",
   "author": {
     "name": "Pelle Wessman",

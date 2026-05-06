@@ -89,6 +89,25 @@ Reads `.claude/vendor-registry.json`, pulls each selected subtree with `--squash
 
 Step 7 cross-references the full sync diff against open `UPSTREAM-*.md` entries — any issue visibly addressed in the diff is deleted immediately. This is the primary resolution mechanism; don't defer to the retro. Step 8b annotates the corresponding Basic Memory friction entries when available.
 
+### `/sibling-sync [--auto-reciprocate] [sibling-name]` — Bilateral sibling reconciliation
+
+Compare `SYNERGY-*.md` and `UPSTREAM-*.md` files between this project and registered sibling vp-* projects:
+
+```
+/sibling-sync
+/sibling-sync vp-knowledge
+/sibling-sync --auto-reciprocate
+```
+
+Read-only by default. Surfaces drift, reciprocal gaps, stale-aligned rows, status divergence, and reciprocal-friction across siblings. Four workflows:
+
+- **Discover sibling(s)** — registry resolution + path probing via `.claude/synergy-registry.json` (+ optional `.local.json` override)
+- **Sync sibling SYNERGY** — reciprocal gaps, unreciprocated entries, stale alignment claims, status drift
+- **Sync sibling UPSTREAM** — Mode A: shared third-party dependency friction (duplicates, complementary workarounds, sibling-only entries); Mode B: reciprocal sibling-friction pairs (`UPSTREAM-<sibling>.md` ↔ `UPSTREAM-<this>.md`) surfacing what the sibling tracks about us
+- **Apply reciprocation batch** (opt-in `--auto-reciprocate`) — per-entry confirmation, writes only to the sibling side
+
+Workflows 2 and 3 end with a per-sibling two-tier action menu (single `AskUserQuestion`, `header: "Synergy"` + `header: "Upstream"`) that delegates writes to `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or `bd create` via the `Skill` tool — replacing the previous copy-paste hint workflow. Picking "None" yields a report-only run.
+
 ### `/swarm-wave [workflow] [wave-number|topic]` — Multi-agent wave orchestration
 
 Orchestrate multi-agent development sprints using the swarm wave pattern:
@@ -209,6 +228,10 @@ skills/
     SKILL.md                            Cross-project synergy tracking workflow
     references/
       synergy-entry-format.md           Entry templates, naming, registry schema
+      synergy-bm-format.md              BM section templates for workflow 5
+      project-name-derivation.md        Four-tier project-name derivation algorithm
+  sibling-sync/
+    SKILL.md                            Bilateral SYNERGY/UPSTREAM reconciliation
   swarm-wave/
     SKILL.md                            Multi-agent wave orchestration
     references/
@@ -253,6 +276,12 @@ hooks/
  "synergy" / "compare"   -> synergy-tracker skill -> SYNERGY-<project>.md entry
  /synergy-tracker                                 -> review open synergies
                                                   -> compare with sibling project
+                                                  -> promote to Basic Memory
+
+ "sibling drift" / "sync" -> sibling-sync skill   -> drift findings (read-only)
+ /sibling-sync                                    -> two-tier action menu
+                                                  -> delegates via Skill tool
+                                                  -> --auto-reciprocate writes
 
  "swarm sprint" / "wave" -> swarm-wave skill      -> SWARM-NN.md wave plan
  /swarm-wave                                      -> parallel agent execution

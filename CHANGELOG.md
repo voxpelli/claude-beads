@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0][] - 2026-05-06
+
+### Added
+
+- **`/sibling-sync` post-report follow-up action menu.** After workflows 2
+  (Sync sibling SYNERGY) and 3 (Sync sibling UPSTREAM) print findings,
+  sibling-sync now offers a per-sibling two-tier action menu — a single
+  `AskUserQuestion` call with `header: "Synergy"` + `header: "Upstream"` —
+  covering the actionable finding categories. Selecting an action delegates
+  to the owning skill via the `Skill` tool (`/vp-beads:synergy-tracker`,
+  `/vp-beads:upstream-tracker`) or runs `bd create` directly for beads
+  issues filed against this project. Replaces the previous copy-paste hint
+  workflow: instead of printing "→ /synergy-tracker to log on this side"
+  and waiting for the user to invoke it manually, sibling-sync now offers
+  to run the action inline. Default read-only contract preserved: declining
+  all prompts yields a report-only run. The `--auto-reciprocate` flag still
+  bypasses the menu and runs workflow 4 (Apply reciprocation batch)
+  directly with its existing per-entry confirmation gate. Sibling-sync
+  becomes the first active cross-skill orchestrator in the plugin (and the
+  first non-sample inline `Skill`-tool consumer). (vp-beads-bpm)
+
+### Changed
+
+- **`/sibling-sync` `allowed-tools`** — adds `Skill` and `AskUserQuestion`
+  for the action-menu delegation flow.
+- **`/sibling-sync` description trigger phrases** — adds `'sibling
+  follow-up'`, `'act on sibling drift'`, `'after sibling-sync'`, `'follow-up
+  actions'`, and `'what to do about sibling findings'` so the skill
+  triggers when a user asks what to do next about surfaced findings.
+- **`skills/sibling-sync/SKILL.md`** — new "Action-menu protocol" section
+  centralizes the two-tier dispatch table, menu rendering rules, header
+  values, per-action argument templates passed to delegated skills,
+  precedence with `--auto-reciprocate`, idempotency disposition (Q2 option
+  2 re-fires until sibling resolves on their side), and failure modes
+  (delegated `Skill` errors, subagent context, `bd create` failures).
+  Workflows 2 and 3 each gain a step 6 (Offer follow-up actions) that
+  references the protocol section.
+- **`/sibling-sync` Cross-skill boundaries section** — adds a v0.14.0
+  clarifier that sibling-sync acts as an orchestrator for follow-up actions
+  while still owning nothing in Basic Memory or in this project's
+  SYNERGY/UPSTREAM files.
+
 ## [0.13.0][] - 2026-05-06
 
 ### Upgrading from v0.12.x
@@ -870,6 +912,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.14.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.14.0
 [0.13.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.13.0
 [0.12.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.1
 [0.12.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.0
