@@ -5,6 +5,193 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0][] - 2026-05-06
+
+### Upgrading from v0.12.x
+
+> **Important:** v0.13.0 introduces `/synergy-tracker` workflow 5 (Promote
+> to Basic Memory), which canonicalizes `## Cross-Project Synergy` writes
+> to **sibling-relationship notes** at
+> `engineering/agents/vp-plugins-<this-project>-and-<sibling>`. The old
+> v0.12.x workflow 1 step 8 inline-promote path (now removed in favor of
+> delegation to workflow 5) routed via `search_notes` to whatever note
+> matched the sibling name — typically `npm/<sibling>` or
+> `projects/<sibling>`. Existing users may need a one-time migration:
+
+1. **Reinstall the plugin** to pick up v0.13.0:
+   `/plugin install vp-beads@vp-plugins` (the marketplace cache lags;
+   reinstallation is required to overcome it).
+2. **Audit your `.claude/synergy-registry.json`** for any `bm-entity` field
+   that does NOT match the canonical
+   `engineering/agents/vp-plugins-<this-project>-and-<sibling>` form. The
+   v0.12.1 docs fix corrected the documented example, but older
+   hand-written registries may still use `npm/<sibling>` or similar.
+   Workflow 5 emits a runtime warning when it detects a non-canonical
+   `bm-entity`, but updating the registry up front avoids surprises.
+3. **Audit any existing `## Cross-Project Synergy` content** on
+   `npm/<sibling>` or `projects/<sibling>` notes left over from the old
+   step 8 inline-write path. If found, migrate the content to the
+   canonical `engineering/agents/vp-plugins-<this-project>-and-<sibling>`
+   note. Workflow 5's title-keyed dedup will not detect cross-note
+   duplicates, so failure to migrate may produce orphaned legacy content
+   plus fresh duplicates on the canonical note.
+4. **Pre-annotate already-promoted SYNERGY entries** with
+   `_(Promoted YYYY-MM-DD)_` to prevent workflow 5 from re-promoting them.
+   Use the date the entry was originally promoted to BM.
+5. **Add `.claude/*.local.json` to your `.gitignore`** if you intend to use
+   the new `.local.json` registries (the new creation flows warn when the
+   pattern is missing; the exact line to add is now part of the warning
+   prose).
+
+### Added
+
+- **`/synergy-tracker` workflow 1 step 1b — guided synergy registry
+  creation** (vp-beads-tbh). Auto-derives `name`, `file`, `remote`, and
+  `bm-entity`; prompts only for `relationship` and (when needed)
+  `local-path`. Preview-then-approve gate before write. Generates both
+  `.claude/synergy-registry.json` and `.claude/synergy-registry.local.json`
+  in one flow. Round-trip JSON.parse verification post-write.
+- **`/vendor-sync` workflow 0 (Bootstrap registry) — guided vendor
+  registry creation** (vp-beads-83g). Detects candidate `vendor/`
+  subdirectories; auto-derives `prefix`, `branch`, `package`; prompts
+  only for `remote` and (when needed) `local-path`. Same preview +
+  round-trip verification pattern as the synergy flow. Multiple
+  candidates processed sequentially. Handles `git remote show` returning
+  the literal `(unknown)` for HEAD-less remotes by falling back to `main`.
+- **`AskUserQuestion`** added to `allowed-tools` in both
+  `/synergy-tracker` and `/vendor-sync` to support the new prompt-driven
+  creation flows.
+- **`/synergy-tracker` workflow 5 (Promote to Basic Memory)** (vp-beads-e3z).
+  Mirrors `/upstream-tracker` workflow 6 (Promote to Basic Memory) exactly:
+  scans `SYNERGY-*.md` candidates with `_(Promoted YYYY-MM-DD)_` dedup,
+  presents generalized drafts (per `references/synergy-bm-format.md`
+  transforms), routes via `bm-entity` from the merged registry, writes
+  via `mcp__basic-memory__edit_note` with `find_replace` (or
+  `insert_before_section` on `Relations` for first-time section
+  creation), prunes `_(Resolved ...)_` entries to `### Resolved`, and
+  reports. Owns `## Cross-Project Synergy` writes in
+  `engineering/agents/vp-plugins-<this>-and-<sibling>` relationship
+  notes — the auto-derived `bm-entity` field shipped in step 1b is now
+  consumed.
+- **Workflow 1 step 1b explicit `<this-project>` derivation preamble**
+  (vp-beads-f28) — distinguishes `<sibling>` (tier 3 / tier 4) from
+  `<this-project>` (tiers 1-4 self subject) using the four-tier algorithm
+  in `references/project-name-derivation.md`. Placeholder syntax
+  standardized: `<this>` → `<this-project>` throughout the file.
+  JSON preview now shows a worked substitution alongside the placeholder
+  schema.
+- **`_(Promoted YYYY-MM-DD)_` annotation pattern** documented in
+  `skills/synergy-tracker/references/synergy-bm-format.md` (mirrors
+  upstream-tracker's `_(Resolved ...)_` pattern). Workflow 5 step 1's
+  dedup signal.
+- **`validate-plugin.mjs` workflow N (Name) convention audit**
+  (vp-beads-9we) — new `auditWorkflowReferences()` function catches
+  bare `workflow N` cross-references missing the parenthetical name.
+  Position-preserving masking strips frontmatter, code fences, headings,
+  and quoted strings; whitespace-tolerant negative lookahead correctly
+  accepts line-wrapped references. Scans `skills/*/SKILL.md`,
+  `agents/*.md`, and root `CLAUDE.md`.
+
+### Changed
+
+- **`/sibling-sync` workflow 1 step 1 + Error handling "Registry not
+  found"** (vp-beads-jfg) — converted from hard-stop to redirect: names
+  `/synergy-tracker workflow 1 (Log a synergy entry) step 1b` as the
+  creation flow; offers inline bootstrap if user names a sibling.
+- **`/vendor-sync` registry-absent block + Error handling "Registry not
+  found"** (vp-beads-jfg) — converted from hard-stop to redirect: names
+  `/vendor-sync workflow 0 (Bootstrap registry)` as the creation flow.
+- **`/synergy-tracker` workflow 3 step 1** — existing softer fallback
+  (read registry → glob → ask) augmented with a registry-creation offer
+  via workflow 1 (Log a synergy entry) step 1b.
+- **Round-trip JSON validation in both creation flows** — explicit
+  `node -e 'JSON.parse(...)'` invocation pattern; base-vs-`.local.json`
+  failure modes split (base failure aborts, `.local.json` failure warns
+  and continues).
+- **`git check-ignore` exit-code semantics distinguished** in both
+  creation flows: `0` = ignored, `1` = warn, `128` = report git error
+  separately (was previously conflating `1` and `128`).
+- **`/synergy-tracker` workflow 1 step 8 (Eager promotion check)** —
+  collision fix: step 8 previously did inline `## Cross-Project Synergy`
+  writes that conflicted with workflow 5's sole-owner claim. Step 8
+  now offers promotion + delegates the actual write to workflow 5
+  (Promote to Basic Memory)'s single-entry path. Tempo gating preserved.
+- **`/synergy-tracker` workflow 4 (Trend review)** — unconditional BM
+  cross-reference step against `## Cross-Project Synergy` in the
+  corresponding entity note (was guarded by "once workflow 5 ships").
+- **21 within-skill workflow self-references** updated to the
+  `workflow N (Name)` convention across `vendor-sync`, `synergy-tracker`,
+  and `sibling-sync` (caught by the new validator).
+- **5 cross-skill bare `workflow N` references** fixed in
+  `upstream-tracker`, `sibling-sync`, `swarm-wave`, and
+  `synergy-tracker/references/project-name-derivation.md`.
+- **12+ "planned" / "future workflow 5" qualifiers** dropped across
+  9 files (workflow 5 is now shipped, no longer a forward-looking
+  feature).
+- **MEMORY.md** refreshed to v0.13.0, skill count 7, and synergy-tracker
+  workflow count 5.
+
+### Fixed
+
+- **Workflow 5 zero-replacement loop** — `find_replace` failure mid-promotion
+  no longer suggests "re-run workflow 5 for this entry" (which could loop
+  on persistent BM contention). Now defers the candidate, increments a
+  deferred-count, and surfaces it in the step 6 report.
+- **Stale `bm-entity` fallback** — workflow 5 step 3 now warns the user
+  and falls through to `mcp__basic-memory__search_notes` when a registered
+  `bm-entity` resolves to a non-existent BM note. Mirrored in
+  `synergy-bm-format.md` routing table.
+- **Vendor workflow 0 `skip` semantics** — "On `skip`, abort without writing"
+  was ambiguous about batch vs. per-candidate scope. Now explicit:
+  discard this candidate, continue to the next; final report lists skipped.
+- **Mode B tier-1 silent footgun** — stale sibling `local-path` silently
+  fell through to tier 2 of the project-name derivation, risking wrong
+  `UPSTREAM-<this-name>.md` filename construction. `/sibling-sync` Mode B
+  now warns explicitly before falling through.
+- **BM ownership table mislabel** — `CLAUDE.md` and `synergy-bm-format.md`
+  said "sibling project entity notes"; canonical target is sibling-relationship
+  notes (`engineering/agents/vp-plugins-<this-project>-and-<sibling>`).
+  `projects/` / `npm/` are last-resort fallbacks for unregistered siblings
+  only.
+- **`<this>` placeholder leak** — standardization to `<this-project>` was
+  incomplete in `CLAUDE.md` and `sibling-sync` description frontmatter; now
+  consistent.
+- **Retrospective / workflow 5 boundary** — retrospective step 7 now
+  explicitly forbids writing to `engineering/agents/vp-plugins-*` paths
+  (workflow 5's territory).
+- **`auditWorkflowReferences` extended to `references/*.md`** — new
+  audit-only pass scans `skills/*/references/*.md` for naked `workflow N`
+  references (caught 3 additional violations in `synergy-bm-format.md` and
+  `swarm-wave/command-patterns.md`, also fixed).
+- **Sibling-sync redirect prose** — "run inline" misleading; now acknowledges
+  there's no actual cross-skill handoff mechanism (Claude follows the
+  synergy-tracker step 1b prose in-session).
+- **`.gitignore` warning specificity** — both creation flows now print the
+  exact line to add (`.claude/*.local.json`) instead of the vague glob
+  `.claude/*.local.*`.
+- **Vendor workflow 0 `git subtree add` precondition** — workflow 0 now
+  states explicitly that the subtree must exist on disk first, with the
+  exact `git subtree add` invocation for users adding new vendors.
+- **Synergy step 1b append-to-existing notice** — mirrors vendor-sync's
+  explicit "this workflow does not append; falls back to manual editing"
+  acknowledgment for returning users adding a 2nd sibling.
+- **Step 1b preview source annotations** — preview now requests inline
+  comments tagging auto-derived fields with their source so users can
+  catch derivation errors before approving.
+- **`check:md` now respects `.gitignore`** — `remark . --quiet --frail`
+  was scanning ephemeral SWARM-NN.md and RETRO-NN.md files (gitignored
+  but on disk), occasionally failing the validation pipeline on
+  working-document markdown. Added `--ignore-path .gitignore` so future
+  sprints don't trip the check on workflow scratch files.
+- **Workflow 5 step 3 legacy `bm-entity` warning** — emits a runtime
+  warning when the registered `bm-entity` does NOT match the canonical
+  `engineering/agents/vp-plugins-<this-project>-and-<sibling>` form.
+  Helps existing users detect pre-v0.12.1 registries before workflow 5
+  scatters content across legacy single-project entity notes.
+- **`auditWorkflowReferences` strips backtick inline code** — defensive
+  fix preventing false-positive violations on convention meta-discussion
+  using backticks (e.g. `` `workflow 6` `` in CLAUDE.md-style prose).
+
 ## [0.12.1][] - 2026-05-06
 
 ### Added
@@ -683,6 +870,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.13.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.13.0
 [0.12.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.1
 [0.12.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.0
 [0.11.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.11.0
