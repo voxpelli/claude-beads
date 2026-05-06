@@ -119,8 +119,13 @@ Resolve which siblings will participate in this run.
 
 **Steps:**
 
-1. Read `.claude/synergy-registry.json`. If the file does not exist, tell the
-   user this project has no registered siblings and stop.
+1. Read `.claude/synergy-registry.json`. If the file does not exist, redirect:
+   tell the user no sibling registry is configured and offer to invoke
+   `/synergy-tracker` workflow 1 (Log a synergy entry), which will run the
+   guided registry creation flow at step 1b for the first sibling. If the
+   user names a sibling now, run the synergy-tracker creation flow inline
+   (see `skills/synergy-tracker/SKILL.md` workflow 1 (Log a synergy entry)
+   step 1b), then resume from step 2 below. Otherwise stop.
 2. If `.claude/synergy-registry.local.json` exists, merge it on top per the
    per-entry merge rules in the Registry section above.
 3. If the user named a specific sibling in their request or argument, filter
@@ -603,8 +608,11 @@ without commitment to any follow-up action.
 ## Error handling
 
 - **Registry not found** — tell the user this project has no
-  `.claude/synergy-registry.json` and suggest creating one with at least one
-  sibling entry. Stop.
+  `.claude/synergy-registry.json`. Offer to redirect to
+  `/synergy-tracker` workflow 1 (Log a synergy entry), which includes
+  guided registry creation at step 1b. If the user names a sibling
+  inline, run step 1b directly, then resume this skill from workflow 1
+  (Discover sibling(s)) step 2. Otherwise stop.
 - **All siblings inaccessible** — report which paths were tried and stop.
   Suggest `.claude/synergy-registry.local.json` for per-machine path
   overrides.

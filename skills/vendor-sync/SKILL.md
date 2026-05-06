@@ -47,8 +47,9 @@ Optional fields:
   live at `prefix` (rare; used for monorepo layouts or CI checkout paths).
   When absent, skills use `prefix` as the on-disk location.
 
-If `.claude/vendor-registry.json` does not exist, tell the user and stop. Do
-not attempt to read the subtree table from any other source.
+If `.claude/vendor-registry.json` does not exist, offer to create it via
+workflow 0 (Bootstrap registry). Do not attempt to read the subtree
+table from any other source.
 
 ### Local override file
 
@@ -379,8 +380,10 @@ Summarize the results:
 
 ## Error handling
 
-- **Registry not found** — tell the user to create `.claude/vendor-registry.json`
-  and point them to the format described above. Stop.
+- **Registry not found** — tell the user this project has no
+  `.claude/vendor-registry.json` and offer to run workflow 0 (Bootstrap
+  registry) to create it interactively. If the user agrees, run workflow
+  0, then resume. Otherwise stop.
 - **No changes** — if a pull reports "Already up to date", skip steps 4–8b for
   that entry and note it in the report.
 - **npm install failures** — most commonly caused by stale `node_modules/`
