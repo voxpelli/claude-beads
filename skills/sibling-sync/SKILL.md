@@ -1,6 +1,6 @@
 ---
 name: sibling-sync
-description: "Bilateral SYNERGY/UPSTREAM reconciliation across sibling projects. Use when the user wants to sync sibling SYNERGY/UPSTREAM files, compare both sides to surface drift, find reciprocation gaps (entries here but not there, or vice versa), flag stale-aligned rows, detect status drift across sides, surface friction the sibling tracks ABOUT this project (their UPSTREAM-<this-project>.md), or apply a reciprocation batch with --auto-reciprocate. Workflow 3 covers two UPSTREAM pairing modes: shared third-party dependencies AND reciprocal sibling-friction pairs (UPSTREAM-<sibling>.md here ↔ UPSTREAM-<this-project>.md there). NOT for logging entries on this side (use /synergy-tracker workflow 1 (Log a synergy entry)) — sibling-sync compares both sides without writing by default. NOT for upstream → project drift (use /vendor-sync); sibling-sync handles peer-to-peer drift between sibling vp-* projects. Trigger phrases: 'sibling sync', 'compare siblings', 'sync sibling', 'reconcile siblings', 'reciprocation gap', 'sync drift', 'bilateral sync', 'sync SYNERGY', 'sync UPSTREAM both ways', 'auto-reciprocate', 'check sibling drift', 'peer-to-peer drift', 'cross-project drift', 'sibling reconciliation', 'sibling has friction about us', 'what does the sibling say about us', 'reconcile sibling-tracked friction', 'reciprocal upstream friction', 'friction filed against this project'."
+description: "Bilateral SYNERGY/UPSTREAM reconciliation across sibling projects. Use when the user wants to sync sibling SYNERGY/UPSTREAM files, compare both sides to surface drift, find reciprocation gaps (entries here but not there, or vice versa), flag stale-aligned rows, detect status drift across sides, surface friction the sibling tracks ABOUT this project (their UPSTREAM-<this-project>.md), or apply a reciprocation batch with --auto-reciprocate. Workflow 3 covers two UPSTREAM pairing modes: shared third-party dependencies AND reciprocal sibling-friction pairs (UPSTREAM-<sibling>.md here ↔ UPSTREAM-<this-project>.md there). NOT for logging entries on this side (use /synergy-tracker workflow 1 (Log a synergy entry)) — sibling-sync compares both sides without writing by default. NOT for upstream → project drift (use /vendor-sync); sibling-sync handles peer-to-peer drift between sibling vp-* projects. Trigger phrases: 'sibling sync', 'compare siblings', 'sync sibling', 'reconcile siblings', 'reciprocation gap', 'sync drift', 'bilateral sync', 'sync SYNERGY', 'sync UPSTREAM both ways', 'auto-reciprocate', 'check sibling drift', 'peer-to-peer drift', 'cross-project drift', 'sibling reconciliation', 'sibling has friction about us', 'what does the sibling say about us', 'reconcile sibling-tracked friction', 'reciprocal upstream friction', 'friction filed against this project', 'sibling follow-up', 'act on sibling drift', 'after sibling-sync', 'follow-up actions', 'what to do about sibling findings'."
 user-invocable: true
 argument-hint: "[--auto-reciprocate] [sibling-name]"
 paths:
@@ -15,6 +15,8 @@ allowed-tools:
   - Grep
   - Edit
   - Write
+  - Skill
+  - AskUserQuestion
   - mcp__basic-memory__search_notes
   - mcp__basic-memory__read_note
 ---
@@ -77,6 +79,14 @@ this project's side of the SYNERGY/UPSTREAM files.
   Annotating the sibling's entry as resolved is `/upstream-tracker` workflow
   3 (Resolve an entry)'s job, performed on the sibling's side. /sibling-sync
   reports only.
+- **Orchestrator role for follow-up actions (v0.14.0).** Workflows 2 (Sync
+  sibling SYNERGY) and 3 (Sync sibling UPSTREAM) end with a per-sibling
+  action menu (see "Action-menu protocol" below) that delegates writes to
+  the owning skill (`/vp-beads:synergy-tracker`,
+  `/vp-beads:upstream-tracker`) via the `Skill` tool, or runs `bd create`
+  directly for beads issues. /sibling-sync still owns nothing in Basic
+  Memory and nothing in this project's SYNERGY/UPSTREAM files —
+  ownership boundaries are unchanged.
 
 ## Registry and path resolution
 
@@ -259,6 +269,17 @@ no writes.
   here: drifting. Status sibling: aligned.
 ```
 
+6. **Offer follow-up actions.** After workflow 3 (Sync sibling UPSTREAM)
+   has also finished printing for this sibling, prepare the SYNERGY tier of
+   the action menu (built from this workflow's findings) and let workflow 3
+   (Sync sibling UPSTREAM) step 6 pair it with the UPSTREAM tier into a
+   single `AskUserQuestion` call. Do NOT issue the prompt from this step —
+   the prompt is dispatched from workflow 3 (Sync sibling UPSTREAM) step
+   6 once both reports are on screen. Full protocol — which findings map to which menu options,
+   the `header` values, the `--auto-reciprocate` precedence rule, and the
+   plugin-namespaced `Skill` invocations — lives in the "Action-menu
+   protocol" section below.
+
 ### 3. Sync sibling UPSTREAM
 
 For each accessible sibling, build two kinds of UPSTREAM file pairs and
@@ -416,6 +437,21 @@ via `/upstream-tracker` workflow 7 (Sync from Basic Memory) on its own.
   → notify sibling maintainer; cannot write their file from here
 ```
 
+6. **Offer follow-up actions.** This is the dispatch point. After this
+   workflow finishes printing (and workflow 2 (Sync sibling SYNERGY) has
+   already finished for the same sibling), build a single `AskUserQuestion`
+   call combining workflow 2 (Sync sibling SYNERGY)'s SYNERGY tier with
+   this workflow's UPSTREAM tier. The "Action-menu protocol" section below
+   specifies the full UPSTREAM tier: findings (b) and (d) collapse into a
+   single "Update our UPSTREAM" option that delegates to
+   `/vp-beads:upstream-tracker`; finding (e) routes directly to `bd
+   create`; finding (g) delegates to `/vp-beads:upstream-tracker` workflow
+   3 (Resolve an entry). Findings (a), (c), (f), and (h) are informational
+   and not present in the menu. If no UPSTREAM findings are actionable AND
+   no SYNERGY findings are actionable for this sibling, skip the prompt
+   for this sibling. If only one tier has actionable findings, issue a
+   single-question call.
+
 ### 4. Apply reciprocation batch
 
 Opt-in mutation path. Only runs when the user supplies `--auto-reciprocate`
@@ -505,6 +541,125 @@ Memory)'s per-entry confirmation pattern.
   BM writes are `/synergy-tracker` workflow 5 (Promote to Basic Memory)
   and `/upstream-tracker` workflow 6 (Promote to Basic Memory)'s
   territory.
+
+## Action-menu protocol
+
+This skill never writes SYNERGY/UPSTREAM/BM directly — even the menu options
+dispatch to the owning skill via the `Skill` tool, or run `bd create` for
+beads issues. The menu is a navigation aid, not a write path. The default
+read-only contract from earlier versions still holds: a user who picks
+"None" for both questions receives the report and exits without any
+mutation.
+
+After workflows 2 (Sync sibling SYNERGY) and 3 (Sync sibling UPSTREAM) have
+printed their per-sibling reports, sibling-sync issues a single
+`AskUserQuestion` call with up to two single-select questions per sibling.
+The `AskUserQuestion` SDK contract caps options at 2-4 per question
+(plus an auto "Other"); we therefore split SYNERGY and UPSTREAM into
+separate questions rather than one flat menu. Skipping a question is just
+selecting its "None" option; both tiers default to read-only on skip.
+
+### Two-tier menu shape
+
+**Q1 — SYNERGY follow-up** (`header: "Synergy"`, 7 chars). Options listed
+only when their finding count is nonzero:
+
+| Option | Trigger | Dispatch |
+|---|---|---|
+| 1. Apply reciprocal gaps (N) | finding (a) > 0 | re-enter workflow 4 (Apply reciprocation batch) in-skill — no `Skill` call |
+| 2. Log unreciprocated sibling entries (N) | finding (b) > 0 | `Skill(skill="/vp-beads:synergy-tracker", args=...)` → workflow 1 (Log a synergy entry) |
+| 0. None — synergy report only | always | exit SYNERGY tier without action |
+
+**Q2 — UPSTREAM follow-up** (`header: "Upstream"`, 8 chars). Options listed
+only when their finding count is nonzero. Findings (b) and (d) collapse
+into a single option to keep the question within the 4-option SDK cap:
+
+| Option | Trigger | Dispatch |
+|---|---|---|
+| 1. Update our UPSTREAM (b/d, N total) | finding (b) > 0 OR finding (d) > 0 | `Skill(skill="/vp-beads:upstream-tracker", args=...)` — args route to workflow 1 (Log a new entry) and/or workflow 7 (Sync from Basic Memory) inside upstream-tracker |
+| 2. File beads issues for sibling's friction (N) | finding (e) > 0 | `Bash` → `bd create` per entry |
+| 3. Resolve cross-stale entries (N) | finding (g) > 0 | `Skill(skill="/vp-beads:upstream-tracker", args=...)` → workflow 3 (Resolve an entry) |
+| 0. None — upstream report only | always | exit UPSTREAM tier without action |
+
+If neither tier has actionable findings for a sibling, skip the
+`AskUserQuestion` call entirely for that sibling. If only one tier has
+actionable findings, issue a single-question call (the SDK supports 1-4
+questions per call).
+
+### Per-action argument templates
+
+Pass natural-language prose in the `Skill` tool's `args` field. The
+delegated skill receives the prose as narrative context. Templates:
+
+- **SYNERGY 2 (Log unreciprocated sibling entries):**
+  `Log unreciprocated entries from sibling <sibling-name>: <bullet list of titles + sections>. Invoke workflow 1 (Log a synergy entry) for each.`
+- **UPSTREAM 1 (Update our UPSTREAM, b/d collapse):**
+  `From sibling-sync findings against <sibling-name>: adopt complementary workarounds for <package, title> entries (sibling's workaround text: <quoted>); also scan sibling-only entries <package, titles>. Use workflow 1 (Log a new entry) and workflow 7 (Sync from Basic Memory) as appropriate.`
+- **UPSTREAM 3 (Resolve cross-stale entries):**
+  `Resolve entries in UPSTREAM-<sibling-name>.md: <titles>. Verify against the sibling's recent changelog/tags first. Invoke workflow 3 (Resolve an entry) for each.`
+
+For UPSTREAM 2 (`bd create`), construct each call with:
+
+- `--title="<entry title from sibling>"`
+- `--type=task` always. The sibling's UPSTREAM file body is plain prose
+  and lacks the structured sections that `bd`'s `validation.on-create=error`
+  requires for `--type=bug` (`## Steps to Reproduce`, `## Acceptance
+  Criteria`) and `--type=feature` (`## Acceptance Criteria`). Filing as
+  `task` always succeeds; the user can refile the resulting issue with
+  `bd update --type=bug` after adding the required sections, or supersede
+  with a properly structured bug-type issue. Note this in the post-batch
+  report: "Filed N task-type beads issues from sibling friction; refile as
+  bug/feature with required sections if needed."
+- `--description="<entry body verbatim>\n\nSibling <sibling-name> tracks this against us in their UPSTREAM-<this-name>.md. Source section: <Bugs | Feature Requests | Upstream Opportunities>."`
+
+### Precedence with `--auto-reciprocate`
+
+The `--auto-reciprocate` flag is the explicit non-interactive consent path.
+Its semantics relative to the new menu:
+
+| Invocation | Behavior |
+|---|---|
+| `--auto-reciprocate` flag set | Skip the action menu entirely. Run workflow 4 (Apply reciprocation batch) directly with its existing per-entry `[y/n/skip-rest]` confirmation gate. |
+| No flag, user picks Q1 option 1 (Apply reciprocal gaps) | Enter workflow 4 (Apply reciprocation batch) with the same per-entry confirmation. The menu surfaces the same path interactively. |
+| No flag, user picks any "None" option | No writes. Default read-only contract holds. |
+| No flag, user picks any non-"None" option (other than Q1 option 1) | Dispatch per the table above. The delegated skill applies its own confirmation gate. |
+
+### Idempotency and re-runs
+
+Most actions self-resolve on the next sibling-sync run:
+
+- Q1 option 1 closes finding (a) (the sibling now has the reciprocal entry).
+- Q1 option 2 closes finding (b) (this side now has the entry; titles match).
+- Q2 option 1 closes findings (b) and (d) on the UPSTREAM side.
+- Q2 option 3 annotates `_(Resolved ...)_` so workflow 3 (Sync sibling UPSTREAM)'s matching logic suppresses finding (g) thereafter.
+
+Only Q2 option 2 (`bd create` for finding (e)) does not self-resolve: the
+sibling's `UPSTREAM-<this-name>.md` still carries the entry until the
+sibling annotates it as resolved on their side. Finding (e) will re-fire
+on subsequent sibling-sync runs until that happens. This is expected
+behavior — it reminds the user the friction is real and the local `bd`
+issue tracks our intent. No "skip-already-filed" cache is maintained.
+
+### Failure modes
+
+- **Delegated `Skill` call returns "skill not found" or errors.** Fall back
+  to printing the original copy-paste hint and continue to the next
+  sibling. Never abort the whole run on a delegation failure.
+- **Subagent context.** When sibling-sync runs as a Task subagent (e.g.,
+  inside a swarm-wave research agent), `AskUserQuestion` is **explicitly
+  unavailable** per the Anthropic Agent SDK
+  (https://code.claude.com/docs/en/agent-sdk/user-input — "Limitations:
+  Subagents"), and `Skill` tool calls may silently no-op (undocumented
+  behavior — subject to change). In subagent context the entire action
+  menu cannot fire: skip the `AskUserQuestion` call, print the original
+  copy-paste hints from workflows 2 (Sync sibling SYNERGY) and 3 (Sync
+  sibling UPSTREAM) under the existing "→" arrow style, and let the
+  parent agent decide whether to re-invoke `/sibling-sync` directly. No
+  formal subagent probe is required — best-effort detection by attempting
+  the `AskUserQuestion` call and falling back on the SDK error suffices.
+- **`bd create` failure** (e.g., missing required `--description` field for
+  bug type). Report the specific failure and continue to the next entry;
+  don't abort the whole run.
 
 ## Sprint Workflow Integration
 

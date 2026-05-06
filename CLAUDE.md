@@ -106,9 +106,14 @@ Dev tooling only: validation and linting via `npm run check`.
   about us, our open friction against them, and cross-side staleness from
   shipped fixes), apply-reciprocation-batch (opt-in `--auto-reciprocate`
   flag, per-entry confirmation, writes only to the sibling side; SYNERGY
-  finding (a) only — never UPSTREAM). Read-only by default. Distinct from
-  `/vendor-sync` (upstream → project drift, subtree pulls) and
-  `/synergy-tracker` (logging entries here on this side); sibling-sync
+  finding (a) only — never UPSTREAM). Read-only by default. Workflows 2
+  (Sync sibling SYNERGY) and 3 (Sync sibling UPSTREAM) end with a
+  per-sibling two-tier action menu (single `AskUserQuestion` call,
+  `header: "Synergy"` + `header: "Upstream"`) that delegates writes to
+  `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or `bd create`
+  via the `Skill` tool — replacing the previous copy-paste hint workflow.
+  Distinct from `/vendor-sync` (upstream → project drift, subtree pulls)
+  and `/synergy-tracker` (logging entries here on this side); sibling-sync
   compares both sides without writing on this side. User-invocable as
   `/sibling-sync`.
 - **synergy-tracker** — Manages `SYNERGY-*.md` files that track cross-project
