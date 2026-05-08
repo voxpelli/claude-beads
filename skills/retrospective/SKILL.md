@@ -229,7 +229,7 @@ Render in the RETRO file as:
 - **Reference integrity (`bd orphans`):** {N} orphans — {top items, or "clean"}
 - **Dependency graph (`bd graph check`):** {clean | N cycles, top items}
 - **Stats (`bd stats`):** {total / open / in_progress / closed / ready / blocked counts}
-- **Blocked review (`bd blocked`):** {list blocked issues; flag any whose blockers have closed since last retro — these need `bd update` to re-evaluate readiness}
+- **Blocked review (`bd blocked`):** {list blocked issues; for each, run `bd show <id>` to identify its blockers and flag any blockers whose status is currently `closed` — these need `bd update` to re-evaluate readiness}
 - **`bd compact` candidates:** {manual judgment — list closed-issue count and flag if >150 closed since last compact, otherwise "below threshold"}
 ```
 
