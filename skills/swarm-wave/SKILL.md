@@ -205,11 +205,14 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
    - 6b. For `npm run check` failures: fix inline (mechanical fixes).
    - 6c. For HIGH-severity review findings: launch a targeted fix agent
      scoped to the specific concern and affected files. After the fix
-     agent completes, re-gate from step 1. **If fix iterations exceed 2,
-     halt and escalate to the user instead of launching a third fix
-     agent.** This is a preventive cap — Sprint 10 ran one fix iteration
-     per wave; the budget exists to bound runaway gate failures in future
-     runs where reviewers and fix agents disagree.
+     agent completes, re-gate from step 1. **If fix iterations exceed 2
+     within a single wave, halt and escalate to the user instead of
+     launching a third fix agent.** Scope is per-wave: a wave with
+     multiple HIGH findings dispatches one fix agent that addresses all
+     of them, and the count increments once per re-gate cycle (not once
+     per finding). This is a preventive cap — Sprint 10 ran one fix
+     iteration per wave; the budget exists to bound runaway gate
+     failures in future runs where reviewers and fix agents disagree.
    - 6d. For MEDIUM/LOW findings: present to the user — accept risk and
      commit, or fix first. See `references/review-gate-protocol.md` for
      the severity handling table.

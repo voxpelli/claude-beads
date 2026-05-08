@@ -310,7 +310,11 @@ if (existsSync(synergyRegistryPath)) {
           error(synergyRegistryPath, `Entry [${i}] missing required string field: file`)
         }
         if (typeof e.name === 'string' && typeof e.file === 'string') {
-          const expectedFile = `SYNERGY-${e.name}.md`
+          // Apply canonical normalization from
+          // skills/synergy-tracker/references/synergy-entry-format.md
+          // "Naming convention": replace '/' with '--', drop leading '@'.
+          const normalizedName = e.name.replace(/^@/, '').replace(/\//g, '--')
+          const expectedFile = `SYNERGY-${normalizedName}.md`
           if (e.file !== expectedFile) {
             error(
               synergyRegistryPath,
