@@ -5,6 +5,134 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0][] - 2026-05-08
+
+### Added
+
+- **`/retrospective` Health Audit subsection in the trend-review workflow.**
+  Step 4 now runs `bd doctor --json`, `bd lint --json`, `bd stale --json`,
+  `bd orphans --json`, and `bd graph check --json` (parsing the
+  `schema_version: 1` envelope) in parallel, surfacing counts plus the top
+  3-5 affected items per check under a `### Health audit` subsection in the
+  generated `RETRO-NN.md`. Auto-fix is gated on user consent (`bd doctor
+  --fix --yes` prompts; lint/stale/orphans are never auto-fixed). Documents
+  the false-positive caveat for `bd doctor`'s Claude Hook Completeness
+  check. The render block also emits unified `bd stats`, `bd blocked` (with
+  per-blocker `bd show` chase), and `bd compact` candidate bullets — folded
+  in from a previously separate "Beads health" subsection. (vp-beads-0e9.8,
+  vp-beads-0e9.10)
+- **`/retrospective` decision-capture path in step 5.** When a sprint
+  outcome is a decision (choice between viable approaches with rationale,
+  reversal of a prior decision, accepted constraint), retrospective now
+  prompts the user to invoke the upstream `/beads:decision` slash command
+  (lives in the `beads` plugin, not vp-beads) or create directly via
+  `bd create --type=decision` with the four-section template (`## Decision`,
+  `## Rationale`, `## Alternatives Considered`, `## Affects`). Decision-typed
+  issues stay open while in force; retrospective never auto-closes them.
+  (vp-beads-0e9.9)
+- **Sprint-review agent `## Boundaries` section + 5th end-of-sprint output
+  example.** The agent's contract is now explicit (no file writes, no skill
+  invocation, defers all mutations to `/retrospective`, `/upstream-tracker`,
+  `/synergy-tracker`, `/backlog-groomer`, and user-run `bd` commands).
+  `model: inherit` retained as a deliberate divergence from vp-knowledge's
+  `model: sonnet` (recorded in `SYNERGY-vp-knowledge.md` Divergences as
+  `accept-difference`). The 5th example shows the canonical 5-section
+  output shape so readers can predict the agent's report without invoking it.
+  (vp-beads-3vu)
+- **`/synergy-tracker` workflow 2 (Review) inverse-file glob staleness
+  detection.** Optional best-effort enrichment that reads the sibling's
+  `SYNERGY-<this-project>.md` (via the registry-with-override
+  path-resolution shared with workflow 3 (Compare with sibling)) and
+  surfaces stale `aligned` rows + missing-this-side rows. Degrades silently
+  when sibling not accessible. Defers deeper bilateral reconciliation to
+  `/sibling-sync` workflow 2 (Sync sibling SYNERGY) — workflow 2 (Review)
+  here only surfaces inverse-file findings as a side-channel of the
+  single-side review. (vp-beads-e3k)
+- **`validate-plugin.mjs` registry schema validation.** New checks for
+  `.claude/synergy-registry.json` (array shape, required `name` + `file`,
+  consistency check `file === SYNERGY-<normalized-name>.md` with canonical
+  slash + leading-`@` normalization, `bm-entity` warning when prefixed
+  `npm/` against the sibling-relationship convention, `relationship`
+  warning when outside the `KNOWN_RELATIONSHIPS` set) and
+  `.claude/vendor-registry.json` (array shape, required `prefix` + `remote`
+  + `branch` + `package`, optional `local-path`). `*.local.json` files are
+  not validated (gitignored, machine-specific). (vp-beads-8eo)
+- **SessionStart hook surfaces open Dependabot alerts** when `gh` CLI is
+  available and the repo has a GitHub remote. Emits a single-line
+  `[security] N open Dependabot alert(s) — <URL>` summary in
+  `additionalContext`. Silent on every failure path (missing `gh`, no GitHub
+  remote, count of 0, rate-limited, parse errors). Single-JSON output
+  contract preserved. (vp-beads-pcv)
+- **`/upstream-tracker` `argument-hint: "[workflow] [package-name]"`**
+  frontmatter, matching the convention used by synergy-tracker,
+  backlog-groomer, and vendor-sync. (vp-beads-o8u)
+
+### Changed
+
+- **`/swarm-wave` workflow 1 (Plan a swarm sprint) step 4 — single-owner
+  rule (4g)** and **`references/file-contention-and-clustering.md` "Single
+  Owner Per Issue" subsection.** Codifies the RETRO-10 lesson: when an
+  issue's natural file scope crosses what would otherwise split across
+  agents, assign the whole issue to one agent. Issue narrative coherence
+  beats wave-level file balance. (vp-beads-dpk)
+- **`/swarm-wave` workflow 3 (Post-wave gate) step 6c — fix-loop iteration
+  cap.** If fix iterations exceed 2 within a single wave, halt and escalate
+  to the user instead of launching a third fix agent. Scope is per-wave: a
+  wave with multiple HIGH findings dispatches one fix agent that addresses
+  all of them; the count increments once per re-gate cycle (not once per
+  finding). Preventive cap to bound runaway gate failures. (vp-beads-dpk)
+- **`/upstream-tracker` redirect rule rewrite.** Distinguishes pattern-class
+  observations (shared approach, divergence, extraction candidate,
+  capability gap → `/synergy-tracker`) from artifact-class items (concrete
+  bug reports, feature requests, contribution opportunities against
+  sibling-shipped skills/hooks/agents → still upstream-tracker). The
+  vp-plugins marketplace pattern (vp-beads, vp-knowledge, vp-git all consume
+  each other's artifacts) requires this carve-out. (vp-beads-j59)
+- **`/synergy-tracker` relationship vocabulary canonicalized to six
+  values.** `references/synergy-entry-format.md` no longer calls the
+  `relationship` field "free-form" — instead declares the canonical six
+  (`sibling-plugin`, `shared-tooling`, `fork`, `consumer`,
+  `coordinated-release`, `dependency`) with a new "Relationship vocabulary"
+  subsection explaining each. Workflow 1 (Log a synergy entry) step 1b
+  surfaces the four most common in `AskUserQuestion` plus the auto "Other"
+  free-text fallback for the remaining two. Aligns with the validator's
+  `KNOWN_RELATIONSHIPS` set; user-typed values outside the canonical six
+  emit a validator warning. (vp-beads-bxc)
+- **`/synergy-tracker` workflow 2 (Review) — staleness threshold
+  canonicalized.** Step 5 (the inverse-file glob) now anchors staleness to
+  workflow 4 (Trend review (quarterly)) canonical (≈8 sprints, two
+  trend-review cycles) instead of an ad-hoc "3 months" formulation. Adds a
+  lead "Bilateral first" forward-reference to `/sibling-sync` workflow 2
+  (Sync sibling SYNERGY) as the authoritative bilateral tool.
+- **`/retrospective` skill — trend-review heuristic bound to RETRO file
+  count.** Step 1 now asserts that the file count from `ls RETRO-*.md` is
+  canonical for the every-4-sprints trend-review trigger; topic numbers,
+  release numbers, and `bd` sprint labels do not substitute. Step 4 echoes
+  this in a parenthetical. Eliminates the topic-vs-file rule drift that
+  could lead a user-asserted sprint number to bypass a trend-review file by
+  the mechanical rule.
+- **`validate-plugin.mjs` SYNERGY filename consistency check** now applies
+  the canonical normalization (slashes → `--`, drop leading `@`) from
+  `synergy-entry-format.md` "Naming convention" before computing
+  `expectedFile`. Latent bug — current registry entries (`vp-knowledge`,
+  `vp-git`) unaffected, but a future sibling like `@scope/foo` would have
+  produced a false-positive error.
+
+### Resolved upstream
+
+- `bd init` now generates a canonical `.beads/.gitignore` that includes
+  `interactions.jsonl` and `.beads-credential-key`. The corresponding
+  feature request in `UPSTREAM-brew--beads.md` (filed 2026-03-28) was
+  empirically verified resolved (`bd init` in `mktemp -d`) and removed.
+  (vp-beads-0e9.11)
+
+### Backlog hygiene
+
+- 4 stale P4 issues from the pre-`vp-beads-0e9` backlog triaged: `vp-beads-emm`
+  and `vp-beads-3z0` deferred to 2026-08-01; `vp-beads-xux` deferred to
+  2026-09-01; `vp-beads-dca` closed (over-engineering at single-plugin scale;
+  revival trigger recorded). (vp-beads-983)
+
 ## [0.14.0][] - 2026-05-06
 
 ### Added
@@ -912,6 +1040,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.15.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.15.0
 [0.14.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.14.0
 [0.13.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.13.0
 [0.12.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.1
