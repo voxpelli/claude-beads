@@ -44,6 +44,11 @@ ls RETRO-*.md | sort -V | tail -1
 
 Extract the highest sprint number and increment by 1.
 
+**This file count is canonical for the trend-review heuristic in step 4** —
+do not substitute a user-asserted topic number, release number, or `bd`
+sprint label. If `RETRO-NN.md` count is divisible by 4, this IS a
+trend-review sprint regardless of how the work is verbally framed.
+
 ### 2. Gather context
 
 Run these in parallel:
@@ -162,6 +167,7 @@ if no SYNERGY-\*.md files were found in step 2):
 ### 4. Check for trend review
 
 If this is every 4th sprint (Sprint 4, 8, 12, ...), also perform a trend review:
+(Sprint number is the file count from step 1, not a topic-asserted number.)
 
 **UPSTREAM files:** Review all `UPSTREAM-*.md` files — identify common trends,
 evaluate whether open items are still valid, delete non-vendor files with no
@@ -171,13 +177,6 @@ remaining entries.
 (>3 months), evaluate whether Shared Patterns are still `aligned` or have
 drifted, check if Extraction Candidates with `Readiness: ready` have been acted
 on, and review whether `adopt-theirs` Divergences have been adopted.
-
-**Beads health:** Run `bd stats` and review issue hygiene:
-
-- Stale `in_progress` issues (claimed but not worked in 2+ sprints)
-- Completed work that was never closed (`bd list --status in_progress`)
-- Blocked issues whose blockers have been resolved (`bd blocked`)
-- Issues that should be compacted (`bd compact` for old closed issues)
 
 **Health audit:** Run bd's full health vocabulary in parallel — five focused
 checks covering infrastructure, template compliance, lifecycle hygiene,
@@ -229,6 +228,9 @@ Render in the RETRO file as:
 - **Lifecycle (`bd stale`):** {N} stale issues — {top items, or "clean"}
 - **Reference integrity (`bd orphans`):** {N} orphans — {top items, or "clean"}
 - **Dependency graph (`bd graph check`):** {clean | N cycles, top items}
+- **Stats (`bd stats`):** {total / open / in_progress / closed / ready / blocked counts}
+- **Blocked review (`bd blocked`):** {list blocked issues; flag any whose blockers have closed since last retro — these need `bd update` to re-evaluate readiness}
+- **`bd compact` candidates:** {manual judgment — list closed-issue count and flag if >150 closed since last compact, otherwise "below threshold"}
 ```
 
 **Basic Memory graph health** (via Basic Memory MCP tools):
