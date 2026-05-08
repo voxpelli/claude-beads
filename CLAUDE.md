@@ -313,7 +313,7 @@ All issue types are validated on creation with `validation.on-create=error`. Aut
 
 | Type | Required markdown sections | When to use |
 | --- | --- | --- |
-| `task` | *(none)* | Single atomic unit of work |
+| `task` | `## Acceptance Criteria` | Single atomic unit of work |
 | `bug` | `## Steps to Reproduce`, `## Acceptance Criteria` | Something in production/main broke |
 | `feature` | `## Acceptance Criteria` | New user-facing capability |
 | `chore` | *(none)* | Internal maintenance, cleanup, refactor |
