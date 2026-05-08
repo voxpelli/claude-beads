@@ -7,7 +7,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -57,18 +57,21 @@ function parseJsonObjects (stdout) {
  * Run a hook script with optional stdin.
  * @param {string} script - Filename in hooks/
  * @param {string} [stdin] - Stdin content
- * @param {{ args?: string[], cwd?: string }} [opts]
+ * @param {{ args?: string[], cwd?: string, pathPrefix?: string }} [opts]
  * @returns {{ stdout: string, stderr: string, status: number | null }}
  */
 function runHook (script, stdin, opts = {}) {
   const scriptPath = join(HOOKS, script)
   const args = opts.args ?? []
+  const path = opts.pathPrefix
+    ? `${opts.pathPrefix}:${process.env.PATH}`
+    : process.env.PATH
   const result = spawnSync('bash', [scriptPath, ...args], {
     input: stdin ?? '',
     cwd: opts.cwd ?? ROOT,
     encoding: 'utf8',
     timeout: 15_000,
-    env: { ...process.env, PATH: process.env.PATH },
+    env: { ...process.env, PATH: path },
   })
   return {
     stdout: result.stdout ?? '',
@@ -109,6 +112,37 @@ function makeTempDirWithRetros (n) {
     const num = String(i).padStart(2, '0')
     writeFileSync(join(dir, `RETRO-${num}.md`), `# Sprint ${i}\n`)
   }
+  return dir
+}
+
+/**
+ * Create a temp dir initialised as a git repo with a GitHub origin remote.
+ * @param {string} originUrl - URL to set for `origin` remote
+ * @returns {string} Temp directory path
+ */
+function makeTempGitRepo (originUrl) {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-git-'))
+  spawnSync('git', ['init', '-q'], { cwd: dir })
+  spawnSync('git', ['remote', 'add', 'origin', originUrl], { cwd: dir })
+  return dir
+}
+
+/**
+ * Create a temp dir containing a stub `gh` script that prints the given
+ * stdout and exits with the given status. Returns the dir path so callers
+ * can prepend it to PATH.
+ * @param {string} stdout - Body to print
+ * @param {number} [exitCode] - Exit status (default 0)
+ * @returns {string} Temp directory path containing the stub
+ */
+function makeGhStubDir (stdout, exitCode = 0) {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-stub-'))
+  // printf with JSON-stringified payload avoids heredoc-delimiter collisions
+  // for future callers that pass multi-line JSON through this stub.
+  const script = `#!/bin/bash\nprintf '%s\\n' ${JSON.stringify(stdout)}\nexit ${exitCode}\n`
+  const ghPath = join(dir, 'gh')
+  writeFileSync(ghPath, script)
+  chmodSync(ghPath, 0o755)
   return dir
 }
 
@@ -232,7 +266,7 @@ test('emits at most 1 JSON object (no multi-object)', () => {
   // Run in a temp dir to avoid reading real project state
   const dir = makeTempDirWithRetros(0)
   try {
-    const { stdout, status } = runHook('session-start.sh', '', { cwd: dir })
+    const { stdout } = runHook('session-start.sh', '', { cwd: dir })
     // May exit non-zero if git isn't available in temp dir — that's ok
     const { count, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -268,6 +302,82 @@ test('with 4 RETRO files (trend review), emits 1 object', () => {
     return count <= 1
       ? { ok: true }
       : { ok: false, reason: `expected 0 or 1 objects, got ${count}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('Dependabot alerts: stubbed gh returning 3 → 1 JSON object with security line', () => {
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  const stubDir = makeGhStubDir('3')
+  try {
+    const { stdout, status } = runHook('session-start.sh', '', {
+      cwd: dir,
+      pathPrefix: stubDir,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    if (!ctx.includes('[security]')) {
+      return { ok: false, reason: `additionalContext missing [security]: ${ctx.slice(0, 120)}` }
+    }
+    if (!ctx.includes('3 open Dependabot alert')) {
+      return { ok: false, reason: `additionalContext missing count phrase: ${ctx.slice(0, 120)}` }
+    }
+    if (!ctx.includes('test-owner/test-repo')) {
+      return { ok: false, reason: `additionalContext missing repo URL: ${ctx.slice(0, 120)}` }
+    }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(stubDir, { recursive: true, force: true })
+  }
+})
+
+test('Dependabot alerts: stubbed gh returning 0 → no security line', () => {
+  const dir = makeTempGitRepo('https://github.com/test-owner/test-repo.git')
+  const stubDir = makeGhStubDir('0')
+  try {
+    const { stdout, status } = runHook('session-start.sh', '', {
+      cwd: dir,
+      pathPrefix: stubDir,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    // No RETRO/UPSTREAM/SYNERGY files in the temp dir, and 0 alerts → silent.
+    if (objects.length === 0) return { ok: true }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    return ctx.includes('[security]')
+      ? { ok: false, reason: `unexpected security line for 0 alerts: ${ctx.slice(0, 120)}` }
+      : { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(stubDir, { recursive: true, force: true })
+  }
+})
+
+test('Dependabot alerts: gh missing (PATH without gh) → no security line, no error', () => {
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  // Use a fully restricted PATH that excludes gh but keeps required tools
+  // available via absolute lookup. Easier: rely on the silent-on-failure
+  // contract and just ensure no [security] line is emitted when no stub
+  // exists. We can't safely null out PATH (jq/git/find required), so we
+  // simply do not provide a gh stub: the host's gh (if present) will run
+  // against test-owner/test-repo and fail (404 or auth error), which the
+  // hook must swallow. Either way: no [security] line.
+  try {
+    const { stdout, status } = runHook('session-start.sh', '', { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (objects.length === 0) return { ok: true }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    return ctx.includes('[security]')
+      ? { ok: false, reason: `unexpected security line without alerts: ${ctx.slice(0, 120)}` }
+      : { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

@@ -56,6 +56,53 @@ if [ "$upstream_count" -gt 0 ] || [ "$synergy_count" -gt 0 ]; then
 fi
 # --- end dormancy nudge ---
 
+# --- Dependabot alert summary ---
+# Surface open Dependabot alerts at session start so vulnerabilities are
+# visible before `git push` prints them in remote output. Silent on every
+# failure path: missing gh, no GitHub remote, rate-limited, no alerts, or
+# any non-zero exit from gh. Never blocks the hook.
+if command -v gh >/dev/null 2>&1; then
+	remote_url=$(git remote get-url origin 2>/dev/null || echo "")
+	# Parse owner/repo from common GitHub remote URL forms:
+	#   git@github.com:owner/repo.git
+	#   https://github.com/owner/repo.git
+	#   https://github.com/owner/repo
+	owner_repo=""
+	case "$remote_url" in
+	git@github.com:*)
+		owner_repo="${remote_url#git@github.com:}"
+		owner_repo="${owner_repo%.git}"
+		;;
+	https://github.com/* | http://github.com/*)
+		owner_repo="${remote_url#*github.com/}"
+		owner_repo="${owner_repo%.git}"
+		;;
+	esac
+	if [ -n "$owner_repo" ]; then
+		# Validate shape: must look like "owner/repo" with no extra slashes.
+		case "$owner_repo" in
+		*/*/*) owner_repo="" ;;
+		*/*) ;;
+		*) owner_repo="" ;;
+		esac
+	fi
+	if [ -n "$owner_repo" ]; then
+		# per_page=100 caps the count at 100 — repos with more open alerts
+		# will read as "100" rather than the true total. Acceptable for a
+		# session-start nudge (not an authoritative audit).
+		alert_count=$(gh api "repos/${owner_repo}/dependabot/alerts?state=open&per_page=100" --jq 'length' 2>/dev/null || echo "")
+		# Only emit when count is a positive integer.
+		case "$alert_count" in
+		'' | *[!0-9]*) ;;
+		0) ;;
+		*)
+			parts+=("[security] ${alert_count} open Dependabot alert(s) — https://github.com/${owner_repo}/security/dependabot")
+			;;
+		esac
+	fi
+fi
+# --- end Dependabot alert summary ---
+
 # --- Trend-review reminder ---
 # RETRO files are gitignored; find correctly ignores .gitignore so the count
 # reflects files on disk.

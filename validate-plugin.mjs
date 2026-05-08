@@ -279,6 +279,90 @@ if (existsSync(hooksPath)) {
   }
 }
 
+// --- .claude/synergy-registry.json (optional) ---
+
+const KNOWN_RELATIONSHIPS = new Set([
+  'sibling-plugin',
+  'shared-tooling',
+  'fork',
+  'consumer',
+  'coordinated-release',
+  'dependency',
+])
+
+const synergyRegistryPath = join(ROOT, '.claude', 'synergy-registry.json')
+if (existsSync(synergyRegistryPath)) {
+  const synergyData = await readJson(synergyRegistryPath)
+  if (synergyData !== undefined) {
+    if (!Array.isArray(synergyData)) {
+      error(synergyRegistryPath, 'Registry must be an array')
+    } else {
+      for (const [i, entry] of synergyData.entries()) {
+        if (typeof entry !== 'object' || entry === null) {
+          error(synergyRegistryPath, `Entry [${i}] must be an object`)
+          continue
+        }
+        const e = /** @type {Record<string, unknown>} */ (entry)
+        if (typeof e.name !== 'string') {
+          error(synergyRegistryPath, `Entry [${i}] missing required string field: name`)
+        }
+        if (typeof e.file !== 'string') {
+          error(synergyRegistryPath, `Entry [${i}] missing required string field: file`)
+        }
+        if (typeof e.name === 'string' && typeof e.file === 'string') {
+          const expectedFile = `SYNERGY-${e.name}.md`
+          if (e.file !== expectedFile) {
+            error(
+              synergyRegistryPath,
+              `Entry [${i}] file "${e.file}" does not match expected "${expectedFile}" (derived from name "${e.name}")`,
+            )
+          }
+        }
+        if (typeof e['bm-entity'] === 'string' && e['bm-entity'].startsWith('npm/')) {
+          warn(
+            synergyRegistryPath,
+            `Entry [${i}] bm-entity "${e['bm-entity']}" starts with "npm/" — sibling-relationship notes belong under "engineering/agents/vp-plugins-...", not under "npm/"`,
+          )
+        }
+        if (typeof e.relationship === 'string' && !KNOWN_RELATIONSHIPS.has(e.relationship)) {
+          warn(
+            synergyRegistryPath,
+            `Entry [${i}] relationship "${e.relationship}" is not in the known set (${[...KNOWN_RELATIONSHIPS].join(', ')})`,
+          )
+        }
+      }
+    }
+  }
+}
+
+// --- .claude/vendor-registry.json (optional) ---
+
+const vendorRegistryPath = join(ROOT, '.claude', 'vendor-registry.json')
+if (existsSync(vendorRegistryPath)) {
+  const vendorData = await readJson(vendorRegistryPath)
+  if (vendorData !== undefined) {
+    if (!Array.isArray(vendorData)) {
+      error(vendorRegistryPath, 'Registry must be an array')
+    } else {
+      for (const [i, entry] of vendorData.entries()) {
+        if (typeof entry !== 'object' || entry === null) {
+          error(vendorRegistryPath, `Entry [${i}] must be an object`)
+          continue
+        }
+        const e = /** @type {Record<string, unknown>} */ (entry)
+        for (const field of ['prefix', 'remote', 'branch', 'package']) {
+          if (typeof e[field] !== 'string') {
+            error(vendorRegistryPath, `Entry [${i}] missing required string field: ${field}`)
+          }
+        }
+        if ('local-path' in e && typeof e['local-path'] !== 'string') {
+          error(vendorRegistryPath, `Entry [${i}] optional field "local-path" must be a string`)
+        }
+      }
+    }
+  }
+}
+
 // --- Skills ---
 
 const skillFiles = (await readdir(join(ROOT, 'skills'), { recursive: true }))
