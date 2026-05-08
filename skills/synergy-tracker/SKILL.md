@@ -175,9 +175,16 @@ rather than re-asking each time.
     `references/synergy-entry-format.md`).
 - **Prompt only the residuals.** At most two `AskUserQuestion` calls
   (Anthropic SDK caps the `header` field at 12 characters):
-  - One call with `header: "Relationship"` (12 chars) — multi-choice with
-    options `sibling-plugin` (default), `shared-tooling`, `fork`,
-    `consumer`, and `(other — type your own)`.
+  - One call with `header: "Relationship"` (12 chars). The validator's
+    `KNOWN_RELATIONSHIPS` set caps options at six; `AskUserQuestion` caps at
+    4 visible options + auto "Other". Surface the four most common —
+    `sibling-plugin` (default), `shared-tooling`, `fork`, `consumer` — and
+    let the auto "Other" route to a free-text fallback that the workflow
+    then validates against the remaining two (`coordinated-release`,
+    `dependency`). If the user types anything else, warn that the value will
+    trigger a `validate-plugin.mjs` warning and confirm before writing. See
+    `references/synergy-entry-format.md` "Relationship vocabulary" for the
+    canonical set.
   - Only when `../<sibling>/` does not resolve to an accessible directory, a
     second call with `header: "Local path"` (10 chars) — free-text or
     skip. If the user provides a path, it goes into
@@ -384,6 +391,13 @@ Summarize the current state of all synergy tracking files.
    back-pointer first; in the common case the registered sibling's own
    registry resolves it immediately).
 
+   **Bilateral first.** When the sibling repo is accessible AND the user wants
+   more than a single-side enrichment — full reciprocation gaps, status drift
+   in both directions, auto-reciprocation — defer to `/sibling-sync`
+   workflow 2 (Sync sibling SYNERGY) instead. Step 5 here only surfaces
+   inverse-file findings as a side-channel of the single-side review;
+   `/sibling-sync` is the authoritative bilateral tool.
+
    **Degradation.** If the registry is missing, the sibling path does not
    resolve, the inverse file is not present, or any read fails for any
    reason, **skip this step silently and continue with the regular
@@ -392,8 +406,10 @@ Summarize the current state of all synergy tracking files.
 
    When the inverse file IS accessible, surface two classes of drift:
 
-   - **Stale `aligned` rows.** Entries marked `Status: aligned` on this
-     side whose corresponding entry on the sibling side shows measurable
+   - **Stale `aligned` rows** (staleness threshold: workflow 4
+     (Trend review (quarterly)) canonical — `Last verified:` more than two
+     trend-review cycles, ≈8 sprints). Entries marked `Status: aligned` on
+     this side whose corresponding entry on the sibling side shows measurable
      drift — either the sibling lists the entry under `## Divergences`
      (contradicting our `aligned`), or the sibling's entry carries
      `Status: drifting`, or the sibling has annotated the entry as

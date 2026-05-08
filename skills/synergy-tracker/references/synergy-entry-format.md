@@ -176,7 +176,7 @@ projects have active synergy tracking relationships.
 | `file` | yes | Exact filename of the SYNERGY tracking file |
 | `remote` | no | Canonical URL for the related project |
 | `bm-entity` | no | Basic Memory entity path — consumed by `/synergy-tracker` workflow 5 (Promote to Basic Memory) |
-| `relationship` | no | Free-form label: `sibling-plugin`, `shared-tooling`, `fork`, `consumer` |
+| `relationship` | no | One of: `sibling-plugin`, `shared-tooling`, `fork`, `consumer`, `coordinated-release`, `dependency`. See `validate-plugin.mjs` `KNOWN_RELATIONSHIPS` for the canonical set; values outside it emit a validator warning. |
 | `local-path` | no | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
 
 > **`bm-entity` naming rule:** Use
@@ -188,6 +188,17 @@ projects have active synergy tracking relationships.
 > file tracks how *two projects relate to each other*, not facts about
 > the sibling as a software package — so the relationship note belongs
 > in `engineering/agents/`.
+
+### Relationship vocabulary
+
+The six recognized values describe sibling shape, not engineering relationships in Basic Memory:
+
+- `sibling-plugin` — peer Claude Code plugin under the same maintainer (default for vp-* plugins).
+- `shared-tooling` — peer that shares build/lint/test tooling but ships independently.
+- `fork` — divergent fork tracked for cherry-picks.
+- `consumer` — downstream project that depends on this one.
+- `coordinated-release` — peer that releases in lockstep (shared version cadence).
+- `dependency` — upstream this project consumes directly (rare for sibling-tracking; usually belongs in `vendor-registry.json`).
 
 If `.claude/synergy-registry.json` does not exist, discover SYNERGY files by
 globbing `SYNERGY-*.md`. The registry is optional but recommended for projects
