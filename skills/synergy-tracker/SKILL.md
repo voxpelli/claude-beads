@@ -370,6 +370,51 @@ Summarize the current state of all synergy tracking files.
    - Extraction Candidates with `Readiness: ready` — extractable now
    - Divergences with `Convergence path:` of `adopt-theirs` or `propose-shared`
    - They Have / We Don't with `Priority: adopt-soon`
+5. **Inverse-file glob staleness detection (optional).** For each sibling
+   represented by a `SYNERGY-<sibling>.md` file on this side, attempt to
+   read the inverse file — the sibling's `SYNERGY-<this-project>.md` —
+   to surface cross-side drift that single-side review cannot detect.
+   Reuse the registry-with-override path-resolution pattern from workflow 3
+   (Compare with sibling): prefer the `local-path` field on the merged
+   `.claude/synergy-registry.json` + `.claude/synergy-registry.local.json`
+   entry (relative paths resolve from the current project root); if absent,
+   fall back to `../<sibling>/SYNERGY-<this-project>.md`. `<this-project>`
+   is this project's canonical name derived per
+   `references/project-name-derivation.md` (tiers 1–4, sibling
+   back-pointer first; in the common case the registered sibling's own
+   registry resolves it immediately).
+
+   **Degradation.** If the registry is missing, the sibling path does not
+   resolve, the inverse file is not present, or any read fails for any
+   reason, **skip this step silently and continue with the regular
+   single-side review.** Never hard-fail. The inverse-file step is a
+   best-effort enrichment, not a gate.
+
+   When the inverse file IS accessible, surface two classes of drift:
+
+   - **Stale `aligned` rows.** Entries marked `Status: aligned` on this
+     side whose corresponding entry on the sibling side shows measurable
+     drift — either the sibling lists the entry under `## Divergences`
+     (contradicting our `aligned`), or the sibling's entry carries
+     `Status: drifting`, or the sibling has annotated the entry as
+     resolved/retired. The motivating example: vp-knowledge retired
+     `PreCompact` in v0.28.0 while this project's
+     `SYNERGY-vp-knowledge.md` still tagged `PreCompact aligned 2026-04-05`
+     — no automated detection caught the staleness until manual
+     reciprocation. Flag each such row with the sibling's contradicting
+     state so the user can reconcile.
+   - **Missing-this-side rows.** Features the sibling tracks under
+     `## Shared Patterns` (or any section) that no longer exist in this
+     project — typically because this project retired the feature without
+     updating the sibling-tracked entry. Surface them so the user can
+     either re-add the feature, mark the entry as resolved on both sides,
+     or escalate to `/sibling-sync` for bilateral reconciliation.
+
+   For deeper bilateral reconciliation (reciprocation gaps, status drift
+   in both directions, auto-reciprocation), defer to `/sibling-sync`
+   workflow 2 (Sync sibling SYNERGY) — workflow 2 (Review) here only
+   surfaces inverse-file findings as part of the single-side review
+   summary.
 
 **Output format:**
 
@@ -388,6 +433,7 @@ Summarize the current state of all synergy tracking files.
 
 - [stale entries]
 - [actionable items]
+- [inverse-file findings, if any: stale aligned rows, missing-this-side rows]
 ```
 
 If all files are empty or no SYNERGY files exist, say so and suggest whether a
@@ -395,6 +441,9 @@ comparison run (workflow 3 (Compare with sibling)) would be useful — note that
 works best when the sibling repo is accessible on disk at the registry-resolved
 path (`local-path` from the merged `.claude/synergy-registry.json` +
 `.claude/synergy-registry.local.json`, falling back to `../<project-name>`).
+
+**Source.** The inverse-file glob step is sourced from
+`../vp-claude/UPSTREAM-vp-beads.md` entry 3 (2026-05-04).
 
 ### 3. Compare with sibling
 

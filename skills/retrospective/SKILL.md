@@ -179,6 +179,58 @@ on, and review whether `adopt-theirs` Divergences have been adopted.
 - Blocked issues whose blockers have been resolved (`bd blocked`)
 - Issues that should be compacted (`bd compact` for old closed issues)
 
+**Health audit:** Run bd's full health vocabulary in parallel — five focused
+checks covering infrastructure, template compliance, lifecycle hygiene,
+reference integrity, and dependency-graph integrity. Each command emits JSON
+for stable parsing. Surface counts plus the top 3–5 affected items per check
+in the generated `RETRO-NN.md` under a `### Health audit` subsection.
+
+```bash
+bd doctor --json    # Infrastructure: outdated hooks, gitignore drift, remote config
+bd lint --json      # Template compliance: issues missing required sections per type
+bd stale --json     # Lifecycle: issues with no recent activity
+bd orphans --json   # Reference integrity: refs in commits but issue still open
+bd graph check --json  # Dependency graph: cycles, dangling refs (schema_version: 1)
+```
+
+Per-check guidance:
+
+- **`bd doctor --json`** — parse `warnings[]`. Auto-fix is gated on user
+  consent: present the warning list and prompt before invoking
+  `bd doctor --fix --yes`. Never auto-apply. Note the **false positive** on the
+  Claude Hook Completeness check — it sometimes flags hooks that are
+  intentionally absent or installed via a plugin (see `UPSTREAM-brew--beads.md`
+  for the open friction entry); skip the prompt for that warning class until it
+  is resolved upstream.
+- **`bd lint --json`** — parse `issues[]`. No auto-fix; lint findings require
+  human triage. List affected issue IDs with the missing section names so the
+  maintainer can update them (e.g., `bd update <id>` adding
+  `## Acceptance Criteria` to a `feature`).
+- **`bd stale --json`** — parse `issues[]`. No auto-fix; suggest one of three
+  human actions per issue: defer (lower priority), close (no longer relevant),
+  or work (claim and progress).
+- **`bd orphans --json`** — parse `issues[]`. If `--json` is unavailable on the
+  installed `bd` version, fall back to text parsing of `bd orphans` output.
+  No auto-fix; suggest closing the issue or unmarking the orphan reference.
+- **`bd graph check --json`** — parse the schema-versioned envelope
+  (`{"clean": bool, "cycles": [...] | null, "schema_version": 1, "summary": {...}}`).
+  When `clean: false`, surface cycle paths and dangling refs with fix
+  recommendations (typically `bd dep remove <blocker> <blocked>` to break
+  a cycle, or `bd close` for stale references — `bd dep` uses subcommands,
+  not flag-form). No auto-fix.
+
+Render in the RETRO file as:
+
+```markdown
+### Health audit
+
+- **Infrastructure (`bd doctor`):** {N} warnings — {top items, or "clean"}
+- **Template compliance (`bd lint`):** {N} issues — {top items, or "clean"}
+- **Lifecycle (`bd stale`):** {N} stale issues — {top items, or "clean"}
+- **Reference integrity (`bd orphans`):** {N} orphans — {top items, or "clean"}
+- **Dependency graph (`bd graph check`):** {clean | N cycles, top items}
+```
+
 **Basic Memory graph health** (via Basic Memory MCP tools):
 
 1. Run the knowledge-gardener agent for automated audit (orphans, schema, stale notes, duplicates)
@@ -215,6 +267,48 @@ bd create "..." -t bug|task|feature|chore -p N --description "..."
 Include code quality issues, process improvements, and any findings that need
 follow-up work. Skip items that are purely observational or already have open
 issues.
+
+**Decision capture.** When a sprint outcome is a *decision* (an architectural
+or product choice with explicit rationale and rejected alternatives) rather
+than a task, bug, or feature, file it as the `decision` issue type — not a
+generic task. Decision-typed issues are queryable as ADRs and follow the
+supersede workflow.
+
+Recognize a decision when the sprint surfaced any of:
+
+- A choice between two or more viable approaches with rationale recorded
+- A reversal or revision of a previous decision (use `supersede` to link)
+- A constraint accepted (e.g., "we will not support X until Y") that future
+  work must respect
+
+For each decision, prompt the user to either:
+
+1. **Invoke the upstream `/beads:decision` slash command** — preferred path.
+   The command lives in the upstream `beads` plugin (NOT vp-beads) and wraps
+   `bd create --type=decision` with structured templates plus
+   record/list/show/supersede operations. Use this for the full lifecycle.
+2. **Or create directly via `bd create --type=decision`** with the four-section
+   template:
+
+   ```markdown
+   ## Decision
+
+   ## Rationale
+
+   ## Alternatives Considered
+
+   ## Affects
+   ```
+
+   The first three are required by `validation.on-create=error`; `## Affects`
+   is conventional and lists impacted components, files, or future work.
+
+**Lifecycle:** decision-typed issues stay **open** while the decision is in
+force. `open` = active decision, `closed` = superseded or reversed (NOT
+closed-on-create). The retrospective never auto-closes decisions — the
+upstream `/beads:decision` slash command handles supersession when the
+decision is later revised. Cross-reference that command for the full
+lifecycle (record/list/show/supersede) rather than implementing it here.
 
 ### 6. Knowledge gap audit
 

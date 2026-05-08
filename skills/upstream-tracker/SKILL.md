@@ -2,6 +2,7 @@
 name: upstream-tracker
 description: "Manage upstream issue tracking for this project. Use when the user wants to log a bug or friction point in a vendor package or npm dependency, review open upstream items, resolve a tracked issue, run a trend review, generate the upstream observations section of a sprint retrospective, promote upstream observations to Basic Memory, discover known friction from other projects, or track a contribution opportunity. Trigger phrases: 'upstream', 'track this', 'vendor issue', 'log this bug', 'review upstream', 'trend review', 'cross-vendor', 'this is a bug in X', 'promote to memory', 'promote upstream', 'sync from memory', 'known friction', 'resolved upstream', 'mark as fixed', 'tool issue', 'action bug', 'contribution opportunity', 'upstream this', 'contribute back', 'upstreamable', or any mention of friction with an external package."
 user-invocable: true
+argument-hint: "[workflow] [package-name]"
 paths:
   - "UPSTREAM-*.md"
   - ".claude/vendor-registry.json"
@@ -80,9 +81,12 @@ have to re-explain something that's already visible in the session.
 
 1. Identify which upstream package is involved from the conversation context
    (the code being discussed, the error encountered, or the workaround applied).
-   If the observation is about a sibling project rather than an upstream package
-   or tool, redirect to `/synergy-tracker` — this skill only tracks upstream
-   dependency friction, not cross-project patterns.
+   If the observation is a cross-project pattern (shared approach, divergence,
+   extraction candidate, capability gap) between sibling projects, redirect to
+   `/synergy-tracker`. Sibling projects that ship upstream artifacts (skills,
+   hooks, agents) can still receive upstream-tracker entries for concrete bug
+   reports, feature requests, or contribution opportunities against those
+   artifacts.
    This can be a vendor package OR a regular npm dependency. This can also be a
    non-npm tool — a Homebrew formula, a Homebrew cask, a GitHub Action, a Docker
    image, or a VSCode extension. Use the `brew:<name>`, `cask:<name>`,

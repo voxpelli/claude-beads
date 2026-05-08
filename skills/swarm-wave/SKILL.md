@@ -95,6 +95,13 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
      questions exist for the sprint.
    - 4f. Issues that block other issues (check with `bd blocked`) must go in
      an earlier wave than their dependents.
+   - 4g. **Single owner per issue.** When an issue's scope spans files that
+     would otherwise be split across multiple agents, assign the whole issue
+     to one agent — issue narrative coherence beats wave-level file balance.
+     Precedent: RETRO-10 (Sprint 10's `vp-beads-0e9.6`, which spanned skill
+     code, `CLAUDE.md`, and `MEMORY.md`). See
+     `references/file-contention-and-clustering.md` "Single owner per issue"
+     for the trade-off.
 5. Draft the wave execution plan in the SWARM file format shown above. Include
    per-agent file ownership and the research topic for each wave.
 6. Write the plan to `SWARM-NN.md` in the project root. Create the file if
@@ -198,7 +205,11 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
    - 6b. For `npm run check` failures: fix inline (mechanical fixes).
    - 6c. For HIGH-severity review findings: launch a targeted fix agent
      scoped to the specific concern and affected files. After the fix
-     agent completes, re-gate from step 1.
+     agent completes, re-gate from step 1. **If fix iterations exceed 2,
+     halt and escalate to the user instead of launching a third fix
+     agent.** This is a preventive cap — Sprint 10 ran one fix iteration
+     per wave; the budget exists to bound runaway gate failures in future
+     runs where reviewers and fix agents disagree.
    - 6d. For MEDIUM/LOW findings: present to the user — accept risk and
      commit, or fix first. See `references/review-gate-protocol.md` for
      the severity handling table.

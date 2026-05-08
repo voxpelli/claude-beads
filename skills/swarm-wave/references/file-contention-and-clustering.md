@@ -38,6 +38,38 @@ When a file has HIGH contention (3+ issues):
 4. **Consolidate** — if 3+ issues touch the same small function with related
    changes, create a single combined issue for one agent.
 
+## Single Owner Per Issue
+
+File-disjointness within a wave and narrative coherence of an issue can
+conflict. When they do, prefer narrative coherence: assign the whole issue
+to one agent rather than splitting its scope across two.
+
+**The trade-off:**
+
+- **File-disjointness** keeps agents from stepping on each other within a
+  wave. It is the primary safety mechanism for parallel execution.
+- **Narrative coherence** keeps an issue's intent, context, and acceptance
+  criteria with a single owner. Splitting an issue across two agents means
+  neither agent sees the full picture, and the seam between their changes
+  can drift from the issue's stated goal.
+
+**When they conflict, prefer narrative coherence.** Use the issue as the
+unit of ownership. If that means one agent owns more files than another in
+the same wave, accept the imbalance. If it means an issue spans files that
+look like they should be split for balance, do not split — keep the issue
+whole.
+
+**Precedent.** RETRO-10 (Sprint 10) recorded this lesson from
+`vp-beads-0e9.6`, an issue that spanned skill code, `CLAUDE.md`, and
+`MEMORY.md`. The whole issue went to one agent rather than being carved up
+to balance file load across the wave.
+
+**How this composes with the contention rules.** The contention thresholds
+above operate on files. The single-owner rule operates on issues. They are
+complementary: HIGH contention files still must split across waves, but
+within a wave, an issue stays with one agent even when its file list spans
+what a balance heuristic would otherwise distribute.
+
 ## Priority Ordering
 
 Apply this ordering when clustering issues into waves:
