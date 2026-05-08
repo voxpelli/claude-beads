@@ -305,6 +305,8 @@ if (existsSync(synergyRegistryPath)) {
         const e = /** @type {Record<string, unknown>} */ (entry)
         if (typeof e.name !== 'string') {
           error(synergyRegistryPath, `Entry [${i}] missing required string field: name`)
+        } else if (e.name === '') {
+          error(synergyRegistryPath, `Entry [${i}] name must be a non-empty string`)
         }
         if (typeof e.file !== 'string') {
           error(synergyRegistryPath, `Entry [${i}] missing required string field: file`)

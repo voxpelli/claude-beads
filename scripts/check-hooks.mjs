@@ -253,6 +253,124 @@ test('has additionalContext key', () => {
 })
 
 // =============================================================
+// post-compact.sh
+// =============================================================
+
+console.log('\npost-compact.sh')
+
+test('exists and is readable', () => {
+  return { ok: existsSync(join(HOOKS, 'post-compact.sh')) }
+})
+
+test('emits at most 1 JSON object (no multi-object)', () => {
+  // Run in an empty temp dir so no UPSTREAM/SWARM/RETRO files exist.
+  const dir = makeTempDirWithRetros(0)
+  try {
+    const { stdout, status } = runHook('post-compact.sh', '', { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    return count <= 1
+      ? { ok: true }
+      : { ok: false, reason: `expected 0 or 1 objects, got ${count}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('fires regardless of trigger type, emits 1 object listing UPSTREAM packages and SWARM file', () => {
+  // The hook is matcher-agnostic: PostCompact is an event-typed hook with
+  // matcher: "" (match all). The trigger type ('manual' vs 'auto') in the
+  // stdin payload is informational only — the hook produces identical
+  // output regardless. This single fixture replaces the previous
+  // tautological manual/auto pair (Sprint 14 Wave 1 gate).
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-postcompact-fires-'))
+  try {
+    writeFileSync(join(dir, 'UPSTREAM-some-pkg.md'), '_No entries yet._\n')
+    writeFileSync(join(dir, 'UPSTREAM-other-pkg.md'), '_No entries yet._\n')
+    writeFileSync(join(dir, 'SWARM-13.md'), '# Wave 1\n')
+    const { stdout, status } = runHook('post-compact.sh', '', { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    if (!ctx.includes('Context was just compacted')) {
+      return { ok: false, reason: `additionalContext missing recovery preamble: ${ctx.slice(0, 200)}` }
+    }
+    if (!ctx.includes('some-pkg') || !ctx.includes('other-pkg')) {
+      return { ok: false, reason: `additionalContext missing UPSTREAM packages: ${ctx.slice(0, 200)}` }
+    }
+    if (!ctx.includes('SWARM-13.md')) {
+      return { ok: false, reason: `additionalContext missing recent SWARM file: ${ctx.slice(0, 200)}` }
+    }
+    // HIGH 90 regression guard: no in-progress issues in this dir → must
+    // not surface bd's text-mode "No issues found." filler.
+    if (ctx.includes('No issues found')) {
+      return { ok: false, reason: `bd "No issues found." pollution leaked into context: ${ctx.slice(0, 200)}` }
+    }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('zero in-progress bd issues: empty array → no in-progress section emitted', () => {
+  // HIGH 90 regression test: with a stub bd that returns "[]" for the
+  // JSON status query, the hook must NOT emit any in-progress line. An
+  // UPSTREAM file is included so the hook still produces output (rather
+  // than going silent) — the assertion is specifically about the bd
+  // section's absence.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-postcompact-zero-bd-'))
+  const bdStubDir = mkdtempSync(join(tmpdir(), 'vp-beads-bd-stub-'))
+  try {
+    writeFileSync(join(dir, 'UPSTREAM-some-pkg.md'), '_No entries yet._\n')
+    // Stub bd that emits "[]" for any --json query, mimicking zero
+    // in-progress issues in a real .beads/ repo.
+    const bdScript = '#!/bin/bash\nprintf "[]\\n"\nexit 0\n'
+    const bdPath = join(bdStubDir, 'bd')
+    writeFileSync(bdPath, bdScript)
+    chmodSync(bdPath, 0o755)
+    const { stdout, status } = runHook('post-compact.sh', '', {
+      cwd: dir,
+      pathPrefix: bdStubDir,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    if (ctx.includes('In-progress bd issue')) {
+      return { ok: false, reason: `unexpected in-progress section for empty bd array: ${ctx.slice(0, 200)}` }
+    }
+    if (ctx.includes('No issues found')) {
+      return { ok: false, reason: `bd text-mode filler leaked: ${ctx.slice(0, 200)}` }
+    }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(bdStubDir, { recursive: true, force: true })
+  }
+})
+
+test('empty state: no UPSTREAM/SWARM/RETRO and no bd → silent', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-postcompact-empty-'))
+  try {
+    const { stdout, status } = runHook('post-compact.sh', '', { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    // bd may or may not be present; if it is and reports nothing in_progress,
+    // and the dir has no tracking files, output should be empty.
+    return count === 0
+      ? { ok: true }
+      : { ok: false, reason: `expected silent, got ${count} object(s)` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// =============================================================
 // session-start.sh
 // =============================================================
 

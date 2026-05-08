@@ -210,8 +210,12 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
      launching a third fix agent.** Scope is per-wave: a wave with
      multiple HIGH findings dispatches one fix agent that addresses all
      of them, and the count increments once per re-gate cycle (not once
-     per finding). This is a preventive cap — Sprint 10 ran one fix
-     iteration per wave; the budget exists to bound runaway gate
+     per finding). The iteration count covers fix-agent dispatches
+     only — inline orchestrator fixes (step 6b) do not consume
+     iteration budget, while user-directed MEDIUM fix-agent dispatches
+     (step 6d) DO consume the same budget as HIGH-driven dispatches
+     (same dispatch path). This is a preventive cap — Sprint 10 ran one
+     fix iteration per wave; the budget exists to bound runaway gate
      failures in future runs where reviewers and fix agents disagree.
    - 6d. For MEDIUM/LOW findings: present to the user — accept risk and
      commit, or fix first. See `references/review-gate-protocol.md` for
