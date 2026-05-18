@@ -15,6 +15,31 @@
   Note: The `model: sonnet` default in knowledge-gardener is a separate
   deliberate choice (SYNERGY accept-difference), not part of this FR.
 
+- **tool-intel `brew:` dispatch does not handle third-party taps**
+  (2026-05-18) — `skills/tool-intel/references/ecosystem-brew.md` only knows
+  the `formulae.brew.sh/api/formula/<name>.json` JSON path. Two-slash
+  identifiers like `brew:dicklesworthstone/tap/br` (third-party tap, format
+  `<owner>/<tap>/<formula>`) are not parsed, so the skill silently misroutes:
+  it tries the core registry, gets a miss, and the user must hand-extend the
+  workflow (fetch raw `.rb` via `gh api repos/<owner>/homebrew-<tap>/contents/Formula/<formula>.rb`,
+  parse Ruby DSL fields `desc`/`homepage`/`version`/`license`/`url`/`depends_on`/`caveats`,
+  pivot DeepWiki to the upstream `homepage` repo). Evidence that this is a
+  recurring need, not a one-off: at least 6 existing third-party-tap notes
+  in BM already follow the convention manually — `brew-ataraxy-labs-tap-inspect`,
+  `brew-agent-ecosystem-tap-skill-validator`, `brew-clever-tools`,
+  `brew-git-gtr`, `brew-mcp-netutils`, and the new `brew-dicklesworthstone-tap-br`.
+  Proposal includes: (1) detect 2-slash form in Step 0; (2) new fetch branch
+  using `gh api` + Ruby DSL parse; (3) auto-pivot DeepWiki to `homepage`;
+  (4) cross-check formula `license` vs upstream `LICENSE` (mismatches happen
+  — both `inspect` and `br` notes flagged this); (5) audit tap `.github/workflows`
+  for SLSA/SHA-256 hygiene; (6) sibling-formula survey for org-level signal.
+  Also codify BM note conventions: title `brew-<owner>-<tap>-<formula>`,
+  mandatory tags `third-party-tap` + `trust-review`, mandatory
+  `[installation]`/`[trust]`/`[security]` observation categories.
+  Ownership: upstream (vp-knowledge) · Workaround: partial — convention is
+  half-encoded in BM by 6 precedent notes; user can hand-extend the workflow
+  per invocation, but the skill itself doesn't dispatch.
+
 - _(Resolved 2026-04-05, vp-knowledge v0.21.0)_ **package-intel should fetch
   npm download stats from the registry API** — v0.21.0 added download stats
   to the package-intel pipeline.
