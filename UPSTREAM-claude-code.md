@@ -1,6 +1,6 @@
 ## Bugs
 
-- **Sub-agent sandbox blocks `/tmp/` writes and external installs even with `dangerouslyDisableSandbox: true`** (2026-05-18) [degraded] — Sub-agents launched via the Agent tool hit Bash sandbox restrictions that:
+- **Sub-agent sandbox blocks `/tmp/` writes and external installs even with `dangerouslyDisableSandbox: true`** (2026-05-18) — Sub-agents launched via the Agent tool hit Bash sandbox restrictions that:
   - Reject writes to `/tmp/` and reads of `/tmp/`-resident files
   - Reject `npx <package>` and `brew install <pkg>` (any install side-effect)
   - Reject `gh api` calls in some contexts (cross-confirmed by 2 independent sub-agents in the same wave)

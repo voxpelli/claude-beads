@@ -18,7 +18,7 @@ Four horizons. **Only H1 is committed.** H2 is conditional on H1 dogfooding find
 
 ### H1 — Personal use, dogfood (months)
 
-**Scope.** Whichever of (a) Backlog.md substrate + vp-beads supplements [Phase 2b] or (b) from-scratch `@voxpelli/<tracker-name>` standalone package [Phase 3] wins the Phase 2a spike. Single-host, single-user (pelle). Markdown canonical, optional SQLite projection, lockfile concurrency, Constitutional Guardrail middleware. 6–7 MCP tools, no resources, no sampling. Skill shells out to CLI; degraded path uses direct markdown reads.
+**Scope.** Whichever of (a) Backlog.md substrate + vp-beads supplements (Phase 2b) or (b) from-scratch `@voxpelli/<tracker-name>` standalone package (Phase 3) wins the Phase 2a spike. Single-host, single-user (pelle). Markdown canonical, optional SQLite projection, lockfile concurrency, Constitutional Guardrail middleware. 6–7 MCP tools, no resources, no sampling. Skill shells out to CLI; degraded path uses direct markdown reads.
 
 **Success criterion (mirrors weft-ai H1).** Does using the tracker through vp-beads make sprint workflow noticeably better than bd did? Measured by: zero parallel-agent concurrency crashes over 4 swarm-wave sprints; first six-month skill-rework cost <2 sprints; the user does not voluntarily look sideways at bd again.
 
