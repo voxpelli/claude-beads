@@ -2,6 +2,7 @@
 RETRO-*.md
 SWARM-*.md
 SPIKE-*.md
+AGENT-*.md
 .claude/*.local.*
 .claude/synergy-registry.local.json
 .claude/vendor-registry.local.json

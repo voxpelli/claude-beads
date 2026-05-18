@@ -131,6 +131,25 @@ Dev tooling only: validation and linting via `npm run check`.
   utility), research-wave (parallel research with backlog-groomer handoff).
   Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
 
+## Active migration: bd → Backlog.md (Phase 2b)
+
+Mid-migration as of 2026-05. Phase 2a spike: MIXED verdict — see
+`SPIKE-MIG.1.md` at project root (gitignored). Phase 2b execution plan: the
+`Implementation Plan` section of `backlog/tasks/task-1 - Phase-2b*.md`.
+
+- **bd** holds spike history. The MIG epic `vp-beads-l9i` remains OPEN as
+  the Phase 2b parent; all children (`vp-beads-l9i.1`, `.1.1–.1.5`, `.2`) are
+  CLOSED. Don't reopen the closed children.
+- **Backlog.md** holds active Phase 2b work at `backlog/tasks/TASK-1.*.md`.
+  MCP tools: `mcp__backlog__task_*` (server name: `backlog`). Local-scope
+  MCP registration in `~/.claude.json` per-machine; re-add with
+  `claude mcp add backlog -- backlog mcp start` if missing.
+- Feature branch `feat/tracker-design-exploration` carries the Phase 2b work
+  (currently local-only per user choice — don't push without approval).
+- Substrate-not-opinion doctrine: vp-heddle skills will wrap Backlog.md's
+  CRUD primitives but supply their OWN workflow (don't defer to Backlog.md's
+  MCP workflow resources as gospel). See `ROADMAP.md` §6 last bullet.
+
 ## Conventions
 
 ### Skill frontmatter
@@ -303,9 +322,79 @@ rm -rf directory        # NOT: rm -r directory
 
 ### Issue tracking with beads
 
-This project uses `bd` (beads) for all issue tracking. Do NOT use markdown TODOs
-or task lists. Run `bd ready` to find available work, `bd update <id> --claim` to
-claim it, `bd close <id>` to complete it.
+This project uses `bd` (beads) for spike/legacy history tracking, and
+**Backlog.md for active Phase 2b work** (see "Active migration" section above).
+For bd: `bd ready` to find available work, `bd update <id> --claim` to claim,
+`bd close <id>` to complete. For Backlog.md: `mcp__backlog__task_list`,
+`mcp__backlog__task_view`, `mcp__backlog__task_edit`, `mcp__backlog__task_create`.
+Do NOT use markdown TODOs or task lists.
+
+### bd 60s write-throttle quirk
+
+Sequential `bd update`/`bd close`/`bd update --claim` calls within 60s
+silently lose all but the last write — symptom reproducibly observed
+2026-05-18 (6+ hits). Candidate mechanism: `export.auto=true` with
+`export.interval=60s` default + per-CLI auto-import behavior. Workarounds
+(in order): (1) **batch** IDs in a single CLI invocation —
+`bd close ID1 ID2 ID3 --reason "..."` and
+`bd update ID1 ID2 ID3 --claim` work; (2) set `export.interval=0` in
+`.beads/config.yaml` to disable throttle; (3) `git commit` between writes
+— the pre-commit hook forces JSONL re-export. The
+`bd --dolt-auto-commit off + bd vc commit` pattern per upstream docs does
+NOT fix this. Details + mechanism caveat: BM `brew/brew-beads`
+`## Upstream Friction`.
+
+### Sub-agent permissions in Task-tool launches
+
+Sub-agents launched via the Task tool **don't inherit `permissions.allow`
+rules from USER-level `~/.claude/settings.json`** — only PROJECT-level
+permissions (`.claude/settings.local.json` etc.) inherit. Per
+`anthropics/claude-code#18950` (cluster: #25000, #27661, #34315). Symptom:
+Bash patterns or `mcp__*` tool names pre-listed at user-scope are silently
+denied in sub-agent context, even though main-thread (which sees both
+scopes + has interactive UX) succeeds. **Confirmed 2026-05** in this project.
+
+**MCP twist:** locally-registered MCP servers ARE discoverable from
+sub-agents (ToolSearch finds their schemas), but each `mcp__<server>__*`
+tool name must ALSO be in project-level `permissions.allow` to be
+callable. The local Backlog.md MCP server registered via
+`claude mcp add backlog -- backlog mcp start` is reachable from
+sub-agents only after adding each `mcp__backlog__*` tool name to
+`.claude/settings.local.json`.
+
+**Workaround pattern (in order):**
+
+1. Run `/fewer-permission-prompts` — scans recent transcripts and
+   writes a baseline allow-list to project-scope `.claude/settings.json`
+   (correct scope for sub-agent inheritance).
+2. Hand-curate `.claude/settings.local.json` for anticipated new
+   operations the sub-agent will need but haven't appeared in
+   transcripts yet (new MCP tools, novel Bash patterns).
+3. Main-thread takeover as fallback for one-offs.
+
+**Skip these (wrong layer / scope):**
+
+- `allowed-tools` frontmatter — only applies to named agents at
+  `.claude/agents/<name>.md`, not Task-tool launches.
+- `dangerouslyDisableSandbox: true` — targets the OS sandbox
+  (Seatbelt/bubblewrap, off by default per `/sandbox` opt-in); wrong
+  layer entirely.
+
+**Known bug:** `anthropics/claude-code#51057` — `/fewer-permission-prompts`
+silently drops env-var-prefixed commands (`FOO=bar npm test`), so the
+generated rule fails for sub-agents that need such patterns; hand-curate
+those explicitly. Concrete starter snippet for `.claude/settings.local.json`
+when running swarm-wave against Backlog.md:
+
+```json
+"mcp__backlog__task_list", "mcp__backlog__task_view",
+"mcp__backlog__task_create", "mcp__backlog__task_edit",
+"Bash(npx:*)", "Bash(gh api:*)", "Bash(brew info:*)"
+```
+
+Full details + 5-agent validation trail: BM
+`engineering/agents/parallel-agent-orchestration-lessons` last `[gotcha]`
+observation + `UPSTREAM-claude-code.md` at project root.
 
 ### Issue types (9 total)
 
