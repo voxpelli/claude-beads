@@ -63,3 +63,5 @@ validation:
         type: string
       upstream_source:
         type: string
+
+sync.remote: "git+ssh://git@github.com/voxpelli/claude-beads.git"
