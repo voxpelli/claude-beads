@@ -1,4 +1,5 @@
 .DS_Store
+AGENT-*.md
 RETRO-*.md
 SWARM-*.md
 .claude/*.local.*

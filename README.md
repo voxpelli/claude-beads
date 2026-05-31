@@ -174,6 +174,54 @@ claude mcp add basic-memory -- basic-memory mcp
 
 vp-beads intentionally does not duplicate vp-knowledge's BM hooks — see [How it fits together](#how-it-fits-together) and [Relationship to vp-knowledge](#relationship-to-vp-knowledge).
 
+## beads and Dolt configuration in this repository
+
+This project uses **[beads](https://github.com/gastownhall/beads)** (`bd` CLI) with a **Dolt** backend for issue tracking. The local configuration is:
+
+- **Dolt mode:** `server` (running on localhost, PID managed by `bd`)
+- **Database name:** `vp_beads`
+- **Sync target:** The project's GitHub remote (`git@github.com:voxpelli/claude-beads.git`), not DoltHub
+- **`sync.remote` in `.beads/config.yaml:** `git+ssh://git@github.com/voxpelli/claude-beads.git`
+
+### What is committed to git vs. gitignored
+
+`.beads/` is **partially tracked**. The root `.gitignore` only excludes specific patterns; the canonical exclusions live in `.beads/.gitignore`:
+
+| Path | Status | Note |
+|---|---|---|
+| `.beads/config.yaml` | ✅ Committed | Validation rules, `sync.remote` |
+| `.beads/metadata.json` | ✅ Committed | Backend metadata (`dolt_mode: server`, `dolt_database: vp_beads`) |
+| `.beads/issues.jsonl` | ✅ Committed | Auto-exported JSONL (~182 KB) |
+| `.beads/interactions.jsonl` | ✅ Committed | Agent audit trail (~40 KB) |
+| `.beads/hooks/` | ✅ Committed | Git hooks (pre-commit, post-merge, etc.) |
+| `.beads/dolt/` | ❌ Gitignored | Full Dolt database (binary) |
+| `.beads/backup/` | ❌ Gitignored | JSONL backup exports |
+| `.beads/dolt-server.*` | ❌ Gitignored | Runtime PID, lock, log, port |
+| `.beads/.beads-credential-key` | ❌ Gitignored | Per-machine auth secret |
+
+### Dolt remote state
+
+`bd dolt remote list` reports an `origin` remote, but the underlying Dolt storage (`.beads/dolt/.dolt/repo_state.json`) shows `"remotes": {}`. The remote is synthesized from `.beads/config.yaml`'s `sync.remote` value. The GitHub remote **does** contain Dolt refs (`refs/dolt/data`), indicating `bd dolt push` has succeeded historically. Beads can work entirely offline; the remote is only needed for cross-machine synchronization.
+
+### No DoltHub
+
+There is **no DoltHub remote** configured. DoltHub is supported by beads (and by Dolt itself) but this repository uses the standard GitHub git remote as its Dolt sync target.
+
+### Cross-source verification
+
+This configuration was verified by inspecting the local filesystem and `bd` CLI output, then cross-referencing external sources:
+
+| Source | Finding |
+|---|---|
+| **Local `bd` CLI** (`bd config list`, `bd dolt remote list`, `bd dolt status`) | Server mode, `vp_beads` database, `sync.remote` points to GitHub |
+| **`gh` CLI** (`gh api repos/.../git/refs`) | Dolt refs (`refs/dolt/data`) exist on the GitHub remote; `.beads/` files (config, JSONL, hooks) are committed |
+| **DeepWiki** (`gastownhall/beads`) | Beads does not require DoltHub; embedded mode stores data in `.beads/embeddeddolt/`, server mode in `.beads/dolt/`; Dolt directories are git-ignored |
+| **Context7** (`/gastownhall/beads`) | Standard layout: `.beads/dolt/` (gitignored), `config.yaml` + `metadata.json` (tracked) |
+| **Tavily / DoltHub blog** (2026-05-29) | "Issues are stored in local Dolt. `.beads/issues.jsonl` is an export, not cross-machine sync or the source of truth." |
+| **Basic Memory** (`brew/brew-beads`) | Confirms Dolt as storage backend, cell-level merge, `.beads/dolt/` as binary storage |
+| **Raindrop** (`steveyegge/beads` bookmark) | Cached body confirms Dolt transition from SQLite, "JSONL maintained for git portability" |
+| **Readwise** | No saved material on beads or Dolt+beads |
+
 ## Conventions
 
 ### Vendor registry
