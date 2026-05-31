@@ -201,7 +201,11 @@ This project uses **[beads](https://github.com/gastownhall/beads)** (`bd` CLI) w
 
 ### Dolt remote state
 
-`bd dolt remote list` reports an `origin` remote, but the underlying Dolt storage (`.beads/dolt/.dolt/repo_state.json`) shows `"remotes": {}`. The remote is synthesized from `.beads/config.yaml`'s `sync.remote` value. The GitHub remote **does** contain Dolt refs (`refs/dolt/data`), indicating `bd dolt push` has succeeded historically. Beads can work entirely offline; the remote is only needed for cross-machine synchronization.
+`bd dolt remote list` reports an `origin` remote, but the underlying Dolt storage (`.beads/dolt/.dolt/repo_state.json`) shows `"remotes": {}`. The remote is synthesized from `.beads/config.yaml`'s `sync.remote` value.
+
+The GitHub remote **does** contain a Dolt ref (`refs/dolt/data` → commit `b44b439e6370f195100eb8089532c8ac92c69726`), confirming `bd dolt push` succeeded historically. However, this ref is **not present locally** — Dolt refs under `refs/dolt/` are not fetched by standard `git fetch`, so the local clone never pulled it back. Also present on the remote: `refs/heads/__dolt_remote_info__` (`0abb03ec`).
+
+Beads can work entirely offline; the remote is only needed for cross-machine synchronization.
 
 ### No DoltHub
 
