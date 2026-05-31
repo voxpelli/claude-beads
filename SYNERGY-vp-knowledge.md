@@ -44,15 +44,6 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   (Sprint 18) and gh-ecosystem hook coverage (v0.29.0). Strong extraction
   candidate for shared `@voxpelli/claude-plugin-tools`.
 
-- **npm-run-all2 parallel check stages** (2026-04-04) — vp-beads uses `run-p check:*`
-  for parallel CI execution; vp-knowledge still uses sequential `&&` chaining
-  (re-verified 2026-05-04: their `package.json` "check" script reads
-  `npm run check:plugin && npm run check:md && npm run check:sh && npm run check:hooks`).
-  Status: diverging · Last verified: 2026-05-04
-  Note: vp-knowledge's `SYNERGY-vp-beads.md` claimed (2026-05-04) that they
-  had converged — premise was wrong on inspection. Row left as diverging
-  pending actual convergence on their side.
-
 - **BM error classification hook** (2026-04-05) — Both plugins have a
   PostToolUseFailure command hook for BM tools that classifies errors into
   categories (`[server-unavailable]`, `[note-not-found]`, `[invalid-argument]`,
@@ -127,6 +118,17 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   in agent/skill frontmatter. vp-beads v0.10.1 validates these fields but does not
   use them yet (no non-invocable skills, no agent skill preloading).
   Convergence path: evaluate · Reason: adopt when vp-beads has a use case
+
+- **npm-run-all2 parallel check stages** (2026-04-04) — _(Converged 2026-05-29,
+  vp-knowledge adopted `npm-run-all2@^7.0.0` + `run-p check:*`)_ vp-knowledge's
+  `package.json` "check" script is now `run-p check:*` (was sequential `&&`
+  chaining across its sub-checks); the 5th sub-check (`check:contract`, added in
+  the v0.31.0 staleness work) was the tipping incentive. `npm run check` verified
+  green in parallel. Now matches vp-beads and vp-git.
+  Convergence path: adopt-theirs · Status: converged · Last verified: 2026-05-30
+  Note: Reconciled via /sibling-sync from vp-knowledge on 2026-05-30. This row
+  previously sat in Shared Patterns marked `diverging` (LV 2026-05-04) "pending
+  actual convergence on their side" — which has now happened.
 
 ## Extraction Candidates
 
