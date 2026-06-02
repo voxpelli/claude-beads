@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0][] - 2026-06-02
+
+Make beads optional and document the work-tracking substrates. The plugin no
+longer forces beads: every component detects availability and degrades along a
+defined tier, and `/swarm-wave` can source waves from a `ROADMAP.md` or a manual
+list. Reciprocates the feature request `liggare-mcp` filed in its
+`UPSTREAM-vp-beads.md`.
+
+### Added
+
+- **`### Beads-availability convention` (CLAUDE.md).** One canonical detection
+  predicate (`.beads/` exists **and** `command -v bd`) and three degradation
+  tiers — A require-or-fallback, B beads-specific stop, C degrade-and-announce —
+  with the rule that silently skipping a `bd` step is a bug (hooks exempt). The
+  tier→component mapping lives only here; components copy a canonical inline
+  sentence and cite their tier letter.
+- **`/swarm-wave` Tier A require-or-fallback sourcing.** Workflow 1 (Plan a
+  swarm sprint) now sources waves from beads, else a `ROADMAP.md`, else a manual
+  work list (reusing the workflow 4 (Map file contention) prompt). Beadless
+  waves track run-state in a new per-wave `SWARM-NN.md` Item Status table
+  (`pending → claimed → done | carried`). Adds collision detection (next free
+  `SWARM-NN`), a warning when `SWARM-*.md` files are git-tracked, and new
+  description triggers.
+- **`skills/swarm-wave/references/roadmap-interpretation.md`.** A six-step
+  adaptive interpretation contract: classify shape first (only wave-structured
+  plans qualify; feature-triage matrices and chore lists decline; unrecognized
+  shapes ask), multi-shape completion detection defaulting unrecognized status
+  to user-disambiguation, recursive prose-aware PARKED/DROPPED exclusion,
+  declared-else-grep scope resolution, `VISION.md` is never a work source, and
+  per-wave provenance confirmation. Validated against four real ROADMAP idioms.
+  swarm-wave never reformats the ROADMAP.
+- **`validate-plugin.mjs` silent-skip warn-check.** A new pure
+  `scripts/audit-silent-skips.mjs` module flags skill/agent prose that skips a
+  `bd` step silently without an announce/Tier marker; a new `check:validator`
+  stage runs its fixture tests.
+- **`## Work-tracking substrates` documentation** in both `CLAUDE.md` and
+  `README.md` — beads vs `ROADMAP.md` (read in its own idiom, never prescribed)
+  vs `VISION.md` (direction, not a backlog) vs manual list — plus a README
+  local-only-vs-committed beads recommendation table.
+
+### Changed
+
+- **`/retrospective` degrades to Tier C.** A `### Beads availability` preamble
+  plus announced fallbacks for the three bd-dependent steps: the health audit
+  renders an announced skip line, step-5 findings append a
+  `### Follow-ups (untracked)` task list to the RETRO file instead of
+  `bd create`, and decisions are captured inline as a `### Decisions` block.
+- **`sprint-review` agent degrades to Tier C.** The two beads edge cases merge
+  into one canonical-predicate announce bullet; the agent announces skipped `bd`
+  steps (Steps 1 and 3) instead of silently omitting them and points to
+  `ROADMAP.md` when present (best-effort, never parsed or ranked).
+- **`/backlog-groomer` degrades to Tier B.** The beads-optional guard becomes a
+  clean Tier B stop that names the missing predicate and redirects the planning
+  triggers to `/swarm-wave` or editing `ROADMAP.md` directly.
+- **`README.md` lede softened** to state beads is the default substrate, not a
+  requirement.
+
 ## [0.15.1][] - 2026-06-02
 
 ### Fixed
@@ -1050,6 +1107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   resolve, trend-review, and retrospective-support. Vendor packages are declared
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
+
+[0.16.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.16.0
 
 [0.15.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.15.1
 
