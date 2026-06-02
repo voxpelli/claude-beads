@@ -40,6 +40,12 @@ next wave or sprint close
 
 Repeat the execute-wave + post-wave-gate cycle for each wave in the plan.
 
+When beads is the source, `bd` is the run-state (claim/close). When the source
+is a `ROADMAP.md` or a manual list, the `SWARM-NN.md` `### Item Status` table is
+the run-state instead — the orchestrator advances each row
+`pending → claimed → done` (or `carried`). See `command-patterns.md`
+"Beadless run-state equivalents".
+
 ## Post-Wave Gate Sequence
 
 Six steps, all blocking — the gate must fully pass before proceeding.
@@ -57,7 +63,9 @@ Six steps, all blocking — the gate must fully pass before proceeding.
    any HIGH-severity fix was made.
 6. **Commit**: `git commit --no-gpg-sign -m "feat: wave N — [theme]"`.
    Close completed wave issues with `bd close`. Update wave status to
-   `committed` in the SWARM file.
+   `committed` in the SWARM file. **Beadless source** (ROADMAP / manual): there
+   are no `bd close` calls — mark each completed item `done` in the wave's
+   `### Item Status` table; wave `Status: committed` closes the wave.
 
 ## Retrospective Frequency
 

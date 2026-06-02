@@ -1,6 +1,6 @@
 ---
 name: swarm-wave
-description: "Orchestrate multi-agent development sprints with wave-based parallelism. Use when the user wants to plan a swarm sprint, partition work into file-disjoint waves, map file contention across open issues, run a post-wave quality gate with review agents, manage agent backpressure, run a parallel research wave, or coordinate multiple concurrent agents on a shared codebase. Trigger phrases: 'swarm sprint', 'wave plan', 'launch wave', 'execute wave', 'post-wave gate', 'contention map', 'research wave', 'parallel agents', 'multi-agent sprint', 'agent wave', 'swarm orchestration'."
+description: "Orchestrate multi-agent development sprints with wave-based parallelism. Use when the user wants to plan a swarm sprint, partition work into file-disjoint waves, map file contention across open issues, run a post-wave quality gate with review agents, manage agent backpressure, run a parallel research wave, or coordinate multiple concurrent agents on a shared codebase. Works with or without beads: sources waves from the beads backlog, from a ROADMAP.md, or from a manually supplied work list. Trigger phrases: 'swarm sprint', 'wave plan', 'launch wave', 'execute wave', 'post-wave gate', 'contention map', 'research wave', 'parallel agents', 'multi-agent sprint', 'agent wave', 'swarm orchestration', 'swarm from ROADMAP', 'wave plan without beads', 'swarm with manual list'."
 argument-hint: "[workflow] [wave-number|topic]"
 user-invocable: true
 paths:
@@ -56,9 +56,24 @@ Issues: id1, id2, id3
 - Agent B: [file3] -> issue-id
 - Research: [topic]
 
+### Item Status
+
+| Item        | State                              |
+| ----------- | ---------------------------------- |
+| id1         | pending / claimed / done / carried |
+| id2         | pending / claimed / done / carried |
+
 ## Wave 2 — [Theme]
 ...
 ```
+
+**Item Status is the run-state table.** When beads is available, `bd` is the
+source of truth (claim/close) and this table mirrors it for at-a-glance status.
+When beads is **unavailable** (ROADMAP or manual source), this table *is* the
+source of truth: the orchestrator owns all writes to it — `pending` at plan
+time, `claimed` when an agent launches, `done` when the agent reports complete,
+`carried` when an item is deferred to a later wave. `Item` is a beads id when
+beads is used, otherwise a short slug for the work item.
 
 ## Workflows
 
@@ -73,9 +88,27 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
 
 **Steps:**
 
-1. Guard: check `.beads/` exists. If absent, report that swarm-wave requires
-   beads and stop. Run `bd ready` and `bd list --status open` to load the
-   candidate issue set.
+1. **Determine the work source (Tier A — require-or-fallback).** Beads is
+   available iff a `.beads/` directory exists **and** `command -v bd` succeeds;
+   this component is **Tier A** per CLAUDE.md `### Beads-availability
+   convention`. Select the wave source by precedence — **beads wins when both
+   beads and a `ROADMAP.md` exist**:
+
+   - **Beads available** — run `bd ready` and `bd list --status open` to load
+     the candidate issue set.
+   - **No beads, `ROADMAP.md` present** — interpret it as the work source
+     following `references/roadmap-interpretation.md` (read it in its own
+     idiom; never reformat it). If that interpretation declines the ROADMAP
+     (it is not a parallelizable work plan), fall through to the manual path.
+   - **No beads and no usable ROADMAP** — **manual path**: ask the user for the
+     work items and their file scopes, reusing the workflow 4 (Map file
+     contention) step-1 prompt (item titles + descriptions + the files each
+     touches).
+
+   Downstream steps operate on the resulting item list regardless of source.
+   Issue creation and `bd` claim/close are beads-only; for a beadless source
+   the `SWARM-NN.md` Item Status table is the run-state equivalent (see
+   `## SWARM Files`).
 2. Read the project structure to understand the codebase layout. Use Glob for
    key source directories and Read for `package.json` and relevant config files.
    This builds the mental model for file contention analysis.
@@ -104,8 +137,13 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
      for the trade-off.
 5. Draft the wave execution plan in the SWARM file format shown above. Include
    per-agent file ownership and the research topic for each wave.
-6. Write the plan to `SWARM-NN.md` in the project root. Create the file if
-   absent; append if replanning mid-sprint.
+6. Write the plan to `SWARM-NN.md` in the project root. **Collision detection:**
+   pick the next free `SWARM-NN` (glob existing `SWARM-*.md`, including
+   `-suffix` variants, and choose the lowest unused number) rather than
+   overwriting an active plan; append if deliberately replanning the same
+   sprint mid-flight. **If any `SWARM-*.md` is git-tracked, warn the user** —
+   these are ephemeral run-state and should be gitignored (a tracked SWARM file
+   usually means `.gitignore` is missing the entry).
 7. Present the plan to the user. **No wave execution begins without explicit
    approval.** After approval, suggest: "Run `/swarm-wave execute-wave 1` to
    start Wave 1."
@@ -135,7 +173,9 @@ argument.
    Phase 3 (pressure check). If memory pressure is HIGH, reduce agent
    count and note the reduction. If CRITICAL, stop and report.
 4. Claim all wave issues: run `bd update <id> --claim` for each issue ID in
-   the wave. Report the claimed IDs.
+   the wave. Report the claimed IDs. **Beadless source:** set each item's row
+   in the wave's `### Item Status` table to `claimed` instead (the orchestrator
+   owns these writes).
 5. Update the wave status to `running` in the SWARM file.
 6. Launch task agents in parallel. For each agent slot in the wave plan,
    use the Agent tool with a prompt built from the canonical template in
@@ -145,7 +185,9 @@ argument.
    - Exhaustive file scope list (files this agent may modify — never globs)
    - Isolation constraint: "Do not modify any file outside your scope list."
    - Validation: "Run `npm run check` before finishing."
-   - Completion: "Run `bd close <id>` when the issue is done."
+   - Completion: "Run `bd close <id>` when the issue is done." (Beadless
+     source: omit this line — the agent reports completion in its final
+     message and the orchestrator marks the Item Status row `done`.)
 
    If a background research agent is planned for this wave, include it in
    the same parallel launch batch. Research agents write findings to a
@@ -155,7 +197,10 @@ argument.
 7. Wait for all agents to complete. As each agent reports done, log it.
 8. Verify closures: run `bd list --status in_progress` to check for unclosed
    issues. Any issue still `in_progress` means the agent did not complete —
-   note it for the user (carry forward or retry in the next wave).
+   note it for the user (carry forward or retry in the next wave). **Beadless
+   source:** the equivalent check is the wave's `### Item Status` table — any
+   row still `claimed` (not `done`) is the unclosed-item signal; mark deferred
+   items `carried`.
 9. Update wave status to `gate-pending` in the SWARM file.
 10. Suggest: "Wave N agents complete. Run `/swarm-wave post-wave-gate N` to
     run the quality gate."
@@ -301,9 +346,13 @@ the parallelism and deduplication.
   gate)) must fully pass before the next wave launches. Never commit wave work that has not
   passed the gate. "Fix it later" is how parallel agent work produces
   cascading failures.
-- **Beads is required.** All swarm-wave workflows assume beads is available.
-  Guard all `bd` commands — if `.beads/` is absent, report that swarm-wave
-  requires beads and stop.
+- **Beads is preferred, not required (Tier A).** swarm-wave needs a *work
+  source*, not beads specifically (per CLAUDE.md `### Beads-availability
+  convention`). Use beads when available; otherwise source waves from a
+  `ROADMAP.md` (workflow 1 (Plan a swarm sprint)) or a manual list, and use the
+  `SWARM-NN.md` Item Status table as run-state in place of `bd` claim/close.
+  Guard every `bd` command so a beadless run never errors. Only stop when no
+  work source can be obtained at all.
 - **SWARM files are ephemeral.** `SWARM-NN.md` files are working documents,
   not committed artifacts. They should be gitignored.
 - **No mutations without approval.** Wave plans require explicit user

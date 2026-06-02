@@ -164,8 +164,7 @@ checked every time — neither alone.
 - **Tier A — require-or-fallback.** The component needs a work source but not
   *beads specifically*: use beads when available, else fall back to another
   source (`ROADMAP.md`, or a manual list) and only stop when no source can be
-  obtained. Components: *none yet — `swarm-wave` joins this tier when its
-  require-or-fallback path lands (it currently hard-stops).*
+  obtained. Components: `swarm-wave` (workflow 1 (Plan a swarm sprint)).
 - **Tier B — beads-specific stop.** The component's whole purpose is operating
   on the beads backlog; with no beads there is nothing to do. Stop cleanly with
   a message that names the missing predicate and **redirects to a beadless
