@@ -292,8 +292,14 @@ to mutate the project. The boundary is enforced both by the frontmatter
 
 ## Edge Cases
 
-- **No `.beads/` directory** — skip all `bd` commands silently; note that beads
-  is not active in this project
+- **Beads unavailable** (Tier C) — Beads is available iff a `.beads/` directory
+  exists **and** `command -v bd` succeeds; this component is **Tier C** per
+  CLAUDE.md `### Beads-availability convention`. When unavailable, **announce**
+  it (e.g. "Beads not active here — skipping the open-issue assessment in
+  Step 3") and run the rest of the review; do **not** skip the `bd` steps
+  silently. If a `ROADMAP.md` exists, point the user to it as the likely work
+  record — but do **not** parse or rank it (it may not be a parallelizable work
+  list; this pointer is best-effort and non-authoritative).
 - **No `UPSTREAM-*.md` files** — if SYNERGY files exist, the user has chosen
   their tracking approach; skip the upstream suggestion silently. Otherwise,
   note that upstream tracking is not yet set up and suggest creating files if
@@ -303,8 +309,6 @@ to mutate the project. The boundary is enforced both by the frontmatter
 - **No `RETRO-*.md` files** — treat this as Sprint 1; all commits are in scope
 - **Very large commit history** — limit to the 30 most recent commits; note the
   limit in your output
-- **`bd` command not found** — skip beads steps silently; the plugin works
-  without beads in non-beads projects
 - **Clean working tree with no new commits since last retro** — report honestly;
   do not fabricate activity
 - **`/session-reflect` skill available (vp-knowledge)** — as a subagent you
