@@ -44,15 +44,6 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   (Sprint 18) and gh-ecosystem hook coverage (v0.29.0). Strong extraction
   candidate for shared `@voxpelli/claude-plugin-tools`.
 
-- **npm-run-all2 parallel check stages** (2026-04-04) — vp-beads uses `run-p check:*`
-  for parallel CI execution; vp-knowledge still uses sequential `&&` chaining
-  (re-verified 2026-05-04: their `package.json` "check" script reads
-  `npm run check:plugin && npm run check:md && npm run check:sh && npm run check:hooks`).
-  Status: diverging · Last verified: 2026-05-04
-  Note: vp-knowledge's `SYNERGY-vp-beads.md` claimed (2026-05-04) that they
-  had converged — premise was wrong on inspection. Row left as diverging
-  pending actual convergence on their side.
-
 - **BM error classification hook** (2026-04-05) — Both plugins have a
   PostToolUseFailure command hook for BM tools that classifies errors into
   categories (`[server-unavailable]`, `[note-not-found]`, `[invalid-argument]`,
@@ -84,6 +75,16 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 - **PostToolUseFailure hook type** (2026-03-28) — _(Resolved 2026-04-04, v0.10.0)_
   Both plugins now use command hooks with stdin JSON parsing.
   Convergence path: adopt-theirs · Status: converged
+
+- **npm-run-all2 parallel check stages** (2026-05-29) — _(Converged 2026-05-29)_
+  vp-claude adopted `npm-run-all2@^7.0.0` + `run-p check:*`, matching vp-beads
+  and vp-git. Status: converged · Last verified: 2026-05-29
+  Note: Reciprocated from vp-claude's `SYNERGY-vp-beads.md` entry. Sprint 19's
+  pass falsely claimed convergence; finally real on 2026-05-29.
+  Discrepancies found on verification: vp-claude has **6** sub-checks (adds
+  `check:contract` and `check:distance` beyond vp-beads's 4), and `check:md`
+  lacks `--ignore-path .gitignore`. The `run-p check:*` _pattern_ converged;
+  the sub-check sets are not identical. Not documented in vp-claude CHANGELOG.
 
 - **PostToolUse BM write-validation hook** (2026-03-28) — _(Resolved 2026-04-05,
   v0.10.1)_ vp-knowledge provides `post-bm-write-validate.sh`; vp-beads relies on
