@@ -36,6 +36,22 @@ sprint's worth of work.
 
 ## Workflow
 
+### Beads availability
+
+Beads is available iff a `.beads/` directory exists **and** `command -v bd`
+succeeds; this component is **Tier C** per CLAUDE.md
+`### Beads-availability convention`. Steps 1–3 and the UPSTREAM / SYNERGY /
+Basic Memory parts of the trend review are beads-independent and run unchanged.
+When beads is **unavailable**, the three bd-dependent steps **degrade and
+announce** (never skip silently):
+
+- **Health audit (step 4)** — replace the `bd` health checks with an announced
+  skip line in the RETRO `### Health audit` subsection (see step 4).
+- **Findings (step 5)** — append a `### Follow-ups (untracked)` task list to the
+  RETRO file instead of running `bd create` (see step 5).
+- **Decision capture (step 5)** — record decisions inline as a `### Decisions`
+  block in the RETRO file instead of `bd create --type=decision` (see step 5).
+
 ### 1. Determine sprint number
 
 ```bash
@@ -184,6 +200,11 @@ reference integrity, and dependency-graph integrity. Each command emits JSON
 for stable parsing. Surface counts plus the top 3–5 affected items per check
 in the generated `RETRO-NN.md` under a `### Health audit` subsection.
 
+**Beads unavailable (Tier C):** skip the `bd` health checks and render the
+subsection as a single announced line instead — `- _Skipped — beads not active
+in this project._` The UPSTREAM and SYNERGY trend-review parts above and the
+Basic Memory graph health below are beads-independent and still run.
+
 ```bash
 bd doctor --json    # Infrastructure: outdated hooks, gitignore drift, remote config
 bd lint --json      # Template compliance: issues missing required sections per type
@@ -270,6 +291,19 @@ Include code quality issues, process improvements, and any findings that need
 follow-up work. Skip items that are purely observational or already have open
 issues.
 
+**Beads unavailable (Tier C):** there is no backlog to file into — instead
+append a `### Follow-ups (untracked)` task list to the `RETRO-NN.md` file, one
+checkbox per actionable finding, so the items are still captured:
+
+```markdown
+### Follow-ups (untracked)
+
+- [ ] {finding} — {type}, {priority}
+```
+
+Announce that follow-ups were written to the RETRO file rather than created as
+beads (they can be filed later if beads is adopted).
+
 **Decision capture.** When a sprint outcome is a *decision* (an architectural
 or product choice with explicit rationale and rejected alternatives) rather
 than a task, bug, or feature, file it as the `decision` issue type — not a
@@ -311,6 +345,24 @@ closed-on-create). The retrospective never auto-closes decisions — the
 upstream `/beads:decision` slash command handles supersession when the
 decision is later revised. Cross-reference that command for the full
 lifecycle (record/list/show/supersede) rather than implementing it here.
+
+**Beads unavailable (Tier C):** record the decision inline in `RETRO-NN.md` as a
+`### Decisions` block carrying the same four sections, instead of
+`bd create --type=decision`:
+
+```markdown
+### Decisions
+
+**{decision title}**
+
+- **Decision:** {the choice made}
+- **Rationale:** {why}
+- **Alternatives considered:** {rejected options}
+- **Affects:** {impacted components, files, or future work}
+```
+
+Announce that the decision was captured in the RETRO file; it can be promoted
+to a `decision`-typed bead later if beads is adopted.
 
 ### 6. Knowledge gap audit
 
