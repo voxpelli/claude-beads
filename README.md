@@ -1,6 +1,6 @@
 # vp-beads
 
-A [Claude Code](https://claude.ai/code) plugin that automates the sprint workflow for projects using [beads](https://github.com/steveyegge/beads) and [Basic Memory](https://github.com/basicmachines-co/basic-memory). Sync vendor subtrees, track upstream friction, close sprints, run retrospectives — all without leaving your terminal.
+A [Claude Code](https://claude.ai/code) plugin that automates the sprint workflow for projects that track work in [beads](https://github.com/steveyegge/beads) — or in a `ROADMAP.md` / `VISION.md` split, or a manual list — backed by [Basic Memory](https://github.com/basicmachines-co/basic-memory). Sync vendor subtrees, track upstream friction, close sprints, run retrospectives — all without leaving your terminal. Beads is the default substrate, not a requirement: skills degrade gracefully without it (see [Work-tracking substrates](#work-tracking-substrates)).
 
 ## What it does
 
@@ -120,13 +120,37 @@ Orchestrate multi-agent development sprints using the swarm wave pattern:
 
 Five workflows:
 
-- **Plan a swarm sprint** — reads `bd ready`, builds a file-contention map, groups file-disjoint issues into waves, and generates a `SWARM-NN.md` plan for approval
+- **Plan a swarm sprint** — sources work from beads (`bd ready`), else a `ROADMAP.md` (read in its own idiom — see [Work-tracking substrates](#work-tracking-substrates)), else a manual list; builds a file-contention map, groups file-disjoint items into waves, and generates a `SWARM-NN.md` plan for approval. Beadless waves track run-state in the `SWARM-NN.md` Item Status table instead of `bd` claim/close
 - **Execute a wave** — claims issues, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
 - **Post-wave gate** — hard blocking quality gate: two review agents (code + domain-specific) in parallel with `npm run check`, sequential tests, fix loop, commit + close. After the final wave, offers `/retrospective` handoff
 - **Map file contention** — standalone utility to build a file-to-issue matrix and flag hot files
 - **Research wave** — parallel research orchestration with dedup, code validation, and handoff to `/backlog-groomer` for issue creation
 
 `SWARM-NN.md` files are ephemeral (gitignored). All wave execution requires explicit user approval. File isolation is enforced via exhaustive per-agent file lists — no directory globs.
+
+## Work-tracking substrates
+
+vp-beads does not force beads. It works against whatever substrate a project already uses to track work:
+
+- **beads** (`bd`) — the default and richest substrate: typed issues, dependencies, priorities, health checks. Used directly when a `.beads/` directory exists and `bd` is on `PATH`.
+- **`ROADMAP.md`** — a work plan **in whatever structure the project already uses**. `/swarm-wave` reads it in its own idiom (waves, status markers, file scopes) and never imposes a format; it declines cleanly when the file is not a parallelizable work plan. vp-beads never rewrites your ROADMAP.
+- **`VISION.md`** — direction and voice, **not** a backlog. vp-beads never sources work items from it.
+- **Manual list** — `/swarm-wave` can also plan from work items you supply inline, with no file at all.
+
+How each skill behaves without beads is defined once by the `### Beads-availability convention` in [`CLAUDE.md`](CLAUDE.md): Tier A (require-or-fallback — `/swarm-wave`), Tier B (beads-specific stop with a redirect — `/backlog-groomer`), Tier C (degrade-and-announce — `/retrospective`, the sprint-review agent). Silently skipping a `bd` step is treated as a bug.
+
+### Local-only vs committed beads
+
+When you do use beads, vp-beads **recommends** (does not mandate) treating `.beads/` as local-only — gitignored, like `SWARM-*.md` and `RETRO-*.md` — rather than committing `issues.jsonl` for cross-machine sharing:
+
+| Aspect              | Local-only (recommended)                                    | Committed (`bd` default)                   |
+| ------------------- | ----------------------------------------------------------- | ------------------------------------------ |
+| `.beads/` in git    | gitignored                                                  | `issues.jsonl` committed                   |
+| Cross-machine share | no (issues are machine-local, disposable)                   | yes (issues travel with the repo)          |
+| Sync edge cases     | avoided (no committed export to go stale)                   | JSONL↔Dolt import races possible           |
+| Best when           | tracker is a private convenience, not a shipped deliverable | issues are part of what collaborators need |
+
+This repository itself runs local-only — see [beads configuration in this repository](#beads-configuration-in-this-repository).
 
 ## Installation
 
@@ -158,7 +182,7 @@ Add to `~/.claude/settings.json`:
 
 ### Required
 
-**[beads](https://github.com/steveyegge/beads)** (`bd` CLI) — git-backed issue tracker. The retrospective skill creates beads issues from findings and runs `bd stats` for health checks.
+**[beads](https://github.com/steveyegge/beads)** (`bd` CLI) — git-backed issue tracker; the default work-tracking substrate (recommended, not strictly required — see [Work-tracking substrates](#work-tracking-substrates)). When present, the retrospective skill creates beads issues from findings and runs `bd stats` for health checks; without it, skills degrade per the availability convention rather than stopping.
 
 **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** MCP server — the knowledge graph backend for writing sprint learnings:
 
@@ -306,7 +330,8 @@ hooks/
                                                   -> --auto-reciprocate writes
 
  "swarm sprint" / "wave" -> swarm-wave skill      -> SWARM-NN.md wave plan
- /swarm-wave                                      -> parallel agent execution
+ /swarm-wave                                      -> sources: beads / ROADMAP / manual
+                                                  -> parallel agent execution
                                                   -> post-wave quality gate
                                                   -> chains to /retrospective
 

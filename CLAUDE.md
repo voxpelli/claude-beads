@@ -131,6 +131,28 @@ Dev tooling only: validation and linting via `npm run check`.
   utility), research-wave (parallel research with backlog-groomer handoff).
   Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
 
+## Work-tracking substrates
+
+vp-beads supports three work-tracking substrates and **forces none of them**.
+How each component degrades when beads is absent is defined once by the
+`### Beads-availability convention` below (tiers A/B/C) — this section describes
+the substrates themselves, not the per-skill behavior (no per-skill tier table
+lives here or in the README; it would duplicate and rot).
+
+- **beads** (`bd`) — the default and richest substrate (typed issues,
+  dependencies, priorities, health checks). Detected by the canonical predicate
+  (`.beads/` exists **and** `command -v bd`).
+- **`ROADMAP.md`** — a work plan **in whatever structure the project already
+  uses**. swarm-wave reads it in its own idiom and **never prescribes a format
+  or rewrites the file** (the `substrate-not-opinion` principle); it declines
+  cleanly when the file is not a parallelizable work plan. The interpretation
+  contract lives in `skills/swarm-wave/references/roadmap-interpretation.md`.
+- **`VISION.md`** — direction and voice, **not** a backlog. Never a work source.
+
+A manually supplied work list is the fourth, file-less option swarm-wave
+accepts. Issue creation and `bd` claim/close are beads-only; a beadless wave
+uses the `SWARM-NN.md` Item Status table as run-state.
+
 ## Conventions
 
 ### Skill frontmatter
@@ -265,7 +287,11 @@ or move them.
 
 ### Sprint workflow cycle
 
-The agent and skills form a lightweight cycle:
+The agent and skills form a lightweight cycle. The diagram below shows the
+**beads-backed** path (this repository's own setup); on a beadless substrate the
+same cycle runs with the per-tier degradations from `### Beads-availability
+convention` (swarm-wave sources from a `ROADMAP.md` or a manual list,
+`/backlog-groomer` redirects, `/retrospective` announces skipped bd steps).
 
 ```
 (sprint start)
@@ -340,6 +366,10 @@ rm -rf directory        # NOT: rm -r directory
 ```
 
 ### Issue tracking with beads
+
+**Scope: this repository's own development.** This is a self-instruction for
+working *on vp-beads*, not a claim about projects that *use* vp-beads — the
+plugin itself supports beadless substrates (see `## Work-tracking substrates`).
 
 This project uses `bd` (beads) for all issue tracking. Do NOT use markdown TODOs
 or task lists. Run `bd ready` to find available work, `bd update <id> --claim` to
