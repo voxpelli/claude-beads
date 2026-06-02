@@ -14,8 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a `git rm --cached` fix, contradicting its intended tracking — but that file
   is bd's `field_change` audit trail and holds no secrets. The check now warns
   only for `.beads/.beads-credential-key` (a genuine per-machine secret), with
-  corrected wording. Also fixes a latent stdout leak: `git ls-files
-  --error-unmatch` printed the matched path to stdout (only stderr was
+  corrected wording. Also fixes a latent stdout leak: `git ls-files --error-unmatch` printed the matched path to stdout (only stderr was
   redirected), emitting a bare path ahead of the hook's JSON output. Adds two
   regression tests.
 
@@ -28,8 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bd orphans --json`, and `bd graph check --json` (parsing the
   `schema_version: 1` envelope) in parallel, surfacing counts plus the top
   3-5 affected items per check under a `### Health audit` subsection in the
-  generated `RETRO-NN.md`. Auto-fix is gated on user consent (`bd doctor
-  --fix --yes` prompts; lint/stale/orphans are never auto-fixed). Documents
+  generated `RETRO-NN.md`. Auto-fix is gated on user consent (`bd doctor --fix --yes` prompts; lint/stale/orphans are never auto-fixed). Documents
   the false-positive caveat for `bd doctor`'s Claude Hook Completeness
   check. The render block also emits unified `bd stats`, `bd blocked` (with
   per-blocker `bd show` chase), and `bd compact` candidate bullets — folded
@@ -69,8 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `npm/` against the sibling-relationship convention, `relationship`
   warning when outside the `KNOWN_RELATIONSHIPS` set) and
   `.claude/vendor-registry.json` (array shape, required `prefix` + `remote`
-  + `branch` + `package`, optional `local-path`). `*.local.json` files are
-  not validated (gitignored, machine-specific). (vp-beads-8eo)
+  - `branch` + `package`, optional `local-path`). `*.local.json` files are
+    not validated (gitignored, machine-specific). (vp-beads-8eo)
 - **SessionStart hook surfaces open Dependabot alerts** when `gh` CLI is
   available and the repo has a GitHub remote. Emits a single-line
   `[security] N open Dependabot alert(s) — <URL>` summary in
@@ -447,7 +445,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`skills/sibling-sync` — new skill with 4 workflows** — bilateral
   reconciliation of `SYNERGY-*.md` and `UPSTREAM-*.md` files between this
-  project and its registered sibling vp-* projects. Workflows:
+  project and its registered sibling vp-\* projects. Workflows:
   discover-siblings (registry resolution + path probing),
   sync-sibling-synergy (reciprocal gaps, stale alignment claims, divergence
   convergence-status drift), sync-sibling-upstream (duplicate friction,
@@ -544,11 +542,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   references across 7 active plugin files. All cross-workflow references now
   use the `workflow N (Name)` format consistently.
 - **`validate-plugin.mjs`** — added three checks converging with vp-knowledge:
-  `agent`/`http` hook types in VALID_HOOK_TYPES, `user-invocable` boolean type
+  `agent`/`http` hook types in VALID\_HOOK\_TYPES, `user-invocable` boolean type
   validation, and agent `skills` array phantom resolution (verifies referenced
   skills exist on disk).
 - **`hooks/post-file-edit.sh`** — convergence improvements: jq error handling
-  (`2>/dev/null || true`), explicit PLUGIN_ROOT guard with early exit, and
+  (`2>/dev/null || true`), explicit PLUGIN\_ROOT guard with early exit, and
   `scripts/*.sh` path matching alongside `hooks/*.sh`.
 - **`paths` frontmatter** — backlog-groomer now declares `UPSTREAM-*.md` and
   `SYNERGY-*.md`; vendor-sync now declares `UPSTREAM-*.md`.
@@ -658,7 +656,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   speculating when no sibling context is available; adds sibling repo path
   resolution (`../<project-name>`); handles "user declines all candidates"
   and "no project identified" gracefully.
-- **`skills/synergy-tracker` — edit_note gotcha cross-reference** — W1 step 8
+- **`skills/synergy-tracker` — edit\_note gotcha cross-reference** — W1 step 8
   (eager promotion) now warns about the `append`+`section` BM bug and points
   to upstream-tracker's reference doc for the full gotcha list.
 - **`skills/synergy-tracker/references/` — naming authority clarified** —
@@ -686,7 +684,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   criteria with upstream-first ordering.
 - **`skills/retrospective` — SYNERGY depth parity** — step 2 gathers all 4
   SYNERGY sections (not just extraction candidates); step 3 guideline expanded
-  to ~9 lines with "review session work" prompt and explicit `(workflow 1)`
+  to \~9 lines with "review session work" prompt and explicit `(workflow 1)`
   reference; step 4 trend review now includes SYNERGY files subsection.
 - **`skills/vendor-sync` — Guidelines section** — new section with division of
   labor, registry-first discovery, and annotation semantics. Step 10 report
@@ -1029,13 +1027,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   trigger phrases.
 - **`skills/upstream-tracker`** — Added `Bash` to `allowed-tools` (required for
   `git rm` in resolve and trend-review workflows); trimmed description from
-  ~180 words to ~80; added empty-file template for new non-vendor packages;
+  \~180 words to \~80; added empty-file template for new non-vendor packages;
   added empirical resolution timelines to trend review (bugs: 5–10 sprints,
   FRs: 10–20, cross-vendor: next major version); added optional `[upstream: url]`
   trailer to all entry formats; added optional `[blocking|degraded|minor]`
   severity tag to bug entries.
-- **`skills/vendor-sync`** — Fixed `git show HEAD --stat` → `git show HEAD --
-  <prefix>` so the full diff is available for UPSTREAM auto-resolution; added
+- **`skills/vendor-sync`** — Fixed `git show HEAD --stat` → `git show HEAD -- <prefix>` so the full diff is available for UPSTREAM auto-resolution; added
   conflict-detection step before resolution; added `argument-hint: "[package-name]"`
   frontmatter; added fallback `git merge -X subtree=` command for when subtree
   heuristics fail; added "vendor changes" trigger phrase.
@@ -1055,26 +1052,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from a project-local skill.
 
 [0.15.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.15.1
+
 [0.15.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.15.0
+
 [0.14.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.14.0
+
 [0.13.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.13.0
+
 [0.12.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.1
+
 [0.12.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.12.0
+
 [0.11.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.11.0
+
 [0.10.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.1
+
 [0.10.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.10.0
+
 [0.9.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.2
+
 [0.9.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.1
+
 [0.9.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.9.0
+
 [0.8.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.1
+
 [0.8.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.8.0
+
 [0.7.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.7.0
+
 [0.6.2]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.2
+
 [0.6.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.1
+
 [0.6.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.6.0
+
 [0.5.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.1
+
 [0.5.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.5.0
+
 [0.4.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.4.0
+
 [0.3.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.3.0
+
 [0.2.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.2.0
+
 [0.1.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.1.0

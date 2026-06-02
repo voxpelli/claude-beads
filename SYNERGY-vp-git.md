@@ -42,7 +42,7 @@ of maintaining both halves catches drift cases a single-source record misses.
   `@voxpelli/claude-plugin-tools` bundle.
   Status: drifting · Last verified: 2026-05-09
   Note: Reciprocates vp-git's entry of the same name (their POV: 330 vs
-  435).
+  435\).
 
 - **`run-p check:*` parallel CI orchestration** (2026-05-09) — Both use
   `npm-run-all2`'s `run-p check:*` for parallel check execution. vp-knowledge

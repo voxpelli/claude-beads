@@ -47,11 +47,11 @@ Duplicates are issues that describe the same work. Check for:
 
 ### Threshold guidance for `bd find-duplicates`
 
-| Threshold | When to use |
-|---|---|
-| `0.5` (default) | Balanced — catches obvious near-duplicates with low false-positive rate |
-| `0.4` | More recall — surfaces fuzzier matches; useful for small backlogs (<100 open) where reviewing extras is cheap |
-| `0.6+` | Higher precision — when you only want strong candidates and don't want to review borderline pairs |
+| Threshold       | When to use                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------- |
+| `0.5` (default) | Balanced — catches obvious near-duplicates with low false-positive rate                                       |
+| `0.4`           | More recall — surfaces fuzzier matches; useful for small backlogs (<100 open) where reviewing extras is cheap |
+| `0.6+`          | Higher precision — when you only want strong candidates and don't want to review borderline pairs             |
 
 ### AI cost caveat
 
@@ -74,15 +74,16 @@ comments, more dependency links). Apply per-pair recommendations using:
 
 ## Priority Assignment Logic
 
-| Priority | When to assign |
-|---|---|
-| P0 (critical) | Blocks all development: broken builds, data loss, security |
-| P1 (high) | Major feature, important bug, blocks other high-priority work |
-| P2 (medium) | Default. Nice-to-have feature, non-critical bug, quality improvement |
-| P3 (low) | Polish, optimization, minor friction. No urgency signal |
-| P4 (backlog) | Future idea, exploration, "someday maybe" |
+| Priority      | When to assign                                                       |
+| ------------- | -------------------------------------------------------------------- |
+| P0 (critical) | Blocks all development: broken builds, data loss, security           |
+| P1 (high)     | Major feature, important bug, blocks other high-priority work        |
+| P2 (medium)   | Default. Nice-to-have feature, non-critical bug, quality improvement |
+| P3 (low)      | Polish, optimization, minor friction. No urgency signal              |
+| P4 (backlog)  | Future idea, exploration, "someday maybe"                            |
 
 **Reprioritization signals:**
+
 - Issue blocks N other issues → raise priority (blocking power)
 - Issue has been P4 for 3+ sprints with no interest → candidate for closure
 - Issue aligns with stated sprint goal → raise to P1/P2
@@ -90,17 +91,17 @@ comments, more dependency links). Apply per-pair recommendations using:
 
 ## Type Assignment Logic
 
-| Type | Required markdown sections | When to use |
-|---|---|---|
-| `task` | none | Defined, bounded work — refactoring, docs, test coverage (default) |
-| `bug` | `## Steps to Reproduce`, `## Acceptance Criteria` | Something broken — unexpected behavior, regression, error |
-| `feature` | `## Acceptance Criteria` | New system capability (system-centric framing) |
-| `chore` | none | Maintenance — dependency updates, CI config, tooling (no behavior change) |
-| `epic` | `## Success Criteria` | Large body of work that decomposes into child issues |
-| `decision` | `## Decision`, `## Rationale`, `## Alternatives Considered` | Architecture decision record (ADR) — outcome of deliberation |
-| `spike` | `## Goal`, `## Findings` | Timeboxed investigation that reduces uncertainty before a story |
-| `story` | `## Acceptance Criteria` | User-centric framing of a feature ("As a X, I want Y...") |
-| `milestone` | none | Release boundary or sprint marker — contains no work itself |
+| Type        | Required markdown sections                                  | When to use                                                               |
+| ----------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `task`      | none                                                        | Defined, bounded work — refactoring, docs, test coverage (default)        |
+| `bug`       | `## Steps to Reproduce`, `## Acceptance Criteria`           | Something broken — unexpected behavior, regression, error                 |
+| `feature`   | `## Acceptance Criteria`                                    | New system capability (system-centric framing)                            |
+| `chore`     | none                                                        | Maintenance — dependency updates, CI config, tooling (no behavior change) |
+| `epic`      | `## Success Criteria`                                       | Large body of work that decomposes into child issues                      |
+| `decision`  | `## Decision`, `## Rationale`, `## Alternatives Considered` | Architecture decision record (ADR) — outcome of deliberation              |
+| `spike`     | `## Goal`, `## Findings`                                    | Timeboxed investigation that reduces uncertainty before a story           |
+| `story`     | `## Acceptance Criteria`                                    | User-centric framing of a feature ("As a X, I want Y...")                 |
+| `milestone` | none                                                        | Release boundary or sprint marker — contains no work itself               |
 
 All required sections are enforced by `validation.on-create=error` — a
 `bd create` will fail if the description is missing the literal markdown
@@ -120,6 +121,7 @@ headings listed above. The authoritative source is the
 Format: `[Area] Action verb + subject`
 
 Examples:
+
 - `[auth] Add OAuth2 provider configuration`
 - `[db] Fix migration ordering for tenant tables`
 - `[ci] Enable shellcheck for hook scripts`

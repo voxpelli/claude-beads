@@ -88,7 +88,7 @@ Dev tooling only: validation and linting via `npm run check`.
   prevent entries from staying trapped locally. User-invocable as
   `/upstream-tracker`.
 - **vendor-sync** — Pulls latest upstream changes from git subtrees, resolves
-  conflicts (always accept upstream), cleans stale node_modules, re-links
+  conflicts (always accept upstream), cleans stale node\_modules, re-links
   workspaces, cross-references the sync diff against open `UPSTREAM-*.md`
   entries to auto-resolve fixed issues, annotates corresponding Basic Memory
   friction entries on resolution, and verifies with check + test.
@@ -96,7 +96,7 @@ Dev tooling only: validation and linting via `npm run check`.
   as `/vendor-sync`.
 - **sibling-sync** — Bilateral reconciliation of `SYNERGY-*.md` and
   `UPSTREAM-*.md` files between this project and its registered sibling
-  vp-* projects. Four workflows: discover-siblings (registry resolution +
+  vp-\* projects. Four workflows: discover-siblings (registry resolution +
   path probing), sync-sibling-synergy (reciprocal gaps, stale alignment
   claims, divergence convergence-status drift), sync-sibling-upstream
   (two pairing modes — Mode A: shared-dependency basename intersection
@@ -311,17 +311,17 @@ claim it, `bd close <id>` to complete it.
 
 All issue types are validated on creation with `validation.on-create=error`. Authoritative source: BM `brew/brew-beads` `### Issue Types (Core Vocabulary)`. Provenance: `engineering/agents/cli-validation-discovery-via-json-error-probing`.
 
-| Type | Required markdown sections | When to use |
-| --- | --- | --- |
-| `task` | `## Acceptance Criteria` | Single atomic unit of work |
-| `bug` | `## Steps to Reproduce`, `## Acceptance Criteria` | Something in production/main broke |
-| `feature` | `## Acceptance Criteria` | New user-facing capability |
-| `chore` | *(none)* | Internal maintenance, cleanup, refactor |
-| `epic` | `## Success Criteria` | Large initiative spanning 5+ issues; tracks work across sprints |
-| `decision` | `## Decision`, `## Rationale`, `## Alternatives Considered` | Record an architectural or product choice with reasoning |
-| `spike` | `## Goal`, `## Findings` | Timeboxed investigation (1–3 days) to answer a question before committing to work. Always closes with findings, not code. |
-| `story` | `## Acceptance Criteria` | User-centric reframing of a feature: "As a \[user], I can \[action] so that \[outcome]" |
-| `milestone` | *(none)* | Structural marker (e.g., `v1.0`, `public-alpha`, `launch-date`). No effort, no assignment. Groups related issues. |
+| Type        | Required markdown sections                                  | When to use                                                                                                               |
+| ----------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `task`      | `## Acceptance Criteria`                                    | Single atomic unit of work                                                                                                |
+| `bug`       | `## Steps to Reproduce`, `## Acceptance Criteria`           | Something in production/main broke                                                                                        |
+| `feature`   | `## Acceptance Criteria`                                    | New user-facing capability                                                                                                |
+| `chore`     | *(none)*                                                    | Internal maintenance, cleanup, refactor                                                                                   |
+| `epic`      | `## Success Criteria`                                       | Large initiative spanning 5+ issues; tracks work across sprints                                                           |
+| `decision`  | `## Decision`, `## Rationale`, `## Alternatives Considered` | Record an architectural or product choice with reasoning                                                                  |
+| `spike`     | `## Goal`, `## Findings`                                    | Timeboxed investigation (1–3 days) to answer a question before committing to work. Always closes with findings, not code. |
+| `story`     | `## Acceptance Criteria`                                    | User-centric reframing of a feature: "As a \[user], I can \[action] so that \[outcome]"                                   |
+| `milestone` | *(none)*                                                    | Structural marker (e.g., `v1.0`, `public-alpha`, `launch-date`). No effort, no assignment. Groups related issues.         |
 
 ### Session completion
 
@@ -337,10 +337,10 @@ Work is NOT complete until pushed. Before ending a session:
 `bd setup claude --check` will report `⚠ CLAUDE.md exists but no beads section
 found` — this is intentional. Do not "fix" it by running `bd setup claude`.
 
-The `bd setup claude` command appends a ~50-line beads workflow template to
+The `bd setup claude` command appends a \~50-line beads workflow template to
 `CLAUDE.md` (core rules, quick reference, workflow steps, issue types,
 priorities). vp-beads's `SessionStart` hook already injects equivalent
-workflow context dynamically (~1.5k tokens of `bd` commands plus all
+workflow context dynamically (\~1.5k tokens of `bd` commands plus all
 persistent memories). Adding the static template would double-inject the
 same guidance — once via always-loaded `CLAUDE.md` and once via the hook —
 wasting context tokens with no benefit.

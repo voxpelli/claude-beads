@@ -24,7 +24,7 @@ allowed-tools:
 # Sibling Sync
 
 Bilateral reconciliation of `SYNERGY-*.md` and `UPSTREAM-*.md` files between
-this project and its sibling vp-* projects. Read-only by default — surfaces
+this project and its sibling vp-\* projects. Read-only by default — surfaces
 drift, reciprocal gaps, stale-aligned rows, and status drift across sides
 without mutating anything. The opt-in `--auto-reciprocate` flag writes
 reciprocal entries to the sibling's SYNERGY file via per-entry confirmation.
@@ -40,7 +40,7 @@ The bd v1.0.0 Integration Charter
 cross-tracker orchestration out of bd's scope: bd will never grow a feature
 that routes a cross-project item from project A's tracker to project B's
 tracker. `/sibling-sync` is exactly the workflow-automation layer the Charter
-defers to external tools — file-based reconciliation between sibling vp-*
+defers to external tools — file-based reconciliation between sibling vp-\*
 projects, mediated by registries and confirmation prompts rather than
 synchronous tracker calls.
 
@@ -181,9 +181,11 @@ no writes.
 1. Read this project's `SYNERGY-<sibling>.md`. If absent, treat as zero
    entries and proceed (the gap will surface as "Unreciprocated entries on
    sibling" if the sibling has any entries).
+
 2. Read the sibling's `SYNERGY-<this-project>.md` at
    `<resolved-local-path>/SYNERGY-<this-project>.md`. If absent, treat as
    zero entries.
+
 3. Parse each side's entries section-by-section (Shared Patterns,
    Divergences, Extraction Candidates, They Have / We Don't). Build a
    bidirectional entry map keyed by **title**, normalized per the rule in
@@ -229,6 +231,7 @@ no writes.
      fall back to the entry's date stamp.
    - **(d) Status drift** — matched entries whose `Status:` field differs
      across sides. Applies to two cases:
+
      1. **Shared Patterns** where one side records `aligned` and the other
         records `drifting` or `diverging` (or any disagreement on the
         Status value). Often signals that one side has converged or
@@ -318,6 +321,7 @@ compare friction tracking on each. Same report-only contract as workflow 2
    `<this-name>` may diverge from how the sibling registered this project.
    Update `.claude/synergy-registry.local.json` if the sibling moved."
    Then check:
+
    - Does the sibling have `<resolved-local-path>/UPSTREAM-<this-name>.md`?
    - Does this project have `UPSTREAM-<sibling-name>.md`?
 
@@ -564,22 +568,22 @@ selecting its "None" option; both tiers default to read-only on skip.
 **Q1 — SYNERGY follow-up** (`header: "Synergy"`, 7 chars). Options listed
 only when their finding count is nonzero:
 
-| Option | Trigger | Dispatch |
-|---|---|---|
-| 1. Apply reciprocal gaps (N) | finding (a) > 0 | re-enter workflow 4 (Apply reciprocation batch) in-skill — no `Skill` call |
+| Option                                    | Trigger         | Dispatch                                                                                |
+| ----------------------------------------- | --------------- | --------------------------------------------------------------------------------------- |
+| 1. Apply reciprocal gaps (N)              | finding (a) > 0 | re-enter workflow 4 (Apply reciprocation batch) in-skill — no `Skill` call              |
 | 2. Log unreciprocated sibling entries (N) | finding (b) > 0 | `Skill(skill="/vp-beads:synergy-tracker", args=...)` → workflow 1 (Log a synergy entry) |
-| 0. None — synergy report only | always | exit SYNERGY tier without action |
+| 0. None — synergy report only             | always          | exit SYNERGY tier without action                                                        |
 
 **Q2 — UPSTREAM follow-up** (`header: "Upstream"`, 8 chars). Options listed
 only when their finding count is nonzero. Findings (b) and (d) collapse
 into a single option to keep the question within the 4-option SDK cap:
 
-| Option | Trigger | Dispatch |
-|---|---|---|
-| 1. Update our UPSTREAM (b/d, N total) | finding (b) > 0 OR finding (d) > 0 | `Skill(skill="/vp-beads:upstream-tracker", args=...)` — args route to workflow 1 (Log a new entry) and/or workflow 7 (Sync from Basic Memory) inside upstream-tracker |
-| 2. File beads issues for sibling's friction (N) | finding (e) > 0 | `Bash` → `bd create` per entry |
-| 3. Resolve cross-stale entries (N) | finding (g) > 0 | `Skill(skill="/vp-beads:upstream-tracker", args=...)` → workflow 3 (Resolve an entry) |
-| 0. None — upstream report only | always | exit UPSTREAM tier without action |
+| Option                                          | Trigger                            | Dispatch                                                                                                                                                              |
+| ----------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Update our UPSTREAM (b/d, N total)           | finding (b) > 0 OR finding (d) > 0 | `Skill(skill="/vp-beads:upstream-tracker", args=...)` — args route to workflow 1 (Log a new entry) and/or workflow 7 (Sync from Basic Memory) inside upstream-tracker |
+| 2. File beads issues for sibling's friction (N) | finding (e) > 0                    | `Bash` → `bd create` per entry                                                                                                                                        |
+| 3. Resolve cross-stale entries (N)              | finding (g) > 0                    | `Skill(skill="/vp-beads:upstream-tracker", args=...)` → workflow 3 (Resolve an entry)                                                                                 |
+| 0. None — upstream report only                  | always                             | exit UPSTREAM tier without action                                                                                                                                     |
 
 If neither tier has actionable findings for a sibling, skip the
 `AskUserQuestion` call entirely for that sibling. If only one tier has
@@ -617,12 +621,12 @@ For UPSTREAM 2 (`bd create`), construct each call with:
 The `--auto-reciprocate` flag is the explicit non-interactive consent path.
 Its semantics relative to the new menu:
 
-| Invocation | Behavior |
-|---|---|
-| `--auto-reciprocate` flag set | Skip the action menu entirely. Run workflow 4 (Apply reciprocation batch) directly with its existing per-entry `[y/n/skip-rest]` confirmation gate. |
-| No flag, user picks Q1 option 1 (Apply reciprocal gaps) | Enter workflow 4 (Apply reciprocation batch) with the same per-entry confirmation. The menu surfaces the same path interactively. |
-| No flag, user picks any "None" option | No writes. Default read-only contract holds. |
-| No flag, user picks any non-"None" option (other than Q1 option 1) | Dispatch per the table above. The delegated skill applies its own confirmation gate. |
+| Invocation                                                         | Behavior                                                                                                                                            |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--auto-reciprocate` flag set                                      | Skip the action menu entirely. Run workflow 4 (Apply reciprocation batch) directly with its existing per-entry `[y/n/skip-rest]` confirmation gate. |
+| No flag, user picks Q1 option 1 (Apply reciprocal gaps)            | Enter workflow 4 (Apply reciprocation batch) with the same per-entry confirmation. The menu surfaces the same path interactively.                   |
+| No flag, user picks any "None" option                              | No writes. Default read-only contract holds.                                                                                                        |
+| No flag, user picks any non-"None" option (other than Q1 option 1) | Dispatch per the table above. The delegated skill applies its own confirmation gate.                                                                |
 
 ### Idempotency and re-runs
 
@@ -648,7 +652,7 @@ issue tracks our intent. No "skip-already-filed" cache is maintained.
 - **Subagent context.** When sibling-sync runs as a Task subagent (e.g.,
   inside a swarm-wave research agent), `AskUserQuestion` is **explicitly
   unavailable** per the Anthropic Agent SDK
-  (https://code.claude.com/docs/en/agent-sdk/user-input — "Limitations:
+  (<https://code.claude.com/docs/en/agent-sdk/user-input> — "Limitations:
   Subagents"), and `Skill` tool calls may silently no-op (undocumented
   behavior — subject to change). In subagent context the entire action
   menu cannot fire: skip the `AskUserQuestion` call, print the original
@@ -704,7 +708,7 @@ without commitment to any follow-up action.
   - **Pass 1 — deterministic lead-clause match.** For each title:
     lowercase, collapse whitespace runs to a single space, then take the
     **lead clause** = the substring before the first occurrence of `:`,
-    ` — `, ` -- `, or ` (` (whichever is earliest; if none of those
+    `—`, `--`, or ` (` (whichever is earliest; if none of those
     appears, the lead clause is the full normalized title). Two entries
     pair in pass 1 iff their normalized lead clauses are byte-identical.
     Examples that should pair here:
@@ -716,6 +720,7 @@ without commitment to any follow-up action.
     once for qualifier-phrase reorderings or token rearrangements that
     clearly describe the same idea. Pair only when the subjects are
     unambiguously the same. Pass 2 examples:
+
     - `PreCompact hook retired in vp-knowledge v0.28.0` ↔ `PreCompact hook retired in v0.28.0` (qualifier prepositional phrase)
     - `Skill invocation layering: three levels vs two levels` ↔ `Skill invocation layering: two-level vs three-level` (token reordering after the colon)
 

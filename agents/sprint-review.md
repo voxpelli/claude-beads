@@ -70,7 +70,7 @@ assistant: "I'll use the sprint-review agent to summarize this sprint and recomm
 
 The agent then produces output like:
 
-````markdown
+```markdown
 ### Sprint position
 - **Sprint 13** (since RETRO-12, 2026-05-06 → 2026-05-08)
 - Next trend-review sprint: Sprint 16 (3 sprints away)
@@ -97,7 +97,8 @@ The agent then produces output like:
 ### Recommendation
 **Ready to close.** Solid 9-commit sprint, clean backlog, no upstream
 gaps. Run `/retrospective` when ready to generate RETRO-13.md.
-````
+```
+
 <commentary>
 This is the canonical output shape: five sections, terse, scannable, ends with one of the five recommendations and the next-step command. The agent never writes the RETRO file itself — it hands off to `/retrospective`.
 </commentary>
@@ -251,7 +252,7 @@ Present findings in this order:
    SYNERGY extraction-ready candidates
 5. **Recommendation** — one of the five options above, with next-step command
 
-Keep total output under ~40 lines. Use markdown headers and bullet points.
+Keep total output under \~40 lines. Use markdown headers and bullet points.
 Do not write any files. Do not call `/retrospective` or `/upstream-tracker`
 yourself — recommend them and let the user invoke them.
 

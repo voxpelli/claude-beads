@@ -145,6 +145,7 @@ rather than re-asking each time.
 - **Confirm the sibling name** resolved from step 1. If step 1 deferred to
   asking the user, defer this step too — only proceed once a name is in
   hand.
+
 - **Derive both project names before proceeding.**
   - `<sibling>` — the name confirmed in step 1. In practice this is already
     the tier-3 registry `name` field (or, for unregistered siblings, the
@@ -158,6 +159,7 @@ rather than re-asking each time.
     resolves immediately. Use the normalized result as `<this-project>`
     everywhere below: in the `bm-entity` value and in any reciprocal file
     references.
+
 - **Auto-derive the four registry fields** that have unambiguous defaults:
   - `name` — already known from step 1.
   - `file` — mechanical: `SYNERGY-<sibling>.md`.
@@ -173,6 +175,7 @@ rather than re-asking each time.
   - `bm-entity` — apply the canonical convention
     `engineering/agents/vp-plugins-<this-project>-and-<sibling>` (see
     `references/synergy-entry-format.md`).
+
 - **Prompt only the residuals.** At most two `AskUserQuestion` calls
   (Anthropic SDK caps the `header` field at 12 characters):
   - One call with `header: "Relationship"` (12 chars). The validator's
@@ -189,6 +192,7 @@ rather than re-asking each time.
     second call with `header: "Local path"` (10 chars) — free-text or
     skip. If the user provides a path, it goes into
     `.claude/synergy-registry.local.json`, never into the base registry.
+
 - **Preview both files in a single message** before writing anything. Use
   this shape (omit the `.local.json` block when no local-path was
   supplied). Show BOTH the placeholder schema and a worked substitution so
@@ -234,11 +238,13 @@ rather than re-asking each time.
   `name`, `remote`, `bm-entity`, `relationship`, or the optional
   `local-path`, then re-render the preview. On `skip`, continue the
   workflow without writing the registry — resume to step 2.
+
 - **Write the files using the `Write` tool.** Always write
   `.claude/synergy-registry.json`, and additionally write
   `.claude/synergy-registry.local.json` only when a `local-path` was
   provided. The `.local.json` is always a separate file — never embed
   `local-path` in the committed base registry.
+
 - **Verify round-trip.** Use the `Read` tool to re-read each written file,
   then validate the JSON via
   `node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' <path>`
@@ -249,6 +255,7 @@ rather than re-asking each time.
   re-run; do not proceed to step 2 with a broken base registry. On
   `.local.json` parse failure only, warn and continue without the local
   override (the base registry is still usable).
+
 - **Check that `.local.json` is gitignored** when one was written:
 
   ```bash
@@ -264,15 +271,16 @@ rather than re-asking each time.
   failed (not a git repo, or another git error) — report the underlying
   error and skip the gitignore warning rather than emitting a
   false-positive.
+
 - **Resume to step 2** (Basic Memory pre-check).
 
 2. **Basic Memory pre-check.** If Basic Memory MCP tools are available, make
    two `mcp__basic-memory__search_notes` calls: one with the sibling project
    name, one with 2-4 keywords describing the topic being logged (e.g.,
-   "PreCompact prompt command hook" or "edit_note append gotcha"). If either
+   "PreCompact prompt command hook" or "edit\_note append gotcha"). If either
    search returns a matching note with synergy-related or engineering-pattern
    content, surface it to the user: "This pattern is already tracked in Basic
-   Memory: \[summary\]. Logging it locally as well so this project tracks it."
+   Memory: \[summary]. Logging it locally as well so this project tracks it."
    If Basic Memory tools are not available, skip this step silently.
 3. If no `SYNERGY-<project>.md` file exists yet, create it from the template
    in `references/synergy-entry-format.md` (four sections with placeholders).
@@ -292,14 +300,14 @@ rather than re-asking each time.
 
 **Structured fields** (all optional — omit fields that add no signal):
 
-| Field | Values | Section |
-|-------|--------|---------|
-| `Status:` | `aligned` · `drifting` | Shared Patterns |
-| `Last verified:` | `YYYY-MM-DD` (use today's date for new entries) | Shared Patterns |
-| `Convergence path:` | `accept-difference` · `adopt-theirs` · `propose-shared` | Divergences |
-| `Readiness:` | `ready` · `needs-cleanup` · `proof-of-concept` | Extraction Candidates |
-| `Priority:` | `adopt-soon` · `consider` · `deferred` | They Have / We Don't |
-| `Effort:` | `trivial` · `moderate` · `significant` | Extraction Candidates, They Have / We Don't |
+| Field               | Values                                                  | Section                                     |
+| ------------------- | ------------------------------------------------------- | ------------------------------------------- |
+| `Status:`           | `aligned` · `drifting`                                  | Shared Patterns                             |
+| `Last verified:`    | `YYYY-MM-DD` (use today's date for new entries)         | Shared Patterns                             |
+| `Convergence path:` | `accept-difference` · `adopt-theirs` · `propose-shared` | Divergences                                 |
+| `Readiness:`        | `ready` · `needs-cleanup` · `proof-of-concept`          | Extraction Candidates                       |
+| `Priority:`         | `adopt-soon` · `consider` · `deferred`                  | They Have / We Don't                        |
+| `Effort:`           | `trivial` · `moderate` · `significant`                  | Extraction Candidates, They Have / We Don't |
 
 See `references/synergy-entry-format.md` for full entry format templates and
 field value definitions.
@@ -342,11 +350,11 @@ sibling repo's bd backlog).
    the first entry in any SYNERGY file for this project (the user is still
    learning the workflow — promotion is premature).
 
-   | Tempo | Commits in 90 days | Promotion behavior |
-   |-------|-------------------|--------------------|
-   | **Dormant** | 0–4 | Offer inline promotion for any promotable entry |
-   | **Moderate** | 5–14 | Offer only for Extraction Candidates with `Readiness: ready` |
-   | **Active** | 15+ | Skip — the normal sprint cadence handles promotion |
+   | Tempo        | Commits in 90 days | Promotion behavior                                           |
+   | ------------ | ------------------ | ------------------------------------------------------------ |
+   | **Dormant**  | 0–4                | Offer inline promotion for any promotable entry              |
+   | **Moderate** | 5–14               | Offer only for Extraction Candidates with `Readiness: ready` |
+   | **Active**   | 15+                | Skip — the normal sprint cadence handles promotion           |
 
    When offering inline promotion, say: "This project has low commit
    frequency — SYNERGY entries can sit unread for months. This entry looks
@@ -491,6 +499,7 @@ unlogged synergy observations.
    accessible, ask the user for the path (and suggest they record it in
    `.claude/synergy-registry.local.json` to avoid re-prompting). Read the
    sibling's key files if accessible:
+
    - `package.json` — dependencies, scripts, entry points
    - `CLAUDE.md` — conventions, architecture, workflow documentation
    - Skill files (`Glob` for `skills/**/SKILL.md`) — what skills exist, their
@@ -514,7 +523,7 @@ unlogged synergy observations.
      (agents, skills, hooks, conventions this project lacks)
 4. **Propose new entries.** Present each observation as a candidate entry with
    draft text matching the format in `references/synergy-entry-format.md`. For
-   each, ask: "Log this as a \[category\] entry for \[sibling\]?" The user
+   each, ask: "Log this as a \[category] entry for \[sibling]?" The user
    approves, edits, or skips each candidate. **No mutations without approval.**
 5. Log confirmed entries by classifying, reading the file, composing, and
    adding per workflow 1 (Log) steps 4–7. Skip step 8 (eager promotion) for batch
@@ -563,7 +572,7 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
      `Readiness:`, `Priority:`, and `Effort:` fields verbatim because they
      carry cross-project meaning.
    - Whether a Basic Memory note already exists for this sibling.
-   Let the user approve, edit, or skip each candidate.
+     Let the user approve, edit, or skip each candidate.
 3. **Route by target.** For each approved candidate, look up the sibling's
    `bm-entity` value from `.claude/synergy-registry.json` (with
    `.claude/synergy-registry.local.json` merged on top by the `name` key).

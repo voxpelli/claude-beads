@@ -349,14 +349,14 @@ For each learning, search first, then create or update:
 
 Organize by engineering domain:
 
-| Directory | Topics |
-|-----------|--------|
-| `engineering/fastify/` | Plugin patterns, lifecycle, error handling |
-| `engineering/frontend/` | Web components, CSS, dark mode, SSR, a11y |
-| `engineering/database/` | Query patterns, migrations, PostgreSQL |
-| `engineering/testing/` | Test conventions, infrastructure, coverage |
-| `engineering/tooling/` | Linter config, build pipelines, knip |
-| `engineering/agents/` | Orchestration, workflow, quality gates |
+| Directory               | Topics                                     |
+| ----------------------- | ------------------------------------------ |
+| `engineering/fastify/`  | Plugin patterns, lifecycle, error handling |
+| `engineering/frontend/` | Web components, CSS, dark mode, SSR, a11y  |
+| `engineering/database/` | Query patterns, migrations, PostgreSQL     |
+| `engineering/testing/`  | Test conventions, infrastructure, coverage |
+| `engineering/tooling/`  | Linter config, build pipelines, knip       |
+| `engineering/agents/`   | Orchestration, workflow, quality gates     |
 
 **Guidelines:**
 

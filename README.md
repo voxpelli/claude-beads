@@ -16,13 +16,13 @@ Triggers automatically when a sprint closes and gives a concise summary with a s
 
 Reads git history, open beads issues, `UPSTREAM-*.md` files, and (when available) Basic Memory friction notes for cross-project awareness, then recommends one of five actions:
 
-| Recommendation | Condition |
-|---|---|
-| **Not ready** | Fewer than 3 meaningful commits |
-| **Ready to close** — run `/retrospective` | Clean state, no gaps |
+| Recommendation                                       | Condition                                                      |
+| ---------------------------------------------------- | -------------------------------------------------------------- |
+| **Not ready**                                        | Fewer than 3 meaningful commits                                |
+| **Ready to close** — run `/retrospective`            | Clean state, no gaps                                           |
 | **Groom the backlog first** — run `/backlog-groomer` | Bloated or stale backlog (>30 open, carry-overs, stale issues) |
-| **Upstream work first** — run `/upstream-tracker` | Untracked friction detected |
-| **Trend-review sprint** | Every 4th sprint — full audit ahead |
+| **Upstream work first** — run `/upstream-tracker`    | Untracked friction detected                                    |
+| **Trend-review sprint**                              | Every 4th sprint — full audit ahead                            |
 
 Read-only. Never writes files.
 
@@ -91,7 +91,7 @@ Step 7 cross-references the full sync diff against open `UPSTREAM-*.md` entries 
 
 ### `/sibling-sync [--auto-reciprocate] [sibling-name]` — Bilateral sibling reconciliation
 
-Compare `SYNERGY-*.md` and `UPSTREAM-*.md` files between this project and registered sibling vp-* projects:
+Compare `SYNERGY-*.md` and `UPSTREAM-*.md` files between this project and registered sibling vp-\* projects:
 
 ```
 /sibling-sync
@@ -325,11 +325,11 @@ hooks/
 
 Concrete integration points:
 
-| vp-beads feature | vp-knowledge dependency |
-|---|---|
-| Retrospective step 6 | Chains into `/knowledge-gaps` |
-| All BM writes (upstream-tracker W6, vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema |
-| Sprint learnings | Written to the same BM graph vp-knowledge maintains |
+| vp-beads feature                                                     | vp-knowledge dependency                             |
+| -------------------------------------------------------------------- | --------------------------------------------------- |
+| Retrospective step 6                                                 | Chains into `/knowledge-gaps`                       |
+| All BM writes (upstream-tracker W6, vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema   |
+| Sprint learnings                                                     | Written to the same BM graph vp-knowledge maintains |
 
 **Do not duplicate vp-knowledge hooks in vp-beads.** Both plugins are installed together; duplicating hooks causes double-fire (benign but wasteful) and creates a maintenance burden.
 

@@ -70,16 +70,16 @@ Six steps, all blocking — the gate must fully pass before proceeding.
 
 ## Anti-Patterns
 
-| Anti-Pattern | Why It Fails | Fix |
-|---|---|---|
-| Shared file in same wave | Agents clobber each other's changes | Split to separate waves |
-| Launching before pressure check | OOM mid-wave kills agents | Phase 3 check first |
-| Committing before gate passes | Broken code lands in main | Gate is non-negotiable |
-| Skipping `bd close` in agent prompt | Issues stay `in_progress` forever | Always include completion instruction |
-| Research agents writing source files | Non-deterministic mutations | Research agents get read-only source access |
-| >6 code agents on 32GB | Context window thrash | Use the ceiling table in `agent-concurrency-limits.md` |
-| Opening next wave before prior committed | Interleaved git history | Serial wave commits |
-| Fat agent prompts (>3 issues per agent) | Incomplete work, scope creep | 1-3 issues per agent |
-| No file-scope constraint in prompt | Agent wanders outside scope | Exhaustive file list required |
-| Parallelizing tests | Test interference, flaky results | Sequential tests after gate |
-| Closing sprint with open in_progress issues | Phantom work, stale claims | Verify with `bd list --status in_progress` |
+| Anti-Pattern                                 | Why It Fails                        | Fix                                                    |
+| -------------------------------------------- | ----------------------------------- | ------------------------------------------------------ |
+| Shared file in same wave                     | Agents clobber each other's changes | Split to separate waves                                |
+| Launching before pressure check              | OOM mid-wave kills agents           | Phase 3 check first                                    |
+| Committing before gate passes                | Broken code lands in main           | Gate is non-negotiable                                 |
+| Skipping `bd close` in agent prompt          | Issues stay `in_progress` forever   | Always include completion instruction                  |
+| Research agents writing source files         | Non-deterministic mutations         | Research agents get read-only source access            |
+| >6 code agents on 32GB                       | Context window thrash               | Use the ceiling table in `agent-concurrency-limits.md` |
+| Opening next wave before prior committed     | Interleaved git history             | Serial wave commits                                    |
+| Fat agent prompts (>3 issues per agent)      | Incomplete work, scope creep        | 1-3 issues per agent                                   |
+| No file-scope constraint in prompt           | Agent wanders outside scope         | Exhaustive file list required                          |
+| Parallelizing tests                          | Test interference, flaky results    | Sequential tests after gate                            |
+| Closing sprint with open in\_progress issues | Phantom work, stale claims          | Verify with `bd list --status in_progress`             |

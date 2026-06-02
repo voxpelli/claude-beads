@@ -165,6 +165,7 @@ only at the residuals.
    `node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' <path>`
    (any non-zero exit signals invalid JSON). Confirm the required fields
    are present:
+
    - Base entry must have `prefix`, `remote`, `branch`, `package`.
    - `.local.json` entry, when written, must have `package` and `local-path`.
 
@@ -259,7 +260,7 @@ a previous squash pull), always accept the upstream version:
 
 Vendor directories must mirror upstream exactly.
 
-### 5. Clean stale vendor node_modules
+### 5. Clean stale vendor node\_modules
 
 Remove any leftover `node_modules/` inside each pulled vendor directory before
 running npm install. These are untracked artifacts from previous installs that
@@ -347,7 +348,7 @@ Basic Memory MCP tools are available:
    an annotation to the matching entry's line. Use entry-type-specific text:
    - **Bugs / Feature Requests:** `_(Resolved by vendor-sync YYYY-MM-DD)_`
    - **Upstream Opportunities:** `_(Contributed upstream, merged YYYY-MM-DD)_`
-   Use `expected_replacements=1`. Always match against the note's exact text.
+     Use `expected_replacements=1`. Always match against the note's exact text.
 4. Annotation only — never delete entries, never move them to `### Resolved`.
    The upstream-tracker's workflow 6 (Promote to Basic Memory) handles pruning
    during its prune pass.

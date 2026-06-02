@@ -22,7 +22,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 - **post-file-edit.sh shfmt auto-format** (2026-03-28) — Both plugins use a PostToolUse
   command hook (matcher: `Edit|Write`) that runs `shfmt -w` on edited shell scripts.
   Status: aligned · Last verified: 2026-04-05
-  Note: v0.10.1 converged jq error handling, PLUGIN_ROOT guard, and `scripts/*.sh`
+  Note: v0.10.1 converged jq error handling, PLUGIN\_ROOT guard, and `scripts/*.sh`
   path matching from vp-knowledge.
 
 - **wc -l portability guard (|| count=0 + tr -d ' ')** (2026-03-28) — Both plugins guard
@@ -30,7 +30,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   `tr -d ' '` (macOS `wc -l` pads with spaces).
   Status: aligned · Last verified: 2026-03-28
 
-- **edit_note append-with-section gotcha: independently documented by both plugins**
+- **edit\_note append-with-section gotcha: independently documented by both plugins**
   (2026-03-28) — Both encountered the `edit_note` + `append` + `section` EOF bug
   independently and wrote explicit warnings into reference files.
   Status: aligned · Last verified: 2026-03-28
@@ -39,7 +39,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   `scripts/check-hooks.mjs` with shared core infrastructure: `parseJsonObjects()`
   with `}\s*{` multi-object detection, `runHook()` via `spawnSync`, jq preflight.
   Status: drifting · Last verified: 2026-05-04
-  Note: Reciprocation pass on 2026-05-04 measured an ~80-line gap (vp-beads 284
+  Note: Reciprocation pass on 2026-05-04 measured an \~80-line gap (vp-beads 284
   vs vp-knowledge 366). vp-knowledge added shfmt drift + clean-file paths
   (Sprint 18) and gh-ecosystem hook coverage (v0.29.0). Strong extraction
   candidate for shared `@voxpelli/claude-plugin-tools`.
@@ -72,22 +72,22 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   Convergence path: accept-difference · Reason: different time-scales (sprint
   cycle vs on-demand `/session-reflect`) call for different optimal hook surfaces.
 
-- **PostToolUseFailure hook type** (2026-03-28) — _(Resolved 2026-04-04, v0.10.0)_
+- **PostToolUseFailure hook type** (2026-03-28) — *(Resolved 2026-04-04, v0.10.0)*
   Both plugins now use command hooks with stdin JSON parsing.
   Convergence path: adopt-theirs · Status: converged
 
-- **npm-run-all2 parallel check stages** (2026-05-29) — _(Converged 2026-05-29)_
+- **npm-run-all2 parallel check stages** (2026-05-29) — *(Converged 2026-05-29)*
   vp-claude adopted `npm-run-all2@^7.0.0` + `run-p check:*`, matching vp-beads
   and vp-git. Status: converged · Last verified: 2026-05-29
   Note: Reciprocated from vp-claude's `SYNERGY-vp-beads.md` entry. Sprint 19's
   pass falsely claimed convergence; finally real on 2026-05-29.
   Discrepancies found on verification: vp-claude has **6** sub-checks (adds
   `check:contract` and `check:distance` beyond vp-beads's 4), and `check:md`
-  lacks `--ignore-path .gitignore`. The `run-p check:*` _pattern_ converged;
+  lacks `--ignore-path .gitignore`. The `run-p check:*` *pattern* converged;
   the sub-check sets are not identical. Not documented in vp-claude CHANGELOG.
 
-- **PostToolUse BM write-validation hook** (2026-03-28) — _(Resolved 2026-04-05,
-  v0.10.1)_ vp-knowledge provides `post-bm-write-validate.sh`; vp-beads relies on
+- **PostToolUse BM write-validation hook** (2026-03-28) — *(Resolved 2026-04-05,
+  v0.10.1)* vp-knowledge provides `post-bm-write-validate.sh`; vp-beads relies on
   it via the layered plugin dependency rather than duplicating. Decision: do not
   duplicate hooks that vp-knowledge already provides.
   Convergence path: delegate-to-theirs · Status: resolved (by design)
@@ -104,7 +104,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   read-only gate). vp-knowledge uses two-level (hints + skills, agents as workers).
   Convergence path: accept-difference · Reason: vp-beads sprint lifecycle justifies
   the extra agent layer
-  Note: Distinct from the three-tier _memory capture_ hierarchy
+  Note: Distinct from the three-tier *memory capture* hierarchy
   (`engineering/agents/three-memory-systems-taxonomy-and-graduation`).
 
 - **PreToolUse hook** (2026-04-05) — vp-knowledge has `pre-bash-no-python.sh`
@@ -113,8 +113,8 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   vp-knowledge-specific (protects BM notes from script-based writes)
 
 - **PostToolUseFailure matcher scope** (2026-04-05) — vp-beads matches 7 BM tools
-  (write, edit, read, search, schema_validate, schema_diff, schema_infer);
-  vp-knowledge matches 5 (write, edit, schema_validate, schema_diff, schema_infer).
+  (write, edit, read, search, schema\_validate, schema\_diff, schema\_infer);
+  vp-knowledge matches 5 (write, edit, schema\_validate, schema\_diff, schema\_infer).
   vp-beads covers more tools because it uses read/search more heavily in skills.
   Convergence path: accept-difference · Reason: different tool usage profiles
 
@@ -132,7 +132,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 ## Extraction Candidates
 
 - **validate-plugin.mjs** (2026-03-28) — Both plugins maintain independent copies
-  with ~98% overlap. A shared `@voxpelli/validate-claude-plugin` package would
+  with \~98% overlap. A shared `@voxpelli/validate-claude-plugin` package would
   eliminate duplication. After v0.10.1 convergence, the remaining differences are
   plugin-specific: gardener read-only invariant (vp-knowledge), hook count in
   description string.
@@ -179,7 +179,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   Priority: low (vp-beads writes fewer BM notes than vp-knowledge)
   Effort: trivial to adopt if needed
 
-- **knowledge-ask Q&A skill** (2026-04-05) — vp-knowledge v0.21.0 added a
+- **knowledge-ask Q\&A skill** (2026-04-05) — vp-knowledge v0.21.0 added a
   `/knowledge-ask` skill for natural-language BM queries. vp-beads has no
   equivalent — BM queries are embedded in skill workflow steps.
   Priority: low (different use case — vp-beads queries are structured, not ad-hoc)

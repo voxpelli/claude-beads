@@ -5,11 +5,11 @@ workflow 4 (Map file contention). See `SKILL.md` for the workflow steps.
 
 ## Contention Thresholds
 
-| Issues Touching File | Level | Action |
-|---|---|---|
-| 1 | LOW | No constraint — assign to any wave |
-| 2 | MEDIUM | Prefer separate waves; same wave OK if functions are non-overlapping |
-| 3+ | HIGH | Must separate into different waves |
+| Issues Touching File | Level  | Action                                                               |
+| -------------------- | ------ | -------------------------------------------------------------------- |
+| 1                    | LOW    | No constraint — assign to any wave                                   |
+| 2                    | MEDIUM | Prefer separate waves; same wave OK if functions are non-overlapping |
+| 3+                   | HIGH   | Must separate into different waves                                   |
 
 ## Two-Tier Contention Model
 

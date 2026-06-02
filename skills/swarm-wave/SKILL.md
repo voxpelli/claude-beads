@@ -140,6 +140,7 @@ argument.
 6. Launch task agents in parallel. For each agent slot in the wave plan,
    use the Agent tool with a prompt built from the canonical template in
    `references/command-patterns.md`. Key elements:
+
    - Issue title and ID (from `bd show <id>`)
    - Exhaustive file scope list (files this agent may modify — never globs)
    - Isolation constraint: "Do not modify any file outside your scope list."
@@ -187,8 +188,8 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
    - `npm run check` must pass (P0 — gate fails immediately on check errors).
    - Code reviewer confidence must be 80+.
    - Domain reviewer confidence must be 60+ (80+ for security-adjacent).
-   See `references/review-gate-protocol.md` for threshold details and
-   severity handling.
+     See `references/review-gate-protocol.md` for threshold details and
+     severity handling.
 5. If the gate passes:
    - 5a. Run tests sequentially (workspace-first, root-last if applicable).
    - 5b. If tests pass: commit all wave changes with
