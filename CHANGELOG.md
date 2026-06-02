@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1][] - 2026-06-02
+
+### Fixed
+
+- **`session-start` hook sensitive-file check.** The hook flagged
+  `.beads/interactions.jsonl` as "conversation logs or credentials" and offered
+  a `git rm --cached` fix, contradicting its intended tracking — but that file
+  is bd's `field_change` audit trail and holds no secrets. The check now warns
+  only for `.beads/.beads-credential-key` (a genuine per-machine secret), with
+  corrected wording. Also fixes a latent stdout leak: `git ls-files
+  --error-unmatch` printed the matched path to stdout (only stderr was
+  redirected), emitting a bare path ahead of the hook's JSON output. Adds two
+  regression tests.
+
 ## [0.15.0][] - 2026-05-08
 
 ### Added
@@ -1040,6 +1054,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
 
+[0.15.1]: https://github.com/voxpelli/claude-beads/releases/tag/v0.15.1
 [0.15.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.15.0
 [0.14.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.14.0
 [0.13.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.13.0
