@@ -7,7 +7,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -135,6 +135,20 @@ function makeTempGitRepo (originUrl) {
  * @param {number} [exitCode] - Exit status (default 0)
  * @returns {string} Temp directory path containing the stub
  */
+/**
+ * Stage a file under .beads/ in a temp git repo so `git ls-files` tracks it.
+ * Staging (not committing) is enough — `git ls-files --error-unmatch` reads the
+ * index, and committing would need git user config in the temp repo.
+ * @param {string} dir - Temp git repo (from makeTempGitRepo)
+ * @param {string} relPath - Path under the repo, e.g. '.beads/interactions.jsonl'
+ */
+function trackBeadsFile (dir, relPath) {
+  const full = join(dir, relPath)
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  writeFileSync(full, 'x\n')
+  spawnSync('git', ['add', relPath], { cwd: dir })
+}
+
 function makeGhStubDir (stdout, exitCode = 0) {
   const dir = mkdtempSync(join(tmpdir(), 'vp-beads-stub-'))
   // printf with JSON-stringified payload avoids heredoc-delimiter collisions
@@ -495,6 +509,42 @@ test('Dependabot alerts: gh missing (PATH without gh) → no security line, no e
     const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
     return ctx.includes('[security]')
       ? { ok: false, reason: `unexpected security line without alerts: ${ctx.slice(0, 120)}` }
+      : { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('sensitive-file: tracked .beads-credential-key → 1 clean JSON object warning it', () => {
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  trackBeadsFile(dir, '.beads/.beads-credential-key')
+  try {
+    const { stdout } = runHook('session-start.sh', '', { cwd: dir })
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    // parseError would catch the old stdout-leak bug (bare path before JSON).
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    return ctx.includes('.beads-credential-key is tracked by git')
+      ? { ok: true }
+      : { ok: false, reason: `missing credential-key warning: ${ctx.slice(0, 120)}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('sensitive-file: tracked interactions.jsonl is NOT flagged (intentional audit trail)', () => {
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  trackBeadsFile(dir, '.beads/interactions.jsonl')
+  try {
+    const { stdout } = runHook('session-start.sh', '', { cwd: dir })
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const ctx = objects.length === 0
+      ? ''
+      : String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    return ctx.includes('interactions.jsonl')
+      ? { ok: false, reason: `interactions.jsonl should not be flagged: ${ctx.slice(0, 120)}` }
       : { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })

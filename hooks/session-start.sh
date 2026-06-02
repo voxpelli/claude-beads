@@ -14,22 +14,17 @@ set -euo pipefail
 parts=()
 
 # --- Sensitive-file git-tracking check ---
-# Warn if .beads/interactions.jsonl or .beads/.beads-credential-key are
-# committed to git. Both are local-only runtime data that should not be
-# pushed to remote repos.
-tracked_sensitive=""
-if git ls-files --error-unmatch .beads/interactions.jsonl 2>/dev/null; then
-	tracked_sensitive=".beads/interactions.jsonl"
-fi
-if git ls-files --error-unmatch .beads/.beads-credential-key 2>/dev/null; then
-	if [ -n "$tracked_sensitive" ]; then
-		tracked_sensitive="$tracked_sensitive and .beads/.beads-credential-key"
-	else
-		tracked_sensitive=".beads/.beads-credential-key"
-	fi
-fi
-if [ -n "$tracked_sensitive" ]; then
-	parts+=("WARNING: ${tracked_sensitive} is tracked by git. These files contain local-only runtime data (conversation logs or credentials) and must not be committed. To fix: git rm --cached .beads/interactions.jsonl .beads/.beads-credential-key 2>/dev/null; echo interactions.jsonl >> .beads/.gitignore; echo .beads-credential-key >> .beads/.gitignore; git commit --no-gpg-sign -m \"chore: untrack beads sensitive files\"")
+# Warn only if .beads/.beads-credential-key is committed to git. It is a
+# per-machine encryption key (federation peer auth) and must never be pushed.
+#
+# .beads/interactions.jsonl is NOT flagged: this repo intentionally tracks it
+# as the agent audit trail (see README "beads and Dolt configuration"). It
+# holds bd field_change events, not conversation logs or credentials.
+#
+# stdout is redirected too — `git ls-files --error-unmatch` prints the matched
+# path on success, which would otherwise pollute the JSON emitted below.
+if git ls-files --error-unmatch .beads/.beads-credential-key >/dev/null 2>&1; then
+	parts+=("WARNING: .beads/.beads-credential-key is tracked by git. It is a per-machine encryption key and must not be committed. To fix: git rm --cached .beads/.beads-credential-key 2>/dev/null; echo .beads-credential-key >> .beads/.gitignore; git commit --no-gpg-sign -m \"chore: untrack beads credential key\"")
 fi
 # --- end sensitive-file check ---
 
