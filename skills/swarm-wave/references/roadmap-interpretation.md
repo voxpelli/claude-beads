@@ -23,7 +23,7 @@ plan is a swarm candidate.
 | Shape                  | Signals                                                                                      | Action                                                          |
 | ---------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | Wave-structured        | Headings matching `Wave\s+\d` (any of `##`/`###`, separators `—` `·` `:`), per-item bullets  | Candidate — proceed to step 2                                   |
-| Milestone/release-plan | `## vN` / `## Pre-X polish` describing releases, prose contract, no per-item parallel work   | Direction only; swarm only any `Wave N` subsections it contains |
+| Milestone/release-plan | `## vN` / `## Pre-X polish` describing releases, prose contract, no per-item parallel work   | Direction only; swarm only the `Wave N` subsections it contains |
 | Feature-triage matrix  | Feature/priority tables ("Needed", "Nice to Have", "Unnecessary") of flags/capabilities      | **Decline** → manual path                                       |
 | Chore list             | Flat task bullets under topic headings; often titled `TODO`; may redirect "roadmap → VISION" | **Decline** → manual path                                       |
 | Unrecognized           | None of the above match cleanly                                                              | **Needs user disambiguation** — ask                             |

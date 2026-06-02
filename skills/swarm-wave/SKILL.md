@@ -277,7 +277,8 @@ sprint).
 **Steps:**
 
 1. Run `bd ready` to get all open issues. If beads is unavailable, ask the
-   user to provide issue titles and descriptions.
+   user to provide issue titles and descriptions — the same manual path
+   workflow 1 (Plan a swarm sprint) Tier A falls back to.
 2. For each issue, identify which files it is likely to touch:
    - 2a. Read the issue description (`bd show <id>`) — look for explicit
      file mentions.

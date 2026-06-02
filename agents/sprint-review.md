@@ -122,6 +122,10 @@ If `bd` is available:
 bd stats 2>/dev/null
 ```
 
+If `bd` is unavailable, **announce** it (per the Edge Cases "Beads unavailable"
+entry) and skip only the `bd stats` line — do not silently omit it. Still report
+the sprint number and date range from the git/RETRO data above.
+
 Report: current sprint number, date range covered, whether a trend-review sprint
 is upcoming.
 
@@ -156,6 +160,11 @@ bd list --status open 2>/dev/null | head -40
 bd blocked 2>/dev/null
 bd stale --days 60 2>/dev/null
 ```
+
+If `bd` is unavailable, **announce** the skip (per the Edge Cases "Beads
+unavailable" entry) — do not silently omit this section — and report the
+backlog-health signals below as "n/a (beads not active)". If a `ROADMAP.md`
+exists, point to it as the likely work record (do not parse or rank it).
 
 Flag any `in_progress` issues that were not completed this sprint (potential
 carry-overs). Count total open issues and note the count explicitly.
