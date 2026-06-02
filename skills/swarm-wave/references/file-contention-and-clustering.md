@@ -99,3 +99,9 @@ When a beads issue description does not list explicit files:
    modules
 4. For issues with no grep anchors: default to "unknown scope" and assign
    to their own wave (single-agent waves are safe)
+
+The same inference serves a **beadless ROADMAP source**: when a ROADMAP item
+declares its scope in prose ("Touches `a.js`, `b.js`"), use it directly;
+otherwise run the steps above over the identifiers named in the item text. An
+item with neither a declared nor an inferable scope is declined or sent to the
+user, not guessed. See `roadmap-interpretation.md` (step 4).
