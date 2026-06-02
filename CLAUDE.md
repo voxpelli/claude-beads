@@ -147,6 +147,45 @@ include the name parenthetically. Bare numbers (e.g., "workflow 6") are
 fragile and break silently if workflows are renumbered. Never use shorthand
 like "W3" or "W6" — the codebase spells it out.
 
+### Beads-availability convention
+
+vp-beads must **not force beads**. Every skill and the agent detect availability
+and degrade along a defined tier — **silently skipping a `bd` step is a bug**: it
+makes a deliberately beadless project look like a broken one. Hooks are **exempt**
+— a hook's silent fallback (e.g. `precompact.sh` emitting context when `bd` is
+absent) is recovery plumbing, not a user-facing workflow step.
+
+**Detection predicate (canonical).** Beads is available for a project iff a
+`.beads/` directory exists **and** `command -v bd` succeeds. Both conditions,
+checked every time — neither alone.
+
+**Tiers.**
+
+- **Tier A — require-or-fallback.** The component needs a work source but not
+  *beads specifically*: use beads when available, else fall back to another
+  source (`ROADMAP.md`, or a manual list) and only stop when no source can be
+  obtained. Components: *none yet — `swarm-wave` joins this tier when its
+  require-or-fallback path lands (it currently hard-stops).*
+- **Tier B — beads-specific stop.** The component's whole purpose is operating
+  on the beads backlog; with no beads there is nothing to do. Stop cleanly with
+  a message that names the missing predicate and **redirects to a beadless
+  alternative**. Components: `backlog-groomer`.
+- **Tier C — degrade-and-announce.** The component does useful non-beads work
+  too; when beads is absent it runs the rest and **announces** each skipped
+  bd-dependent step (never skips it silently). Components: `retrospective`,
+  `sprint-review`.
+
+**Canonical inline sentence (copy verbatim; change only the tier letter).** Each
+component opens its availability handling with:
+
+> Beads is available iff a `.beads/` directory exists **and** `command -v bd`
+> succeeds; this component is **Tier `X`** per CLAUDE.md
+> `### Beads-availability convention`.
+
+The tier→component mapping lives **only here**. Components cite their tier letter
+and link back — they do not restate this table (it would duplicate and rot, like
+the per-skill tables this section deliberately omits).
+
 ### Retrospective file convention
 
 - Named `RETRO-NN.md` in the project root
