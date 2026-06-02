@@ -276,9 +276,15 @@ work can begin.
 - **User approval is non-negotiable.** Every write operation (`bd create`,
   `bd close`, `bd update`) must be explicitly approved per item. Present
   candidates first, confirm, then execute. Never auto-mutate.
-- **Beads is optional.** Guard all `bd` commands with availability checks.
-  If `.beads/` does not exist or `bd` is not found, report that backlog
-  grooming requires beads and stop.
+- **Beads required (Tier B).** Beads is available iff a `.beads/` directory
+  exists **and** `command -v bd` succeeds; this component is **Tier B** per
+  CLAUDE.md `### Beads-availability convention`. Backlog grooming operates on
+  the beads backlog — with no beads there is no backlog to groom. Stop cleanly,
+  naming the missing predicate, and redirect to a beadless alternative: for the
+  planning / sprint triggers in this skill's description ("plan the sprint",
+  "what should we work on", "break down into issues"), use `/swarm-wave` — it
+  plans waves from a `ROADMAP.md` or a manual list — or edit `ROADMAP.md`
+  directly. Do not attempt to groom a `ROADMAP.md` here.
 - **Basic Memory is opportunistic.** Check for BM tool availability and skip
   silently if unavailable. BM enriches grooming with cross-project context but
   is not required for the core workflows.
