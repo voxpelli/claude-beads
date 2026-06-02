@@ -1,18 +1,17 @@
 .DS_Store
+
+# Ephemeral agent/sprint scratch artifacts (durable record lives in beads)
 AGENT-*.md
 RETRO-*.md
 SWARM-*.md
+SPIKE-*.md
+
+# Local plugin/registry overrides
 .claude/*.local.*
 .claude/synergy-registry.local.json
 .claude/vendor-registry.local.json
+
 node_modules/
 
-# Dolt database files (added by bd init)
-.dolt/
-*.db
-
-# Beads / Dolt files (added by bd init)
-.beads-credential-key
-
-# Beads / Dolt files (added by bd init)
-.beads/proxieddb/
+# Beads — fully local, ephemeral working state (not shared via git)
+.beads/
