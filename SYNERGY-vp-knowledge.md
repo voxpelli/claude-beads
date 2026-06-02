@@ -129,6 +129,20 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   use them yet (no non-invocable skills, no agent skill preloading).
   Convergence path: evaluate · Reason: adopt when vp-beads has a use case
 
+- **remark config richness: pinned settings, GFM, link and list-marker
+  enforcement** (2026-06-02) — vp-beads (v0.16.0 lint foundation) pins
+  `remarkConfig.settings` (bullet `-`, emphasis/strong `*`, rule `-`, fenced,
+  one-space list indent) and adds `remark-gfm` (activates the GFM
+  table-cell-padding and checkbox rules), `remark-validate-links`, and
+  `remark-lint-unordered-list-marker-style` (`-`);
+  its `check:md` also passes `--ignore-path .gitignore`. vp-knowledge runs the
+  bare two-preset config (consistent and recommended) with no pinned settings
+  and no `--ignore-path`. The pinned settings are what make `remark -o` a safe
+  autofixer (BM gotcha: lint rules and stringify settings must be
+  hand-synchronized).
+  Convergence path: propose-shared · Reason: extract a shared remark preset (see
+  Extraction Candidates) rather than hand-syncing three partial configs.
+
 ## Extraction Candidates
 
 - **validate-plugin.mjs** (2026-03-28) — Both plugins maintain independent copies
@@ -154,6 +168,17 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   entry of the same name.
   Source: this file + vp-knowledge's `SYNERGY-vp-beads.md` · Readiness: proof-of-concept
   Effort: significant
+
+- **Shared `@voxpelli/remark-config` preset** (2026-06-02) — vp-beads's
+  `remarkConfig` (pinned `settings` plus the `remark-gfm`, `remark-validate-links`,
+  two-preset, and `remark-lint-unordered-list-marker-style` plugin stack) is a
+  reusable lint+format contract that vp-knowledge and vp-git could consume
+  instead of each maintaining a partial copy — eliminating the config drift
+  tracked in Divergences and making `remark -o` autofix behave identically
+  across the vp-plugins marketplace. Natural co-extraction with the
+  `@voxpelli/claude-plugin-tools` bundle (Paired bundle, above).
+  Source: vp-beads `package.json` `remarkConfig` · Readiness: needs-cleanup
+  Effort: moderate
 
 ## They Have / We Don't
 
