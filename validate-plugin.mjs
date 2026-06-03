@@ -1,5 +1,5 @@
-import { readFile, readdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { readdir, readFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 
 import yaml from 'js-yaml'
@@ -40,7 +40,6 @@ async function readJson (filePath) {
     return JSON.parse(raw)
   } catch {
     error(filePath, 'Invalid JSON')
-    return undefined
   }
 }
 
@@ -50,15 +49,13 @@ async function readJson (filePath) {
  */
 function extractFrontmatter (content) {
   const match = content.match(/^---\n([\s\S]*?)\n---/)
-  if (!match) return undefined
+  if (!match) return
   try {
     const parsed = yaml.load(match[1])
     return typeof parsed === 'object' && parsed !== null
       ? /** @type {Record<string, unknown>} */ (parsed)
       : undefined
-  } catch {
-    return undefined
-  }
+  } catch {}
 }
 
 const KNOWN_MCP_PREFIXES = [
@@ -92,6 +89,7 @@ function validateMcpPrefixes (file, tools) {
 
 /**
  * Audit tool references in prose against declared tools list.
+ *
  * @param {string} file
  * @param {string} content
  * @param {string[]} declaredTools
@@ -102,7 +100,7 @@ function auditToolReferences (file, content, declaredTools, fieldName) {
   const prose = content.replace(/^---\n[\s\S]*?\n---/, '')
   const toolSet = new Set(declaredTools)
   // Match mcp__<server>__<tool> patterns in prose
-  const refs = prose.matchAll(/mcp__[a-zA-Z0-9_-]+__[a-zA-Z0-9_-]+/g)
+  const refs = prose.matchAll(/mcp__[\w-]+__[\w-]+/g)
   const seen = new Set()
   for (const match of refs) {
     const tool = match[0]
@@ -118,11 +116,12 @@ function auditToolReferences (file, content, declaredTools, fieldName) {
  * Used to mask out regions (frontmatter, code fences, headings, quoted strings)
  * while keeping byte/line offsets stable so match positions still map back to
  * the original file line/column.
+ *
  * @param {string} slice
  * @returns {string}
  */
 function blankPreservingNewlines (slice) {
-  return slice.replace(/[^\n]/g, ' ')
+  return slice.replaceAll(/[^\n]/g, ' ')
 }
 
 /**
@@ -154,19 +153,19 @@ function auditWorkflowReferences (file, content) {
   masked = masked.replace(/^---\n[\s\S]*?\n---/, blankPreservingNewlines)
 
   // 2. Strip fenced code blocks (``` ... ```).
-  masked = masked.replace(/```[\s\S]*?```/g, blankPreservingNewlines)
+  masked = masked.replaceAll(/```[\s\S]*?```/g, blankPreservingNewlines)
 
   // 3. Strip headings (lines starting with #).
-  masked = masked.replace(/^#.*$/gm, blankPreservingNewlines)
+  masked = masked.replaceAll(/^#.*$/gm, blankPreservingNewlines)
 
   // 4. Strip single- and double-quoted string literals (no embedded newlines).
-  masked = masked.replace(/'[^'\n]*'/g, blankPreservingNewlines)
-  masked = masked.replace(/"[^"\n]*"/g, blankPreservingNewlines)
+  masked = masked.replaceAll(/'[^'\n]*'/g, blankPreservingNewlines)
+  masked = masked.replaceAll(/"[^"\n]*"/g, blankPreservingNewlines)
 
   // 5. Strip backtick inline code (defensive — meta-discussion of the
   // convention may use forms like `workflow 6`; without this strip those
   // would emit false-positive violations).
-  masked = masked.replace(/`[^`\n]*`/g, blankPreservingNewlines)
+  masked = masked.replaceAll(/`[^`\n]*`/g, blankPreservingNewlines)
 
   // Find naked `workflow N` references — case-insensitive (capitalized at
   // sentence start is fine), digits+, not followed by `\s*\(`.
@@ -185,7 +184,7 @@ function auditWorkflowReferences (file, content) {
     const contextLine = content.slice(lineStart, lineEnd)
     error(
       file,
-      `${line}:${column} — naked workflow reference: "${match[0]}". Convention: workflow N (Name). Context: ${contextLine.trim()}`,
+      `${line}:${column} — naked workflow reference: "${match[0]}". Convention: workflow N (Name). Context: ${contextLine.trim()}`
     )
   }
 }
@@ -216,13 +215,11 @@ if (existsSync(marketplacePath)) {
     const entries = Array.isArray(m.plugins) ? m.plugins : []
     for (const entry of entries) {
       const e = /** @type {Record<string, unknown>} */ (entry)
-      if (e.source === './') {
-        if (e.version !== pluginVersion) {
-          error(
-            marketplacePath,
-            `Local "./" entry version "${String(e.version)}" does not match plugin.json version "${String(pluginVersion)}"`,
-          )
-        }
+      if (e.source === './' && e.version !== pluginVersion) {
+        error(
+          marketplacePath,
+            `Local "./" entry version "${String(e.version)}" does not match plugin.json version "${String(pluginVersion)}"`
+        )
       }
     }
   }
@@ -238,6 +235,7 @@ if (existsSync(hooksPath)) {
     if (!h.hooks || typeof h.hooks !== 'object') {
       error(hooksPath, 'Missing top-level "hooks" object')
     } else {
+      // eslint-disable-next-line prefer-destructuring -- the JSDoc cast on h.hooks is needed for Object.entries below
       const hooks = /** @type {Record<string, unknown>} */ (h.hooks)
       for (const [event, entries] of Object.entries(hooks)) {
         if (!Array.isArray(entries)) {
@@ -266,7 +264,8 @@ if (existsSync(hooksPath)) {
             }
             // Validate command hook paths
             if (hk.type === 'command' && typeof hk.command === 'string') {
-              const resolved = hk.command.replace(/\$\{CLAUDE_PLUGIN_ROOT\}/g, ROOT)
+              // eslint-disable-next-line no-template-curly-in-string -- literal placeholder token Claude Code substitutes at runtime, not a JS template
+              const resolved = hk.command.replaceAll('${CLAUDE_PLUGIN_ROOT}', ROOT)
               // Extract the file path from the command (after "bash " or similar)
               const parts = resolved.split(/\s+/)
               const scriptPath = parts.find((p) => p.startsWith('/') || p.startsWith('./'))
@@ -317,25 +316,25 @@ if (existsSync(synergyRegistryPath)) {
           // Apply canonical normalization from
           // skills/synergy-tracker/references/synergy-entry-format.md
           // "Naming convention": replace '/' with '--', drop leading '@'.
-          const normalizedName = e.name.replace(/^@/, '').replace(/\//g, '--')
+          const normalizedName = e.name.replace(/^@/, '').replaceAll('/', '--')
           const expectedFile = `SYNERGY-${normalizedName}.md`
           if (e.file !== expectedFile) {
             error(
               synergyRegistryPath,
-              `Entry [${i}] file "${e.file}" does not match expected "${expectedFile}" (derived from name "${e.name}")`,
+              `Entry [${i}] file "${e.file}" does not match expected "${expectedFile}" (derived from name "${e.name}")`
             )
           }
         }
         if (typeof e['bm-entity'] === 'string' && e['bm-entity'].startsWith('npm/')) {
           warn(
             synergyRegistryPath,
-            `Entry [${i}] bm-entity "${e['bm-entity']}" starts with "npm/" — sibling-relationship notes belong under "engineering/agents/vp-plugins-...", not under "npm/"`,
+            `Entry [${i}] bm-entity "${e['bm-entity']}" starts with "npm/" — sibling-relationship notes belong under "engineering/agents/vp-plugins-...", not under "npm/"`
           )
         }
         if (typeof e.relationship === 'string' && !KNOWN_RELATIONSHIPS.has(e.relationship)) {
           warn(
             synergyRegistryPath,
-            `Entry [${i}] relationship "${e.relationship}" is not in the known set (${[...KNOWN_RELATIONSHIPS].join(', ')})`,
+            `Entry [${i}] relationship "${e.relationship}" is not in the known set (${[...KNOWN_RELATIONSHIPS].join(', ')})`
           )
         }
       }
@@ -373,7 +372,8 @@ if (existsSync(vendorRegistryPath)) {
 
 // --- Skills ---
 
-const skillFiles = (await readdir(join(ROOT, 'skills'), { recursive: true }))
+const skillEntries = await readdir(join(ROOT, 'skills'), { recursive: true })
+const skillFiles = skillEntries
   .filter((f) => f.endsWith('SKILL.md'))
   .map((f) => join(ROOT, 'skills', f))
 
@@ -419,7 +419,8 @@ for (const file of skillFiles) {
 // SKILL.md. They have no SKILL.md frontmatter, so we only run the workflow-ref
 // audit, not the frontmatter / tool-reference checks.
 
-const referenceFiles = (await readdir(join(ROOT, 'skills'), { recursive: true }))
+const skillTreeEntries = await readdir(join(ROOT, 'skills'), { recursive: true })
+const referenceFiles = skillTreeEntries
   .filter((f) => f.includes('/references/') && f.endsWith('.md'))
   .map((f) => join(ROOT, 'skills', f))
 
@@ -432,7 +433,8 @@ for (const file of referenceFiles) {
 
 const agentsDir = join(ROOT, 'agents')
 if (existsSync(agentsDir)) {
-  const agentFiles = (await readdir(agentsDir, { recursive: true }))
+  const agentEntries = await readdir(agentsDir, { recursive: true })
+  const agentFiles = agentEntries
     .filter((f) => f.endsWith('.md'))
     .map((f) => join(agentsDir, f))
 
@@ -471,10 +473,8 @@ if (existsSync(agentsDir)) {
     if ('effort' in fm && !VALID_EFFORT_VALUES.has(String(fm.effort))) {
       warn(file, `effort "${String(fm.effort)}" is not a recognized value (${[...VALID_EFFORT_VALUES].join(', ')})`)
     }
-    if ('maxTurns' in fm) {
-      if (typeof fm.maxTurns !== 'number' || fm.maxTurns < 1) {
-        error(file, 'maxTurns must be a positive integer')
-      }
+    if ('maxTurns' in fm && (typeof fm.maxTurns !== 'number' || fm.maxTurns < 1)) {
+      error(file, 'maxTurns must be a positive integer')
     }
     if ('disallowedTools' in fm && !Array.isArray(fm.disallowedTools)) {
       error(file, 'disallowedTools must be an array')

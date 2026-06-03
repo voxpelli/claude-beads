@@ -16,33 +16,35 @@
  *
  * Pure: returns findings rather than mutating shared state, so it is unit-
  * testable in isolation (see `scripts/check-validator.mjs`).
- *
+ */
+
+// Module-scope line helpers — pure, so they are not re-created per call.
+const blank = (/** @type {string} */ slice) => slice.replaceAll(/[^\n]/g, ' ')
+const isListItem = (/** @type {string} */ l) => /^\s*(?:[-*+]|\d+\.)\s/.test(l)
+const isHeading = (/** @type {string} */ l) => /^\s*#/.test(l)
+
+/**
  * @param {string} content - Raw markdown file contents.
  * @returns {{ line: number, snippet: string }[]} One finding per offending unit.
  */
 export function auditSilentSkips (content) {
-  const blank = (/** @type {string} */ slice) => slice.replace(/[^\n]/g, ' ')
-
   const masked = content
     .replace(/^---\n[\s\S]*?\n---/, blank) // YAML frontmatter (file top)
-    .replace(/```[\s\S]*?```/g, blank) // fenced code blocks
+    .replaceAll(/```[\s\S]*?```/g, blank) // fenced code blocks
 
   const lines = masked.split('\n')
-  const isListItem = (/** @type {string} */ l) => /^\s*([-*+]|\d+\.)\s/.test(l)
-  const isHeading = (/** @type {string} */ l) => /^\s*#/.test(l)
 
   /** @type {{ startLine: number, text: string }[]} */
   const units = []
-  /** @type {{ startLine: number, text: string } | null} */
-  let cur = null
+  /** @type {{ startLine: number, text: string } | undefined} */
+  let cur
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+  for (const [i, line] of lines.entries()) {
     if (line.trim() === '' || isHeading(line)) {
-      cur = null
+      cur = undefined
       continue
     }
-    if (isListItem(line) || cur === null) {
+    if (isListItem(line) || cur === undefined) {
       cur = { startLine: i + 1, text: line }
       units.push(cur)
     } else {
@@ -54,7 +56,7 @@ export function auditSilentSkips (content) {
   const findings = []
   for (const u of units) {
     const t = u.text.toLowerCase()
-    const skips = t.includes('skip') && /silent(ly)?/.test(t)
+    const skips = t.includes('skip') && /silent(?:ly)?/.test(t)
     const beads = /\bbd\b/.test(t) || t.includes('.beads')
     const exempt = t.includes('announce') || t.includes('tier')
     if (skips && beads && !exempt) {

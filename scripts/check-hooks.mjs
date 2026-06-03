@@ -7,9 +7,11 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import {
+  chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync,
+} from 'node:fs'
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
 const HOOKS = join(ROOT, 'hooks')
@@ -29,16 +31,17 @@ let failed = 0
 
 /**
  * Parse stdout for JSON objects. Detects multi-object emission.
+ *
  * @param {string} stdout
- * @returns {{ count: number, objects: unknown[], parseError: string | null }}
+ * @returns {{ count: number, objects: unknown[], parseError: string | undefined }}
  */
 function parseJsonObjects (stdout) {
   const trimmed = stdout.trim()
-  if (trimmed === '') return { count: 0, objects: [], parseError: null }
+  if (trimmed === '') return { count: 0, objects: [], parseError: undefined }
 
   try {
     const obj = JSON.parse(trimmed)
-    return { count: 1, objects: [obj], parseError: null }
+    return { count: 1, objects: [obj], parseError: undefined }
   } catch {
     // Check for multi-object emission
     const parts = trimmed.split(/\}\s*\{/).filter(Boolean)
@@ -55,6 +58,7 @@ function parseJsonObjects (stdout) {
 
 /**
  * Run a hook script with optional stdin.
+ *
  * @param {string} script - Filename in hooks/
  * @param {string} [stdin] - Stdin content
  * @param {{ args?: string[], cwd?: string, pathPrefix?: string }} [opts]
@@ -89,14 +93,14 @@ function test (label, fn) {
     const result = fn()
     if (result.ok) {
       passed++
-      console.log(`  \x1b[32m✓\x1b[0m ${label}`)
+      console.log(`  \u001B[32m✓\u001B[0m ${label}`)
     } else {
       failed++
-      console.log(`  \x1b[31m✗\x1b[0m ${label}: ${result.reason}`)
+      console.log(`  \u001B[31m✗\u001B[0m ${label}: ${result.reason}`)
     }
   } catch (/** @type {any} */ err) {
     failed++
-    console.log(`  \x1b[31m✗\x1b[0m ${label}: threw ${err.message}`)
+    console.log(`  \u001B[31m✗\u001B[0m ${label}: threw ${err.message}`)
   }
 }
 
@@ -117,6 +121,7 @@ function makeTempDirWithRetros (n) {
 
 /**
  * Create a temp dir initialised as a git repo with a GitHub origin remote.
+ *
  * @param {string} originUrl - URL to set for `origin` remote
  * @returns {string} Temp directory path
  */
@@ -131,6 +136,7 @@ function makeTempGitRepo (originUrl) {
  * Create a temp dir containing a stub `gh` script that prints the given
  * stdout and exits with the given status. Returns the dir path so callers
  * can prepend it to PATH.
+ *
  * @param {string} stdout - Body to print
  * @param {number} [exitCode] - Exit status (default 0)
  * @returns {string} Temp directory path containing the stub
@@ -139,6 +145,7 @@ function makeTempGitRepo (originUrl) {
  * Stage a file under .beads/ in a temp git repo so `git ls-files` tracks it.
  * Staging (not committing) is enough — `git ls-files --error-unmatch` reads the
  * index, and committing would need git user config in the temp repo.
+ *
  * @param {string} dir - Temp git repo (from makeTempGitRepo)
  * @param {string} relPath - Path under the repo, e.g. '.beads/interactions.jsonl'
  */
@@ -164,6 +171,7 @@ function makeGhStubDir (stdout, exitCode = 0) {
  * Create a temp dir containing a stub `bd` that prints the given JSON and
  * exits with the given status (mirrors makeGhStubDir). Used to exercise the
  * compact branch's in-progress recovery section deterministically.
+ *
  * @param {string} jsonOutput - JSON the stub prints (e.g. '[{"id":"x-1","title":"..."}]')
  * @param {number} [exitCode]
  * @returns {string} Temp directory path containing the stub
@@ -183,12 +191,10 @@ function makeBdStubDir (jsonOutput, exitCode = 0) {
 
 console.log('\npost-file-edit.sh')
 
-test('exists and is readable', () => {
-  return { ok: existsSync(join(HOOKS, 'post-file-edit.sh')) }
-})
+test('exists and is readable', () => ({ ok: existsSync(join(HOOKS, 'post-file-edit.sh')) }))
 
 test('silent when no PLUGIN_ROOT arg', () => {
-  const { stdout, status } = runHook('post-file-edit.sh', JSON.stringify({
+  const { status, stdout } = runHook('post-file-edit.sh', JSON.stringify({
     tool_input: { file_path: '/any/path.sh' },
   }))
   const { count } = parseJsonObjects(stdout)
@@ -199,7 +205,7 @@ test('silent when no PLUGIN_ROOT arg', () => {
 })
 
 test('silent when file is not under hooks/', () => {
-  const { stdout, status } = runHook('post-file-edit.sh', JSON.stringify({
+  const { status, stdout } = runHook('post-file-edit.sh', JSON.stringify({
     tool_input: { file_path: '/some/other/file.js' },
   }), { args: [ROOT] })
   const { count } = parseJsonObjects(stdout)
@@ -215,12 +221,10 @@ test('silent when file is not under hooks/', () => {
 
 console.log('\npost-bm-failure-classify.sh')
 
-test('exists and is readable', () => {
-  return { ok: existsSync(join(HOOKS, 'post-bm-failure-classify.sh')) }
-})
+test('exists and is readable', () => ({ ok: existsSync(join(HOOKS, 'post-bm-failure-classify.sh')) }))
 
 test('silent when no error field', () => {
-  const { stdout, status } = runHook('post-bm-failure-classify.sh', JSON.stringify({}))
+  const { status, stdout } = runHook('post-bm-failure-classify.sh', JSON.stringify({}))
   const { count } = parseJsonObjects(stdout)
   if (status !== 0) return { ok: false, reason: `exit ${status}` }
   return count === 0
@@ -239,7 +243,7 @@ const errorCases = [
 
 for (const [errorText, bracket] of errorCases) {
   test(`classifies "${errorText}" as ${bracket}`, () => {
-    const { stdout, status } = runHook('post-bm-failure-classify.sh', JSON.stringify({
+    const { status, stdout } = runHook('post-bm-failure-classify.sh', JSON.stringify({
       error: errorText,
     }))
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
@@ -265,7 +269,7 @@ test('emits at most 1 JSON object (no multi-object)', () => {
   // Run in an empty temp dir so no UPSTREAM/SWARM/RETRO files exist.
   const dir = makeTempDirWithRetros(0)
   try {
-    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -285,7 +289,7 @@ test('compact source: emits 1 object listing UPSTREAM packages and SWARM file', 
     writeFileSync(join(dir, 'UPSTREAM-some-pkg.md'), '_No entries yet._\n')
     writeFileSync(join(dir, 'UPSTREAM-other-pkg.md'), '_No entries yet._\n')
     writeFileSync(join(dir, 'SWARM-13.md'), '# Wave 1\n')
-    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -327,7 +331,7 @@ test('zero in-progress bd issues: empty array → no in-progress section emitted
     const bdPath = join(bdStubDir, 'bd')
     writeFileSync(bdPath, bdScript)
     chmodSync(bdPath, 0o755)
-    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
       cwd: dir,
       pathPrefix: bdStubDir,
     })
@@ -356,7 +360,7 @@ test('compact source: empty state still emits the capture nudge (never silent)',
   // even when no UPSTREAM/SWARM/bd state is present.
   const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-empty-'))
   try {
-    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -381,7 +385,7 @@ test('compact source: one in-progress bd issue → recovery section with id, tit
   const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-bd-claim-'))
   const bdStubDir = makeBdStubDir('[{"id":"x-1","title":"Implement the feature"}]')
   try {
-    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
       cwd: dir,
       pathPrefix: bdStubDir,
     })
@@ -404,7 +408,7 @@ test('branch isolation: startup source must NOT emit compact-branch phrases', ()
   const dir = makeTempDirWithRetros(0)
   try {
     // No source field → startup branch.
-    const { stdout, status } = runHook('session-start.sh', JSON.stringify({}), { cwd: dir })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({}), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -427,7 +431,7 @@ test('branch isolation: compact source must NOT emit startup-only nudges', () =>
   try {
     writeFileSync(join(dir, 'UPSTREAM-some-pkg.md'), '_No entries yet._\n')
     for (let i = 1; i <= 4; i++) writeFileSync(join(dir, `RETRO-0${i}.md`), `# Sprint ${i}\n`)
-    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -448,9 +452,7 @@ test('branch isolation: compact source must NOT emit startup-only nudges', () =>
 
 console.log('\nsession-start.sh')
 
-test('exists and is readable', () => {
-  return { ok: existsSync(join(HOOKS, 'session-start.sh')) }
-})
+test('exists and is readable', () => ({ ok: existsSync(join(HOOKS, 'session-start.sh')) }))
 
 test('emits at most 1 JSON object (no multi-object)', () => {
   // Run in a temp dir to avoid reading real project state
@@ -501,7 +503,7 @@ test('Dependabot alerts: stubbed gh returning 3 → 1 JSON object with security 
   const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
   const stubDir = makeGhStubDir('3')
   try {
-    const { stdout, status } = runHook('session-start.sh', '', {
+    const { status, stdout } = runHook('session-start.sh', '', {
       cwd: dir,
       pathPrefix: stubDir,
     })
@@ -530,7 +532,7 @@ test('Dependabot alerts: stubbed gh returning 0 → no security line', () => {
   const dir = makeTempGitRepo('https://github.com/test-owner/test-repo.git')
   const stubDir = makeGhStubDir('0')
   try {
-    const { stdout, status } = runHook('session-start.sh', '', {
+    const { status, stdout } = runHook('session-start.sh', '', {
       cwd: dir,
       pathPrefix: stubDir,
     })
@@ -559,7 +561,7 @@ test('Dependabot alerts: gh missing (PATH without gh) → no security line, no e
   // against test-owner/test-repo and fail (404 or auth error), which the
   // hook must swallow. Either way: no [security] line.
   try {
-    const { stdout, status } = runHook('session-start.sh', '', { cwd: dir })
+    const { status, stdout } = runHook('session-start.sh', '', { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
