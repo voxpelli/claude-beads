@@ -53,6 +53,20 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
 
 - **`bd ready` default `--limit 10` makes \~60% of ready work invisible to agents** (2026-05-05) — `bd ready` defaults to `--limit 10` (per `bd ready --help`); on a healthy backlog this hides most ready work. In a sprint this session the project had 26 ready issues but `bd ready` returned only 10 — the 14 P3/P4 ready issues under epic `vp-beads-0e9` were silently absent from the agent's view of the backlog. The `bd prime` workflow context that ships in SessionStart never mentions the limit. Two complementary fixes: (a) raise the default to e.g. 25 so most projects see all ready work, AND/OR (b) document the `--limit 10` default in `bd prime`'s "Finding Work" section so agents know to override. Severity: minor · Ownership: upstream · Workaround: full — pass `--limit 100` (or `--json | jq` for full set). Source: RETRO-9 "What could improve".
 
+- **`bd` text-mode list output is agent-hostile (filler line, glyphs, legend)**
+  (2026-06-03) — Text-mode `bd` list commands (`bd list`, `bd ready`,
+  `bd blocked`, `bd list --status in_progress`) emit human formatting that
+  pollutes agent parsing: a `No issues found.` filler line on the empty case,
+  ANSI status glyphs (`○ ◐ ● ✓ ❄`), priority markers, and a trailing `Status:`
+  legend. An agent scraping the output (e.g. a hook surfacing in-progress
+  claims) ingests this as data — the empty-state `No issues found.` line in
+  particular reads as a result rather than an absence. Concrete fix: document
+  `--json` as the agent-recommended mode in `bd prime`, or add a
+  `--quiet`/`--porcelain` text mode that drops the filler/glyphs/legend.
+  Severity: minor · Ownership: upstream · Workaround: full — use `--json` (the
+  vp-beads `session-start.sh` compaction-recovery snapshot and the
+  `/harden-memories` skill already do). Source: vp-beads-17y.
+
 - **Add `--type` flag to `bd dep add` for relationship typing** (2026-05-04)
   — `bd dep add` only supports the implicit "blocks/depends-on" relationship
   type. Other useful relationship types (`related`, `duplicates`,
@@ -142,7 +156,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   provided by Claude Code plugins like the upstream `beads` plugin (which
   registers SessionStart + PreCompact running `bd prime`) or third-party
   plugins like `vp-beads` (which registers SessionStart with custom
-  warnings/nudges and PreCompact). Net effect: users with the plugins
+  warnings/nudges; it retired its own PreCompact hook in v0.17.0). Net effect: users with the plugins
   installed see a false-positive warning suggesting they install
   redundant hooks that would actually double-fire (see related issue:
   vp-beads-0e9.3 spike investigating bd prime double-fire). Concrete fix:
@@ -152,6 +166,21 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   prescribing a specific install command. Severity: minor · Ownership:
   upstream · Workaround: full — functionality is unaffected; only the
   doctor report is a false positive.
+
+- **`bd close` can silently revert when `.beads/` is gitignored and auto-export
+  is on** (2026-06-03) — With `export.auto=true` + `export.git-add=true` and a
+  gitignored `.beads/`, a `bd close` succeeds in Dolt but the auto-export
+  `git add` fails (path ignored) and the next command's auto-import reverts the
+  mutation — `✓ Closed` prints and exit code is 0, yet the close does not
+  persist (`gastownhall/beads` #4038, #3848, #3905 family). v1.0.5 made
+  auto-export opt-out, but repos that already had it on keep the behavior.
+  **Not live on vp-beads:** this repo runs `export.auto=false` +
+  `export.git-add=false` (verified 2026-06-03, bd 1.0.5), so Dolt is the sole
+  store and closes persist. Already tracked in depth in BM `brew/brew-beads`, bd
+  `vp-claude-syw`, vp-knowledge's `UPSTREAM-vp-beads.md`, and bead `vp-beads-yjp`
+  — cross-referenced here, not restated. Re-evaluate if `export.auto` is ever
+  enabled here. Severity: degraded (config-gated) · Ownership: upstream ·
+  Workaround: full on vp-beads (auto-export off).
 
 ## Upstream Opportunities
 
