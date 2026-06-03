@@ -60,6 +60,25 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   `jq` availability before running hook tests, since several hooks depend on it.
   Status: aligned · Last verified: 2026-04-05
 
+- **ESLint via @voxpelli/eslint-config (neostandard)** (2026-06-03) — Both
+  plugins lint their `.mjs` validation tooling with the `voxpelli()` factory
+  from `@voxpelli/eslint-config`, using the same knobs: `noMocha: true` (both
+  use a hand-rolled `test()` harness, not Mocha), `semi: false`, and `cliFiles`
+  (relax `no-process-exit`/`no-console`/sync-I/O for CLI scripts). Both adopted
+  it the same day (2026-06-03) and wire `check:lint` into `run-p check:*`.
+  Status: aligned · Last verified: 2026-06-03
+  Note: one deliberate divergence — vp-knowledge has a `lib/`, so its `cliFiles`
+  keeps `lib/` library-strict and it disables `unicorn/no-null` for its NDJSON
+  wire format; vp-beads has no `lib/` (every `.mjs` is a CLI tool) and instead
+  *fixed* its `null`s to `undefined` (internal sentinels, not JSON emission), so
+  it does not disable `no-null`. Both disable `unicorn/import-style` (uniform
+  named node-builtin imports) and `security/detect-non-literal-{fs-filename,regexp}`
+  (self-file validation tooling). Distinct from the `@voxpelli/remark-config`
+  candidate below: eslint config is *already* a shared external preset both
+  consume, so it is a Shared Pattern, not an extraction candidate. Reciprocal
+  not yet filed on vp-knowledge's `SYNERGY-vp-beads.md` (it adopted at 15:36
+  the same day) — surface it via `/sibling-sync`.
+
 ## Divergences
 
 - **PreCompact hook retired** (2026-05-04) — *(Converged 2026-06-02, vp-beads
