@@ -48,10 +48,10 @@ alignment was last confirmed.
   Status: aligned|drifting · Last verified: YYYY-MM-DD
 ```
 
-| Field | Value | Meaning |
-|---|---|---|
-| `Status:` | `aligned` | Implementations are functionally identical or near-identical |
-| `Status:` | `drifting` | Same concept, but implementations have diverged |
+| Field     | Value      | Meaning                                                      |
+| --------- | ---------- | ------------------------------------------------------------ |
+| `Status:` | `aligned`  | Implementations are functionally identical or near-identical |
+| `Status:` | `drifting` | Same concept, but implementations have diverged              |
 
 When `Status: drifting`, add a `Note:` continuation line explaining the drift
 vector and urgency.
@@ -67,11 +67,11 @@ is not to force convergence — `accept-difference` is a valid outcome.
   Convergence path: accept-difference|adopt-theirs|propose-shared · Reason: description
 ```
 
-| `Convergence path:` | Meaning |
-|---|---|
-| `accept-difference` | Intentional; no action needed |
-| `adopt-theirs` | This project plans to adopt the sibling's approach |
-| `propose-shared` | The two approaches should be unified in a shared abstraction |
+| `Convergence path:` | Meaning                                                      |
+| ------------------- | ------------------------------------------------------------ |
+| `accept-difference` | Intentional; no action needed                                |
+| `adopt-theirs`      | This project plans to adopt the sibling's approach           |
+| `propose-shared`    | The two approaches should be unified in a shared abstraction |
 
 When `adopt-theirs` or `propose-shared`, add an optional `Action:` continuation
 line naming the concrete next step.
@@ -88,16 +88,16 @@ shared utility. The highest-leverage section.
   Effort: trivial|moderate|significant
 ```
 
-| `Readiness:` | Meaning |
-|---|---|
-| `ready` | Extractable as-is with minimal rework |
-| `needs-cleanup` | Concept valid but too project-specific to share directly |
-| `proof-of-concept` | Demonstrates the approach but not library-quality |
+| `Readiness:`       | Meaning                                                  |
+| ------------------ | -------------------------------------------------------- |
+| `ready`            | Extractable as-is with minimal rework                    |
+| `needs-cleanup`    | Concept valid but too project-specific to share directly |
+| `proof-of-concept` | Demonstrates the approach but not library-quality        |
 
-| `Effort:` | Meaning |
-|---|---|
-| `trivial` | A few hours; fits within a sprint |
-| `moderate` | 1-3 days; may need its own beads issue |
+| `Effort:`     | Meaning                                           |
+| ------------- | ------------------------------------------------- |
+| `trivial`     | A few hours; fits within a sprint                 |
+| `moderate`    | 1-3 days; may need its own beads issue            |
 | `significant` | Multi-sprint effort; needs architectural planning |
 
 ### They Have / We Don't
@@ -121,11 +121,11 @@ user had to dismiss.
   Priority: adopt-soon|consider|deferred · Effort: trivial|moderate|significant
 ```
 
-| `Priority:` | Meaning |
-|---|---|
+| `Priority:`  | Meaning                                       |
+| ------------ | --------------------------------------------- |
 | `adopt-soon` | High value, low friction — pursue this sprint |
-| `consider` | Worth exploring but not urgent |
-| `deferred` | Acknowledged, not planned |
+| `consider`   | Worth exploring but not urgent                |
+| `deferred`   | Acknowledged, not planned                     |
 
 ## Naming convention
 
@@ -143,11 +143,11 @@ alongside UPSTREAM files.
 
 **Examples:**
 
-| Project reference | SYNERGY filename |
-|---|---|
-| `vp-knowledge` | `SYNERGY-vp-knowledge.md` |
-| `voxpelli/vp-claude` | `SYNERGY-vp-claude.md` |
-| `@scope/shared-utils` | `SYNERGY-scope--shared-utils.md` |
+| Project reference                               | SYNERGY filename                       |
+| ----------------------------------------------- | -------------------------------------- |
+| `vp-knowledge`                                  | `SYNERGY-vp-knowledge.md`              |
+| `voxpelli/vp-claude`                            | `SYNERGY-vp-claude.md`                 |
+| `@scope/shared-utils`                           | `SYNERGY-scope--shared-utils.md`       |
 | `some-org/monorepo` subpackage `packages/utils` | `SYNERGY-monorepo--packages--utils.md` |
 
 When the repo name alone is ambiguous (e.g., `utils`, `core`), include the owner:
@@ -170,14 +170,14 @@ projects have active synergy tracking relationships.
 ]
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `name` | yes | Short display name for the related project |
-| `file` | yes | Exact filename of the SYNERGY tracking file |
-| `remote` | no | Canonical URL for the related project |
-| `bm-entity` | no | Basic Memory entity path — consumed by `/synergy-tracker` workflow 5 (Promote to Basic Memory) |
-| `relationship` | no | One of: `sibling-plugin`, `shared-tooling`, `fork`, `consumer`, `coordinated-release`, `dependency`. See `validate-plugin.mjs` `KNOWN_RELATIONSHIPS` for the canonical set; values outside it emit a validator warning. |
-| `local-path` | no | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
+| Field          | Required | Description                                                                                                                                                                                                                                                                       |
+| -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`         | yes      | Short display name for the related project                                                                                                                                                                                                                                        |
+| `file`         | yes      | Exact filename of the SYNERGY tracking file                                                                                                                                                                                                                                       |
+| `remote`       | no       | Canonical URL for the related project                                                                                                                                                                                                                                             |
+| `bm-entity`    | no       | Basic Memory entity path — consumed by `/synergy-tracker` workflow 5 (Promote to Basic Memory)                                                                                                                                                                                    |
+| `relationship` | no       | One of: `sibling-plugin`, `shared-tooling`, `fork`, `consumer`, `coordinated-release`, `dependency`. See `validate-plugin.mjs` `KNOWN_RELATIONSHIPS` for the canonical set; values outside it emit a validator warning.                                                           |
+| `local-path`   | no       | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
 
 > **`bm-entity` naming rule:** Use
 > `engineering/agents/vp-plugins-<this-project>-and-<sibling>` — a
@@ -193,7 +193,7 @@ projects have active synergy tracking relationships.
 
 The six recognized values describe sibling shape, not engineering relationships in Basic Memory:
 
-- `sibling-plugin` — peer Claude Code plugin under the same maintainer (default for vp-* plugins).
+- `sibling-plugin` — peer Claude Code plugin under the same maintainer (default for vp-\* plugins).
 - `shared-tooling` — peer that shares build/lint/test tooling but ships independently.
 - `fork` — divergent fork tracked for cherry-picks.
 - `consumer` — downstream project that depends on this one.

@@ -92,7 +92,7 @@ have to re-explain something that's already visible in the session.
    image, or a VSCode extension. Use the `brew:<name>`, `cask:<name>`,
    `action:<owner>/<repo>`, `docker:<image>`, or `vscode:<ext>` prefix notation
    when identifying tools (consistent with `/tool-intel` from vp-knowledge).
-1a. **Basic Memory pre-check.** If Basic Memory MCP tools are available, call
+   1a. **Basic Memory pre-check.** If Basic Memory MCP tools are available, call
    `mcp__basic-memory__search_notes` with the package name. If a matching note
    exists and contains an `## Upstream Friction` section with entries related to
    the issue being logged, surface them to the user: "This friction is already
@@ -184,12 +184,12 @@ participating). `[upstream: <url>]` is added once a PR or issue has been filed.
 
 **Structured fields** (all optional — existing entries without them remain valid):
 
-| Field | Values | When to use |
-|-------|--------|-------------|
-| `Severity:` | `blocking` · `degraded` · `minor` | Bugs only. How much this hurts day-to-day development. `blocking` = no workaround, `degraded` = workaround exists but costly, `minor` = edge case or minor inconvenience |
-| `Ownership:` | `upstream` · `us` · `shared` | All entry types. Who needs to act: `upstream` = waiting on a release, `us` = we need to adapt or contribute a fix, `shared` = both sides need changes |
-| `Workaround:` | `none` · `partial` · `full` — description | All entry types. `none` = no mitigation, `partial` = mitigation exists but incomplete, `full` = fully mitigated (describe how). Helps prioritize: entries with `none` are more urgent |
-| `Source:` | file path, branch, PR URL, or beads issue ID | Upstream Opportunities only. Points to the local artifact that is the candidate for contribution |
+| Field              | Values                                           | When to use                                                                                                                                                                              |
+| ------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Severity:`        | `blocking` · `degraded` · `minor`                | Bugs only. How much this hurts day-to-day development. `blocking` = no workaround, `degraded` = workaround exists but costly, `minor` = edge case or minor inconvenience                 |
+| `Ownership:`       | `upstream` · `us` · `shared`                     | All entry types. Who needs to act: `upstream` = waiting on a release, `us` = we need to adapt or contribute a fix, `shared` = both sides need changes                                    |
+| `Workaround:`      | `none` · `partial` · `full` — description        | All entry types. `none` = no mitigation, `partial` = mitigation exists but incomplete, `full` = fully mitigated (describe how). Helps prioritize: entries with `none` are more urgent    |
+| `Source:`          | file path, branch, PR URL, or beads issue ID     | Upstream Opportunities only. Points to the local artifact that is the candidate for contribution                                                                                         |
 | `Merge readiness:` | `direct` · `needs-redesign` · `proof-of-concept` | Upstream Opportunities only. `direct` = submittable as-is, `needs-redesign` = concept valid but too project-specific, `proof-of-concept` = demonstrates approach but not library-quality |
 
 These fields go on a continuation line below the entry's main description line,
@@ -202,29 +202,29 @@ placeholder. Keep entries concise — 1-3 sentences. The title should be
 scannable (e.g., "Missing session type export", not "Issue with types").
 
 6a. **Eager promotion check.** If Basic Memory MCP tools are available, assess
-   the project's tempo:
-   `git rev-list --count --since="90 days ago" HEAD 2>/dev/null`
-   Guard: skip if the repo has zero commits total
-   (`git log --oneline -1 2>/dev/null` returns empty).
+the project's tempo:
+`git rev-list --count --since="90 days ago" HEAD 2>/dev/null`
+Guard: skip if the repo has zero commits total
+(`git log --oneline -1 2>/dev/null` returns empty).
 
-   | Tempo | Commits in 90 days | Promotion behavior |
-   |-------|-------------------|--------------------|
-   | **Dormant** | 0–4 | Offer inline promotion for any promotable entry (`Ownership: upstream`/`shared`, or any Upstream Opportunity) |
-   | **Moderate** | 5–14 | Offer inline promotion for high-urgency entries only: blocking bugs with `Ownership: upstream`, or Upstream Opportunities with `Merge readiness: direct` |
-   | **Active** | 15+ | Skip — the normal sprint cadence will handle promotion via workflow 6 (Promote to Basic Memory) |
+| Tempo        | Commits in 90 days | Promotion behavior                                                                                                                                       |
+| ------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dormant**  | 0–4                | Offer inline promotion for any promotable entry (`Ownership: upstream`/`shared`, or any Upstream Opportunity)                                            |
+| **Moderate** | 5–14               | Offer inline promotion for high-urgency entries only: blocking bugs with `Ownership: upstream`, or Upstream Opportunities with `Merge readiness: direct` |
+| **Active**   | 15+                | Skip — the normal sprint cadence will handle promotion via workflow 6 (Promote to Basic Memory)                                                          |
 
-   When offering inline promotion, present: "This project has low commit
-   frequency — UPSTREAM entries can sit unread for months before the normal
-   promotion cycle runs. This entry looks promotable to Basic Memory. Want to
-   promote it now? I'll show you the generalized form first." For Upstream
-   Opportunities in dormant repos, add: "This contribution opportunity may
-   become harder to merge as upstream evolves — promoting sooner makes it
-   discoverable from other projects."
+When offering inline promotion, present: "This project has low commit
+frequency — UPSTREAM entries can sit unread for months before the normal
+promotion cycle runs. This entry looks promotable to Basic Memory. Want to
+promote it now? I'll show you the generalized form first." For Upstream
+Opportunities in dormant repos, add: "This contribution opportunity may
+become harder to merge as upstream evolves — promoting sooner makes it
+discoverable from other projects."
 
-   If the user agrees, apply workflow 6 (Promote to Basic Memory) steps 3–4 scoped to this single entry
-   (route by target type, draft generalized form, user confirms text, write or
-   flag). If the user declines, or if Basic Memory tools are not available, or
-   if the project is active, skip silently.
+If the user agrees, apply workflow 6 (Promote to Basic Memory) steps 3–4 scoped to this single entry
+(route by target type, draft generalized form, user confirms text, write or
+flag). If the user declines, or if Basic Memory tools are not available, or
+if the project is active, skip silently.
 
 If the logged observation looks generalizable beyond this project (about the
 package's behavior, not a project-specific integration choice) and the eager
@@ -239,7 +239,7 @@ Summarize the current state of all upstream tracking files (vendor and non-vendo
 
 1. Glob for all `UPSTREAM-*.md` files and read them
 2. Present a summary grouped by file, showing counts and listing open items
-3. Flag anything that looks stale (older than ~3 months with no activity)
+3. Flag anything that looks stale (older than \~3 months with no activity)
 
 **Output format:**
 
@@ -284,6 +284,7 @@ preserves what was tracked and when it was removed.
    note has an `## Upstream Friction` section containing the resolved entry,
    call `mcp__basic-memory__edit_note` with `find_replace` to append an
    annotation to the entry's line. Use entry-type-specific annotation text:
+
    - **Bugs / Feature Requests:** `_(Resolved YYYY-MM-DD)_`
    - **Upstream Opportunities (merged):** `_(Contributed upstream: <url> merged YYYY-MM-DD)_`
    - **Upstream Opportunities (abandoned):** `_(Closed YYYY-MM-DD — not contributed)_`
@@ -394,7 +395,7 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
      paths in `Source:` with generic descriptions ("middleware adapter", "test
      helper", "compatibility shim")
    - Whether a Basic Memory note already exists for this package/tool
-   Let the user approve, edit, or skip each candidate. Never auto-promote.
+     Let the user approve, edit, or skip each candidate. Never auto-promote.
 3. **Route by target type.** Search Basic Memory for an existing entity note
    using the routing table in `references/basic-memory-friction-format.md`.
 4. **Write or flag.** For each approved candidate:

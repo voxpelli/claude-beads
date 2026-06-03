@@ -5,11 +5,11 @@ workflow 4 (Map file contention). See `SKILL.md` for the workflow steps.
 
 ## Contention Thresholds
 
-| Issues Touching File | Level | Action |
-|---|---|---|
-| 1 | LOW | No constraint — assign to any wave |
-| 2 | MEDIUM | Prefer separate waves; same wave OK if functions are non-overlapping |
-| 3+ | HIGH | Must separate into different waves |
+| Issues Touching File | Level  | Action                                                               |
+| -------------------- | ------ | -------------------------------------------------------------------- |
+| 1                    | LOW    | No constraint — assign to any wave                                   |
+| 2                    | MEDIUM | Prefer separate waves; same wave OK if functions are non-overlapping |
+| 3+                   | HIGH   | Must separate into different waves                                   |
 
 ## Two-Tier Contention Model
 
@@ -99,3 +99,9 @@ When a beads issue description does not list explicit files:
    modules
 4. For issues with no grep anchors: default to "unknown scope" and assign
    to their own wave (single-agent waves are safe)
+
+The same inference serves a **beadless ROADMAP source**: when a ROADMAP item
+declares its scope in prose ("Touches `a.js`, `b.js`"), use it directly;
+otherwise run the steps above over the identifiers named in the item text. An
+item with neither a declared nor an inferable scope is declined or sent to the
+user, not guessed. See `roadmap-interpretation.md` (step 4).

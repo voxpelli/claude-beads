@@ -29,6 +29,11 @@ of maintaining both halves catches drift cases a single-source record misses.
   is what makes the `@voxpelli/claude-plugin-tools` extraction candidate
   viable.
   Status: aligned · Last verified: 2026-05-09
+  Note (2026-06-02): the "identical remark devDeps stack" sub-claim has
+  drifted — vp-beads added `remark-gfm`, `remark-validate-links`, and
+  `remark-lint-unordered-list-marker-style` (plus a pinned `settings` block)
+  in v0.16.0; vp-git still runs the bare two-preset config. See the "remark
+  config richness" Divergence below.
 
 - **validate-plugin.mjs tool-reference audit** (2026-05-09) — Both plugins
   maintain a root-level `validate-plugin.mjs` that audits `mcp__*__*` tool
@@ -42,7 +47,7 @@ of maintaining both halves catches drift cases a single-source record misses.
   `@voxpelli/claude-plugin-tools` bundle.
   Status: drifting · Last verified: 2026-05-09
   Note: Reciprocates vp-git's entry of the same name (their POV: 330 vs
-  435).
+  435\).
 
 - **`run-p check:*` parallel CI orchestration** (2026-05-09) — Both use
   `npm-run-all2`'s `run-p check:*` for parallel check execution. vp-knowledge
@@ -62,6 +67,18 @@ of maintaining both halves catches drift cases a single-source record misses.
   Convergence path: accept-difference · Reason: different plugin domains
   justify different scope. Sprint orchestration legitimately needs more
   surface than focused single-skill plugins.
+
+- **remark config richness: pinned settings, GFM, link and list-marker
+  enforcement** (2026-06-02) — vp-beads (v0.16.0 lint foundation) pins
+  `remarkConfig.settings` and adds `remark-gfm`, `remark-validate-links`, and
+  `remark-lint-unordered-list-marker-style` (`-`), with `check:md` passing
+  `--ignore-path .gitignore`. vp-git runs the bare two-preset config (consistent
+  and recommended), `remark . --quiet --frail`, with no pinned settings. Same
+  divergence as `SYNERGY-vp-knowledge.md` "remark config richness"; partially
+  invalidates the "identical remark devDeps stack" claim in the Plugin
+  scaffolding shape Shared Pattern above.
+  Convergence path: propose-shared · Reason: a shared remark preset (see
+  Extraction Candidates) would re-align all three vp-plugins.
 
 ## Extraction Candidates
 
@@ -86,6 +103,15 @@ of maintaining both halves catches drift cases a single-source record misses.
   implementation** for the `@voxpelli/claude-plugin-tools` bundle — they
   did the local-extraction work first.
   Source: vp-git's `plugin-utils.mjs` · Readiness: ready · Effort: trivial
+
+- **Shared `@voxpelli/remark-config` preset** (2026-06-02) — vp-beads's
+  `remarkConfig` (pinned `settings` plus `remark-gfm`, `remark-validate-links`,
+  two-preset, and `remark-lint-unordered-list-marker-style` stack) is a reusable
+  lint+format contract all three vp-plugins could consume, re-aligning the
+  remark drift (see Divergences) and making `remark -o` autofix identical across
+  the marketplace. Natural co-extraction with the `@voxpelli/claude-plugin-tools`
+  bundle that vp-git's `plugin-utils.mjs` already seeds.
+  Source: vp-beads `package.json` `remarkConfig` · Readiness: needs-cleanup · Effort: moderate
 
 ## They Have / We Don't
 

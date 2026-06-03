@@ -1,6 +1,6 @@
 ## Feature Requests
 
-- _(Resolved 2026-04-05, vp-knowledge v0.21.0)_ **Knowledge agents should
+- *(Resolved 2026-04-05, vp-knowledge v0.21.0)* **Knowledge agents should
   preload a note-quality skill** — v0.21.0 added `vp-note-quality` skill and
   agent `skills` frontmatter preloading. Agents now inject the Note Quality
   Checklist automatically on launch.
@@ -40,17 +40,17 @@
   half-encoded in BM by 6 precedent notes; user can hand-extend the workflow
   per invocation, but the skill itself doesn't dispatch.
 
-- _(Resolved 2026-04-05, vp-knowledge v0.21.0)_ **package-intel should fetch
+- *(Resolved 2026-04-05, vp-knowledge v0.21.0)* **package-intel should fetch
   npm download stats from the registry API** — v0.21.0 added download stats
   to the package-intel pipeline.
 
 ## Bugs
 
-_No entries yet._
+*No entries yet.*
 
 ## Upstream Opportunities
 
-- _(Resolved 2026-04-05, vp-knowledge v0.21.0)_ **Note Quality Checklist —
+- *(Resolved 2026-04-05, vp-knowledge v0.21.0)* **Note Quality Checklist —
   10-item anti-pattern prevention** — v0.21.0 packaged this as the
   `vp-note-quality` skill with agent `skills` preloading. The checklist is now
   automatically injected into knowledge-gardener and knowledge-maintainer.

@@ -41,8 +41,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   markdown sections (e.g. spike requires `## Goal` + `## Findings`, decision
   requires `## Decision` + `## Rationale` + `## Alternatives Considered`,
   epic requires `## Success Criteria`), but there is no CLI surface to query
-  these requirements. Discovery is by trial-and-error: attempt `bd create
-  --type=<type> --description="x" --json` and parse the error JSON. This is
+  these requirements. Discovery is by trial-and-error: attempt `bd create --type=<type> --description="x" --json` and parse the error JSON. This is
   fine for a human one-shot, but tooling/agents that want to generate
   compliant issues at scale need a structured manifest. Concrete fix: add
   `bd types --required-sections` (or extend `bd types --json` to include
@@ -51,7 +50,45 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   — discoverable empirically per-type by attempting creates with `--json`.
 
 - **Add `--set-section <name> <content>` to `bd update` for granular spike resolution** (2026-05-05) — `bd update <id> --description=<full>` requires re-supplying the entire issue description to populate just one section (e.g. a spike's `## Findings`). For agent-driven spike-resolution workflows this means HEREDOCing the entire description with all unchanged sections preserved verbatim — cumbersome and risks transcription errors. Concrete fix: add `bd update <id> --set-section "Findings" "<content>"` (or similar) that reads the current description, splices the named section, and writes back. Particularly impactful for multi-spike sprints where 3+ spikes need findings populated from agent output. Severity: minor · Ownership: upstream · Workaround: full — HEREDOC the full description, but verbose. Source: RETRO-9 "What could improve".
-- **`bd ready` default `--limit 10` makes ~60% of ready work invisible to agents** (2026-05-05) — `bd ready` defaults to `--limit 10` (per `bd ready --help`); on a healthy backlog this hides most ready work. In a sprint this session the project had 26 ready issues but `bd ready` returned only 10 — the 14 P3/P4 ready issues under epic `vp-beads-0e9` were silently absent from the agent's view of the backlog. The `bd prime` workflow context that ships in SessionStart never mentions the limit. Two complementary fixes: (a) raise the default to e.g. 25 so most projects see all ready work, AND/OR (b) document the `--limit 10` default in `bd prime`'s "Finding Work" section so agents know to override. Severity: minor · Ownership: upstream · Workaround: full — pass `--limit 100` (or `--json | jq` for full set). Source: RETRO-9 "What could improve".
+
+- **`bd ready` default `--limit 10` makes \~60% of ready work invisible to agents** (2026-05-05) — `bd ready` defaults to `--limit 10` (per `bd ready --help`); on a healthy backlog this hides most ready work. In a sprint this session the project had 26 ready issues but `bd ready` returned only 10 — the 14 P3/P4 ready issues under epic `vp-beads-0e9` were silently absent from the agent's view of the backlog. The `bd prime` workflow context that ships in SessionStart never mentions the limit. Two complementary fixes: (a) raise the default to e.g. 25 so most projects see all ready work, AND/OR (b) document the `--limit 10` default in `bd prime`'s "Finding Work" section so agents know to override. Severity: minor · Ownership: upstream · Workaround: full — pass `--limit 100` (or `--json | jq` for full set). Source: RETRO-9 "What could improve".
+
+- **`bd ready` surfaces non-actionable issue types (`decision`, `milestone`)
+  as if they were workable** (2026-06-03) — `bd ready` filters purely on status
+  (open/reopened) plus unmet blockers; it never filters on issue **type**. So an
+  open `decision` or `milestone` with no blockers appears in the ready queue
+  identically to a `task` — but neither represents pickup-able work. A `decision`
+  is a record of a choice already made (it is "done" the moment the ADR text is
+  written); a `milestone` is a structural marker with no effort. Surfacing them
+  under "ready to work on" is misleading, especially to agents that treat the
+  `bd ready` list as the actionable backlog. Concrete fix: exclude
+  non-actionable types from `bd ready` by default (e.g. skip `decision` and
+  `milestone`, the two types whose semantics are "marker/record, not work"),
+  with an opt-in `--include-types`/`--all-types` flag for the rare case someone
+  wants the full set. Workflow-side mitigation (already adopted in vp-beads):
+  `bd close` a `decision` in the same breath it is recorded, with
+  `--reason "ADR recorded; implemented by <task-id>"`, so the buildable work
+  lives in a separate `task`/`feature` and the decision never lingers in
+  `ready`. Severity: minor · Ownership: upstream · Workaround: full — close
+  decisions/milestones immediately, or `bd ready --json | jq 'map(select(.issue_type
+  != "decision" and .issue_type != "milestone"))'` to filter the agent view.
+  Source: vp-beads-48f (a `decision` found sitting in `bd ready` after its
+  implementation shipped).
+
+- **`bd` text-mode list output is agent-hostile (filler line, glyphs, legend)**
+  (2026-06-03) — Text-mode `bd` list commands (`bd list`, `bd ready`,
+  `bd blocked`, `bd list --status in_progress`) emit human formatting that
+  pollutes agent parsing: a `No issues found.` filler line on the empty case,
+  ANSI status glyphs (`○ ◐ ● ✓ ❄`), priority markers, and a trailing `Status:`
+  legend. An agent scraping the output (e.g. a hook surfacing in-progress
+  claims) ingests this as data — the empty-state `No issues found.` line in
+  particular reads as a result rather than an absence. Concrete fix: document
+  `--json` as the agent-recommended mode in `bd prime`, or add a
+  `--quiet`/`--porcelain` text mode that drops the filler/glyphs/legend.
+  Severity: minor · Ownership: upstream · Workaround: full — use `--json` (the
+  vp-beads `session-start.sh` compaction-recovery snapshot and the
+  `/harden-memories` skill already do). Source: vp-beads-17y.
+
 - **Add `--type` flag to `bd dep add` for relationship typing** (2026-05-04)
   — `bd dep add` only supports the implicit "blocks/depends-on" relationship
   type. Other useful relationship types (`related`, `duplicates`,
@@ -137,12 +174,11 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   hooks** (2026-05-04) — `bd doctor` (v1.0.3) reports a "Missing hook
   event(s): PreCompact" warning when checking for SessionStart and
   PreCompact hooks, recommending `bd setup claude` as the fix. The check
-  appears to scan only `~/.claude/settings.json` (where `bd setup claude
-  --global` writes its hook config), and does not detect equivalent hooks
+  appears to scan only `~/.claude/settings.json` (where `bd setup claude --global` writes its hook config), and does not detect equivalent hooks
   provided by Claude Code plugins like the upstream `beads` plugin (which
   registers SessionStart + PreCompact running `bd prime`) or third-party
   plugins like `vp-beads` (which registers SessionStart with custom
-  warnings/nudges and PreCompact). Net effect: users with the plugins
+  warnings/nudges; it retired its own PreCompact hook in v0.17.0). Net effect: users with the plugins
   installed see a false-positive warning suggesting they install
   redundant hooks that would actually double-fire (see related issue:
   vp-beads-0e9.3 spike investigating bd prime double-fire). Concrete fix:
@@ -153,6 +189,21 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   upstream · Workaround: full — functionality is unaffected; only the
   doctor report is a false positive.
 
+- **`bd close` can silently revert when `.beads/` is gitignored and auto-export
+  is on** (2026-06-03) — With `export.auto=true` + `export.git-add=true` and a
+  gitignored `.beads/`, a `bd close` succeeds in Dolt but the auto-export
+  `git add` fails (path ignored) and the next command's auto-import reverts the
+  mutation — `✓ Closed` prints and exit code is 0, yet the close does not
+  persist (`gastownhall/beads` #4038, #3848, #3905 family). v1.0.5 made
+  auto-export opt-out, but repos that already had it on keep the behavior.
+  **Not live on vp-beads:** this repo runs `export.auto=false` +
+  `export.git-add=false` (verified 2026-06-03, bd 1.0.5), so Dolt is the sole
+  store and closes persist. Already tracked in depth in BM `brew/brew-beads`, bd
+  `vp-claude-syw`, vp-knowledge's `UPSTREAM-vp-beads.md`, and bead `vp-beads-yjp`
+  — cross-referenced here, not restated. Re-evaluate if `export.auto` is ever
+  enabled here. Severity: degraded (config-gated) · Ownership: upstream ·
+  Workaround: full on vp-beads (auto-export off).
+
 ## Upstream Opportunities
 
-_No entries yet._
+*No entries yet.*

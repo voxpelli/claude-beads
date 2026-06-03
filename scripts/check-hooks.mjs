@@ -7,7 +7,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -135,6 +135,20 @@ function makeTempGitRepo (originUrl) {
  * @param {number} [exitCode] - Exit status (default 0)
  * @returns {string} Temp directory path containing the stub
  */
+/**
+ * Stage a file under .beads/ in a temp git repo so `git ls-files` tracks it.
+ * Staging (not committing) is enough — `git ls-files --error-unmatch` reads the
+ * index, and committing would need git user config in the temp repo.
+ * @param {string} dir - Temp git repo (from makeTempGitRepo)
+ * @param {string} relPath - Path under the repo, e.g. '.beads/interactions.jsonl'
+ */
+function trackBeadsFile (dir, relPath) {
+  const full = join(dir, relPath)
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  writeFileSync(full, 'x\n')
+  spawnSync('git', ['add', relPath], { cwd: dir })
+}
+
 function makeGhStubDir (stdout, exitCode = 0) {
   const dir = mkdtempSync(join(tmpdir(), 'vp-beads-stub-'))
   // printf with JSON-stringified payload avoids heredoc-delimiter collisions
@@ -143,6 +157,23 @@ function makeGhStubDir (stdout, exitCode = 0) {
   const ghPath = join(dir, 'gh')
   writeFileSync(ghPath, script)
   chmodSync(ghPath, 0o755)
+  return dir
+}
+
+/**
+ * Create a temp dir containing a stub `bd` that prints the given JSON and
+ * exits with the given status (mirrors makeGhStubDir). Used to exercise the
+ * compact branch's in-progress recovery section deterministically.
+ * @param {string} jsonOutput - JSON the stub prints (e.g. '[{"id":"x-1","title":"..."}]')
+ * @param {number} [exitCode]
+ * @returns {string} Temp directory path containing the stub
+ */
+function makeBdStubDir (jsonOutput, exitCode = 0) {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-bd-stub-'))
+  const script = `#!/bin/bash\nprintf '%s\\n' ${JSON.stringify(jsonOutput)}\nexit ${exitCode}\n`
+  const bdPath = join(dir, 'bd')
+  writeFileSync(bdPath, script)
+  chmodSync(bdPath, 0o755)
   return dir
 }
 
@@ -223,50 +254,18 @@ for (const [errorText, bracket] of errorCases) {
 }
 
 // =============================================================
-// precompact.sh
+// session-start.sh — compact-source recovery (replaces the retired
+// precompact.sh + post-compact.sh hooks; this is the only post-compaction
+// slot that injects additionalContext into the resumed agent)
 // =============================================================
 
-console.log('\nprecompact.sh')
-
-test('exists and is readable', () => {
-  return { ok: existsSync(join(HOOKS, 'precompact.sh')) }
-})
-
-test('emits exactly 1 JSON object', () => {
-  const { stdout, status } = runHook('precompact.sh')
-  if (status !== 0) return { ok: false, reason: `exit ${status}` }
-  const { count, parseError } = parseJsonObjects(stdout)
-  if (parseError) return { ok: false, reason: parseError }
-  return count === 1
-    ? { ok: true }
-    : { ok: false, reason: `expected 1 object, got ${count}` }
-})
-
-test('has additionalContext key', () => {
-  const { stdout } = runHook('precompact.sh')
-  const { objects } = parseJsonObjects(stdout)
-  if (objects.length === 0) return { ok: false, reason: 'no objects' }
-  const obj = /** @type {Record<string, unknown>} */ (objects[0])
-  return 'additionalContext' in obj
-    ? { ok: true }
-    : { ok: false, reason: 'missing additionalContext key' }
-})
-
-// =============================================================
-// post-compact.sh
-// =============================================================
-
-console.log('\npost-compact.sh')
-
-test('exists and is readable', () => {
-  return { ok: existsSync(join(HOOKS, 'post-compact.sh')) }
-})
+console.log('\nsession-start.sh (source=compact)')
 
 test('emits at most 1 JSON object (no multi-object)', () => {
   // Run in an empty temp dir so no UPSTREAM/SWARM/RETRO files exist.
   const dir = makeTempDirWithRetros(0)
   try {
-    const { stdout, status } = runHook('post-compact.sh', '', { cwd: dir })
+    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -278,18 +277,15 @@ test('emits at most 1 JSON object (no multi-object)', () => {
   }
 })
 
-test('fires regardless of trigger type, emits 1 object listing UPSTREAM packages and SWARM file', () => {
-  // The hook is matcher-agnostic: PostCompact is an event-typed hook with
-  // matcher: "" (match all). The trigger type ('manual' vs 'auto') in the
-  // stdin payload is informational only — the hook produces identical
-  // output regardless. This single fixture replaces the previous
-  // tautological manual/auto pair (Sprint 14 Wave 1 gate).
-  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-postcompact-fires-'))
+test('compact source: emits 1 object listing UPSTREAM packages and SWARM file', () => {
+  // SessionStart fires with source="compact" after compaction; the compact
+  // branch emits the recovery snapshot into the resumed tool-capable agent.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-fires-'))
   try {
     writeFileSync(join(dir, 'UPSTREAM-some-pkg.md'), '_No entries yet._\n')
     writeFileSync(join(dir, 'UPSTREAM-other-pkg.md'), '_No entries yet._\n')
     writeFileSync(join(dir, 'SWARM-13.md'), '# Wave 1\n')
-    const { stdout, status } = runHook('post-compact.sh', '', { cwd: dir })
+    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -321,7 +317,7 @@ test('zero in-progress bd issues: empty array → no in-progress section emitted
   // UPSTREAM file is included so the hook still produces output (rather
   // than going silent) — the assertion is specifically about the bd
   // section's absence.
-  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-postcompact-zero-bd-'))
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-zero-bd-'))
   const bdStubDir = mkdtempSync(join(tmpdir(), 'vp-beads-bd-stub-'))
   try {
     writeFileSync(join(dir, 'UPSTREAM-some-pkg.md'), '_No entries yet._\n')
@@ -331,7 +327,7 @@ test('zero in-progress bd issues: empty array → no in-progress section emitted
     const bdPath = join(bdStubDir, 'bd')
     writeFileSync(bdPath, bdScript)
     chmodSync(bdPath, 0o755)
-    const { stdout, status } = runHook('post-compact.sh', '', {
+    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
       cwd: dir,
       pathPrefix: bdStubDir,
     })
@@ -353,18 +349,94 @@ test('zero in-progress bd issues: empty array → no in-progress section emitted
   }
 })
 
-test('empty state: no UPSTREAM/SWARM/RETRO and no bd → silent', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-postcompact-empty-'))
+test('compact source: empty state still emits the capture nudge (never silent)', () => {
+  // Unlike the retired post-compact.sh (which exited silently with no state),
+  // the compact branch always emits the recovery preamble + capture nudge —
+  // the slot is the post-compaction reflect-and-recover moment, so it fires
+  // even when no UPSTREAM/SWARM/bd state is present.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-empty-'))
   try {
-    const { stdout, status } = runHook('post-compact.sh', '', { cwd: dir })
+    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
-    const { count, parseError } = parseJsonObjects(stdout)
+    const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    // bd may or may not be present; if it is and reports nothing in_progress,
-    // and the dir has no tracking files, output should be empty.
-    return count === 0
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    if (!ctx.includes('Context was just compacted')) {
+      return { ok: false, reason: `missing recovery preamble: ${ctx.slice(0, 120)}` }
+    }
+    return ctx.includes('capture them now')
       ? { ok: true }
-      : { ok: false, reason: `expected silent, got ${count} object(s)` }
+      : { ok: false, reason: `missing capture nudge: ${ctx.slice(0, 200)}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('compact source: one in-progress bd issue → recovery section with id, title, bd-show hint', () => {
+  // Positive test for the in-progress recovery section — the one piece of
+  // compact-branch state an agent cannot re-derive from files. A regression
+  // here is silent (hook still exits 0 + emits the preamble), so assert the
+  // payload directly.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-bd-claim-'))
+  const bdStubDir = makeBdStubDir('[{"id":"x-1","title":"Implement the feature"}]')
+  try {
+    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
+      cwd: dir,
+      pathPrefix: bdStubDir,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    for (const needle of ['In-progress bd issue', 'x-1', 'Implement the feature', 'bd show']) {
+      if (!ctx.includes(needle)) return { ok: false, reason: `missing "${needle}": ${ctx.slice(0, 200)}` }
+    }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(bdStubDir, { recursive: true, force: true })
+  }
+})
+
+test('branch isolation: startup source must NOT emit compact-branch phrases', () => {
+  const dir = makeTempDirWithRetros(0)
+  try {
+    // No source field → startup branch.
+    const { stdout, status } = runHook('session-start.sh', JSON.stringify({}), { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const ctx = objects.length === 0
+      ? ''
+      : String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    if (ctx.includes('Context was just compacted') || ctx.includes('capture them now')) {
+      return { ok: false, reason: `startup run leaked compact phrasing: ${ctx.slice(0, 200)}` }
+    }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('branch isolation: compact source must NOT emit startup-only nudges', () => {
+  // UPSTREAM + 4 RETRO files would trigger dormancy + trend-review nudges IF
+  // the wrong branch ran — making this isolation test non-vacuous.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-isolation-'))
+  try {
+    writeFileSync(join(dir, 'UPSTREAM-some-pkg.md'), '_No entries yet._\n')
+    for (let i = 1; i <= 4; i++) writeFileSync(join(dir, `RETRO-0${i}.md`), `# Sprint ${i}\n`)
+    const { stdout, status } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    for (const leak of ['Trend-review', 'Low-activity repo', '[security]']) {
+      if (ctx.includes(leak)) return { ok: false, reason: `compact run leaked startup nudge "${leak}": ${ctx.slice(0, 200)}` }
+    }
+    return { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
@@ -496,6 +568,61 @@ test('Dependabot alerts: gh missing (PATH without gh) → no security line, no e
     return ctx.includes('[security]')
       ? { ok: false, reason: `unexpected security line without alerts: ${ctx.slice(0, 120)}` }
       : { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('sensitive-file: tracked .beads-credential-key → 1 clean JSON object warning it', () => {
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  trackBeadsFile(dir, '.beads/.beads-credential-key')
+  try {
+    const { stdout } = runHook('session-start.sh', '', { cwd: dir })
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    // parseError would catch the old stdout-leak bug (bare path before JSON).
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    return ctx.includes('.beads-credential-key is tracked by git')
+      ? { ok: true }
+      : { ok: false, reason: `missing credential-key warning: ${ctx.slice(0, 120)}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('sensitive-file: tracked interactions.jsonl is NOT flagged (intentional audit trail)', () => {
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  trackBeadsFile(dir, '.beads/interactions.jsonl')
+  try {
+    const { stdout } = runHook('session-start.sh', '', { cwd: dir })
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const ctx = objects.length === 0
+      ? ''
+      : String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    return ctx.includes('interactions.jsonl')
+      ? { ok: false, reason: `interactions.jsonl should not be flagged: ${ctx.slice(0, 120)}` }
+      : { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('sensitive-file: tracked PRIVATE-SYNERGY-*.md private overlay → warned', () => {
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  writeFileSync(join(dir, 'PRIVATE-SYNERGY-acme.md'), '# private overlay\n')
+  spawnSync('git', ['add', 'PRIVATE-SYNERGY-acme.md'], { cwd: dir })
+  try {
+    const { stdout } = runHook('session-start.sh', '', { cwd: dir })
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const ctx = objects.length === 0
+      ? ''
+      : String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    return ctx.includes('PRIVATE-SYNERGY-acme.md') && ctx.includes('private')
+      ? { ok: true }
+      : { ok: false, reason: `missing overlay warning: ${ctx.slice(0, 150)}` }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

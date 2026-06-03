@@ -40,6 +40,12 @@ next wave or sprint close
 
 Repeat the execute-wave + post-wave-gate cycle for each wave in the plan.
 
+When beads is the source, `bd` is the run-state (claim/close). When the source
+is a `ROADMAP.md` or a manual list, the `SWARM-NN.md` `### Item Status` table is
+the run-state instead — the orchestrator advances each row
+`pending → claimed → done` (or `carried`). See `command-patterns.md`
+"Beadless run-state equivalents".
+
 ## Post-Wave Gate Sequence
 
 Six steps, all blocking — the gate must fully pass before proceeding.
@@ -57,7 +63,9 @@ Six steps, all blocking — the gate must fully pass before proceeding.
    any HIGH-severity fix was made.
 6. **Commit**: `git commit --no-gpg-sign -m "feat: wave N — [theme]"`.
    Close completed wave issues with `bd close`. Update wave status to
-   `committed` in the SWARM file.
+   `committed` in the SWARM file. **Beadless source** (ROADMAP / manual): there
+   are no `bd close` calls — mark each completed item `done` in the wave's
+   `### Item Status` table; wave `Status: committed` closes the wave.
 
 ## Retrospective Frequency
 
@@ -70,16 +78,16 @@ Six steps, all blocking — the gate must fully pass before proceeding.
 
 ## Anti-Patterns
 
-| Anti-Pattern | Why It Fails | Fix |
-|---|---|---|
-| Shared file in same wave | Agents clobber each other's changes | Split to separate waves |
-| Launching before pressure check | OOM mid-wave kills agents | Phase 3 check first |
-| Committing before gate passes | Broken code lands in main | Gate is non-negotiable |
-| Skipping `bd close` in agent prompt | Issues stay `in_progress` forever | Always include completion instruction |
-| Research agents writing source files | Non-deterministic mutations | Research agents get read-only source access |
-| >6 code agents on 32GB | Context window thrash | Use the ceiling table in `agent-concurrency-limits.md` |
-| Opening next wave before prior committed | Interleaved git history | Serial wave commits |
-| Fat agent prompts (>3 issues per agent) | Incomplete work, scope creep | 1-3 issues per agent |
-| No file-scope constraint in prompt | Agent wanders outside scope | Exhaustive file list required |
-| Parallelizing tests | Test interference, flaky results | Sequential tests after gate |
-| Closing sprint with open in_progress issues | Phantom work, stale claims | Verify with `bd list --status in_progress` |
+| Anti-Pattern                                 | Why It Fails                        | Fix                                                    |
+| -------------------------------------------- | ----------------------------------- | ------------------------------------------------------ |
+| Shared file in same wave                     | Agents clobber each other's changes | Split to separate waves                                |
+| Launching before pressure check              | OOM mid-wave kills agents           | Phase 3 check first                                    |
+| Committing before gate passes                | Broken code lands in main           | Gate is non-negotiable                                 |
+| Skipping `bd close` in agent prompt          | Issues stay `in_progress` forever   | Always include completion instruction                  |
+| Research agents writing source files         | Non-deterministic mutations         | Research agents get read-only source access            |
+| >6 code agents on 32GB                       | Context window thrash               | Use the ceiling table in `agent-concurrency-limits.md` |
+| Opening next wave before prior committed     | Interleaved git history             | Serial wave commits                                    |
+| Fat agent prompts (>3 issues per agent)      | Incomplete work, scope creep        | 1-3 issues per agent                                   |
+| No file-scope constraint in prompt           | Agent wanders outside scope         | Exhaustive file list required                          |
+| Parallelizing tests                          | Test interference, flaky results    | Sequential tests after gate                            |
+| Closing sprint with open in\_progress issues | Phantom work, stale claims          | Verify with `bd list --status in_progress`             |

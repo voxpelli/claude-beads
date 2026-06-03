@@ -22,14 +22,14 @@ practice.
 
 ## Subject Framing
 
-There are three distinct identity domains across the vp-* plugin family.
+There are three distinct identity domains across the vp-\* plugin family.
 Keep them disjoint — conflating them is the predictable failure mode:
 
-| Domain | What it names | Authoritative source | Who uses it |
-|---|---|---|---|
-| **Sibling** | A peer project (e.g., another vp-* plugin) | `synergy-registry.json` `name` field on the asking side | `/synergy-tracker`, `/sibling-sync` |
-| **Self** | This project, as the sibling sees us | The sibling's `synergy-registry.json` `name` field for our entry; falls back to our manifests | `/sibling-sync` only (workflow 3 (Sync sibling UPSTREAM) Mode B, workflow 4 (Apply reciprocation batch)) |
-| **Vendor** | A third-party dependency (npm, brew, etc.) | `vendor-registry.json` `package` field | `/upstream-tracker`, `/vendor-sync` |
+| Domain      | What it names                               | Authoritative source                                                                          | Who uses it                                                                                              |
+| ----------- | ------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Sibling** | A peer project (e.g., another vp-\* plugin) | `synergy-registry.json` `name` field on the asking side                                       | `/synergy-tracker`, `/sibling-sync`                                                                      |
+| **Self**    | This project, as the sibling sees us        | The sibling's `synergy-registry.json` `name` field for our entry; falls back to our manifests | `/sibling-sync` only (workflow 3 (Sync sibling UPSTREAM) Mode B, workflow 4 (Apply reciprocation batch)) |
+| **Vendor**  | A third-party dependency (npm, brew, etc.)  | `vendor-registry.json` `package` field                                                        | `/upstream-tracker`, `/vendor-sync`                                                                      |
 
 This document covers the **sibling** and **self** domains. Vendor names are
 governed by the vendor-registry convention (see `CLAUDE.md` "Vendor registry
@@ -82,7 +82,7 @@ root, when computing the sibling's name from a sibling-registry entry's
 `local-path`). If the file exists and has a non-empty `name` string, use it.
 
 Rationale: the plugin manifest is the canonical identity declaration for
-Claude Code plugins. For vp-* plugins specifically, this is the most reliable
+Claude Code plugins. For vp-\* plugins specifically, this is the most reliable
 self-identity source.
 
 In practice, tier 2 is the operative tier when:
@@ -188,7 +188,7 @@ Tier 3 wins; SYNERGY filename is `SYNERGY-vp-knowledge.md`.
 - **Non-npm ecosystems** (Cargo, Composer, pyproject.toml, go.mod, Gemfile)
   have no tier-2/3 manifest the algorithm reads. They fall through to tier 4
   (directory basename). Today no non-npm sibling project is registered in
-  any vp-* synergy-registry, so this is a latent gap, not an active bug. See
+  any vp-\* synergy-registry, so this is a latent gap, not an active bug. See
   the YAGNI revival trigger below.
 - **Monorepo subdirectory checkouts** — directory basename may include
   segments that aren't part of the canonical name (e.g., `packages/ui`).
@@ -204,20 +204,20 @@ Tier 3 wins; SYNERGY filename is `SYNERGY-vp-knowledge.md`.
 - **YAGNI position on ecosystem expansion**: the algorithm deliberately
   does NOT probe `Cargo.toml`, `pyproject.toml`, `go.mod`, `Gemfile`, or
   `composer.json` in tier 3 today. The revival trigger is: when the second
-  non-npm sibling project is added to ANY synergy-registry across the vp-*
+  non-npm sibling project is added to ANY synergy-registry across the vp-\*
   family, extend tier 3 to probe the relevant manifest. See the open bead
   with title "extend project-name-derivation tier 3 with non-npm manifest
   readers" for the concrete graduation steps.
 
 ## Consumer Summary
 
-| Consumer | Subject | Tiers exercised in practice | Notes |
-|---|---|---|---|
-| `/synergy-tracker` workflow 1 (Log a synergy entry) | sibling | tier 3 (registry `name`), tier 4 (dir basename for unregistered siblings) | Auto-creates `SYNERGY-<sibling>.md` files when missing. Tiers 1/2 unreachable for the sibling subject in this workflow. |
-| `/synergy-tracker` workflows 2 (Review open synergies), 3 (Compare with sibling), 4 (Trend review) | sibling | tier 3 only | Read existing files via registry; never auto-create. |
-| `/sibling-sync` workflow 2 (Sync sibling SYNERGY) | sibling | tier 3 (this project's registry) | Bidirectional title comparison; same as synergy-tracker workflows 2 (Review open synergies), 3 (Compare with sibling), 4 (Trend review). |
-| `/sibling-sync` workflow 3 (Sync sibling UPSTREAM) Mode B step 2 (Detect Mode B pair) | self + sibling | tiers 1–4 (self), tier 3 (sibling) | The self-subject use site that motivates tier 1 (sibling-registry back-pointer). |
-| `/sibling-sync` workflow 4 (Apply reciprocation batch) step 2.2 (Determine destination file) | self | tiers 1–4 | Constructs `<sibling>/SYNERGY-<this-project>.md` for opt-in reciprocation writes. |
+| Consumer                                                                                           | Subject        | Tiers exercised in practice                                               | Notes                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `/synergy-tracker` workflow 1 (Log a synergy entry)                                                | sibling        | tier 3 (registry `name`), tier 4 (dir basename for unregistered siblings) | Auto-creates `SYNERGY-<sibling>.md` files when missing. Tiers 1/2 unreachable for the sibling subject in this workflow.                  |
+| `/synergy-tracker` workflows 2 (Review open synergies), 3 (Compare with sibling), 4 (Trend review) | sibling        | tier 3 only                                                               | Read existing files via registry; never auto-create.                                                                                     |
+| `/sibling-sync` workflow 2 (Sync sibling SYNERGY)                                                  | sibling        | tier 3 (this project's registry)                                          | Bidirectional title comparison; same as synergy-tracker workflows 2 (Review open synergies), 3 (Compare with sibling), 4 (Trend review). |
+| `/sibling-sync` workflow 3 (Sync sibling UPSTREAM) Mode B step 2 (Detect Mode B pair)              | self + sibling | tiers 1–4 (self), tier 3 (sibling)                                        | The self-subject use site that motivates tier 1 (sibling-registry back-pointer).                                                         |
+| `/sibling-sync` workflow 4 (Apply reciprocation batch) step 2.2 (Determine destination file)       | self           | tiers 1–4                                                                 | Constructs `<sibling>/SYNERGY-<this-project>.md` for opt-in reciprocation writes.                                                        |
 
 When in doubt, prefer the highest tier that yields a value. Tier 1 is
 specifically for the cross-side case where the sibling's authoritative

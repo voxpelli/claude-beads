@@ -7,15 +7,15 @@ the workflow steps.
 
 Search Basic Memory for an existing entity note using the correct directory:
 
-| UPSTREAM target | BM search pattern | BM directory |
-|---|---|---|
-| npm packages | `npm:<package>` | `npm/` |
-| `brew:` tools | `brew:<name>` | `brew/` |
-| `cask:` tools | `cask:<name>` | `casks/` |
-| `action:` tools | `action:<owner>/<repo>` | `actions/` |
-| `docker:` tools | `docker:<image>` | varies |
-| `vscode:` tools | `vscode:<ext>` | `vscode/` |
-| Non-package repos | search by name | varies — search first |
+| UPSTREAM target   | BM search pattern       | BM directory          |
+| ----------------- | ----------------------- | --------------------- |
+| npm packages      | `npm:<package>`         | `npm/`                |
+| `brew:` tools     | `brew:<name>`           | `brew/`               |
+| `cask:` tools     | `cask:<name>`           | `casks/`              |
+| `action:` tools   | `action:<owner>/<repo>` | `actions/`            |
+| `docker:` tools   | `docker:<image>`        | varies                |
+| `vscode:` tools   | `vscode:<ext>`          | `vscode/`             |
+| Non-package repos | search by name          | varies — search first |
 
 ## Target Section Structure
 

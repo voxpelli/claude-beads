@@ -1,6 +1,6 @@
 # vp-beads
 
-A [Claude Code](https://claude.ai/code) plugin that automates the sprint workflow for projects using [beads](https://github.com/steveyegge/beads) and [Basic Memory](https://github.com/basicmachines-co/basic-memory). Sync vendor subtrees, track upstream friction, close sprints, run retrospectives — all without leaving your terminal.
+A [Claude Code](https://claude.ai/code) plugin that automates the sprint workflow for projects that track work in [beads](https://github.com/steveyegge/beads) — or in a `ROADMAP.md` / `VISION.md` split, or a manual list — backed by [Basic Memory](https://github.com/basicmachines-co/basic-memory). Sync vendor subtrees, track upstream friction, close sprints, run retrospectives — all without leaving your terminal. Beads is the default substrate, not a requirement: skills degrade gracefully without it (see [Work-tracking substrates](#work-tracking-substrates)).
 
 ## What it does
 
@@ -16,13 +16,13 @@ Triggers automatically when a sprint closes and gives a concise summary with a s
 
 Reads git history, open beads issues, `UPSTREAM-*.md` files, and (when available) Basic Memory friction notes for cross-project awareness, then recommends one of five actions:
 
-| Recommendation | Condition |
-|---|---|
-| **Not ready** | Fewer than 3 meaningful commits |
-| **Ready to close** — run `/retrospective` | Clean state, no gaps |
+| Recommendation                                       | Condition                                                      |
+| ---------------------------------------------------- | -------------------------------------------------------------- |
+| **Not ready**                                        | Fewer than 3 meaningful commits                                |
+| **Ready to close** — run `/retrospective`            | Clean state, no gaps                                           |
 | **Groom the backlog first** — run `/backlog-groomer` | Bloated or stale backlog (>30 open, carry-overs, stale issues) |
-| **Upstream work first** — run `/upstream-tracker` | Untracked friction detected |
-| **Trend-review sprint** | Every 4th sprint — full audit ahead |
+| **Upstream work first** — run `/upstream-tracker`    | Untracked friction detected                                    |
+| **Trend-review sprint**                              | Every 4th sprint — full audit ahead                            |
 
 Read-only. Never writes files.
 
@@ -54,6 +54,16 @@ Six workflows in two groups:
 **Research** — investigate a topic using multi-source research (Basic Memory → DeepWiki → Tavily), create structured issues from findings with title conventions and dependency linking, or enrich an existing issue with research context.
 
 All mutations require explicit user approval. Complements sprint-review (which fires at sprint end) by operating at sprint start.
+
+### `/harden-memories` — Audit and prune `bd remember` entries
+
+Keep the project's `bd remember` store lean so each entry earns its per-session `bd prime` injection cost:
+
+```
+/harden-memories
+```
+
+**Read-only** — it audits and recommends, you run the commands. Reads `bd memories`, classifies each entry with the three-question taxonomy (already in CLAUDE.md / auto-memory MEMORY.md / Basic Memory → remove; stable architecture → migrate; recovery-trigger-only → keep), and presents a triage table **plus the exact `bd forget` / migration commands for you to review and run** — it never writes a file, never writes Basic Memory, and never runs `bd forget` itself, keeping the irreversible delete under your control (no automated "verify-then-delete" can be trusted to gate it). Conservative pruning, never aggressive deletion. Scoped strictly to the `bd remember` store (not Claude Code's Auto Dream, not Basic Memory graph hygiene). Tier B: stops cleanly when beads is absent. Periodic audits (≈ every 4 sprints) typically recover \~40% of the injected-memory token budget.
 
 ### `/upstream-tracker` — Upstream issue tracking
 
@@ -91,7 +101,7 @@ Step 7 cross-references the full sync diff against open `UPSTREAM-*.md` entries 
 
 ### `/sibling-sync [--auto-reciprocate] [sibling-name]` — Bilateral sibling reconciliation
 
-Compare `SYNERGY-*.md` and `UPSTREAM-*.md` files between this project and registered sibling vp-* projects:
+Compare `SYNERGY-*.md` and `UPSTREAM-*.md` files between this project and registered sibling vp-\* projects:
 
 ```
 /sibling-sync
@@ -120,13 +130,37 @@ Orchestrate multi-agent development sprints using the swarm wave pattern:
 
 Five workflows:
 
-- **Plan a swarm sprint** — reads `bd ready`, builds a file-contention map, groups file-disjoint issues into waves, and generates a `SWARM-NN.md` plan for approval
+- **Plan a swarm sprint** — sources work from beads (`bd ready`), else a `ROADMAP.md` (read in its own idiom — see [Work-tracking substrates](#work-tracking-substrates)), else a manual list; builds a file-contention map, groups file-disjoint items into waves, and generates a `SWARM-NN.md` plan for approval. Beadless waves track run-state in the `SWARM-NN.md` Item Status table instead of `bd` claim/close
 - **Execute a wave** — claims issues, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
 - **Post-wave gate** — hard blocking quality gate: two review agents (code + domain-specific) in parallel with `npm run check`, sequential tests, fix loop, commit + close. After the final wave, offers `/retrospective` handoff
 - **Map file contention** — standalone utility to build a file-to-issue matrix and flag hot files
 - **Research wave** — parallel research orchestration with dedup, code validation, and handoff to `/backlog-groomer` for issue creation
 
 `SWARM-NN.md` files are ephemeral (gitignored). All wave execution requires explicit user approval. File isolation is enforced via exhaustive per-agent file lists — no directory globs.
+
+## Work-tracking substrates
+
+vp-beads does not force beads. It works against whatever substrate a project already uses to track work:
+
+- **beads** (`bd`) — the default and richest substrate: typed issues, dependencies, priorities, health checks. Used directly when a `.beads/` directory exists and `bd` is on `PATH`.
+- **`ROADMAP.md`** — a work plan **in whatever structure the project already uses**. `/swarm-wave` reads it in its own idiom (waves, status markers, file scopes) and never imposes a format; it declines cleanly when the file is not a parallelizable work plan. vp-beads never rewrites your ROADMAP.
+- **`VISION.md`** — direction and voice, **not** a backlog. vp-beads never sources work items from it.
+- **Manual list** — `/swarm-wave` can also plan from work items you supply inline, with no file at all.
+
+How each skill behaves without beads is defined once by the `### Beads-availability convention` in [`CLAUDE.md`](CLAUDE.md): Tier A (require-or-fallback — `/swarm-wave`), Tier B (beads-specific stop with a redirect — `/backlog-groomer`), Tier C (degrade-and-announce — `/retrospective`, the sprint-review agent). Silently skipping a `bd` step is treated as a bug.
+
+### Local-only vs committed beads
+
+When you do use beads, vp-beads **recommends** (does not mandate) treating `.beads/` as local-only — gitignored, like `SWARM-*.md` and `RETRO-*.md` — rather than committing `issues.jsonl` for cross-machine sharing:
+
+| Aspect              | Local-only (recommended)                                    | Committed (`bd` default)                   |
+| ------------------- | ----------------------------------------------------------- | ------------------------------------------ |
+| `.beads/` in git    | gitignored                                                  | `issues.jsonl` committed                   |
+| Cross-machine share | no (issues are machine-local, disposable)                   | yes (issues travel with the repo)          |
+| Sync edge cases     | avoided (no committed export to go stale)                   | JSONL↔Dolt import races possible           |
+| Best when           | tracker is a private convenience, not a shipped deliverable | issues are part of what collaborators need |
+
+This repository itself runs local-only — see [beads configuration in this repository](#beads-configuration-in-this-repository).
 
 ## Installation
 
@@ -158,7 +192,7 @@ Add to `~/.claude/settings.json`:
 
 ### Required
 
-**[beads](https://github.com/steveyegge/beads)** (`bd` CLI) — git-backed issue tracker. The retrospective skill creates beads issues from findings and runs `bd stats` for health checks.
+**[beads](https://github.com/steveyegge/beads)** (`bd` CLI) — git-backed issue tracker; the default work-tracking substrate (recommended, not strictly required — see [Work-tracking substrates](#work-tracking-substrates)). When present, the retrospective skill creates beads issues from findings and runs `bd stats` for health checks; without it, skills degrade per the availability convention rather than stopping.
 
 **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** MCP server — the knowledge graph backend for writing sprint learnings:
 
@@ -173,6 +207,28 @@ claude mcp add basic-memory -- basic-memory mcp
 ```
 
 vp-beads intentionally does not duplicate vp-knowledge's BM hooks — see [How it fits together](#how-it-fits-together) and [Relationship to vp-knowledge](#relationship-to-vp-knowledge).
+
+## beads configuration in this repository
+
+This project uses **[beads](https://github.com/gastownhall/beads)** (`bd` CLI) for
+issue tracking, configured as a **fully-local** working artifact: the entire
+`.beads/` directory is **gitignored** and never committed or pushed. Issues are
+treated as machine-local, ephemeral working state — like the `SWARM-*.md` and
+`RETRO-*.md` files — not as part of the shared repo. They live only in the local
+Dolt database (`.beads/dolt/`). This deliberately overrides bd's convention of
+committing `.beads/issues.jsonl` for cross-machine sharing.
+
+- **Dolt mode:** `server` (localhost, PID managed by `bd`); database `vp_beads`
+- **Not shared via git:** `.beads/` is in `.gitignore`; `bd dolt push` is not used.
+  Issue history is intentionally local — losing it (e.g. a fresh clone) is
+  acceptable, the same way a `SWARM-*.md` scratch file is disposable.
+
+> **Why local-only:** beads here is a convenience, not a deliverable. The
+> tracker data is not part of what this plugin ships or what collaborators need.
+> Keeping it out of git also sidesteps bd's Dolt-sync edge cases (e.g. the
+> JSONL↔Dolt import races that bit earlier versions) by never maintaining a
+> committed export to go stale. A migration off bd is also under exploration
+> (epic `vp-beads-l9i`).
 
 ## Conventions
 
@@ -205,6 +261,10 @@ File naming examples:
 - `brew:ripgrep` → `UPSTREAM-brew--ripgrep.md`
 - `action:actions/checkout` → `UPSTREAM-action--actions--checkout.md`
 
+### Private SYNERGY overlays
+
+For cross-project notes that must stay out of a public repo (a proprietary sibling's internal paths, client names, unreleased plans), add a **gitignored** `PRIVATE-SYNERGY-<project>.md` companion alongside the committed `SYNERGY-<project>.md`. It holds extra private entries under the same four section headings. The `PRIVATE-` prefix is the safety mechanism: it keeps the overlay **outside the `SYNERGY-*.md` glob namespace**, so every public consumer (retrospective, sprint-review, promotion, reciprocation, the session-start hook) structurally cannot read it — **private entries are never promoted to Basic Memory or reciprocated to a sibling**, by construction rather than by per-consumer discipline. Only synergy-tracker's local-only review deliberately reads both files. Gitignored via the `PRIVATE-SYNERGY-*.md` rule; the session-start hook warns if any is accidentally tracked.
+
 ## Plugin structure
 
 ```
@@ -216,6 +276,8 @@ skills/
     SKILL.md                            Backlog triage and research workflow
     references/
       backlog-health-heuristics.md      Staleness, closure, priority heuristics
+  harden-memories/
+    SKILL.md                            Audit and prune bd remember entries
   retrospective/
     SKILL.md                            Sprint retrospective workflow
   upstream-tracker/
@@ -241,9 +303,8 @@ skills/
       agent-concurrency-limits.md       Memory pressure, backpressure protocol
       command-patterns.md               Research agent selection, agent prompts
 hooks/
-  hooks.json                            Hook definitions (4 event types)
-  precompact.sh                         Sprint insight capture before compaction
-  session-start.sh                      Sensitive-file warning, dormancy nudges, trend-review
+  hooks.json                            Hook definitions (3 event types)
+  session-start.sh                      Compaction recovery (source=compact) + sensitive-file warning, dormancy nudges, trend-review
   post-file-edit.sh                     Auto-format hooks/*.sh and scripts/*.sh with shfmt
   post-bm-failure-classify.sh           BM error classification + recovery guidance
 ```
@@ -284,7 +345,8 @@ hooks/
                                                   -> --auto-reciprocate writes
 
  "swarm sprint" / "wave" -> swarm-wave skill      -> SWARM-NN.md wave plan
- /swarm-wave                                      -> parallel agent execution
+ /swarm-wave                                      -> sources: beads / ROADMAP / manual
+                                                  -> parallel agent execution
                                                   -> post-wave quality gate
                                                   -> chains to /retrospective
 
@@ -303,11 +365,11 @@ hooks/
 
 Concrete integration points:
 
-| vp-beads feature | vp-knowledge dependency |
-|---|---|
-| Retrospective step 6 | Chains into `/knowledge-gaps` |
-| All BM writes (upstream-tracker W6, vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema |
-| Sprint learnings | Written to the same BM graph vp-knowledge maintains |
+| vp-beads feature                                                     | vp-knowledge dependency                             |
+| -------------------------------------------------------------------- | --------------------------------------------------- |
+| Retrospective step 6                                                 | Chains into `/knowledge-gaps`                       |
+| All BM writes (upstream-tracker W6, vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema   |
+| Sprint learnings                                                     | Written to the same BM graph vp-knowledge maintains |
 
 **Do not duplicate vp-knowledge hooks in vp-beads.** Both plugins are installed together; duplicating hooks causes double-fire (benign but wasteful) and creates a maintenance burden.
 

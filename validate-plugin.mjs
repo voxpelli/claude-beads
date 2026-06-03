@@ -4,6 +4,8 @@ import { join, relative } from 'node:path'
 
 import yaml from 'js-yaml'
 
+import { auditSilentSkips } from './scripts/audit-silent-skips.mjs'
+
 const ROOT = new URL('.', import.meta.url).pathname.replace(/\/$/, '')
 
 /** @type {string[]} */
@@ -397,6 +399,9 @@ for (const file of skillFiles) {
     auditToolReferences(file, content, /** @type {string[]} */ (fm['allowed-tools']), 'allowed-tools')
   }
   auditWorkflowReferences(file, content)
+  for (const f of auditSilentSkips(content)) {
+    warn(file, `${f.line} — un-announced silent skip of a bd step (CLAUDE.md "### Beads-availability convention" requires announce/Tier): ${f.snippet}`)
+  }
   if ('user-invocable' in fm && typeof fm['user-invocable'] !== 'boolean') {
     error(file, `user-invocable must be a boolean, got ${typeof fm['user-invocable']}`)
   }
@@ -459,6 +464,9 @@ if (existsSync(agentsDir)) {
       auditToolReferences(file, content, /** @type {string[]} */ (fm.tools), 'tools')
     }
     auditWorkflowReferences(file, content)
+    for (const f of auditSilentSkips(content)) {
+      warn(file, `${f.line} — un-announced silent skip of a bd step (CLAUDE.md "### Beads-availability convention" requires announce/Tier): ${f.snippet}`)
+    }
 
     if ('effort' in fm && !VALID_EFFORT_VALUES.has(String(fm.effort))) {
       warn(file, `effort "${String(fm.effort)}" is not a recognized value (${[...VALID_EFFORT_VALUES].join(', ')})`)

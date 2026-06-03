@@ -70,7 +70,7 @@ assistant: "I'll use the sprint-review agent to summarize this sprint and recomm
 
 The agent then produces output like:
 
-````markdown
+```markdown
 ### Sprint position
 - **Sprint 13** (since RETRO-12, 2026-05-06 → 2026-05-08)
 - Next trend-review sprint: Sprint 16 (3 sprints away)
@@ -97,7 +97,8 @@ The agent then produces output like:
 ### Recommendation
 **Ready to close.** Solid 9-commit sprint, clean backlog, no upstream
 gaps. Run `/retrospective` when ready to generate RETRO-13.md.
-````
+```
+
 <commentary>
 This is the canonical output shape: five sections, terse, scannable, ends with one of the five recommendations and the next-step command. The agent never writes the RETRO file itself — it hands off to `/retrospective`.
 </commentary>
@@ -120,6 +121,10 @@ If `bd` is available:
 ```bash
 bd stats 2>/dev/null
 ```
+
+If `bd` is unavailable, **announce** it (per the Edge Cases "Beads unavailable"
+entry) and skip only the `bd stats` line — do not silently omit it. Still report
+the sprint number and date range from the git/RETRO data above.
 
 Report: current sprint number, date range covered, whether a trend-review sprint
 is upcoming.
@@ -155,6 +160,11 @@ bd list --status open 2>/dev/null | head -40
 bd blocked 2>/dev/null
 bd stale --days 60 2>/dev/null
 ```
+
+If `bd` is unavailable, **announce** the skip (per the Edge Cases "Beads
+unavailable" entry) — do not silently omit this section — and report the
+backlog-health signals below as "n/a (beads not active)". If a `ROADMAP.md`
+exists, point to it as the likely work record (do not parse or rank it).
 
 Flag any `in_progress` issues that were not completed this sprint (potential
 carry-overs). Count total open issues and note the count explicitly.
@@ -251,7 +261,7 @@ Present findings in this order:
    SYNERGY extraction-ready candidates
 5. **Recommendation** — one of the five options above, with next-step command
 
-Keep total output under ~40 lines. Use markdown headers and bullet points.
+Keep total output under \~40 lines. Use markdown headers and bullet points.
 Do not write any files. Do not call `/retrospective` or `/upstream-tracker`
 yourself — recommend them and let the user invoke them.
 
@@ -291,8 +301,14 @@ to mutate the project. The boundary is enforced both by the frontmatter
 
 ## Edge Cases
 
-- **No `.beads/` directory** — skip all `bd` commands silently; note that beads
-  is not active in this project
+- **Beads unavailable** (Tier C) — Beads is available iff a `.beads/` directory
+  exists **and** `command -v bd` succeeds; this component is **Tier C** per
+  CLAUDE.md `### Beads-availability convention`. When unavailable, **announce**
+  it (e.g. "Beads not active here — skipping the open-issue assessment in
+  Step 3") and run the rest of the review; do **not** skip the `bd` steps
+  silently. If a `ROADMAP.md` exists, point the user to it as the likely work
+  record — but do **not** parse or rank it (it may not be a parallelizable work
+  list; this pointer is best-effort and non-authoritative).
 - **No `UPSTREAM-*.md` files** — if SYNERGY files exist, the user has chosen
   their tracking approach; skip the upstream suggestion silently. Otherwise,
   note that upstream tracking is not yet set up and suggest creating files if
@@ -302,8 +318,6 @@ to mutate the project. The boundary is enforced both by the frontmatter
 - **No `RETRO-*.md` files** — treat this as Sprint 1; all commits are in scope
 - **Very large commit history** — limit to the 30 most recent commits; note the
   limit in your output
-- **`bd` command not found** — skip beads steps silently; the plugin works
-  without beads in non-beads projects
 - **Clean working tree with no new commits since last retro** — report honestly;
   do not fabricate activity
 - **`/session-reflect` skill available (vp-knowledge)** — as a subagent you

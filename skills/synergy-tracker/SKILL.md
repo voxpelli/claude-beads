@@ -5,6 +5,7 @@ user-invocable: true
 argument-hint: "[workflow] [project-name]"
 paths:
   - "SYNERGY-*.md"
+  - "PRIVATE-SYNERGY-*.md"
   - ".claude/synergy-registry.json"
 allowed-tools:
   - Read
@@ -61,6 +62,43 @@ SYNERGY files are **permanent** — they always exist for registered sibling
 projects, even when all sections are empty. When an entry is resolved or
 dismissed, remove it and restore the `_No entries yet._` placeholder for that
 section. Do not delete the file.
+
+### Private overlay (`PRIVATE-SYNERGY-*.md`)
+
+For entries that must stay out of a public repo (a proprietary sibling's
+internal paths, client names, unreleased plans), use a **gitignored**
+`PRIVATE-SYNERGY-<project-name>.md` companion to the committed
+`SYNERGY-<project-name>.md`. It holds additional private entries under the same
+four section headings.
+
+**The `PRIVATE-` prefix is the privacy mechanism.** It keeps the overlay
+OUTSIDE the `SYNERGY-*.md` glob namespace, so every public consumer (this
+skill's boundary-crossing workflows, `/sibling-sync`, `/retrospective`, the
+`sprint-review` agent, `session-start.sh`) **structurally cannot read it** — no
+per-consumer exclusion is needed or used. Only the deliberate *local-only* read
+in workflow 2 (Review) additionally globs `PRIVATE-SYNERGY-*.md` to assemble the
+combined private view.
+
+**Invariant: private-overlay entries are NEVER promoted to Basic Memory
+(workflow 5 (Promote to Basic Memory)) and NEVER reciprocated/written to a
+sibling.** With the prefix scheme this is enforced structurally — the promote
+and reciprocate paths glob `SYNERGY-*.md`, which cannot match
+`PRIVATE-SYNERGY-*.md`. This keeps the public view a sibling sees stable (so
+bilateral convergence still works) and prevents a proprietary↔public leak.
+
+When a `PRIVATE-SYNERGY-*.md` overlay exists, the committed
+`SYNERGY-<project-name>.md` carries a one-line pointer noting it (gitignored
+files are invisible to collaborators and `git grep`). Gitignored via the
+explicit `PRIVATE-SYNERGY-*.md` line; `session-start.sh` warns if any is
+tracked. Full convention: CLAUDE.md `### Synergy tracking convention`.
+
+**Same-title shadowing (workflow 2 (Review) only).** When a private entry shares
+a title with a committed entry, surface **both** in the review view — the
+committed row (still promotable/reciprocable) labelled `[committed, shadowed]`
+and the private row labelled `[local]` — so the reviewer never loses sight that
+a public twin exists. This local-view assembly never participates in
+`/sibling-sync`'s title-keyed bilateral matching, which reads committed entries
+only.
 
 ### Structure
 
@@ -145,6 +183,7 @@ rather than re-asking each time.
 - **Confirm the sibling name** resolved from step 1. If step 1 deferred to
   asking the user, defer this step too — only proceed once a name is in
   hand.
+
 - **Derive both project names before proceeding.**
   - `<sibling>` — the name confirmed in step 1. In practice this is already
     the tier-3 registry `name` field (or, for unregistered siblings, the
@@ -158,6 +197,7 @@ rather than re-asking each time.
     resolves immediately. Use the normalized result as `<this-project>`
     everywhere below: in the `bm-entity` value and in any reciprocal file
     references.
+
 - **Auto-derive the four registry fields** that have unambiguous defaults:
   - `name` — already known from step 1.
   - `file` — mechanical: `SYNERGY-<sibling>.md`.
@@ -173,6 +213,7 @@ rather than re-asking each time.
   - `bm-entity` — apply the canonical convention
     `engineering/agents/vp-plugins-<this-project>-and-<sibling>` (see
     `references/synergy-entry-format.md`).
+
 - **Prompt only the residuals.** At most two `AskUserQuestion` calls
   (Anthropic SDK caps the `header` field at 12 characters):
   - One call with `header: "Relationship"` (12 chars). The validator's
@@ -189,6 +230,7 @@ rather than re-asking each time.
     second call with `header: "Local path"` (10 chars) — free-text or
     skip. If the user provides a path, it goes into
     `.claude/synergy-registry.local.json`, never into the base registry.
+
 - **Preview both files in a single message** before writing anything. Use
   this shape (omit the `.local.json` block when no local-path was
   supplied). Show BOTH the placeholder schema and a worked substitution so
@@ -234,11 +276,13 @@ rather than re-asking each time.
   `name`, `remote`, `bm-entity`, `relationship`, or the optional
   `local-path`, then re-render the preview. On `skip`, continue the
   workflow without writing the registry — resume to step 2.
+
 - **Write the files using the `Write` tool.** Always write
   `.claude/synergy-registry.json`, and additionally write
   `.claude/synergy-registry.local.json` only when a `local-path` was
   provided. The `.local.json` is always a separate file — never embed
   `local-path` in the committed base registry.
+
 - **Verify round-trip.** Use the `Read` tool to re-read each written file,
   then validate the JSON via
   `node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' <path>`
@@ -249,6 +293,7 @@ rather than re-asking each time.
   re-run; do not proceed to step 2 with a broken base registry. On
   `.local.json` parse failure only, warn and continue without the local
   override (the base registry is still usable).
+
 - **Check that `.local.json` is gitignored** when one was written:
 
   ```bash
@@ -264,15 +309,16 @@ rather than re-asking each time.
   failed (not a git repo, or another git error) — report the underlying
   error and skip the gitignore warning rather than emitting a
   false-positive.
+
 - **Resume to step 2** (Basic Memory pre-check).
 
 2. **Basic Memory pre-check.** If Basic Memory MCP tools are available, make
    two `mcp__basic-memory__search_notes` calls: one with the sibling project
    name, one with 2-4 keywords describing the topic being logged (e.g.,
-   "PreCompact prompt command hook" or "edit_note append gotcha"). If either
+   "PreCompact prompt command hook" or "edit\_note append gotcha"). If either
    search returns a matching note with synergy-related or engineering-pattern
    content, surface it to the user: "This pattern is already tracked in Basic
-   Memory: \[summary\]. Logging it locally as well so this project tracks it."
+   Memory: \[summary]. Logging it locally as well so this project tracks it."
    If Basic Memory tools are not available, skip this step silently.
 3. If no `SYNERGY-<project>.md` file exists yet, create it from the template
    in `references/synergy-entry-format.md` (four sections with placeholders).
@@ -281,25 +327,37 @@ rather than re-asking each time.
    - **Divergence** — the projects handle this differently
    - **Extraction Candidate** — this project has something worth extracting
    - **They Have / We Don't** — the sibling has something we lack
-5. Read the target `SYNERGY-*.md` file.
+5. Read the target file. **If the entry is proprietary** (names a private
+   sibling's internal paths, client names, or unreleased plans that must not
+   reach a public repo), target the gitignored `PRIVATE-SYNERGY-<project>.md`
+   overlay instead of the committed `SYNERGY-<project>.md` (see
+   `### Private overlay`). Before the first write to a new overlay, verify it is
+   ignored: `git check-ignore -q PRIVATE-SYNERGY-<project>.md` (exit 0 = ignored,
+   safe; exit 1 = NOT ignored — stop and have the user add `PRIVATE-SYNERGY-*.md`
+   to `.gitignore` first). Then add a one-line pointer to the committed file
+   (e.g. "*A private `PRIVATE-SYNERGY-<project>.md` overlay exists for this
+   sibling.*") so collaborators know it may exist. Otherwise target the committed
+   `SYNERGY-<project>.md`.
 6. Compose the entry from this project's perspective using the entry format from
    `references/synergy-entry-format.md`. Focus on impact and adoption cost, not
    implementation internals.
 7. Add the entry under the correct section heading, using today's date. When
    adding the first entry to a section, replace the `_No entries yet._`
    placeholder. Keep entries concise — 1-3 sentences. The title should be
-   scannable.
+   scannable. **Entries written to a `PRIVATE-SYNERGY-*.md` overlay are never
+   promoted to Basic Memory or reciprocated to a sibling** (privacy invariant —
+   structurally enforced by the prefix).
 
 **Structured fields** (all optional — omit fields that add no signal):
 
-| Field | Values | Section |
-|-------|--------|---------|
-| `Status:` | `aligned` · `drifting` | Shared Patterns |
-| `Last verified:` | `YYYY-MM-DD` (use today's date for new entries) | Shared Patterns |
-| `Convergence path:` | `accept-difference` · `adopt-theirs` · `propose-shared` | Divergences |
-| `Readiness:` | `ready` · `needs-cleanup` · `proof-of-concept` | Extraction Candidates |
-| `Priority:` | `adopt-soon` · `consider` · `deferred` | They Have / We Don't |
-| `Effort:` | `trivial` · `moderate` · `significant` | Extraction Candidates, They Have / We Don't |
+| Field               | Values                                                  | Section                                     |
+| ------------------- | ------------------------------------------------------- | ------------------------------------------- |
+| `Status:`           | `aligned` · `drifting`                                  | Shared Patterns                             |
+| `Last verified:`    | `YYYY-MM-DD` (use today's date for new entries)         | Shared Patterns                             |
+| `Convergence path:` | `accept-difference` · `adopt-theirs` · `propose-shared` | Divergences                                 |
+| `Readiness:`        | `ready` · `needs-cleanup` · `proof-of-concept`          | Extraction Candidates                       |
+| `Priority:`         | `adopt-soon` · `consider` · `deferred`                  | They Have / We Don't                        |
+| `Effort:`           | `trivial` · `moderate` · `significant`                  | Extraction Candidates, They Have / We Don't |
 
 See `references/synergy-entry-format.md` for full entry format templates and
 field value definitions.
@@ -342,11 +400,11 @@ sibling repo's bd backlog).
    the first entry in any SYNERGY file for this project (the user is still
    learning the workflow — promotion is premature).
 
-   | Tempo | Commits in 90 days | Promotion behavior |
-   |-------|-------------------|--------------------|
-   | **Dormant** | 0–4 | Offer inline promotion for any promotable entry |
-   | **Moderate** | 5–14 | Offer only for Extraction Candidates with `Readiness: ready` |
-   | **Active** | 15+ | Skip — the normal sprint cadence handles promotion |
+   | Tempo        | Commits in 90 days | Promotion behavior                                           |
+   | ------------ | ------------------ | ------------------------------------------------------------ |
+   | **Dormant**  | 0–4                | Offer inline promotion for any promotable entry              |
+   | **Moderate** | 5–14               | Offer only for Extraction Candidates with `Readiness: ready` |
+   | **Active**   | 15+                | Skip — the normal sprint cadence handles promotion           |
 
    When offering inline promotion, say: "This project has low commit
    frequency — SYNERGY entries can sit unread for months. This entry looks
@@ -368,7 +426,16 @@ Summarize the current state of all synergy tracking files.
 
 **Steps:**
 
-1. Glob for all `SYNERGY-*.md` files and read them.
+1. Glob for all `SYNERGY-*.md` files and read them. **This is the one local-only
+   review, so ALSO glob `PRIVATE-SYNERGY-*.md` private overlays** and assemble
+   the combined view per `### Private overlay`: merge public + private entries
+   per section and **label every private (`PRIVATE-SYNERGY`-sourced) row
+   `[local]`**. When a `[local]` entry shares a title with a committed entry,
+   show **both** (committed row `[committed, shadowed]`, private row `[local]`)
+   so the promotable public twin stays visible. A `[local]` row is review-only:
+   never offer it as a reciprocation or Basic Memory promotion candidate (those
+   paths glob `SYNERGY-*.md`, which structurally cannot reach
+   `PRIVATE-SYNERGY-*.md`).
 2. Present a summary grouped by file, showing counts per section and listing
    each open entry with title and date.
 3. Flag stale entries (older than 3 months with no activity). A Trend Review
@@ -491,6 +558,7 @@ unlogged synergy observations.
    accessible, ask the user for the path (and suggest they record it in
    `.claude/synergy-registry.local.json` to avoid re-prompting). Read the
    sibling's key files if accessible:
+
    - `package.json` — dependencies, scripts, entry points
    - `CLAUDE.md` — conventions, architecture, workflow documentation
    - Skill files (`Glob` for `skills/**/SKILL.md`) — what skills exist, their
@@ -514,7 +582,7 @@ unlogged synergy observations.
      (agents, skills, hooks, conventions this project lacks)
 4. **Propose new entries.** Present each observation as a candidate entry with
    draft text matching the format in `references/synergy-entry-format.md`. For
-   each, ask: "Log this as a \[category\] entry for \[sibling\]?" The user
+   each, ask: "Log this as a \[category] entry for \[sibling]?" The user
    approves, edits, or skips each candidate. **No mutations without approval.**
 5. Log confirmed entries by classifying, reading the file, composing, and
    adding per workflow 1 (Log) steps 4–7. Skip step 8 (eager promotion) for batch
@@ -538,8 +606,10 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
 
 **Steps:**
 
-1. **Scan for candidates.** Glob all `SYNERGY-*.md` files and read them.
-   Filter eligible entries by section + structured fields:
+1. **Scan for candidates.** Glob all `SYNERGY-*.md` files and read them. (This
+   glob structurally excludes `PRIVATE-SYNERGY-*.md` private overlays — they are
+   never promoted; see `### Private overlay`.) Filter eligible entries by
+   section + structured fields:
    - Extraction Candidates with `Readiness: ready` (always)
    - Shared Patterns with `Status: aligned` (always)
    - Shared Patterns with `Status: drifting` (flag the drift in the draft)
@@ -563,7 +633,7 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
      `Readiness:`, `Priority:`, and `Effort:` fields verbatim because they
      carry cross-project meaning.
    - Whether a Basic Memory note already exists for this sibling.
-   Let the user approve, edit, or skip each candidate.
+     Let the user approve, edit, or skip each candidate.
 3. **Route by target.** For each approved candidate, look up the sibling's
    `bm-entity` value from `.claude/synergy-registry.json` (with
    `.claude/synergy-registry.local.json` merged on top by the `name` key).
@@ -651,7 +721,12 @@ trend-review boundaries.
 
 **Input signals:**
 
-1. Glob for all `SYNERGY-*.md` files and read them.
+1. Glob for all `SYNERGY-*.md` files and read them. (Trend review is a
+   boundary-crossing path — step 5 cross-references Basic Memory and step 8
+   recommends workflow 5 (Promote to Basic Memory) — so private overlays must be
+   excluded; the `SYNERGY-*.md` glob does this structurally, since it cannot
+   match `PRIVATE-SYNERGY-*.md`. Private entries are reviewed via workflow 2
+   (Review)'s local-only view, never trend-promoted. See `### Private overlay`.)
 2. For each file, count entries per section (Shared Patterns, Divergences,
    Extraction Candidates, They Have / We Don't) and note the date of the last
    Trend Review entry, if any.
@@ -756,6 +831,12 @@ trend-review boundaries.
 - **No auto-mutations.** Every proposed entry requires explicit user approval
   before being logged. Never write to SYNERGY files or Basic Memory without
   confirmation.
+- **Private overlays never cross the boundary.** Entries in a
+  `PRIVATE-SYNERGY-<project>.md` overlay are private to this checkout: never
+  promote them to Basic Memory and never reciprocate or write them to a sibling.
+  This is enforced structurally — every boundary-crossing path globs
+  `SYNERGY-*.md`, which cannot match the `PRIVATE-` prefix — which is what makes
+  the overlay safe for proprietary↔public sibling pairs.
 - **Division of labor.** synergy-tracker owns `## Cross-Project Synergy` in
   sibling project entity notes in Basic Memory (workflow 5 (Promote to Basic Memory)). upstream-tracker
   owns `## Upstream Friction` in npm/tool entity notes. retrospective owns

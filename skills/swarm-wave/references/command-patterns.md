@@ -7,25 +7,25 @@ workflow 5 (Research wave). See `SKILL.md` for the workflow steps.
 
 Match the research goal to an agent configuration:
 
-| Intent | Description | Recommended Agents | Agent Focus |
-|---|---|---|---|
-| `explore` | Survey a technology or pattern domain | 5-10 | Broad coverage, entity creation |
-| `deepen` | Targeted investigation of one API or technique | 3-5 | Depth over breadth |
-| `validate` | Verify a proposed approach before implementation | 3-5 | Confirm or disprove |
-| `audit` | Scan the codebase for a class of issue | 5-37 | Read-only, no source mutations |
-| `bm-enrichment` | Enrich Basic Memory notes for dependencies | 5-15 | Knowledge graph writes |
+| Intent          | Description                                      | Recommended Agents | Agent Focus                     |
+| --------------- | ------------------------------------------------ | ------------------ | ------------------------------- |
+| `explore`       | Survey a technology or pattern domain            | 5-10               | Broad coverage, entity creation |
+| `deepen`        | Targeted investigation of one API or technique   | 3-5                | Depth over breadth              |
+| `validate`      | Verify a proposed approach before implementation | 3-5                | Confirm or disprove             |
+| `audit`         | Scan the codebase for a class of issue           | 5-37               | Read-only, no source mutations  |
+| `bm-enrichment` | Enrich Basic Memory notes for dependencies       | 5-15               | Knowledge graph writes          |
 
 For `audit` agents: read-only tools only — no Write, no Edit.
 For `bm-enrichment` agents: cap at 15 to avoid write contention.
 
 ## Research Sprint Caps
 
-| Cap | Threshold | When Exceeded |
-|---|---|---|
-| Beads issues from research | 15 | Narrow scope or split into multiple sessions |
-| Write agents per sprint | 15 | Batch in sequential waves |
-| Read-only agents per sprint | 37 | Batch in sequential waves |
-| Findings files before dedup | 20 | Run dedup pass before launching more |
+| Cap                         | Threshold | When Exceeded                                |
+| --------------------------- | --------- | -------------------------------------------- |
+| Beads issues from research  | 15        | Narrow scope or split into multiple sessions |
+| Write agents per sprint     | 15        | Batch in sequential waves                    |
+| Read-only agents per sprint | 37        | Batch in sequential waves                    |
+| Findings files before dedup | 20        | Run dedup pass before launching more         |
 
 ## bd CLI Patterns
 
@@ -53,6 +53,23 @@ bd stats
 # Dependency-aware ordering (find blocking chains)
 bd blocked
 ```
+
+### Beadless run-state equivalents
+
+When swarm-wave sources waves from a `ROADMAP.md` or a manual list (beads
+absent — no `.beads/` directory, or no `bd` on `PATH`), the `SWARM-NN.md`
+`### Item Status` table replaces the `bd` lifecycle commands. The orchestrator
+owns every write:
+
+| `bd` command (beads source)    | Beadless equivalent (Item Status table)        |
+| ------------------------------ | ---------------------------------------------- |
+| `bd ready` / `bd list`         | the work items parsed from ROADMAP / supplied  |
+| `bd update <id> --claim`       | set the item's row to `claimed`                |
+| `bd close <id>`                | set the item's row to `done`                   |
+| `bd list --status in_progress` | rows still `claimed` (not `done`) are unclosed |
+
+Items deferred to a later wave are marked `carried`. Agent prompts omit the
+`bd close` line in this mode (see below).
 
 ## Batch Issue Creation from Research
 
@@ -99,7 +116,10 @@ Key requirements:
 - **Explicit isolation constraint** — the "do not modify" line prevents
   cross-agent file contention
 - **`bd close` instruction** — without it, issues remain `in_progress`
-  after the agent finishes
+  after the agent finishes. **Beadless source:** omit the `bd show`/`bd close`
+  lines; inline the issue description into the prompt and let the agent report
+  completion in its final message — the orchestrator marks the Item Status row
+  `done`.
 - **`npm run check`** — catches lint/type errors before the post-wave gate
 
 ## Pre-Sprint Research Pattern

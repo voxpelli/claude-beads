@@ -39,17 +39,17 @@ Beads v1.0+ defines nine core issue types. Pick the type that matches the
 enforces required markdown sections per type — a `bd create` will fail if the
 required sections are missing.
 
-| Type | Required markdown sections | When to use |
-|---|---|---|
-| `task` | none | General work item (default) |
-| `bug` | `## Steps to Reproduce`, `## Acceptance Criteria` | Defect — behavior diverges from intended |
-| `feature` | `## Acceptance Criteria` | New system capability (system-centric framing) |
-| `chore` | none | Maintenance / housekeeping with no user-visible behavior change |
-| `epic` | `## Success Criteria` | Large body of work that decomposes into child issues |
-| `decision` | `## Decision`, `## Rationale`, `## Alternatives Considered` | Architecture decision record (ADR) — outcome of deliberation |
-| `spike` | `## Goal`, `## Findings` | Timeboxed investigation that reduces uncertainty before a story |
-| `story` | `## Acceptance Criteria` | User-centric framing of a feature ("As a X, I want Y...") |
-| `milestone` | none | Structural marker; contains no work itself |
+| Type        | Required markdown sections                                  | When to use                                                     |
+| ----------- | ----------------------------------------------------------- | --------------------------------------------------------------- |
+| `task`      | none                                                        | General work item (default)                                     |
+| `bug`       | `## Steps to Reproduce`, `## Acceptance Criteria`           | Defect — behavior diverges from intended                        |
+| `feature`   | `## Acceptance Criteria`                                    | New system capability (system-centric framing)                  |
+| `chore`     | none                                                        | Maintenance / housekeeping with no user-visible behavior change |
+| `epic`      | `## Success Criteria`                                       | Large body of work that decomposes into child issues            |
+| `decision`  | `## Decision`, `## Rationale`, `## Alternatives Considered` | Architecture decision record (ADR) — outcome of deliberation    |
+| `spike`     | `## Goal`, `## Findings`                                    | Timeboxed investigation that reduces uncertainty before a story |
+| `story`     | `## Acceptance Criteria`                                    | User-centric framing of a feature ("As a X, I want Y...")       |
+| `milestone` | none                                                        | Structural marker; contains no work itself                      |
 
 **Authoritative source:** the `### Issue Types (Core Vocabulary)` section of
 the Basic Memory note `brew/brew-beads`. The required-sections table was
@@ -73,10 +73,13 @@ duplicates, blocked chains, and missing context.
 
 1. Run `bd list --status open` and `bd list --status in_progress` to get the
    full picture. Run `bd stats` for summary counts.
+
 2. Run `bd stale --days 60` to flag aging issues. Separately flag `in_progress`
    issues stale >30 days as "stalled."
+
 3. Run `bd duplicates` to detect content-hash matches (if available; if not,
    use `bd search` with keywords from suspicious titles for near-matches).
+
 4. Run `bd find-duplicates` (alias `find-dups`) to surface near-duplicates that
    `bd duplicates` misses. Two-stage similarity architecture:
    - **Mechanical Jaccard tokenization** is the default
@@ -91,14 +94,18 @@ duplicates, blocked chains, and missing context.
      using `bd supersede <loser> <winner>` (preserves history) or
      `bd duplicate <loser> <winner>` (marks duplicate without closing).
      Apply only with explicit per-pair user approval.
+
 5. Run `bd blocked` to identify issues stuck on unresolved dependencies.
+
 6. Cross-reference with `UPSTREAM-*.md` and `SYNERGY-*.md` files if they exist
    (use `Glob` to find them). Note any UPSTREAM friction or SYNERGY extraction
    candidates that should have a corresponding beads issue.
+
 7. If Basic Memory MCP tools are available, call
    `mcp__basic-memory__search_notes` for key dependencies from `package.json`
    to surface known friction not yet in the backlog. Skip silently if
    unavailable.
+
 8. Present a structured triage table:
 
    ```
@@ -190,7 +197,7 @@ Takes a topic from the user's request or the `argument-hint`.
    - `mcp__deepwiki__ask_question` for package/framework architecture questions
    - `mcp__tavily__tavily_search` for broader implementation patterns
    - `mcp__tavily__tavily_extract` for deep-diving specific URLs found in search
-   If external tools are unavailable, proceed with what is available.
+     If external tools are unavailable, proceed with what is available.
 7. Synthesize into a concise brief: what exists now, what needs to change, key
    technical decisions, known pitfalls. Cap at 4-6 bullet points.
 8. Flag items that should become issues (hand off to workflow 5 (Create issues from findings)) or enrich an
@@ -220,7 +227,7 @@ workflow 4 (Investigate topic as spike) or user-provided findings.
      `## Rationale` + `## Alternatives Considered`). The
      `validation.on-create=error` gate will reject creates that miss these
      headings. Beyond required sections, follow the problem + why it matters
-     + suggested first step pattern
+     - suggested first step pattern
 4. If >3 related issues emerge from one topic: propose a tracking issue
    (`bd create -t epic`) as a group container, with child issues linked.
    Use `milestone` instead of `epic` if the parent represents a release
@@ -269,15 +276,21 @@ work can begin.
 - **User approval is non-negotiable.** Every write operation (`bd create`,
   `bd close`, `bd update`) must be explicitly approved per item. Present
   candidates first, confirm, then execute. Never auto-mutate.
-- **Beads is optional.** Guard all `bd` commands with availability checks.
-  If `.beads/` does not exist or `bd` is not found, report that backlog
-  grooming requires beads and stop.
+- **Beads required (Tier B).** Beads is available iff a `.beads/` directory
+  exists **and** `command -v bd` succeeds; this component is **Tier B** per
+  CLAUDE.md `### Beads-availability convention`. Backlog grooming operates on
+  the beads backlog — with no beads there is no backlog to groom. Stop cleanly,
+  naming the missing predicate, and redirect to a beadless alternative: for the
+  planning / sprint triggers in this skill's description ("plan the sprint",
+  "what should we work on", "break down into issues"), use `/swarm-wave` — it
+  plans waves from a `ROADMAP.md` or a manual list — or edit `ROADMAP.md`
+  directly. Do not attempt to groom a `ROADMAP.md` here.
 - **Basic Memory is opportunistic.** Check for BM tool availability and skip
   silently if unavailable. BM enriches grooming with cross-project context but
   is not required for the core workflows.
 - **Infer from context.** When the user asks to groom or research, read the
   conversation history for recent friction, decisions, and goals rather than
-  starting a Q&A. The user should not have to re-explain context.
+  starting a Q\&A. The user should not have to re-explain context.
 - **Keep output scannable.** Use tables for triage results, diffs for priority
   changes, numbered lists for issue proposals. Cap output at what fits in a
   conversation turn.

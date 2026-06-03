@@ -6,21 +6,37 @@
     "check:plugin": "node validate-plugin.mjs",
     "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern backlog/ --ignore-pattern RESEARCH-*.md",
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
-    "check:hooks": "node scripts/check-hooks.mjs"
+    "check:hooks": "node scripts/check-hooks.mjs",
+    "check:validator": "node scripts/check-validator.mjs"
   },
   "devDependencies": {
     "js-yaml": "^4.1.0",
     "npm-run-all2": "^7.0.0",
     "remark-cli": "^12.0.0",
     "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-lint-unordered-list-marker-style": "^4.0.1",
     "remark-preset-lint-consistent": "^6.0.0",
-    "remark-preset-lint-recommended": "^7.0.0"
+    "remark-preset-lint-recommended": "^7.0.0",
+    "remark-validate-links": "^13.1.0"
   },
   "remarkConfig": {
+    "settings": {
+      "bullet": "-",
+      "emphasis": "*",
+      "strong": "*",
+      "rule": "-",
+      "fence": "`",
+      "fences": true,
+      "listItemIndent": "one"
+    },
     "plugins": [
       "remark-frontmatter",
+      "remark-gfm",
       "remark-preset-lint-consistent",
-      "remark-preset-lint-recommended"
+      "remark-preset-lint-recommended",
+      "remark-validate-links",
+      ["remark-lint-unordered-list-marker-style", "-"]
     ]
   }
 }

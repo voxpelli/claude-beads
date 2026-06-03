@@ -22,33 +22,33 @@ Every post-wave gate launches exactly two review agents in parallel:
 
 ## Domain Specialization Table
 
-| Wave Content | Domain Reviewer Type | Focus |
-|---|---|---|
-| Auth, session, permissions | Security reviewer | OWASP Top 10, privilege escalation, input trust |
-| Database queries, migrations | Data integrity reviewer | SQL injection, transaction safety, reversibility |
-| API endpoints, HTTP handlers | API contract reviewer | Status codes, error shapes, backwards compatibility |
-| Test files only | Test quality reviewer | Coverage gaps, flaky patterns, assertion completeness |
-| Config, tooling, CI | Ops reviewer | Idempotency, secret handling, failure modes |
-| Documentation only | Clarity reviewer | Accuracy, completeness, example correctness |
-| Mixed or unclear | Second code reviewer | Same focus as Agent 1, independent pass |
+| Wave Content                 | Domain Reviewer Type    | Focus                                                 |
+| ---------------------------- | ----------------------- | ----------------------------------------------------- |
+| Auth, session, permissions   | Security reviewer       | OWASP Top 10, privilege escalation, input trust       |
+| Database queries, migrations | Data integrity reviewer | SQL injection, transaction safety, reversibility      |
+| API endpoints, HTTP handlers | API contract reviewer   | Status codes, error shapes, backwards compatibility   |
+| Test files only              | Test quality reviewer   | Coverage gaps, flaky patterns, assertion completeness |
+| Config, tooling, CI          | Ops reviewer            | Idempotency, secret handling, failure modes           |
+| Documentation only           | Clarity reviewer        | Accuracy, completeness, example correctness           |
+| Mixed or unclear             | Second code reviewer    | Same focus as Agent 1, independent pass               |
 
 ## Confidence Thresholds
 
-| Reviewer | Default Threshold | Security-Adjacent Threshold |
-|---|---|---|
-| Code reviewer | 80+ | 80+ (unchanged) |
-| Domain reviewer | 60+ | 80+ |
+| Reviewer        | Default Threshold | Security-Adjacent Threshold |
+| --------------- | ----------------- | --------------------------- |
+| Code reviewer   | 80+               | 80+ (unchanged)             |
+| Domain reviewer | 60+               | 80+                         |
 
 **Security-adjacent**: any wave touching auth, session management,
 cryptography, file system permissions, or environment variable handling.
 
 ## Severity Handling
 
-| Severity | Action |
-|---|---|
-| HIGH | Gate blocks — must fix before committing, then re-gate |
-| MEDIUM | Present to user — accept risk or fix |
-| LOW | Log only, commit proceeds |
+| Severity | Action                                                 |
+| -------- | ------------------------------------------------------ |
+| HIGH     | Gate blocks — must fix before committing, then re-gate |
+| MEDIUM   | Present to user — accept risk or fix                   |
+| LOW      | Log only, commit proceeds                              |
 
 ## Recurring Bug Classes
 

@@ -29,12 +29,12 @@ field, which by convention points to the relationship note.
 > form. Do not promote a synergy entry to a single-project entity note
 > when a relationship note exists.
 
-| SYNERGY target | BM search pattern | BM directory |
-|---|---|---|
-| Registered sibling with `bm-entity` | exact path from `bm-entity` field | as specified (canonically `engineering/agents/`) |
-| Registered sibling with stale `bm-entity` (read_note returns not-found) | warn + fall through to `search_notes` by sibling `name` | `engineering/agents/` first, then `projects/` / `npm/` as fallback |
-| Registered sibling without `bm-entity` | search by sibling `name` | `engineering/agents/` first, then `projects/` / `npm/` as fallback |
-| Unregistered sibling (SYNERGY file only) | search by project name derived from filename | `engineering/agents/` first, then any directory matching the name |
+| SYNERGY target                                                           | BM search pattern                                       | BM directory                                                       |
+| ------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------ |
+| Registered sibling with `bm-entity`                                      | exact path from `bm-entity` field                       | as specified (canonically `engineering/agents/`)                   |
+| Registered sibling with stale `bm-entity` (read\_note returns not-found) | warn + fall through to `search_notes` by sibling `name` | `engineering/agents/` first, then `projects/` / `npm/` as fallback |
+| Registered sibling without `bm-entity`                                   | search by sibling `name`                                | `engineering/agents/` first, then `projects/` / `npm/` as fallback |
+| Unregistered sibling (SYNERGY file only)                                 | search by project name derived from filename            | `engineering/agents/` first, then any directory matching the name  |
 
 **Fallback behavior when `bm-entity` is absent OR stale:** call
 `mcp__basic-memory__search_notes` with the sibling project name. If a single
