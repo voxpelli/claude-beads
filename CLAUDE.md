@@ -24,6 +24,7 @@ skills/
     SKILL.md                          # Backlog triage, research, issue creation
     references/
       backlog-health-heuristics.md    # Staleness, closure, priority, issue templates
+  harden-memories/SKILL.md            # Audit and prune bd remember entries
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
   sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
   synergy-tracker/
@@ -41,9 +42,8 @@ skills/
 agents/
   sprint-review.md                    # Proactive end-of-sprint summary and retro gate
 hooks/
-  hooks.json                          # Hook definitions (4 event types)
-  precompact.sh                       # Emits additionalContext for sprint insight capture
-  session-start.sh                    # Sensitive-file warning, dormancy nudge, trend-review reminder
+  hooks.json                          # Hook definitions (3 event types)
+  session-start.sh                    # Compaction recovery (source=compact) + sensitive-file warning, dormancy nudge, trend-review reminder
   post-file-edit.sh                   # Auto-format hooks/*.sh and scripts/*.sh with shfmt
   post-bm-failure-classify.sh         # Basic Memory error classification + recovery guidance
 CLAUDE.md
@@ -67,13 +67,23 @@ Dev tooling only: validation and linting via `npm run check`.
   `/upstream-tracker` for mutations. When Basic Memory is available, also
   checks for cross-project friction notes on project dependencies.
 
-### Skills (7)
+### Skills (8)
 
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
   investigate-topic-as-spike, create-issues-from-findings, enrich-existing-issue.
   Cross-references Basic Memory for known friction and uses Tavily/DeepWiki for
   external research. User-invocable as `/backlog-groomer`.
+- **harden-memories** — **Read-only** audit of the project's `bd remember`
+  entries so each earns its per-session `bd prime` injection cost. Reads
+  `bd memories`, classifies each entry with the three-question taxonomy
+  (already-captured → remove; stable architecture → migrate to CLAUDE.md /
+  auto-memory MEMORY.md / Basic Memory; recovery-trigger-only → keep), and
+  presents a triage table **plus the exact `bd forget` / migration commands for
+  the user to run** — it never writes or deletes itself (keeps the irreversible
+  `bd forget` under human control). Tier B (beads-specific). Scoped strictly to
+  the `bd remember` store — not Auto Dream, not BM graph hygiene. User-invocable
+  as `/harden-memories`.
 - **retrospective** — Generates a sprint retrospective: reads git history,
   `UPSTREAM-*.md` files, and conversation context, creates `RETRO-NN.md`, runs
   a knowledge gap audit, writes generalizable learnings to Basic Memory, and
@@ -174,8 +184,9 @@ like "W3" or "W6" — the codebase spells it out.
 vp-beads must **not force beads**. Every skill and the agent detect availability
 and degrade along a defined tier — **silently skipping a `bd` step is a bug**: it
 makes a deliberately beadless project look like a broken one. Hooks are **exempt**
-— a hook's silent fallback (e.g. `precompact.sh` emitting context when `bd` is
-absent) is recovery plumbing, not a user-facing workflow step.
+— a hook's silent fallback (e.g. `session-start.sh` omitting the in-progress
+`bd` claim from its compaction-recovery snapshot when `bd` is absent) is recovery
+plumbing, not a user-facing workflow step.
 
 **Detection predicate (canonical).** Beads is available for a project iff a
 `.beads/` directory exists **and** `command -v bd` succeeds. Both conditions,
@@ -188,9 +199,12 @@ checked every time — neither alone.
   source (`ROADMAP.md`, or a manual list) and only stop when no source can be
   obtained. Components: `swarm-wave` (workflow 1 (Plan a swarm sprint)).
 - **Tier B — beads-specific stop.** The component's whole purpose is operating
-  on the beads backlog; with no beads there is nothing to do. Stop cleanly with
-  a message that names the missing predicate and **redirects to a beadless
-  alternative**. Components: `backlog-groomer`.
+  on a beads-only store; with no beads there is nothing to do. Stop cleanly with
+  a message that names the missing predicate and, **when a beadless alternative
+  exists, redirects to it** (`backlog-groomer` → `/swarm-wave` / `ROADMAP.md`).
+  A component whose store only exists under beads (`harden-memories`, operating
+  on the `bd remember` store) stops without a redirect — there is no beadless
+  equivalent. Components: `backlog-groomer`, `harden-memories`.
 - **Tier C — degrade-and-announce.** The component does useful non-beads work
   too; when beads is absent it runs the rest and **announces** each skipped
   bd-dependent step (never skips it silently). Components: `retrospective`,
@@ -267,6 +281,26 @@ the per-skill tables this section deliberately omits).
   whose `name` is not in the base registry are ignored. Used by synergy-tracker
   workflow 3 (Compare with sibling). Never committed — encodes
   machine-specific paths.
+- **Private overlay file: `PRIVATE-SYNERGY-<project-name>.md`** — a gitignored
+  companion to the committed `SYNERGY-<project-name>.md`, for synergy entries
+  that must stay out of a public repo (a proprietary sibling's internal paths,
+  client names, unreleased plans). **The `PRIVATE-` prefix is load-bearing: it
+  keeps the overlay OUTSIDE the `SYNERGY-*.md` glob namespace, so every public
+  consumer (`/retrospective`, `sprint-review`, `session-start`, promotion,
+  reciprocation) structurally cannot read it** — the privacy invariant is a
+  filesystem fact, not a per-consumer exclusion rule. Gitignored via the
+  explicit `PRIVATE-SYNERGY-*.md` line (prefix-namespaced like `RETRO-*` /
+  `SWARM-*`); `session-start.sh` warns if any `PRIVATE-SYNERGY-*.md` is tracked.
+  Merge semantics: the overlay holds additional private entries under the same
+  four section headings. Only a deliberate *local-only* read (synergy-tracker
+  workflow 2 (Review)) globs BOTH `SYNERGY-*.md` and `PRIVATE-SYNERGY-*.md` to
+  assemble the combined view (private rows labelled `[local]`); every other
+  read uses `SYNERGY-*.md` and never sees private entries. **Invariant:
+  private-overlay entries are NEVER promoted to Basic Memory and NEVER
+  reciprocated/written to a sibling.** When a `PRIVATE-SYNERGY-*.md` overlay
+  exists, the committed `SYNERGY-<project-name>.md` carries a one-line pointer
+  noting it (gitignored files are invisible to collaborators and `git grep`).
+  Owned by synergy-tracker; `/sibling-sync` never reads it.
 
 ### Basic Memory section ownership
 

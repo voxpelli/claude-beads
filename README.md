@@ -55,6 +55,16 @@ Six workflows in two groups:
 
 All mutations require explicit user approval. Complements sprint-review (which fires at sprint end) by operating at sprint start.
 
+### `/harden-memories` — Audit and prune `bd remember` entries
+
+Keep the project's `bd remember` store lean so each entry earns its per-session `bd prime` injection cost:
+
+```
+/harden-memories
+```
+
+**Read-only** — it audits and recommends, you run the commands. Reads `bd memories`, classifies each entry with the three-question taxonomy (already in CLAUDE.md / auto-memory MEMORY.md / Basic Memory → remove; stable architecture → migrate; recovery-trigger-only → keep), and presents a triage table **plus the exact `bd forget` / migration commands for you to review and run** — it never writes a file, never writes Basic Memory, and never runs `bd forget` itself, keeping the irreversible delete under your control (no automated "verify-then-delete" can be trusted to gate it). Conservative pruning, never aggressive deletion. Scoped strictly to the `bd remember` store (not Claude Code's Auto Dream, not Basic Memory graph hygiene). Tier B: stops cleanly when beads is absent. Periodic audits (≈ every 4 sprints) typically recover \~40% of the injected-memory token budget.
+
 ### `/upstream-tracker` — Upstream issue tracking
 
 Manage `UPSTREAM-*.md` files that track bugs, feature requests, and API friction in upstream packages:
@@ -251,6 +261,10 @@ File naming examples:
 - `brew:ripgrep` → `UPSTREAM-brew--ripgrep.md`
 - `action:actions/checkout` → `UPSTREAM-action--actions--checkout.md`
 
+### Private SYNERGY overlays
+
+For cross-project notes that must stay out of a public repo (a proprietary sibling's internal paths, client names, unreleased plans), add a **gitignored** `PRIVATE-SYNERGY-<project>.md` companion alongside the committed `SYNERGY-<project>.md`. It holds extra private entries under the same four section headings. The `PRIVATE-` prefix is the safety mechanism: it keeps the overlay **outside the `SYNERGY-*.md` glob namespace**, so every public consumer (retrospective, sprint-review, promotion, reciprocation, the session-start hook) structurally cannot read it — **private entries are never promoted to Basic Memory or reciprocated to a sibling**, by construction rather than by per-consumer discipline. Only synergy-tracker's local-only review deliberately reads both files. Gitignored via the `PRIVATE-SYNERGY-*.md` rule; the session-start hook warns if any is accidentally tracked.
+
 ## Plugin structure
 
 ```
@@ -262,6 +276,8 @@ skills/
     SKILL.md                            Backlog triage and research workflow
     references/
       backlog-health-heuristics.md      Staleness, closure, priority heuristics
+  harden-memories/
+    SKILL.md                            Audit and prune bd remember entries
   retrospective/
     SKILL.md                            Sprint retrospective workflow
   upstream-tracker/
@@ -287,9 +303,8 @@ skills/
       agent-concurrency-limits.md       Memory pressure, backpressure protocol
       command-patterns.md               Research agent selection, agent prompts
 hooks/
-  hooks.json                            Hook definitions (4 event types)
-  precompact.sh                         Sprint insight capture before compaction
-  session-start.sh                      Sensitive-file warning, dormancy nudges, trend-review
+  hooks.json                            Hook definitions (3 event types)
+  session-start.sh                      Compaction recovery (source=compact) + sensitive-file warning, dormancy nudges, trend-review
   post-file-edit.sh                     Auto-format hooks/*.sh and scripts/*.sh with shfmt
   post-bm-failure-classify.sh           BM error classification + recovery guidance
 ```

@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0][] - Unreleased
+
+### Added
+
+- **`/harden-memories` skill (read-only audit).** Audits the project's
+  `bd remember` store so each entry earns its per-session `bd prime` injection
+  cost. Reads `bd memories`, classifies each entry with the three-question
+  taxonomy (already-captured → remove; stable architecture → migrate to
+  CLAUDE.md / auto-memory MEMORY.md / Basic Memory; recovery-trigger-only →
+  keep), and presents a triage table **plus the exact `bd forget` / migration
+  commands for the user to run** — it never writes a file, never writes Basic
+  Memory, and never runs `bd forget` itself, keeping the irreversible delete
+  under human control. Tier B; scoped strictly to the `bd remember` store (not
+  Claude Code's Auto Dream, not Basic Memory graph hygiene). Resolves the
+  vp-knowledge feature request.
+- **Private `PRIVATE-SYNERGY-<project>.md` overlay** for proprietary↔public
+  sibling boundaries. A gitignored companion to the committed
+  `SYNERGY-<project>.md` holds extra private entries under the same four section
+  headings. The `PRIVATE-` prefix keeps the overlay **outside the `SYNERGY-*.md`
+  glob namespace**, so every public consumer (retrospective, sprint-review,
+  promotion, reciprocation, the session-start dormancy count) structurally
+  cannot read it — private entries are NEVER promoted to Basic Memory or
+  reciprocated to a sibling, by construction rather than per-consumer
+  discipline. Only synergy-tracker's local-only review (workflow 2) deliberately
+  globs both files. Gitignored via an explicit `PRIVATE-SYNERGY-*.md` rule
+  (prefix-namespaced like `RETRO-*`/`SWARM-*`); `session-start.sh` warns if any
+  `PRIVATE-SYNERGY-*.md` is git-tracked.
+
+### Changed
+
+- **Reworked the compaction-capture hooks.** Retired `precompact.sh` (PreCompact)
+  and `post-compact.sh` (PostCompact) and folded their recover + reflect roles
+  into a `source: "compact"` branch of `session-start.sh`. Verified against the
+  live Claude Code hooks docs: PreCompact's `additionalContext` reaches only the
+  non-agentic summarizer, and PostCompact is observability-only — the **only**
+  post-compaction slot that injects context into the resumed, tool-capable agent
+  is `SessionStart` with `source="compact"`. This corrects decision `vp-beads-48f`
+  (which assumed PostCompact subsumed the role). Net hook event types: 3
+  (`SessionStart`, `PostToolUse`, `PostToolUseFailure`).
+
 ## [0.16.0][] - 2026-06-02
 
 Make beads optional and document the work-tracking substrates. The plugin no
@@ -1107,6 +1147,8 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   resolve, trend-review, and retrospective-support. Vendor packages are declared
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
+
+[0.17.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.17.0
 
 [0.16.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.16.0
 
