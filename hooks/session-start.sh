@@ -1,17 +1,114 @@
 #!/bin/bash
-# Session-start hook: sensitive-file warning, trend-review reminder,
-# dormancy nudge for UPSTREAM and SYNERGY files.
+# Session-start hook. Branches on the SessionStart `source` field:
+#
+#   source == "compact"  → emit a sprint-state recovery snapshot + a capture
+#       nudge. This is the ONLY post-compaction slot that injects
+#       additionalContext into the resumed, tool-capable agent: PreCompact's
+#       additionalContext goes to the non-agentic summarizer and PostCompact is
+#       observability-only (neither can inject). See decision vp-beads-48f.
+#       Replaces the retired precompact.sh (reflect) and post-compact.sh
+#       (recover) hooks.
+#
+#   otherwise (startup/resume/clear) → sensitive-file warning, dormancy nudge,
+#       Dependabot alert summary, trend-review reminder.
 #
 # Emits exactly ONE JSON object with all content merged into additionalContext.
 # Prior versions emitted multiple separate objects; Claude Code reads only the
 # first and silently drops the rest.
 #
-# Empty-state contract: if no conditions are met, emit nothing and exit 0.
+# Empty-state contract: the compact branch always emits (recovery preamble +
+# capture nudge); the startup branch emits nothing if no conditions are met.
 
 set -euo pipefail
 
+# SessionStart delivers a JSON event on stdin carrying `source`
+# (startup|resume|clear|compact). Read it defensively — empty/absent stdin or
+# parse failure falls through to the startup branch. The `cat` is a blocking
+# read bounded only by the external hooks.json `timeout: 5`; the hook runner
+# (not a user) closes stdin once it has written the event, so `cat` returns
+# immediately in normal operation.
+input=$(cat 2>/dev/null || echo "")
+source=$(printf '%s' "$input" | jq -r '.source // ""' 2>/dev/null || echo "")
+
 # Accumulate message parts in an array; join with double newline before emitting.
 parts=()
+
+# ============================================================================
+# Compaction-recovery branch (source == "compact")
+# ============================================================================
+if [ "$source" = "compact" ]; then
+	# --- Open UPSTREAM packages ---
+	upstream_pkgs=""
+	while IFS= read -r f; do
+		[ -z "$f" ] && continue
+		base="${f##*/}"
+		pkg="${base#UPSTREAM-}"
+		pkg="${pkg%.md}"
+		if [ -z "$upstream_pkgs" ]; then
+			upstream_pkgs="$pkg"
+		else
+			upstream_pkgs="${upstream_pkgs}, ${pkg}"
+		fi
+	done < <(find . -maxdepth 1 -name "UPSTREAM-*.md" 2>/dev/null | sort)
+
+	if [ -n "$upstream_pkgs" ]; then
+		# shellcheck disable=SC2016
+		parts+=("Open UPSTREAM tracking files: ${upstream_pkgs}. Use \`/upstream-tracker\` workflow 2 (Review open) to inspect entries.")
+	fi
+
+	# --- Recently-touched SWARM/RETRO files (within last hour) ---
+	recent_files=""
+	while IFS= read -r f; do
+		[ -z "$f" ] && continue
+		base="${f##*/}"
+		if [ -z "$recent_files" ]; then
+			recent_files="$base"
+		else
+			recent_files="${recent_files}, ${base}"
+		fi
+	done < <(find . -maxdepth 1 \( -name "SWARM-*.md" -o -name "RETRO-*.md" \) -mmin -60 2>/dev/null | sort)
+
+	if [ -n "$recent_files" ]; then
+		parts+=("Recently-modified sprint files (last hour): ${recent_files}. Sprint context likely still in flight — review before resuming.")
+	fi
+
+	# --- In-progress bd claim (hooks are exempt from the silent-skip rule:
+	# this is recovery plumbing, not a user-facing workflow step) ---
+	if command -v bd >/dev/null 2>&1; then
+		in_progress_json=$(bd list --status=in_progress --json 2>/dev/null || echo "")
+		if [ -n "$in_progress_json" ] && [ "$in_progress_json" != "[]" ]; then
+			summary=$(printf '%s' "$in_progress_json" | jq -r '.[0:5][] | "  \(.id) \(.title)"' 2>/dev/null || echo "")
+			if [ -n "$summary" ]; then
+				# shellcheck disable=SC2016
+				parts+=("In-progress bd issue(s):
+${summary}
+
+Use \`bd show <id>\` to recover full context for any claim above.")
+			fi
+		fi
+	fi
+
+	# --- Capture nudge (folds the retired precompact.sh reflection prompt,
+	# adapted to post-compaction: the agent now works from the summary and has
+	# tool access, so this is a short actionable nudge, not a 6-step script) ---
+	# shellcheck disable=SC2016
+	parts+=("If the compacted conversation produced un-captured sprint insights — upstream friction, technical decisions, vendor issues, resolved UPSTREAM entries, or cross-project extraction opportunities — capture them now via \`/upstream-tracker\`, \`/synergy-tracker\`, or Basic Memory (search first, then edit/write). Keep it concise: capture the insight, not the conversation.")
+
+	# Prepend a recovery preamble so Claude knows why this context arrived.
+	preamble="Context was just compacted. Sprint-state recovery snapshot:"
+	message="$preamble"
+	for part in "${parts[@]}"; do
+		message="${message}
+
+${part}"
+	done
+	jq -n --arg msg "$message" '{"additionalContext": $msg}'
+	exit 0
+fi
+
+# ============================================================================
+# Startup / resume / clear branch
+# ============================================================================
 
 # --- Sensitive-file git-tracking check ---
 # Warn only if .beads/.beads-credential-key is committed to git. It is a
@@ -25,6 +122,15 @@ parts=()
 # path on success, which would otherwise pollute the JSON emitted below.
 if git ls-files --error-unmatch .beads/.beads-credential-key >/dev/null 2>&1; then
 	parts+=("WARNING: .beads/.beads-credential-key is tracked by git. It is a per-machine encryption key and must not be committed. To fix: git rm --cached .beads/.beads-credential-key 2>/dev/null; echo .beads-credential-key >> .beads/.gitignore; git commit --no-gpg-sign -m \"chore: untrack beads credential key\"")
+fi
+
+# Private SYNERGY overlays (PRIVATE-SYNERGY-<sibling>.md) are gitignored and
+# hold content deliberately kept out of the public repo — committing one is an
+# irreversible leak. Warn if any is tracked.
+tracked_private=$(git ls-files 'PRIVATE-SYNERGY-*.md' 2>/dev/null | tr '\n' ' ') || tracked_private=""
+tracked_private="${tracked_private% }"
+if [ -n "$tracked_private" ]; then
+	parts+=("WARNING: private SYNERGY overlay file(s) tracked by git: ${tracked_private}. These PRIVATE-SYNERGY-*.md overlays are gitignored private content and must not be committed (irreversible leak). To fix: git rm --cached ${tracked_private}; git commit --no-gpg-sign -m \"chore: untrack private overlay\"")
 fi
 # --- end sensitive-file check ---
 

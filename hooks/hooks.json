@@ -1,5 +1,5 @@
 {
-  "description": "Sprint workflow hooks: auto-reflect before compaction, trend-review reminder at session start, BM error recovery, shell auto-formatting.",
+  "description": "Sprint workflow hooks: compaction-recovery + trend-review reminder at session start, BM error recovery, shell auto-formatting.",
   "hooks": {
     "PostToolUse": [
       {
@@ -21,30 +21,6 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-bm-failure-classify.sh",
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/precompact.sh",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PostCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-compact.sh",
-            "timeout": 5
           }
         ]
       }

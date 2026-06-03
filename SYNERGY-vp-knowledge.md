@@ -62,15 +62,28 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 
 ## Divergences
 
-- **PreCompact hook retired in vp-knowledge v0.28.0** (2026-05-04) — Both plugins
-  previously had a PreCompact command hook (independently converted from `prompt`
-  to `command` type, which was the original shared pattern). vp-knowledge retired
-  theirs in v0.28.0 (commit `624e3df`, 2026-04-29) per their Sprint 18 hook audit,
-  judged redundant with PostToolUse-driven session-reflect propagation. vp-beads
-  keeps PreCompact for sprint-reflect-before-cliff semantics — sprint-cycle-specific
-  reflection has no equivalent on vp-knowledge's side.
-  Convergence path: accept-difference · Reason: different time-scales (sprint
-  cycle vs on-demand `/session-reflect`) call for different optimal hook surfaces.
+- **PreCompact hook retired** (2026-05-04) — *(Converged 2026-06-02, vp-beads
+  v0.17.0)* Both plugins previously had a PreCompact command hook (independently
+  converted from `prompt` to `command`). vp-knowledge retired theirs in v0.28.0
+  (commit `624e3df`); vp-beads retired its PreCompact **and** PostCompact in
+  v0.17.0. Both sides are now PreCompact-free.
+  Convergence path: adopt-theirs · Status: converged
+
+- **Compaction-capture hook slot — shared finding (for siblings)** (2026-06-02) —
+  Verified against the live Claude Code hooks docs
+  (`https://code.claude.com/docs/en/hooks`): **PreCompact** `additionalContext`
+  goes to the non-agentic summarizer (dead letter), and **PostCompact** is
+  observability-only ("stderr-to-user-only" — cannot inject). The **only**
+  post-compaction slot that injects context into the resumed, tool-capable agent
+  is **`SessionStart` with `source:"compact"`**. This corrects the prior shared
+  belief (and the BM note `engineering/tooling/claude-code-plugin-mechanics`,
+  which still asserts "PostCompact is the structurally correct slot") that
+  PostCompact subsumes PreCompact's capture role. Any sibling relying on a
+  PostCompact hook for context injection should move it to `SessionStart`
+  `source=compact`. vp-beads applied this in v0.17.0 (`session-start.sh` compact
+  branch). vp-knowledge uses `/session-reflect` (PostToolUse-driven), so is
+  unaffected, but the docs correction is graph-wide.
+  Status: aligned · Last verified: 2026-06-02
 
 - **PostToolUseFailure hook type** (2026-03-28) — *(Resolved 2026-04-04, v0.10.0)*
   Both plugins now use command hooks with stdin JSON parsing.
@@ -189,8 +202,10 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   Priority: consider �� Effort: moderate
 
 - **Tag vocabulary standard** (2026-03-28) — vp-knowledge maintains a formal tag
-  vocabulary (`[decision]`, `[lesson]`, `[gotcha]`, `[friction]`). vp-beads uses
-  the same tags in precompact.sh but the list is embedded in a shell heredoc.
+  vocabulary (`[decision]`, `[lesson]`, `[gotcha]`, `[friction]`). vp-beads has
+  no formal tag vocabulary: the tags were previously embedded in `precompact.sh`'s
+  heredoc, but that hook was retired in v0.17.0 and the condensed `session-start.sh`
+  capture nudge no longer enumerates them — so the gap is now wider, not narrower.
   Priority: consider · Effort: trivial
 
 - **Schema system (ongoing)** (2026-03-28) �� vp-knowledge uses BM schema tools
