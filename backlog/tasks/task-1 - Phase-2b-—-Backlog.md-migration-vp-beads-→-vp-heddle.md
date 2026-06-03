@@ -72,4 +72,21 @@ Parent task for all Phase 2b work migrating vp-beads from bd to Backlog.md. Verd
 Original estimate assumed skills would translate Backlog.md's workflow into vp-heddle's workflow — that's a 1:1 absorption. Under substrate-not-opinion (ROADMAP §6 "no workflow-prescribing tool"), skills wrap Backlog.md's CRUD primitives but supply vp-heddle's own workflow. The translation layer disappears; only the primitive-call substitution remains. Hence ~30% reduction in skill-rework LOC.
 
 This is doc-level estimation. Per [[doc-alignment-vs-operational-alignment]] feedback memory, the real number lands after Wave 5 execution. Treat ~530–740 as a planning ceiling; recalibrate after each wave.
+
+## Post-v0.17.0 reconciliation (2026-06-03)
+
+This branch merged current `main` (v0.17.0). Two scope deltas:
+
+- **Counts: 7 → 8 skills, 4 → 3 hooks.** v0.17.0 added the `harden-memories`
+  skill and retired `precompact.sh` + `post-compact.sh` (folded into
+  `session-start.sh`'s `source=compact` branch). TASK-1.7's mechanical rename
+  pass is **7 bd-shell-out skills + 3 hooks**.
+- **OPEN SCOPE QUESTION — `harden-memories` has no Backlog.md analog.** Its
+  entire subject is the `bd remember` store (`bd memories` / `bd forget`),
+  which Backlog.md does not provide. It does not fit the mechanical rename and
+  is tied to the **Memory migration** step (DESIGN §Phase 2b): once
+  `bd remember` entries move to MEMORY.md / CLAUDE.md and the `bd prime`
+  injection is dropped, the skill loses its subject. Wave-5 re-plan must decide:
+  **drop** it, or **repurpose** it to audit the new memory home. Do NOT assume
+  it call-site-renames like the other 7.
 <!-- SECTION:PLAN:END -->

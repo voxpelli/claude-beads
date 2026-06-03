@@ -35,23 +35,23 @@ Spike `MrLesk/Backlog.md` (in homebrew-core, 5.6K⭐, 38 contributors, MIT, Type
 
 **Why Backlog.md is a strong fit after the v1 corrections:**
 
-| Requirement (after correction) | Backlog.md | Notes |
-|---|---|---|
-| Markdown-native, BM-style simplicity | ✓ | `backlog/tasks/task-<id> - <title>.md` files |
-| 4 item types (not 9) | ✓ | `task / doc / decision / milestone` — cuts at actual joints |
-| Soft validation (BM Picoschema model) | ✓ | Dynamic enum schemas from `BacklogConfig`, "did you mean X?" errors |
-| No `bd remember` requirement | ✓ | Explicit "context in task, not memory" philosophy; Claude Code's own memory mechanisms (CLAUDE.md, MEMORY.md auto-memory, BM) cover the need |
-| Cross-project sync stays orthogonal | ✓ | Backlog.md doesn't claim this surface; vp-beads's existing sibling-sync/synergy-tracker/upstream-tracker/vendor-sync continue unchanged against `SYNERGY-*.md` / `UPSTREAM-*.md` / git subtrees |
-| MIT license, forkable if needed | ✓ | vs br's non-SPDX rider, BM's AGPL+CLA |
-| Built-in MCP server, init wizard | ✓ | `backlog mcp start` + `backlog init` auto-configures Claude Code/Codex/Gemini |
-| Working tree pollution acceptable | ✓ | User explicitly values manual editability of files via PR review |
+| Requirement (after correction)        | Backlog.md | Notes                                                                                                                                                                                           |
+| ------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Markdown-native, BM-style simplicity  | ✓          | `backlog/tasks/task-<id> - <title>.md` files                                                                                                                                                    |
+| 4 item types (not 9)                  | ✓          | `task / doc / decision / milestone` — cuts at actual joints                                                                                                                                     |
+| Soft validation (BM Picoschema model) | ✓          | Dynamic enum schemas from `BacklogConfig`, "did you mean X?" errors                                                                                                                             |
+| No `bd remember` requirement          | ✓          | Explicit "context in task, not memory" philosophy; Claude Code's own memory mechanisms (CLAUDE.md, MEMORY.md auto-memory, BM) cover the need                                                    |
+| Cross-project sync stays orthogonal   | ✓          | Backlog.md doesn't claim this surface; vp-beads's existing sibling-sync/synergy-tracker/upstream-tracker/vendor-sync continue unchanged against `SYNERGY-*.md` / `UPSTREAM-*.md` / git subtrees |
+| MIT license, forkable if needed       | ✓          | vs br's non-SPDX rider, BM's AGPL+CLA                                                                                                                                                           |
+| Built-in MCP server, init wizard      | ✓          | `backlog mcp start` + `backlog init` auto-configures Claude Code/Codex/Gemini                                                                                                                   |
+| Working tree pollution acceptable     | ✓          | User explicitly values manual editability of files via PR review                                                                                                                                |
 
 **Spike evaluation criteria (5):**
 
 1. **Migration cleanness**: Can `.beads/issues.jsonl` migrate to `backlog/tasks/` losslessly enough? Reversible via export?
 2. **9→4 type collapse**: Map `bug` / `feature` / `chore` / `story` / `spike` → `task` with `labels:`; `epic` → `task` with parent. Does any work unit break?
 3. **Concurrency under swarm-wave**: Does Backlog.md's MCP server survive 5–10 parallel agents firing simultaneously? (Concurrency model not explicitly documented; needs empirical test.)
-4. **Skill rework cost**: How substantive is the rework of vp-beads's 7 skills? Best case: text-rename of `bd ` → `backlog ` plus the type-collapse migration. Worst case: deeper refactor of `backlog-groomer` and `swarm-wave`.
+4. **Skill rework cost**: How substantive is the rework of vp-beads's 8 skills? Best case: text-rename of `bd ` → `backlog ` plus the type-collapse migration. Worst case: deeper refactor of `backlog-groomer` and `swarm-wave`. (`harden-memories` is a special case — it operates on the `bd remember` store, which the Memory migration below dismantles; it is dropped or repurposed, not renamed.)
 5. **Threat model fit**: Backlog.md's localhost-only + token-auth posture acceptable? Note that Backlog.md has zero prompt-injection sanitization — the Constitutional Guardrail still needed as a vp-beads layer.
 
 **Spike outcomes drive next phase:**
@@ -64,13 +64,13 @@ Spike `MrLesk/Backlog.md` (in homebrew-core, 5.6K⭐, 38 contributors, MIT, Type
 
 If Backlog.md is the substrate, vp-beads ships these supplements:
 
-- **Constitutional Guardrail PreToolUse hook** — ~50 LOC bash + Node helper, wraps `mcp__backlog__task_*` outputs with provenance-tier + structural quarantine + injection-marker flagging + length cap. Lives in vp-beads/hooks/ + vp-beads/lib/.
+- **Constitutional Guardrail PreToolUse hook** — \~50 LOC bash + Node helper, wraps `mcp__backlog__task_*` outputs with provenance-tier + structural quarantine + injection-marker flagging + length cap. Lives in vp-beads/hooks/ + vp-beads/lib/.
 - **BM-graph integration skill** — joins issue body references (`npm:foo`, `brew:bar`) against BM's `## Upstream Friction` sections; surfaces "this issue affects packages with known friction" at read time.
 - **session-reflect graduation hook** — extends vp-knowledge's `session-reflect` to prompt "generalizable pattern here?" when an issue closes; promotes to `engineering/*` BM notes (mirrors upstream-tracker workflow 6).
 - **Memory migration** — existing `bd remember` entries move to MEMORY.md (auto-memory) or CLAUDE.md; SessionStart hook drops the `bd prime` injection (auto-memory already does the work).
-- **Skill refactor** — 7 skills update their bd shell-out call sites to backlog CLI. Most surfaces are 1:1 mappings (`bd create` → `backlog task create`); the irreversible delta is the 9→4 type collapse, handled at migration time.
+- **Skill refactor** — 7 skills update their bd shell-out call sites to backlog CLI. Most surfaces are 1:1 mappings (`bd create` → `backlog task create`); the irreversible delta is the 9→4 type collapse, handled at migration time. (The 8th skill, `harden-memories`, audits the `bd remember` store and has no backlog analog — it is dropped or repurposed by the Memory migration above, not call-site-renamed.)
 
-Estimated effort: **~4 sprints total** (Constitutional Guardrail + memory migration → skill refactor → BM-graph + session-reflect → cleanup). Compare ~8+ sprints for from-scratch build.
+Estimated effort: **\~4 sprints total** (Constitutional Guardrail + memory migration → skill refactor → BM-graph + session-reflect → cleanup). Compare \~8+ sprints for from-scratch build.
 
 ### Phase 3 — Build-our-own tracker (contingent on Backlog.md falling short)
 
@@ -154,12 +154,12 @@ Default `<config-root>` = `backlog/` to align with Backlog.md convention (so mig
 
 ### Schema — 4 types, not 9
 
-| Type | Required `##` sections | Notes |
-|---|---|---|
-| `task` | `## Acceptance Criteria` | Subsumes former `bug` / `feature` / `chore` / `story` / `spike` / `epic` via `labels:` and `parent:` |
-| `doc` | (none) | Project documentation |
-| `decision` | `## Decision`, `## Rationale`, `## Alternatives Considered` | ADR-style |
-| `milestone` | (none) | Structural marker, no work |
+| Type        | Required `##` sections                                      | Notes                                                                                                |
+| ----------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `task`      | `## Acceptance Criteria`                                    | Subsumes former `bug` / `feature` / `chore` / `story` / `spike` / `epic` via `labels:` and `parent:` |
+| `doc`       | (none)                                                      | Project documentation                                                                                |
+| `decision`  | `## Decision`, `## Rationale`, `## Alternatives Considered` | ADR-style                                                                                            |
+| `milestone` | (none)                                                      | Structural marker, no work                                                                           |
 
 Validation via BM `type: schema` Picoschema notes with `settings.validation: warn` (not `strict`). `vp-knowledge:schema_evolve` skill handles drift over time. **No `validation.on-create=error`** — that was bd-cruft uncritically imported in v1.
 
@@ -170,13 +170,13 @@ Frontmatter `source` provenance field (`user` / `agent:<name>` / `imported:bd` /
 - `flock` advisory `.write.lock` per project
 - SQLite `BEGIN IMMEDIATE` for projection writes
 - `busy_timeout=0` (deliberate — prevents thundering-herd CPU spin)
-- 8-retry application-level jittered exponential backoff (`50ms × 2^attempt ± 25%`, ~12.7s total wait)
+- 8-retry application-level jittered exponential backoff (`50ms × 2^attempt ± 25%`, \~12.7s total wait)
 
-Atomic claim: O_EXCL lockfile in `<config-root>/.locks/<issue-id>.lock` (gitignored), 10-min lease, heartbeat renew, stale-reap in SessionStart. Single-host design.
+Atomic claim: O\_EXCL lockfile in `<config-root>/.locks/<issue-id>.lock` (gitignored), 10-min lease, heartbeat renew, stale-reap in SessionStart. Single-host design.
 
 ### Constitutional Guardrail — the actual differentiator
 
-~50 LOC Node, applies in MCP `show` / `ready` / `prime` handlers before any text reaches the agent. Grounded in Willison 2025-11-02 "Agents Rule of Two", OWASP LLM01:2025, MITRE ATLAS AML.T0051.001.
+\~50 LOC Node, applies in MCP `show` / `ready` / `prime` handlers before any text reaches the agent. Grounded in Willison 2025-11-02 "Agents Rule of Two", OWASP LLM01:2025, MITRE ATLAS AML.T0051.001.
 
 1. **Provenance tier** — `source: user` trusted; `source: imported:*` trusted-grandfathered; `source: sibling-sync | agent:* | upstream-sync` untrusted (all guards apply)
 2. **Structural wrap** on untrusted — `<untrusted source="..." issue="...">...</untrusted>` delimiters with paired system-prompt rule
@@ -203,20 +203,20 @@ Resources deferred to v2 (would mirror br's 12 surface: `<scheme>://issues/ready
 
 ### Sizing (revised down from v1, calibrated against harvmcp)
 
-| Component | Estimate |
-|---|---|
-| `lib/commands/*.js` (7 pure functions) | ~700 LOC |
-| `lib/store/*.js` (markdown R/W + lockfile + projection) | ~500 LOC |
-| `lib/schema/*.js` (Picoschema validators) | ~150 LOC |
-| `lib/guardrail/*.js` (Constitutional Guardrail) | ~50 LOC |
-| `lib/mcp/*.js` (server + tools + Zod schemas) | ~300 LOC |
-| `cli.js` (peowly-commands dispatch) | ~150 LOC |
-| `mcp.js` (transport wiring) | ~10 LOC |
-| `skill/SKILL.md` | ~300 lines markdown |
-| Tests (commands + integration) | ~800 LOC |
-| **Total greenfield** | **~2,500 LOC Node + ~300 lines markdown** |
+| Component                                               | Estimate                                    |
+| ------------------------------------------------------- | ------------------------------------------- |
+| `lib/commands/*.js` (7 pure functions)                  | \~700 LOC                                   |
+| `lib/store/*.js` (markdown R/W + lockfile + projection) | \~500 LOC                                   |
+| `lib/schema/*.js` (Picoschema validators)               | \~150 LOC                                   |
+| `lib/guardrail/*.js` (Constitutional Guardrail)         | \~50 LOC                                    |
+| `lib/mcp/*.js` (server + tools + Zod schemas)           | \~300 LOC                                   |
+| `cli.js` (peowly-commands dispatch)                     | \~150 LOC                                   |
+| `mcp.js` (transport wiring)                             | \~10 LOC                                    |
+| `skill/SKILL.md`                                        | \~300 lines markdown                        |
+| Tests (commands + integration)                          | \~800 LOC                                   |
+| **Total greenfield**                                    | **\~2,500 LOC Node + \~300 lines markdown** |
 
-For comparison: `harvmcp` ships in ~2,000 LOC + skill. Scope is comparable.
+For comparison: `harvmcp` ships in \~2,000 LOC + skill. Scope is comparable.
 
 ### Testing pattern *(from harvmcp + BM note)*
 
@@ -230,12 +230,12 @@ For comparison: `harvmcp` ships in ~2,000 LOC + skill. Scope is comparable.
 
 ### Graduation roadmap (Phase 3 only)
 
-| Milestone | Trigger |
-|---|---|
-| **M1: working prototype** — code in standalone repo, npm-installable, dogfooded by vp-beads | Tracker handles the 5 Phase-2a evaluation criteria |
-| **M2: vp-beads migrates off bd** | Phase 2b supplementary skills work against tracker as well as they did against Backlog.md spike |
-| **M3: weft-ai adopts** | Tracker proves generic enough for the user's second bd-using project |
-| **M4: standalone identity** | External users beyond the user's own projects |
+| Milestone                                                                                   | Trigger                                                                                         |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **M1: working prototype** — code in standalone repo, npm-installable, dogfooded by vp-beads | Tracker handles the 5 Phase-2a evaluation criteria                                              |
+| **M2: vp-beads migrates off bd**                                                            | Phase 2b supplementary skills work against tracker as well as they did against Backlog.md spike |
+| **M3: weft-ai adopts**                                                                      | Tracker proves generic enough for the user's second bd-using project                            |
+| **M4: standalone identity**                                                                 | External users beyond the user's own projects                                                   |
 
 ---
 
