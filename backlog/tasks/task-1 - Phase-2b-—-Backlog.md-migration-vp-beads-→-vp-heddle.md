@@ -121,4 +121,32 @@ This branch merged current `main` (v0.17.0). Two scope deltas:
   Net: TASK-1.7 renames the 7 bd-shell-out skills; harden-memories is **removed
   in the same wave as the Memory-migration step** (a patch for a substrate
   misfeature becomes dead code once you leave the substrate).
+- **DECISION-POINT TRIGGER (formalized + self-surfacing) — re-check drop-vs-repurpose.**
+  The DROP above assumes the platform (Auto Dream / `/dream`) will own `MEMORY.md`
+  curation. As of 2026-06-03 that assumption is **false in practice**: Auto Dream is
+  server-flag-gated (`tengu_onyx_plover`), default-off, **absent in this install**, with
+  open data-loss (#47959) + mid-run-deadlock (#50694) issues and a "3 gaps" issue
+  (#38493) closed *as not planned*. A passive "revisit if it's unreliable someday"
+  trigger would never fire — nobody checks it. So it is bound to **two gates that fire
+  on their own**, with a deterministic check and a binary rule:
+  - **HARD GATE (cannot be skipped) — Memory-migration Step 0.** The wave that removes
+    harden-memories MUST run the *Auto Dream coverage check* (below) and record the
+    result in its wave log **before** the drop-vs-repurpose choice; the choice is
+    *blocked* until it does. The decision therefore cannot be made blind — this is the
+    "we can't not know" guarantee.
+  - **EARLY WARNING (recurring) — every-4th-sprint trend review.** Add a line to the
+    retrospective trend-review checklist: run the coverage check, record the result.
+    Surfaces the signal sprints before migration so it is never a surprise at Step 0.
+  - **Coverage check (deterministic — one command + one measure):** run `/memory` and
+    record `Auto-dream = on | off | absent`; then `wc -l` the auto-memory `MEMORY.md`
+    against the 200-line cap and note rot (duplicate entries, unresolved relative dates).
+  - **Decision rule (objective thresholds → binary action):**
+    - Auto-dream **`on`** → platform owns curation → **DROP** (original decision stands).
+    - Auto-dream **`off`/`absent`** AND `MEMORY.md` ≥ 160 lines (80% of the cap) OR showing
+      rot → the curation niche is *unowned and the gap is real* → **REPURPOSE**
+      harden-memories into a self-hosted memory-gardener (4-phase dream cycle + a
+      `git`-backed audit-log and undo — fixing Auto Dream's own worst defects; seed from
+      its 3-question taxonomy + bloat categories; cf. community `grandamenium/dream-skill`).
+    - Auto-dream **`off`/`absent`** but `MEMORY.md` healthy (< 160 lines, curated) →
+      **DROP**, lean on the quarterly human audit; re-check next trend review.
 <!-- SECTION:PLAN:END -->
