@@ -88,13 +88,25 @@ This branch merged current `main` (v0.17.0). Two scope deltas:
   unbounded append-store with no curation pressure, so it accumulates as a
   silent scaling token tax — harden-memories audits and prunes it back. The
   **Memory migration** step (DESIGN §Phase 2b) removes that failure mode at the
-  root: `bd remember` entries move to the auto-memory `MEMORY.md` (an **index** —
-  one line per memory, full content recalled on demand, *not* injected) and
-  CLAUDE.md, and the `bd prime` full-injection is dropped. No inject-everything
-  store ⇒ no token tax ⇒ no job for harden-memories. Repurposing it to "audit
-  MEMORY.md" doesn't hold either — that niche is already owned (vp-knowledge's
-  memory-defrag / memory-lifecycle for the BM graph; Anthropic's `/dream` for
-  auto-memory files), and harden-memories was explicitly scoped *out* of both.
+  root: `bd remember` entries move to the auto-memory `MEMORY.md` + CLAUDE.md and
+  the `bd prime` full-injection is dropped. MEMORY.md avoids bd's *specific*
+  failure mode (opaque, unbounded, full-dump every session) two ways, verified
+  against the global memory spec and the live auto-memory dir (16 separate files +
+  a hybrid 102-line MEMORY.md): (a) the growing parts — feedback, session notes —
+  are offloaded to an **index + recall-on-demand** pattern (one-line pointers in
+  MEMORY.md → separate files surfaced only when relevant), and (b) the inline part
+  is **human-visible and curatable** (you open the file and prune; bd's kv-store
+  was neither). It is a *hybrid*, not a pure index — so the migration must land
+  moved entries as pointers/separate files or curated inline, NOT a raw dump, or
+  it reintroduces a smaller (but visible, human-managed) tax. Either way the
+  unbounded-opaque-auto-inject store is gone ⇒ no job for harden-memories.
+  (Caveat: the canonical BM taxonomy note is *silent* on MEMORY.md's injection
+  mechanism — this index-vs-full distinction is sourced from the global memory
+  spec + direct inspection, not the taxonomy; flagged for primary-source
+  validation.) Repurposing it to "audit MEMORY.md" doesn't hold either — that
+  niche is already owned (vp-knowledge's memory-defrag / memory-lifecycle for the
+  BM graph; Anthropic's `/dream` for auto-memory files), and harden-memories was
+  explicitly scoped *out* of both.
   Net: TASK-1.7 renames the 7 bd-shell-out skills; harden-memories is **removed
   in the same wave as the Memory-migration step** (a patch for a substrate
   misfeature becomes dead code once you leave the substrate).
