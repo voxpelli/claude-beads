@@ -178,9 +178,13 @@ no writes.
 
 **Steps:**
 
-1. Read this project's `SYNERGY-<sibling>.md`. If absent, treat as zero
-   entries and proceed (the gap will surface as "Unreciprocated entries on
-   sibling" if the sibling has any entries).
+1. Read this project's committed `SYNERGY-<sibling>.md` only. Private
+   `PRIVATE-SYNERGY-*.md` overlays must never enter the bilateral comparison or
+   reciprocation; the `PRIVATE-` prefix keeps them outside the `SYNERGY-*.md`
+   namespace, so reading the committed file by name never touches them (see
+   `/synergy-tracker` `### Private overlay`). If absent, treat as zero entries
+   and proceed (the gap will surface as "Unreciprocated entries on sibling" if
+   the sibling has any entries).
 
 2. Read the sibling's `SYNERGY-<this-project>.md` at
    `<resolved-local-path>/SYNERGY-<this-project>.md`. If absent, treat as
@@ -521,6 +525,14 @@ Memory)'s per-entry confirmation pattern.
   `/upstream-tracker` workflow 1 (Log a new entry), not mirrored;
   finding (h) annotations get written by the sibling via their own
   `/upstream-tracker` workflow 3 (Resolve an entry), not by us.
+- **Never sources a reciprocal entry from a `PRIVATE-SYNERGY-*.md` private
+  overlay.** Those entries are private to this checkout (the proprietary↔public
+  boundary); writing one to a sibling would leak it. This is enforced
+  structurally: reciprocation reads the committed `SYNERGY-<project>.md` (by
+  exact name, workflow 2 (Sync sibling SYNERGY) step 1), and the `PRIVATE-`
+  prefix keeps overlays outside the `SYNERGY-*.md` namespace so no glob here can
+  reach them. See
+  `/synergy-tracker` `### Private overlay`.
 - Never mirrors entries from `## They Have / We Don't`. The section is
   intrinsically asymmetric (entries here describe sibling capabilities
   WE lack; the sibling's same-named section describes the inverse

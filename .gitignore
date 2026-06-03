@@ -11,6 +11,12 @@ SPIKE-*.md
 .claude/synergy-registry.local.json
 .claude/vendor-registry.local.json
 
+# Private SYNERGY overlays (proprietary↔public boundary). The PRIVATE- prefix
+# keeps them OUTSIDE the public `SYNERGY-*.md` glob namespace, so no consumer
+# can ever accidentally read them. Never commit: holds entries deliberately
+# kept out of the public repo.
+PRIVATE-SYNERGY-*.md
+
 node_modules/
 
 # Beads — fully local, ephemeral working state (not shared via git)
