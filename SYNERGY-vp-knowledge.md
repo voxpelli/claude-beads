@@ -81,9 +81,20 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   PostCompact subsumes PreCompact's capture role. Any sibling relying on a
   PostCompact hook for context injection should move it to `SessionStart`
   `source=compact`. vp-beads applied this in v0.17.0 (`session-start.sh` compact
-  branch). vp-knowledge uses `/session-reflect` (PostToolUse-driven), so is
-  unaffected, but the docs correction is graph-wide.
-  Status: aligned · Last verified: 2026-06-02
+  branch). **Correction (2026-06-03):** an earlier version of this entry claimed
+  vp-knowledge was "unaffected (uses `/session-reflect`, PostToolUse-driven)" —
+  that was wrong. `vp-claude/hooks/hooks.json` still registers a live
+  **`PostCompact`** hook (`hooks/post-compact.sh`) that emits `additionalContext`
+  for knowledge-graph recovery; the script even comments "Claude Code reads only
+  the first on stdout. Adopted from vp-beads' PostCompact recovery pattern (bd
+  vp-claude-1oah)." Per the verified docs that `additionalContext` is dropped, so
+  vp-knowledge's post-compaction graph-recovery payload is a **dead letter** on
+  every compaction. vp-knowledge **is** affected and should migrate the
+  `post-compact.sh` recovery payload into a `SessionStart` `source=compact` branch
+  exactly as vp-beads did in v0.17.0. Reciprocal not yet filed on the sibling
+  side — surface it from vp-claude via `/sibling-sync` (it will pair this entry
+  against vp-claude's `SYNERGY-vp-beads.md`).
+  Convergence path: adopt-theirs (vp-beads is ahead) · Status: drifting · Last verified: 2026-06-03
 
 - **PostToolUseFailure hook type** (2026-03-28) — *(Resolved 2026-04-04, v0.10.0)*
   Both plugins now use command hooks with stdin JSON parsing.

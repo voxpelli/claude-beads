@@ -53,6 +53,28 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
 
 - **`bd ready` default `--limit 10` makes \~60% of ready work invisible to agents** (2026-05-05) — `bd ready` defaults to `--limit 10` (per `bd ready --help`); on a healthy backlog this hides most ready work. In a sprint this session the project had 26 ready issues but `bd ready` returned only 10 — the 14 P3/P4 ready issues under epic `vp-beads-0e9` were silently absent from the agent's view of the backlog. The `bd prime` workflow context that ships in SessionStart never mentions the limit. Two complementary fixes: (a) raise the default to e.g. 25 so most projects see all ready work, AND/OR (b) document the `--limit 10` default in `bd prime`'s "Finding Work" section so agents know to override. Severity: minor · Ownership: upstream · Workaround: full — pass `--limit 100` (or `--json | jq` for full set). Source: RETRO-9 "What could improve".
 
+- **`bd ready` surfaces non-actionable issue types (`decision`, `milestone`)
+  as if they were workable** (2026-06-03) — `bd ready` filters purely on status
+  (open/reopened) plus unmet blockers; it never filters on issue **type**. So an
+  open `decision` or `milestone` with no blockers appears in the ready queue
+  identically to a `task` — but neither represents pickup-able work. A `decision`
+  is a record of a choice already made (it is "done" the moment the ADR text is
+  written); a `milestone` is a structural marker with no effort. Surfacing them
+  under "ready to work on" is misleading, especially to agents that treat the
+  `bd ready` list as the actionable backlog. Concrete fix: exclude
+  non-actionable types from `bd ready` by default (e.g. skip `decision` and
+  `milestone`, the two types whose semantics are "marker/record, not work"),
+  with an opt-in `--include-types`/`--all-types` flag for the rare case someone
+  wants the full set. Workflow-side mitigation (already adopted in vp-beads):
+  `bd close` a `decision` in the same breath it is recorded, with
+  `--reason "ADR recorded; implemented by <task-id>"`, so the buildable work
+  lives in a separate `task`/`feature` and the decision never lingers in
+  `ready`. Severity: minor · Ownership: upstream · Workaround: full — close
+  decisions/milestones immediately, or `bd ready --json | jq 'map(select(.issue_type
+  != "decision" and .issue_type != "milestone"))'` to filter the agent view.
+  Source: vp-beads-48f (a `decision` found sitting in `bd ready` after its
+  implementation shipped).
+
 - **`bd` text-mode list output is agent-hostile (filler line, glyphs, legend)**
   (2026-06-03) — Text-mode `bd` list commands (`bd list`, `bd ready`,
   `bd blocked`, `bd list --status in_progress`) emit human formatting that
