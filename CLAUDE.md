@@ -278,9 +278,35 @@ the per-skill tables this section deliberately omits).
   companion mirroring the `settings.local.json` convention. Per-entry merge
   by the `name` key; fields in `.local.json` win. Skills load the base
   registry first, then merge the override on top. Entries in `.local.json`
-  whose `name` is not in the base registry are ignored. Used by synergy-tracker
-  workflow 3 (Compare with sibling). Never committed — encodes
-  machine-specific paths.
+  whose `name` is not in the base registry are handled in two modes: (a) if the
+  entry's `file` is a `PRIVATE-SYNERGY-<name>.md` value it is **added** as a
+  private sibling (see next bullet); (b) otherwise it is ignored
+  (backward-compatible — the base registry is the authoritative source of
+  *public* siblings). Used by synergy-tracker workflow 3 (Compare with sibling)
+  and `/sibling-sync`. Never committed — encodes machine-specific paths and
+  private relationships.
+- **Private (local-only) sibling registration**: a sibling whose existence must
+  not be committed (e.g. a proprietary open-core partner) is registered
+  **exclusively** in `.claude/synergy-registry.local.json` with `file` set to a
+  `PRIVATE-SYNERGY-<name>.md` value. The `PRIVATE-` prefix is the marker — there
+  is no boolean. It reuses the same prefix mechanism as the private *content*
+  overlay (next bullet), so one convention covers both. **No-commit-leak
+  invariant** (the private `name` lives only in the gitignored `.local.json` and
+  `PRIVATE-SYNERGY-<name>.md`; it must never reach a committed file): the
+  committed base registry must never contain a `PRIVATE-SYNERGY-*` entry
+  (`validate-plugin.mjs` errors); `.gitignore` uses the wildcards
+  `PRIVATE-SYNERGY-*.md` + `.claude/*.local.json` and never a per-name line
+  (the validator flags a literal one); `bm-entity` is omitted; BM promotion and
+  reciprocation are skipped for `PRIVATE-SYNERGY-*`-filed siblings (structural);
+  the action menu suppresses `bd create` for private-sibling findings; and
+  follow-up logging redirects to the gitignored `PRIVATE-SYNERGY-<name>.md`.
+  `/sibling-sync` **may read** a private sibling's `PRIVATE-SYNERGY-<name>.md`
+  for read-only diff (it is a registry `file` value), but never writes the name
+  to any committed surface. UPSTREAM Mode-B reciprocal-friction is out of scope
+  for private siblings (would need a `PRIVATE-UPSTREAM-` mechanism) — private
+  siblings are SYNERGY-only. This is the *registration*-layer counterpart to the
+  private content overlay below (which makes individual *entries* private within
+  an already-registered public sibling).
 - **Private overlay file: `PRIVATE-SYNERGY-<project-name>.md`** — a gitignored
   companion to the committed `SYNERGY-<project-name>.md`, for synergy entries
   that must stay out of a public repo (a proprietary sibling's internal paths,
@@ -298,9 +324,17 @@ the per-skill tables this section deliberately omits).
   read uses `SYNERGY-*.md` and never sees private entries. **Invariant:
   private-overlay entries are NEVER promoted to Basic Memory and NEVER
   reciprocated/written to a sibling.** When a `PRIVATE-SYNERGY-*.md` overlay
-  exists, the committed `SYNERGY-<project-name>.md` carries a one-line pointer
-  noting it (gitignored files are invisible to collaborators and `git grep`).
-  Owned by synergy-tracker; `/sibling-sync` never reads it.
+  exists **for a registered public sibling**, the committed
+  `SYNERGY-<project-name>.md` carries a one-line pointer noting it (gitignored
+  files are invisible to collaborators and `git grep`). A **fully-private
+  sibling** (registered only in `.local.json` per the bullet above) has **no**
+  committed `SYNERGY-<name>.md` and therefore **no pointer** — a pointer would
+  commit the private name. This *content* overlay is owned by synergy-tracker;
+  `/sibling-sync` never reads a glob-discovered overlay of a public sibling. The
+  one exception is a *private sibling* whose registry `file` IS a
+  `PRIVATE-SYNERGY-<name>.md` value: `/sibling-sync` may read that file for
+  read-only diff (it is the sibling's sole synergy content), but still never
+  writes the private name to any committed surface.
 
 ### Basic Memory section ownership
 

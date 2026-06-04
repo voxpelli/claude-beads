@@ -110,10 +110,14 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   vp-knowledge's post-compaction graph-recovery payload is a **dead letter** on
   every compaction. vp-knowledge **is** affected and should migrate the
   `post-compact.sh` recovery payload into a `SessionStart` `source=compact` branch
-  exactly as vp-beads did in v0.17.0. Reciprocal not yet filed on the sibling
-  side — surface it from vp-claude via `/sibling-sync` (it will pair this entry
-  against vp-claude's `SYNERGY-vp-beads.md`).
-  Convergence path: adopt-theirs (vp-beads is ahead) · Status: drifting · Last verified: 2026-06-03
+  exactly as vp-beads did in v0.17.0. **Reciprocated & converged (2026-06-03,
+  /sibling-sync pass):** vp-knowledge migrated its `post-compact.sh` recovery
+  payload into `session-start.sh`'s `source=compact` branch and removed the
+  PostCompact hook (6→5), tracked as bd `vp-claude-1oah`; its
+  `SYNERGY-vp-beads.md` now records the reciprocal "PostCompact hook is a dead
+  letter for context injection" as `adopt-theirs · converged`. Both sides are
+  now PostCompact-free for context injection.
+  Convergence path: adopt-theirs · Status: converged · Last verified: 2026-06-03
 
 - **PostToolUseFailure hook type** (2026-03-28) — *(Resolved 2026-04-04, v0.10.0)*
   Both plugins now use command hooks with stdin JSON parsing.
@@ -183,8 +187,58 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   and no `--ignore-path`. The pinned settings are what make `remark -o` a safe
   autofixer (BM gotcha: lint rules and stringify settings must be
   hand-synchronized).
-  Convergence path: propose-shared · Reason: extract a shared remark preset (see
+  Convergence path: propose-shared · Status: partially converged · Last verified: 2026-06-03 · Reason: extract a shared remark preset (see
   Extraction Candidates) rather than hand-syncing three partial configs.
+  Note (2026-06-03, reciprocated from vp-claude `SYNERGY-vp-beads.md`): vp-claude
+  (bd `vp-claude-veqf`) adopted the pinned `settings` block plus
+  `remark-validate-links` and `remark-lint-unordered-list-marker-style` (`-`). Two
+  accept-difference carve-outs remain: `remark-gfm` (424 table-cell-padding warnings
+  on vp-claude's compact tables) and `--ignore-path .gitignore` (overrides rather
+  than stacks with vp-claude's `.remarkignore`). Pinned-settings plus two-plugin
+  core is the converged surface; full convergence rides the `@voxpelli/remark-config`
+  extraction candidate.
+
+- **Private SYNERGY overlay: `.local.md` suffix vs `PRIVATE-SYNERGY-` prefix**
+  (2026-06-03) — Both plugins protect proprietary↔public synergy content from
+  bilateral comparison and BM promotion, but via different file conventions.
+  vp-claude uses a `SYNERGY-<name>.local.md` file pointed to by the registry
+  `file:` field, gitignored via `SYNERGY-*.local.md` (in use for a proprietary
+  open-core-partner sibling). vp-beads v0.17.0 shipped a first-class
+  `PRIVATE-SYNERGY-<project>.md` overlay (a separate `PRIVATE-`-prefixed file
+  alongside the shared one, gitignored, skill-aware). This shipped design
+  resolves vp-claude's `UPSTREAM-vp-beads.md` `.local.md` feature request — but
+  with a different shape than proposed.
+  Convergence path: evaluate · Status: drifting · Last verified: 2026-06-03
+  Reason: decide whether to adopt vp-beads's `PRIVATE-SYNERGY-` convention
+  (migrating the gitignored `.local.md` file to a `PRIVATE-SYNERGY-` overlay) or
+  keep the `.local.md` workaround. Adoption would re-converge the marketplace on
+  one private-overlay mechanism. (Reciprocated from vp-claude's
+  `SYNERGY-vp-beads.md` 2026-06-03 — re-verify from vp-beads's POV.)
+
+- **Private sibling registration requires a committed entry (no local-only siblings)**
+  (2026-06-03) — vp-beads's `synergy-registry.local.json` only *overrides* fields
+  of an entry that already exists in the committed `synergy-registry.json`; a
+  `.local.json`-only entry (name absent from the committed base) is ignored
+  (`sibling-sync/SKILL.md:106-107`). So a fully-private proprietary
+  (open-core-partner) sibling cannot be a recognized, sibling-syncable sibling
+  without a committed entry naming it — `PRIVATE-SYNERGY-` made the *content*
+  private, but *registration* (the relationship's existence) is still forced
+  public. vp-claude wants local-only registration for proprietary partners.
+  Convergence path: propose-shared · Status: drifting · Last verified: 2026-06-03
+  Reason: filed as a feature request in vp-claude's `UPSTREAM-vp-beads.md`
+  ("synergy-registry: support local-only sibling entries"). Until shipped, the
+  workaround is either a committed entry (public footprint) or a hand-maintained
+  `PRIVATE-SYNERGY-<sibling>.md` doc kept outside the registry machinery.
+  (Reciprocated from vp-claude's `SYNERGY-vp-beads.md` 2026-06-03.)
+  **Implemented (vp-beads-a2k, pending v0.18.0):** `.local.json` now **adds**
+  private siblings when their `file` is `PRIVATE-SYNERGY-<name>.md` — reconciled
+  to ride the existing `PRIVATE-` prefix (no new `local-only` flag), so the
+  "never committed / never promoted / never reciprocated" guarantees are
+  inherited as filesystem facts. A no-commit-leak invariant (private name never
+  reaches a committed file) is enforced by `validate-plugin.mjs` (errors on a
+  `PRIVATE-SYNERGY-*` base entry or a per-name `.gitignore` line). vp-knowledge
+  may now adopt the same convention to drop its `.local.md` workaround — flip
+  this to `converged` once both sides ship.
 
 ## Extraction Candidates
 

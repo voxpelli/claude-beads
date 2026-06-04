@@ -312,7 +312,15 @@ if (existsSync(synergyRegistryPath)) {
         if (typeof e.file !== 'string') {
           error(synergyRegistryPath, `Entry [${i}] missing required string field: file`)
         }
-        if (typeof e.name === 'string' && typeof e.file === 'string') {
+        // No-commit-leak guard: a PRIVATE-SYNERGY-* file in the COMMITTED base
+        // registry commits a private sibling's name. Private siblings must live
+        // ONLY in the gitignored .claude/synergy-registry.local.json.
+        if (typeof e.file === 'string' && e.file.startsWith('PRIVATE-SYNERGY-')) {
+          error(
+            synergyRegistryPath,
+            `Entry [${i}] file "${e.file}" is PRIVATE-SYNERGY-prefixed in the committed base registry — this commits a private sibling's name. Register private siblings only in the gitignored .claude/synergy-registry.local.json (see references/synergy-entry-format.md "Private sibling entries").`
+          )
+        } else if (typeof e.name === 'string' && typeof e.file === 'string') {
           // Apply canonical normalization from
           // skills/synergy-tracker/references/synergy-entry-format.md
           // "Naming convention": replace '/' with '--', drop leading '@'.
@@ -338,6 +346,82 @@ if (existsSync(synergyRegistryPath)) {
           )
         }
       }
+    }
+  }
+}
+
+// --- .claude/synergy-registry.local.json (optional, gitignored) ---
+// Validates private-sibling (local-only) entries. This file is gitignored, so
+// this block runs only in development checkouts — that is where private-sibling
+// misconfiguration must be caught, before a skill misreads an entry.
+
+const synergyLocalRegistryPath = join(ROOT, '.claude', 'synergy-registry.local.json')
+if (existsSync(synergyLocalRegistryPath)) {
+  const localData = await readJson(synergyLocalRegistryPath)
+  const baseData = existsSync(synergyRegistryPath) ? await readJson(synergyRegistryPath) : []
+  const baseNames = new Set(
+    Array.isArray(baseData)
+      ? baseData.map((b) => (typeof b === 'object' && b !== null ? /** @type {Record<string, unknown>} */ (b).name : undefined)).filter((n) => typeof n === 'string')
+      : []
+  )
+  if (localData !== undefined) {
+    if (!Array.isArray(localData)) {
+      error(synergyLocalRegistryPath, 'Registry must be an array')
+    } else {
+      for (const [i, entry] of localData.entries()) {
+        if (typeof entry !== 'object' || entry === null) {
+          error(synergyLocalRegistryPath, `Entry [${i}] must be an object`)
+          continue
+        }
+        const e = /** @type {Record<string, unknown>} */ (entry)
+        if (typeof e.name !== 'string' || e.name === '') {
+          error(synergyLocalRegistryPath, `Entry [${i}] missing required non-empty string field: name`)
+          continue
+        }
+        const isBaseEntry = baseNames.has(e.name)
+        const isPrivate = typeof e.file === 'string' && e.file.startsWith('PRIVATE-SYNERGY-')
+        if (!isBaseEntry && !isPrivate) {
+          warn(
+            synergyLocalRegistryPath,
+            `Entry [${i}] name "${e.name}" is not in the base registry and its file is not PRIVATE-SYNERGY-prefixed — skills will IGNORE it. To register a private sibling, set "file" to "PRIVATE-SYNERGY-<name>.md"; to register a public one, add it to synergy-registry.json.`
+          )
+        }
+        if (isPrivate) {
+          // Private-add entry: file must derive as PRIVATE-SYNERGY-<normalized>.md.
+          const normalizedName = e.name.replace(/^@/, '').replaceAll('/', '--')
+          const expectedFile = `PRIVATE-SYNERGY-${normalizedName}.md`
+          if (e.file !== expectedFile) {
+            error(synergyLocalRegistryPath, `Entry [${i}] private file "${String(e.file)}" does not match expected "${expectedFile}" (derived from name "${e.name}")`)
+          }
+          if (typeof e['bm-entity'] === 'string') {
+            warn(synergyLocalRegistryPath, `Entry [${i}] is a private sibling but sets "bm-entity" — promotion to Basic Memory is blocked for private siblings (the name would leak); this field is ignored. Remove it.`)
+          }
+        }
+        if (typeof e.relationship === 'string' && !KNOWN_RELATIONSHIPS.has(e.relationship)) {
+          warn(synergyLocalRegistryPath, `Entry [${i}] relationship "${e.relationship}" is not in the known set (${[...KNOWN_RELATIONSHIPS].join(', ')})`)
+        }
+      }
+    }
+  }
+}
+
+// --- .gitignore no-commit-leak guard for PRIVATE-SYNERGY ---
+// A literal per-name `PRIVATE-SYNERGY-<name>.md` line in the committed
+// .gitignore would itself commit the private name. Only the wildcard form is
+// allowed; private files are covered by `PRIVATE-SYNERGY-*.md`.
+
+const gitignorePath = join(ROOT, '.gitignore')
+if (existsSync(gitignorePath)) {
+  const gitignoreRaw = await readFile(gitignorePath, 'utf8')
+  const gitignoreLines = gitignoreRaw.split('\n')
+  for (const raw of gitignoreLines) {
+    const line = raw.trim()
+    if (line === '' || line.startsWith('#')) continue
+    if (line.includes('PRIVATE-SYNERGY-') && line !== 'PRIVATE-SYNERGY-*.md' && line !== '/PRIVATE-SYNERGY-*.md') {
+      error(
+        gitignorePath,
+        `.gitignore line "${line}" names a specific PRIVATE-SYNERGY file — this commits a private sibling's name. Use only the wildcard "PRIVATE-SYNERGY-*.md".`
+      )
     }
   }
 }
