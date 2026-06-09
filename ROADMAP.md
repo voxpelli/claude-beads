@@ -10,6 +10,34 @@
 >
 > **Status:** drafted 2026-05-18, immediately after `DESIGN-tracker-exploration.md` v2 stripped four material errors from v1 and landed the Backlog.md substrate spike as Phase 2a. The tracker name is unsettled and handled at M4 — implementation is name-agnostic.
 
+> **⚠️ v3 update (2026-06-09 — 12-agent research round; read first).** Evidence base:
+> [`RESEARCH-tracker-migration-synthesis-2026-06.md`](./RESEARCH-tracker-migration-synthesis-2026-06.md);
+> architecture: `DESIGN-tracker-exploration.md` v3 block. The substrate verdict changed and
+> two framings below are corrected:
+>
+> - **Substrate = Option C — lean flat-YAML + a `ready-walker`** (in-repo `.mjs` helpers,
+>   **not** a standalone npm package or MCP server): `tasks-<slug>.yml`, `ready-walker.mjs`,
+>   and `validate-tasks.mjs` cloning `validate-plugin.mjs`; **zero new runtime deps**; no
+>   process, no vendor, no index in v1. **Backlog.md is declined** (another daemon/vendor;
+>   can't block on deps → can't do `ready`) — this **supersedes** the Phase-2a spike and the
+>   v2 "open-core standalone tracker package" framing that several constraints below assume.
+> - **H1 additions:** (a) **close the flywheel return edge** — `swarm-wave` workflow 1 reads
+>   `retrospective`'s `engineering/agents/*` lessons before partitioning; metric = **rework
+>   ratio** (fix-iterations/wave); stop if flat after 2–3 sprints, invest more if it declines
+>   monotonically *and* transfers. (b) **anchor a draft `SPEC.md`** (intent only — authored at
+>   execution): the in-repo `ready` rule is the one primitive the ralph/hone/Anthropic/
+>   backlog.md ecosystem never standardized; status vocab maps to **MCP Tasks SEP-1686**;
+>   "Draft v0 — reference impl: this repo"; promote only on external adoption signal.
+> - **Unit of work = wave/sprint, not feature** (the per-feature PRD triplet over-fits 1-hour
+>   churn; the rare epic-scale initiative = epic→children). **Rename stays at M4**, decoupled.
+> - **New not-doing items** (see Section 6 v3 block): SQLite index in v1, the `liggare`
+>   extension (never), the hone-ai three-stage loop, the per-feature PRD-triplet-as-unit,
+>   BM-as-tracker collapse.
+>
+> The H1 *success criterion* gains: **shed the bd-on-Dolt operational complexity-delta**
+> (daemon + ports + binary DB + dual-store sync + migrations + orphan reaping) — the real
+> driver, per synthesis §2–§3.
+
 ---
 
 ## Section 1: Horizons
@@ -223,6 +251,12 @@ How the tracker's relationship to existing players evolves across horizons.
 
 ### Backlog.md
 
+> **v3 (2026-06-09): declined as substrate.** The Phase-2a spike ran (verdict MIXED) and is
+> now overturned — Backlog.md's MCP server is another daemon/vendor and it can't block on
+> deps (can't reproduce `ready`). Permanent stance stays *friendly* (good MIT project), but
+> it is **not** the substrate; Option C (in-repo flat-YAML + ready-walker) is. The "possibly
+> substrate" lines below are v2 history.
+
 - **H1**: possibly substrate (Phase 2a/2b path) or independent (Phase 3 path). Either way, storage layouts stay symmetric so re-evaluation is cheap.
 - **H2**: if substrate at H1, monitor upstream alignment. If diverged at H1, evaluate again as the tracker matures — does Backlog.md's MCP server cover enough that a substrate-swap is rational?
 - **H3**: only relevant if H3 advances and Backlog.md adds CRDT support (currently no signals it would).
@@ -295,6 +329,41 @@ The tracker is explicitly **not**:
 - **A platform.** The tracker is a tool, not infrastructure for other people's tools. Reason: H1 success is dogfooded usefulness, not ecosystem growth. Substitute path: if a tool wants to integrate, it uses the MCP surface like any other client.
 - **A tool that colonizes project `CLAUDE.md` files.** Reason: bd's `bd setup claude` injects \~50 lines per project including directives that tell Claude Code to *avoid* its own task and memory systems (`TodoWrite`, `TaskCreate`, `MEMORY.md`). That's the portability-tax-from-the-inside view: a tool that doesn't trust the host imposes its own primitives AND tells the host's primitives to stand down. We don't do this. The tracker lives *alongside* Claude Code's primitives, not in tension with them. Any project-level documentation that ships ships *once* (no `BEGIN/END managed-block` markers), in a user-editable form, and never instructs the host to disable its own systems. Substitute path: ship a `<tracker> docs --print` command for users who want to paste guidance into their own README/CLAUDE.md — with full editorial control.
 - **A workflow-prescribing tool.** Reason: vp-heddle (the plugin) is the workflow choreography layer per the lead motif. The substrate's job is to provide composable primitives — markdown files, CRUD operations, a query surface — *not* to ship an enforced workflow as a precondition of substrate use. Tools that compete with the user for the mandate to dictate workflow are a misfit even when their workflow is good. Concrete distinction: a **substrate surface** is what the tool structurally enforces (data format, CRUD primitives, validation gates); an **advisory surface** is what the tool suggests via docs / prompts / opt-in resources. A tool whose advisory surface is heavy but substrate surface is light is acceptable (you can ignore the advice and use the substrate raw — Backlog.md is in this category, with heavy MCP workflow resources but a binary that doesn't enforce them). A tool whose substrate itself imposes opinions is a misfit (bd's `validation.on-create=error` gates, Dolt as required storage, auto-export throttle, CLAUDE.md colonization on init). When vp-heddle wraps a substrate, vp-heddle skills supply the workflow; they do **not** defer to the substrate's workflow resources as gospel. Substitute path: substrates ship their workflow opinions as opt-in resources (Backlog.md's `backlog://workflow/*` MCP resources are the right shape), and consumers like vp-heddle decide whether to consult them per use case.
+
+> **v3 additions to the not-doing list (2026-06-09).** Under Option C the constraints above
+> hold, but two assumptions are corrected: (1) the *standalone-package / MCP-server / "tracker
+> returns structured records via MCP sampling"* framing in several constraints is **dropped** —
+> Option C is in-repo `.mjs` helpers, no package, no MCP surface, no daemon (which only
+> *strengthens* the no-daemon / platform-proximity rules). (2) The bullet calling **Backlog.md
+> "acceptable" is stale** — Backlog.md is now **declined** (its MCP server is another
+> daemon/vendor; it can't block on deps so it can't reproduce `ready`). New explicit
+> not-doing items, each with a revival trigger:
+>
+> - **No SQLite index in v1.** Ripgrep over the YAML covers keyword search. *Revive only if*
+>   a project exceeds ~500 tasks AND measured ripgrep latency is a real complaint.
+> - **Never extend `liggare`** for the task index. Reason: private, unstable, native
+>   better-sqlite3, no adapter seam — a 400–700 LOC refactor of someone else's project.
+>   *No revival* (build a fresh small index if ever needed).
+> - **No hone-ai three-stage loop** as the execution model. Reason: it's an opinionated
+>   plan→approve→execute→finalize workflow — the canonical thing the "workflow-prescribing
+>   tool" rule rejects. We borrow its `progress.txt`/`AGENTS.md` *discipline* and a
+>   fresh-context reviewer; we do not adopt the loop or demote swarm-wave to its scheduler.
+> - **No per-feature PRD triplet as the default unit.** Reason: over-fits 1-hour churn (0 of
+>   the last ~20 closes warranted one). The unit is the wave/sprint; the rare epic-scale
+>   initiative is epic→children. *Revive the triplet only if* a single initiative routinely
+>   spans many sessions with a real decompose-and-iterate need (then it's an epic, not a new
+>   hierarchy).
+> - **No collapsing the 3 memory systems into one substrate** (BM-as-tracker). Reason: the
+>   injected-core / capped-bridge / retrieved-graph tiers are load-bearing. *Do* make the
+>   task-file frontmatter a BM-`Task`-parseable superset for a read-only projection — that's a
+>   lens, not a merge.
+> - **No Constitutional-Guardrail MCP middleware in v1.** Descoped to `validate-tasks.mjs` +
+>   a PostToolUse hook (anti-bit-rot integrity at check time). *Revive the prompt-injection
+>   guardrail if* sibling/upstream-sync-authored task content becomes an actual injection
+>   vector in practice.
+> - **No rename at M2.** `vp-beads`→`vp-heddle` stays gated at M4 (external-adoption signal),
+>   decoupled from the substrate swap. Reason: the name must not do argumentative work the
+>   engineering should do.
 
 ---
 

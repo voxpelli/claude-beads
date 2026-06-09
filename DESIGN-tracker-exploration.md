@@ -1,4 +1,4 @@
-# vp-beads-tracker Design Exploration (2026-05, v2)
+# vp-beads-tracker Design Exploration (2026-05 v2 → 2026-06 v3)
 
 > **Lead motif** *(every design decision in this document defers to this sentence; if a proposed feature doesn't serve it, the feature gets deferred or cut):*
 >
@@ -6,11 +6,71 @@
 
 > **v2 changelog (2026-05-18 evening session).** Stripped bd-cruft uncritically imported in v1 (`bd remember`, 9 issue types, hard validation, "cross-project sync as tracker concern"). Switched architecture to follow `harvmcp` + `weft-ai` prior-art templates: standalone npm package (not embedded sub-directory), triple-facade pattern, lean v1 MCP shape (no resources). Added open-core / language-computation boundary per `weft-ai`. Restructured as Phase 2a / 2b / 3 path with Backlog.md substrate-swap as the leading recommendation. v1 of this doc lives in git history; the four material errors are preserved inline below as the "What v1 got wrong" section.
 
+> **⚠️ v3 changelog (2026-06-09 — a 12-agent research round). The substrate verdict
+> changed. Read this block first; everything below it is v2 history.** Evidence base:
+> [`RESEARCH-tracker-migration-synthesis-2026-06.md`](./RESEARCH-tracker-migration-synthesis-2026-06.md)
+> (the citation source — primary-source receipts for every claim here).
+>
+> **Verdict: Option C — a lean flat-YAML substrate + a `ready-walker`.** One
+> `tasks-<slug>.yml` per epic/slug + a ~150 LOC `ready-walker.mjs` (deterministic
+> transitive-unblock) + a `validate-tasks.mjs` integrity linter cloning the existing
+> `validate-plugin.mjs` idiom. **Zero new runtime deps** (`js-yaml` already present), no
+> process, no vendor, no SQLite index in v1 (ripgrep for search).
+>
+> This **supersedes the v2 leading recommendation (adopt Backlog.md)** and the committed
+> `SPIKE-MIG.1.md` MIXED verdict. Backlog.md is **declined**: its MCP server is *another
+> daemon/vendor* (a lateral move, not the daemon-escape that is the real driver), and it
+> **cannot block on dependencies** — so it structurally cannot reproduce `bd ready`, the
+> load-bearing primitive. The hone-ai amnesiac three-stage *loop* (a competing external
+> proposal) is **also declined** as an opinionated plan→approve→execute→finalize workflow
+> that violates `substrate-not-opinion`; we **borrow** its `progress.txt` + `AGENTS.md`
+> accretion *discipline* and add a *fresh-context reviewer* — take the file shape, reject
+> the loop.
+>
+> **What v2 got wrong** (corrected, primary-sourced — see synthesis §1):
+> 1. **The `node:sqlite` FTS5 gap is stale.** FTS5 ships since Node v24.0/v22.16 (May 2025,
+>    PR nodejs/node#57621). The `openclaw#65033` citation is misapplied (it's about
+>    sqlite-vec, not FTS5). → The Phase-3 "substrate verification" gate is moot.
+> 2. **Don't reuse/extend `liggare`.** Private, 1-week-old, native better-sqlite3 (not WASM),
+>    deleted its WASM ripgrep, no source-adapter seam → extending it is a 400–700 LOC
+>    refactor of someone else's unstable private project. (The "extend liggare" idea came
+>    from the external hone-ai document, not this v2 — it is **rejected outright**.)
+> 3. **No SQLite index in v1.** Ripgrep over the canonical files covers keyword search; an
+>    FTS5/vector index is a *triggered v2* (>500 tasks AND real latency).
+> 4. **The `ready`-walker is the core primitive**, not the index. ~150 LOC over parsed YAML
+>    reproduces `bd ready`; querying / BM projection / the draft spec compose around it.
+> 5. **The Constitutional Guardrail descopes** to `validate-tasks.mjs` + a PostToolUse hook
+>    (anti-bit-rot integrity at `npm run check` time — honestly a snapshot, not enforcement);
+>    the prompt-injection guardrail is deferred with a trigger.
+>
+> **The four decisions are separable** (stop fusing them): A1 amnesiac loop (independent),
+> A2 flat-file substrate (the real bet), A3 index (deferred), A4 drop-beads (coupled to A2
+> only by narrative). **Unit of work = wave/sprint, not feature** (the per-feature PRD
+> triplet over-fits a repo whose p50 issue lifespan is 1 hour; the rare epic-scale
+> initiative is modelled as epic→children). The open-core "tracker = standalone npm
+> package" framing of v2 is **dropped** — Option C is in-repo `.mjs` helpers, not a separate
+> package (lock-in resistance + platform proximity). **Rename `vp-beads`→`vp-heddle` stays
+> gated at M4**, decoupled from the substrate swap.
+
 ## Status
 
-Design exploration. First action item: spike `MrLesk/Backlog.md` as the bd substrate replacement (Phase 2a). The Phase 3 build-our-own design below is the fallback if Phase 2a's spike disqualifies Backlog.md.
+**v3 (2026-06-09): verdict reached — Option C (lean flat-YAML + ready-walker).** The v2
+"spike Backlog.md" action item is **closed/superseded** (the spike ran, verdict MIXED, now
+overturned — see `SPIKE-MIG.1.md` and the synthesis doc). The Phase 3 "build-our-own
+standalone package" design below is **historical**: Option C is the leaner answer (in-repo
+helpers, no package, no MCP). Going-forward migration work is tracked in bd epic
+`vp-beads-l9i`. Everything from "## Strategic frame" down is **v2 history, retained for
+provenance** — corrected by the v3 block above.
 
 ## Strategic frame
+
+> **v3 correction:** the real driver is the **operational complexity-delta of bd-on-Dolt**
+> (daemon + ports + binary DB + dual-store sync + migrations + orphan reaping — observed
+> live), *not* the memory tax or dependency-enforcement loss (both **dormant** at this
+> repo's scale: 1 net-blocked issue, p50 lifespan 1 hour, `bd remember` ~90 tokens). Gas
+> Town "feature creep" / "strategic incoherence" is real but **positioning, not technical
+> forcing** (beads is MIT, stable). Lead the rationale with the complexity-delta; it's the
+> credible plank. See synthesis §2–§3.
 
 The tracker is being explored as part of the user's broader migration off `bd` (now at `gastownhall/beads`). Motivations:
 
@@ -29,7 +89,7 @@ The tracker must:
 
 ## Phased path
 
-### Phase 2a — Backlog.md substrate spike (next sprint, LEADING RECOMMENDATION)
+### Phase 2a — Backlog.md substrate spike (~~LEADING RECOMMENDATION~~ — SUPERSEDED v3: Backlog.md declined, see v3 block)
 
 Spike `MrLesk/Backlog.md` (in homebrew-core, 5.6K⭐, 38 contributors, MIT, TypeScript, 75+ tool MCP server, init-wizard for Claude Code auto-config) as the bd substrate replacement.
 
