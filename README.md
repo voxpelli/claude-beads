@@ -2,6 +2,11 @@
 
 A [Claude Code](https://claude.ai/code) plugin that automates the sprint workflow for projects that track work in [beads](https://github.com/steveyegge/beads) — or in a `ROADMAP.md` / `VISION.md` split, or a manual list — backed by [Basic Memory](https://github.com/basicmachines-co/basic-memory). Sync vendor subtrees, track upstream friction, close sprints, run retrospectives — all without leaving your terminal. Beads is the default substrate, not a requirement: skills degrade gracefully without it (see [Work-tracking substrates](#work-tracking-substrates)).
 
+> **Direction:** vp-beads is the calm, sovereign answer to agentic development — one
+> developer amplified by Claude Code agents, on plain text and git, no daemon. The stance
+> and the in-progress migration toward a plain-text substrate live in
+> [`VISION.md`](./VISION.md).
+
 ## What it does
 
 ### Sprint Review agent — Proactive end-of-sprint gate
@@ -384,6 +389,39 @@ must be bumped manually — the two repos are independent.
 
 - **`vendor-sync` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a beads issue rather than an immediate pull.
 
+## Prior art & acknowledgments
+
+vp-beads stands on borrowed shoulders, and it keeps parts of several. Credit to the people,
+not just the projects — and an honest note on what is kept vs. declined:
+
+- **[beads](https://github.com/steveyegge/beads)** — Steve Yegge & the
+  [gastownhall](https://github.com/gastownhall) maintainers. The substrate vp-beads was
+  built on and is now migrating away from (for the operational complexity of its
+  Dolt-backed daemon, not its data model — that part is good). **Kept:** the 9-type issue
+  vocabulary. **Left:** the Dolt substrate.
+- **[hone-ai](https://github.com/oskarhane/hone-ai)** — Oskar Hane. The amnesiac-loop file
+  shape. **Kept:** the `progress.txt` + `AGENTS.md` accretion *discipline* and the idea of
+  a separate reviewer. **Declined:** its three-stage execution loop (vp-beads' skills own
+  the workflow).
+- **The Ralph loop** — [Geoffrey Huntley](https://ghuntley.com/ralph/); and
+  **[`snarktank/ralph`](https://github.com/snarktank/ralph)** — Ryan Carson, for the
+  `prd`→`progress.txt` lineage.
+- **"Long-running Agents"** —
+  [Addy Osmani](https://addyosmani.com/blog/long-running-agents/), for the "state lives
+  outside the amnesiac agent" framing.
+- **Anthropic** —
+  ["Effective harnesses for long-running agents"](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
+  (the feature-list + progress-notes + test-ratchet shape).
+- **[Backlog.md](https://github.com/MrLesk/Backlog.md)** — MrLesk. Evaluated as a substrate
+  candidate and, in the end, declined — but the evaluation sharpened the design.
+- **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** — the cross-project
+  knowledge graph vp-beads writes its learnings to.
+
+The calm-sovereign stance behind the migration rests on a wider canon — local-first
+(Ink & Switch), calm tech (Weiser), convivial tools (Illich), Worse-is-Better (Gabriel) —
+credited in [`VISION.md`](./VISION.md).
+
 ## License
 
 MIT
+
