@@ -17,6 +17,15 @@ ordinal: 1000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+**⚠️ SUPERSEDED (2026-06-09) — dogfood concluded. Verdict: Option C (lean flat-YAML +
+ready-walker), NOT Backlog.md.** A 12-agent research round overturned the Phase-2a MIXED
+verdict: Backlog.md is declined (another daemon/vendor; can't reproduce `ready`). This
+Backlog.md-format dogfood served its purpose (it surfaced bd's write-drop/throttle pain) and
+is now wound down — these `backlog/tasks/*.md` files are kept as historical provenance, not
+edited further. Going-forward migration work is tracked in **bd epic `vp-beads-l9i`** (the
+live tracker until execution flips the substrate). See
+`RESEARCH-tracker-migration-synthesis-2026-06.md` and `DESIGN-tracker-exploration.md` v3.
+
 Parent task for all Phase 2b work migrating vp-beads from bd to Backlog.md. Verdict from Phase 2a spike (bd vp-beads-l9i.2): MIXED — adopt Backlog.md + layer vp-beads-side supplements. Synthesis: SPIKE-MIG.1.md at project root. ~680-860 LOC budget, ~4 sprints estimated. Tracking switched to Backlog.md for this branch as a dogfood experiment — bd holds spike history (vp-beads-l9i.* closed).
 <!-- SECTION:DESCRIPTION:END -->
 

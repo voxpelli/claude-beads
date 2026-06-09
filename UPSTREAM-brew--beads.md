@@ -108,6 +108,25 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
 
 ## Bugs
 
+- **Dolt-daemon operational-reliability cluster (the migration's complexity-delta driver)**
+  (2026-06-09, forensic audit) — observed *live* in this repo's `.beads/dolt-server.log`
+  and `ps`: the `dolt sql-server` daemon **restarted 22× across 9 ports** (this session
+  warned `port 51925→53274, previous unreachable`); **5 of 22 starts (23%) died before
+  "Server ready"**; **2 orphaned `dolt sql-server` processes** were running un-reaped
+  (28+69 MB); migration 28 emits fatal **"nothing to commit"** warning spam on fresh DBs.
+  Upstream: `#3516`/`#3709` (port-bound false-success + unreachable-port fallback),
+  `#2559` (connect-after-restart fails), `#4282` (orphaned servers — upstream reports 7 @
+  ~2 GB / 67 W), `#4137` (migration 28 fatal), `#4128`/`#3878` (write-path re-imports
+  JSONL per call → OOM + lock-fight at swarm scale), `#4259` (migration-0043 breaks
+  cross-machine Dolt sync). **Class: fundamental** (architectural — inherent to a
+  daemon-fronted versioned-SQL store; can't be configured away). Single-host solo use pays
+  this full tax to serve an issue list flat-files-on-git would serve with zero added
+  surface — the documented basis for the bd→flat-file migration (`vp-beads-l9i`,
+  `RESEARCH-tracker-migration-synthesis-2026-06.md` §3). *Honest caveat:* bd's read path is
+  fast (`bd stats` ~0.38 s, `bd doctor` 70/72) and the data-loss bugs (#3948 family) are
+  config-gated and neutralized here (`export.auto=false`) — the friction is the daemon
+  layer, not the data layer.
+
 - **Inconsistent metadata-key validation across `--metadata` vs `--set-metadata`/`--unset-metadata`**
   (2026-05-04) — `bd update <id> --metadata '{"unknown-field": "x"}'` accepts the
   hyphenated key without complaint; the resulting metadata stores
