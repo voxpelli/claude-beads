@@ -5,6 +5,7 @@ user-invocable: true
 argument-hint: "[--auto-reciprocate] [sibling-name]"
 paths:
   - "SYNERGY-*.md"
+  - "PRIVATE-SYNERGY-*.md"
   - "UPSTREAM-*.md"
   - ".claude/synergy-registry.json"
   - ".claude/vendor-registry.json"
@@ -98,13 +99,21 @@ optional `local-path` field gives the on-disk path to the sibling checkout
 
 `.claude/synergy-registry.local.json` is a gitignored companion that overrides
 fields in the committed registry — same per-entry merge by `name` pattern as
-`.claude/vendor-registry.local.json`. Resolution order:
+`.claude/vendor-registry.local.json` — **and** can add fully-private siblings
+(see "Private sibling handling" below). Resolution order:
 
 1. Read `.claude/synergy-registry.json`.
 2. If `.claude/synergy-registry.local.json` exists, merge it on top by `name`
-   key. Fields in `.local.json` win; absent fields keep the base value.
-   Entries in `.local.json` whose `name` is not in the base registry are
-   ignored.
+   key, in two modes:
+   - **Override mode** (entry `name` matches a base entry): fields in
+     `.local.json` win; absent fields keep the base value.
+   - **Private-add mode** (entry `name` not in the base registry AND its `file`
+     is a `PRIVATE-SYNERGY-<name>.md` value): the entry is **added** to the
+     merged result as a private sibling. The `PRIVATE-` prefix on `file` is the
+     marker (there is no boolean); it governs the restrictions below.
+   - Entries in `.local.json` whose `name` is not in the base registry and whose
+     `file` is NOT `PRIVATE-SYNERGY-*` are **ignored** (backward compatibility —
+     typos and accidental entries stay silent).
 3. For each merged entry, resolve `local-path` (registry value or
    `../<name>/`).
 4. If the resolved path does not exist on disk, report informatively and SKIP
@@ -113,7 +122,46 @@ fields in the committed registry — same per-entry merge by `name` pattern as
 
 Workflow 3 (Sync sibling UPSTREAM) additionally consumes the merged
 `.claude/vendor-registry.json` (+ `.local.json`) to identify shared vendor
-dependencies across siblings.
+dependencies across siblings. (The vendor registry has no private-add mode —
+private siblings are synergy-registry only.)
+
+### Private sibling handling
+
+A **private sibling** is one whose merged registry entry has a
+`file: PRIVATE-SYNERGY-<name>.md` value (added via private-add mode above, or —
+in principle — a base entry, which the validator forbids because it would commit
+the name). Its `name` lives only in the gitignored `.local.json` and
+`PRIVATE-SYNERGY-<name>.md`; **it must never reach a committed file.** This skill
+therefore treats private siblings under a strict read-vs-write split, keyed on
+the `PRIVATE-SYNERGY-*` `file` predicate:
+
+- **Read (allowed) — hybrid read-diff.** Unlike a *public* sibling's
+  glob-discovered `PRIVATE-SYNERGY-*.md` overlay (which this skill never reads),
+  a private sibling's `PRIVATE-SYNERGY-<name>.md` **is** its registry `file`, so
+  workflows 1 (Discover sibling(s)), 2 (Sync sibling SYNERGY), and 3 (Sync
+  sibling UPSTREAM, Mode A only) read it to produce **read-only diff findings**.
+  Findings appear in the **ephemeral terminal report only** — never written.
+- **Write (blocked) — every committed surface.** For a `PRIVATE-SYNERGY-*`-filed
+  sibling:
+  - **Reciprocation:** workflow 4 (Apply reciprocation batch) skips it entirely
+    (writing `SYNERGY-<this-project>.md` on the sibling's side would expose the
+    relationship).
+  - **`bd create`:** the action menu suppresses the UPSTREAM "file beads issues"
+    option (a committed `.beads/*.jsonl` entry would leak the name) — findings
+    stay report-only.
+  - **Logging on this side:** any "log unreciprocated entry" follow-up routes to
+    the gitignored `PRIVATE-SYNERGY-<name>.md`, never a committed
+    `SYNERGY-<name>.md` (delegated to `/synergy-tracker`).
+  - **BM promotion:** never (this skill has no BM tools; `/synergy-tracker`
+    workflow 5 (Promote to Basic Memory) skips `PRIVATE-SYNERGY-*` siblings).
+  - **UPSTREAM Mode B:** out of scope for private siblings — an
+    `UPSTREAM-<name>.md` filename would itself leak the name. Workflow 3 (Sync
+    sibling UPSTREAM) runs Mode A (shared dependencies — names no sibling) but
+    skips Mode B for `PRIVATE-SYNERGY-*` siblings.
+
+The `PRIVATE-SYNERGY-*` `file` predicate is the single structural marker — the
+same prefix that keeps content outside the `SYNERGY-*.md` glob also gates every
+write path here.
 
 ## Workflows
 
@@ -143,14 +191,20 @@ Resolve which siblings will participate in this run.
    user to invoke `/synergy-tracker` directly with the sibling name and
    then re-run `/sibling-sync`.
 2. If `.claude/synergy-registry.local.json` exists, merge it on top per the
-   per-entry merge rules in the Registry section above.
+   per-entry merge rules in the Registry section above. This includes
+   **private siblings** — `.local.json`-only entries whose `file` is
+   `PRIVATE-SYNERGY-<name>.md`, which are added to the participating set (they
+   read-diff like any sibling but are blocked from every committed-write path —
+   see "Private sibling handling").
 3. If the user named a specific sibling in their request or argument, filter
    the merged list to that entry. Otherwise, all merged entries participate.
 4. For each entry, resolve `local-path` → `../<name>/` fallback. Probe each
    resolved path with a directory existence check.
-5. Build two lists:
+5. Build the participation lists:
    - **Accessible siblings** (path exists) — proceed to workflow 2 (Sync
-     sibling SYNERGY) and workflow 3 (Sync sibling UPSTREAM) for each
+     sibling SYNERGY) and workflow 3 (Sync sibling UPSTREAM) for each. Mark any
+     private sibling (registry `file` is `PRIVATE-SYNERGY-*`) with a `[private]`
+     label so the user can see which relationships are private.
    - **Inaccessible siblings** (path missing) — report them so the user
      knows what was skipped, with the resolved path and a hint that
      `.claude/synergy-registry.local.json` can override the path
@@ -161,6 +215,7 @@ Resolve which siblings will participate in this run.
 ```
 Siblings participating:
 - vp-knowledge → /Users/.../vp-claude  (registry local-path)
+- acme-partner → /abs/path/to/acme-partner  [private]
 
 Siblings skipped (path not accessible):
 - vp-other → ../vp-other  (set local-path in synergy-registry.local.json)
@@ -178,13 +233,17 @@ no writes.
 
 **Steps:**
 
-1. Read this project's committed `SYNERGY-<sibling>.md` only. Private
-   `PRIVATE-SYNERGY-*.md` overlays must never enter the bilateral comparison or
-   reciprocation; the `PRIVATE-` prefix keeps them outside the `SYNERGY-*.md`
-   namespace, so reading the committed file by name never touches them (see
-   `/synergy-tracker` `### Private overlay`). If absent, treat as zero entries
-   and proceed (the gap will surface as "Unreciprocated entries on sibling" if
-   the sibling has any entries).
+1. Read this project's SYNERGY file for the sibling, by the registry `file`
+   value — `SYNERGY-<sibling>.md` for a public sibling, or
+   `PRIVATE-SYNERGY-<sibling>.md` for a **private** sibling (its registry `file`;
+   the hybrid read-diff exception). For a *public* sibling, never pull in a
+   glob-discovered `PRIVATE-SYNERGY-*.md` overlay — the `PRIVATE-` prefix keeps
+   those outside the `SYNERGY-*.md` namespace, so reading the committed file by
+   name never touches them (see `/synergy-tracker` `### Private overlay`). For a
+   private sibling, all downstream findings are read-only and stay in the
+   ephemeral report (the write blocks in "Private sibling handling" apply). If
+   the file is absent, treat as zero entries and proceed (the gap will surface as
+   "Unreciprocated entries on sibling" if the sibling has any entries).
 
 2. Read the sibling's `SYNERGY-<this-project>.md` at
    `<resolved-local-path>/SYNERGY-<this-project>.md`. If absent, treat as
@@ -312,8 +371,12 @@ compare friction tracking on each. Same report-only contract as workflow 2
    sibling's resolved `local-path` for `UPSTREAM-*.md`. Compute the
    intersection by basename — each match is one Mode A pair. Record both
    sides' full UPSTREAM basename lists for use in step 2.
-2. **Detect Mode B pair.** Derive this project's canonical name per the
-   four-tier algorithm in
+2. **Detect Mode B pair.** **Skip Mode B entirely for private siblings**
+   (merged registry `file` is `PRIVATE-SYNERGY-*`): a Mode B file is named
+   `UPSTREAM-<sibling-name>.md`, whose filename would commit the private name.
+   Private siblings are SYNERGY-only; Mode A above (keyed on shared *dependency*
+   names, never the sibling) still runs. For a non-private sibling, derive this
+   project's canonical name per the four-tier algorithm in
    `skills/synergy-tracker/references/project-name-derivation.md` to
    compute `<this-name>`. Apply the same algorithm (tier 3 for the sibling
    subject) to the registry `name` field for `<sibling-name>`.
@@ -469,14 +532,21 @@ Memory)'s per-entry confirmation pattern.
 
 **Steps:**
 
-1. Re-run workflow 2 (Sync sibling SYNERGY) finding (a) (reciprocal gaps)
-   for each accessible sibling, applying the stricter matching rules from
-   the Hard Limits section below: Pass 1 (deterministic) matches only;
-   any Pass 2 (judgment) matches from workflow 2 (Sync sibling SYNERGY) are added back to the
-   reciprocation queue with an extra disambiguation prompt rather than
-   suppressed silently. These are the entries on this side that the
-   sibling demonstrably lacks.
-2. For each reciprocal gap, in order:
+1. **Exclude private siblings first.** Drop any sibling whose merged registry
+   `file` is `PRIVATE-SYNERGY-*` before doing anything else — reciprocation would
+   write `SYNERGY-<this-project>.md` on the sibling's side and expose that the
+   private relationship exists. Announce each exclusion: "Skipping reciprocation
+   for `<name>` — private sibling (existence must not cross to the sibling's
+   side)." This guard runs at the top of the loop, before any read of the
+   sibling's SYNERGY file.
+2. Re-run workflow 2 (Sync sibling SYNERGY) finding (a) (reciprocal gaps)
+   for each remaining (non-private) accessible sibling, applying the stricter
+   matching rules from the Hard Limits section below: Pass 1 (deterministic)
+   matches only; any Pass 2 (judgment) matches from workflow 2 (Sync sibling
+   SYNERGY) are added back to the reciprocation queue with an extra
+   disambiguation prompt rather than suppressed silently. These are the entries
+   on this side that the sibling demonstrably lacks.
+3. For each reciprocal gap, in order:
    1. Read the source entry from this project's `SYNERGY-<sibling>.md`
       (full entry text including title, date, structured fields).
    2. Determine the destination file at the sibling:
@@ -503,7 +573,7 @@ Memory)'s per-entry confirmation pattern.
       pass.
    6. On `n` or `skip-rest`: skip and continue (or stop the batch on
       `skip-rest`).
-3. After the batch, report:
+4. After the batch, report:
    - Entries written, with destination file paths
    - Entries skipped, with reason
    - **Verification reminder for the user**: run `git status` in the
@@ -533,6 +603,11 @@ Memory)'s per-entry confirmation pattern.
   prefix keeps overlays outside the `SYNERGY-*.md` namespace so no glob here can
   reach them. See
   `/synergy-tracker` `### Private overlay`.
+- **Never reciprocates for a private sibling** (merged registry `file` is
+  `PRIVATE-SYNERGY-*`). Step 1 of this workflow excludes them before the loop;
+  writing `SYNERGY-<this-project>.md` on the sibling's side would commit the
+  private relationship's existence to their repo. See "Private sibling
+  handling".
 - Never mirrors entries from `## They Have / We Don't`. The section is
   intrinsically asymmetric (entries here describe sibling capabilities
   WE lack; the sibling's same-named section describes the inverse
@@ -601,6 +676,24 @@ If neither tier has actionable findings for a sibling, skip the
 `AskUserQuestion` call entirely for that sibling. If only one tier has
 actionable findings, issue a single-question call (the SDK supports 1-4
 questions per call).
+
+**Private-sibling guard (no-commit-leak).** When the sibling's merged registry
+`file` is `PRIVATE-SYNERGY-*`, every committed-write menu option is removed
+because it would commit the private name:
+
+- **Q2 option 2 (`bd create`) is suppressed** — a `.beads/*.jsonl` entry naming
+  the sibling would leak it. The finding stays in the report only. (Finding (e)
+  does not arise anyway: workflow 3 (Sync sibling UPSTREAM) skips Mode B for
+  private siblings.)
+- **Q1 option 2 (Log unreciprocated sibling entries) redirects** — its
+  `/synergy-tracker` dispatch targets the gitignored `PRIVATE-SYNERGY-<name>.md`,
+  never a committed `SYNERGY-<name>.md` (pass the private destination in the
+  `args` prose).
+- **Q1 option 1 (Apply reciprocal gaps) is absent** — workflow 4 (Apply
+  reciprocation batch) already excludes private siblings.
+
+If that leaves no actionable options for a private sibling, skip the prompt and
+present the read-only findings as report-only.
 
 ### Per-action argument templates
 

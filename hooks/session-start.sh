@@ -132,6 +132,12 @@ tracked_private="${tracked_private% }"
 if [ -n "$tracked_private" ]; then
 	parts+=("WARNING: private SYNERGY overlay file(s) tracked by git: ${tracked_private}. These PRIVATE-SYNERGY-*.md overlays are gitignored private content and must not be committed (irreversible leak). To fix: git rm --cached ${tracked_private}; git commit --no-gpg-sign -m \"chore: untrack private overlay\"")
 fi
+# The synergy local override registry holds private-sibling registrations
+# (names, relationships of proprietary partners). Committing it leaks those
+# names — warn if it is tracked.
+if git ls-files --error-unmatch .claude/synergy-registry.local.json >/dev/null 2>&1; then
+	parts+=("WARNING: .claude/synergy-registry.local.json is tracked by git. It holds private-sibling registrations (names of proprietary partners) and must not be committed (irreversible leak). To fix: git rm --cached .claude/synergy-registry.local.json; git commit --no-gpg-sign -m \"chore: untrack synergy local registry\"")
+fi
 # --- end sensitive-file check ---
 
 # --- Dormancy nudge ---

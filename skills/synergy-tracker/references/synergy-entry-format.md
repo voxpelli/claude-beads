@@ -179,6 +179,11 @@ projects have active synergy tracking relationships.
 | `relationship` | no       | One of: `sibling-plugin`, `shared-tooling`, `fork`, `consumer`, `coordinated-release`, `dependency`. See `validate-plugin.mjs` `KNOWN_RELATIONSHIPS` for the canonical set; values outside it emit a validator warning.                                                           |
 | `local-path`   | no       | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
 
+A **private sibling** is registered by setting `file` to a `PRIVATE-SYNERGY-<name>.md`
+value in `.claude/synergy-registry.local.json` (never the committed base). The
+`PRIVATE-` prefix is the marker — there is no separate boolean. See "Private
+sibling entries" below.
+
 > **`bm-entity` naming rule:** Use
 > `engineering/agents/vp-plugins-<this-project>-and-<sibling>` — a
 > relationship note path, not an entity path. The `npm/<name>` form
@@ -228,12 +233,85 @@ Resolution rules:
    on top, matching entries by the `name` key. Fields present in `.local.json`
    win; fields absent from `.local.json` keep the value from the base registry.
 3. Entries in `.local.json` whose `name` does not appear in the base registry
-   are ignored — the base registry remains the authoritative source of which
-   siblings exist.
+   are handled in two modes:
+   - **Private-add mode** — if the entry's `file` is a `PRIVATE-SYNERGY-<name>.md`
+     value, it is **added** to the merged result as a private sibling. The
+     `PRIVATE-` prefix is the marker (there is no boolean). The content file is
+     gitignored and lives outside the `SYNERGY-*.md` glob, so the existing
+     PRIVATE-SYNERGY structural guarantees apply (see "Private sibling entries"
+     below).
+   - **Ignore mode (backward-compatible)** — any other entry whose `name` is not
+     in the base registry (including `.local.json`-only entries with an ordinary
+     `SYNERGY-<name>.md` file) is ignored. This keeps typos and accidental
+     entries silent and preserves the prior behavior where the base registry is
+     the authoritative source of which *public* siblings exist.
 
 Use this file to record local checkouts that don't follow the `../<name>/`
 convention (different parent directory, monorepo subdirectories, CI checkout
-paths). Never commit it: it encodes machine-specific paths.
+paths), and to register fully-private siblings (see below). Never commit it:
+it encodes machine-specific paths and private relationships.
+
+#### Private sibling entries
+
+A private sibling is one whose very existence must not be committed — for example
+a proprietary `open-core-partner` that should not appear in a public OSS repo. It
+is registered **only** in `.claude/synergy-registry.local.json` (gitignored), with
+its `file` set to a `PRIVATE-SYNERGY-<name>.md` value. This reuses the v0.17.0
+`PRIVATE-SYNERGY-` mechanism for *registration* as well as content: one prefix
+convention does both.
+
+```json
+[
+  {
+    "name": "acme-partner",
+    "file": "PRIVATE-SYNERGY-acme-partner.md",
+    "relationship": "consumer",
+    "local-path": "/abs/path/to/acme-partner"
+  }
+]
+```
+
+- **Required:** `name`, and `file` matching `PRIVATE-SYNERGY-<name>.md` (the
+  prefix is the marker; without it a non-base entry is ignored per rule 3). The
+  `<name>` uses the same normalization as committed SYNERGY files (`/` → `--`,
+  drop leading `@`), so `@scope/foo` → `PRIVATE-SYNERGY-scope--foo.md`; the
+  validator enforces this derivation.
+- **Recommended:** `relationship`, `local-path`.
+- **Omit `bm-entity`:** a private sibling's name in a Basic Memory path would leak
+  the relationship into the cross-project graph; promotion is blocked and the
+  field is ignored (the validator warns if it is present).
+
+**The no-commit-leak invariant.** The private sibling's `name` appears only in
+gitignored files (`.claude/synergy-registry.local.json` and the
+`PRIVATE-SYNERGY-<name>.md` filename/content). It must never reach a committed
+file. The structural blocks:
+
+- **Never in the committed base registry.** The private entry lives in
+  `.local.json` only. `validate-plugin.mjs` **errors** if the committed
+  `synergy-registry.json` contains any `file: PRIVATE-SYNERGY-*` entry.
+- **Never in `.gitignore` as a per-name line.** Both files are covered by the
+  wildcards `PRIVATE-SYNERGY-*.md` and `.claude/*.local.json` already present in
+  `.gitignore`. Never add a literal `PRIVATE-SYNERGY-<name>.md` line — that line
+  would itself commit the name. The validator flags any such literal line.
+- **Never promoted to Basic Memory.** `/synergy-tracker` workflow 5 (Promote to
+  Basic Memory) globs `SYNERGY-*.md`, never `PRIVATE-SYNERGY-*.md`, and skips any
+  registry entry whose `file` is `PRIVATE-SYNERGY-*` — structural.
+- **Never reciprocated to the sibling's repo.** sibling-sync workflow 4 (Apply
+  reciprocation batch) skips any sibling whose `file` is `PRIVATE-SYNERGY-*`.
+- **Never filed as a public bead.** sibling-sync's action menu suppresses
+  `bd create` for private-sibling findings (a committed `.beads/*.jsonl` entry
+  would leak the name); such findings stay in the ephemeral report.
+- **Follow-up logging redirects.** Logging an entry for a private sibling writes
+  to the gitignored `PRIVATE-SYNERGY-<name>.md`, never a committed
+  `SYNERGY-<name>.md`.
+
+**Hybrid read-diff.** Unlike a public sibling's glob-discovered
+`PRIVATE-SYNERGY-<name>.md` overlay (which `/sibling-sync` never reads), a private
+sibling's `PRIVATE-SYNERGY-<name>.md` *is* the registry `file` value, so
+`/sibling-sync` **may read it for read-only diff** (reciprocal-gap / status-drift
+findings, shown only in the ephemeral terminal report). The read exception is
+scoped precisely to "this `PRIVATE-SYNERGY-*` file is a registry `file` value";
+the write block above is what keeps the name out of every committed surface.
 
 ## Lifecycle rules
 

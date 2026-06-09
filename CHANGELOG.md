@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0][] - 2026-06-04
+
+### Added
+
+- **Private (local-only) sibling registration** (`vp-beads-a2k`). A sibling
+  whose existence must not be committed (e.g. a proprietary open-core partner)
+  can now be registered **exclusively** in the gitignored
+  `.claude/synergy-registry.local.json` by setting its `file` to a
+  `PRIVATE-SYNERGY-<name>.md` value. Previously `.local.json` could only
+  *override* fields of an entry already present in the committed base registry;
+  a `.local.json`-only entry was ignored, forcing a sibling's existence to be
+  public. The `PRIVATE-` prefix is the single marker — there is no separate
+  boolean — reusing the v0.17.0 `PRIVATE-SYNERGY-` content mechanism for
+  *registration* too, so the "never promoted to Basic Memory / never
+  reciprocated" guarantees are inherited as filesystem facts (the file lives
+  outside the `SYNERGY-*.md` glob).
+- **No-commit-leak invariant, validator-enforced.** A private sibling's name
+  must never reach a committed file. `validate-plugin.mjs` now **errors** if the
+  committed base registry contains a `PRIVATE-SYNERGY-*` entry, or if
+  `.gitignore` carries a per-name `PRIVATE-SYNERGY-<name>.md` line (only the
+  `PRIVATE-SYNERGY-*.md` wildcard is allowed); it also validates
+  `.claude/synergy-registry.local.json` private entries (file-name derivation,
+  `bm-entity` omission). `session-start.sh` warns if `.local.json` is
+  git-tracked.
+
+### Changed
+
+- **`/sibling-sync` hybrid read-diff for private siblings.** A private sibling's
+  `PRIVATE-SYNERGY-<name>.md` (its registry `file`) is read for read-only diff,
+  while every committed-write path is blocked: reciprocation (workflow 4) skips
+  private siblings, the action menu suppresses `bd create` for them, follow-up
+  logging redirects to the gitignored file, and UPSTREAM Mode B is skipped
+  (its `UPSTREAM-<name>.md` filename would leak the name; Mode A still runs).
+  A *public* sibling's glob-discovered `PRIVATE-SYNERGY-*.md` overlay is still
+  never read by `/sibling-sync`.
+- **`/synergy-tracker` workflow 1 step 1b** gained a Visibility gate that
+  registers a private sibling into `.local.json` (with
+  `file: PRIVATE-SYNERGY-<name>.md`, `bm-entity` omitted) and creates the
+  gitignored content file. Workflow 5 (Promote to Basic Memory) and the merge
+  rule (workflow 3) handle private siblings consistently.
+- **ESLint via `@voxpelli/eslint-config`** now lints the `.mjs` validation
+  tooling (`check:lint`, wired into `npm run check`).
+
 ## [0.17.0][] - 2026-06-03
 
 ### Added
@@ -1147,6 +1190,8 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   resolve, trend-review, and retrospective-support. Vendor packages are declared
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized
   from a project-local skill.
+
+[0.18.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.18.0
 
 [0.17.0]: https://github.com/voxpelli/claude-beads/releases/tag/v0.17.0
 

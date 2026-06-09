@@ -214,8 +214,29 @@ rather than re-asking each time.
     `engineering/agents/vp-plugins-<this-project>-and-<sibling>` (see
     `references/synergy-entry-format.md`).
 
-- **Prompt only the residuals.** At most two `AskUserQuestion` calls
+- **Prompt only the residuals.** At most three `AskUserQuestion` calls
   (Anthropic SDK caps the `header` field at 12 characters):
+  - **First, a `header: "Visibility"` (10 chars) call** — "Public (committed
+    registry) or Private (gitignored — the sibling's name is never committed)?"
+    Default **Public**. Choose **Private** for a proprietary partner whose very
+    existence must stay out of a public repo. When the user picks **Private**,
+    switch to the private-sibling path:
+    - Write the entry to `.claude/synergy-registry.local.json` only (never the
+      committed base), with `file` set to `PRIVATE-SYNERGY-<sibling>.md`.
+    - **Omit `bm-entity` entirely** — a private name in a Basic Memory path would
+      leak it (the validator warns if present).
+    - Create the gitignored content file `PRIVATE-SYNERGY-<sibling>.md` from the
+      four-section template (it is the sibling's sole synergy file — there is no
+      committed `SYNERGY-<sibling>.md`).
+    - Verify both `.claude/synergy-registry.local.json` and the
+      `PRIVATE-SYNERGY-*.md` wildcard are gitignored (`git check-ignore -q`).
+      **Never add a per-name `PRIVATE-SYNERGY-<sibling>.md` line to `.gitignore`**
+      — that line would itself commit the name; the `PRIVATE-SYNERGY-*.md`
+      wildcard already covers it. If the wildcard is missing, warn the user to
+      add the wildcard line (not a per-name one).
+    - The preview shows ONLY the `.local.json` block (no committed-registry
+      block, no `bm-entity`). Skip the Relationship-into-base step; relationship
+      still goes into the `.local.json` entry.
   - One call with `header: "Relationship"` (12 chars). The validator's
     `KNOWN_RELATIONSHIPS` set caps options at six; `AskUserQuestion` caps at
     4 visible options + auto "Other". Surface the four most common —
@@ -334,10 +355,14 @@ rather than re-asking each time.
    `### Private overlay`). Before the first write to a new overlay, verify it is
    ignored: `git check-ignore -q PRIVATE-SYNERGY-<project>.md` (exit 0 = ignored,
    safe; exit 1 = NOT ignored — stop and have the user add `PRIVATE-SYNERGY-*.md`
-   to `.gitignore` first). Then add a one-line pointer to the committed file
+   to `.gitignore` first). Then, **only for a public sibling that has a committed
+   `SYNERGY-<project>.md`**, add a one-line pointer to that committed file
    (e.g. "*A private `PRIVATE-SYNERGY-<project>.md` overlay exists for this
-   sibling.*") so collaborators know it may exist. Otherwise target the committed
-   `SYNERGY-<project>.md`.
+   sibling.*") so collaborators know it may exist. **For a fully-private sibling**
+   (registered only in `.local.json` with `file: PRIVATE-SYNERGY-<name>.md`),
+   there is **no** committed `SYNERGY-<name>.md` and you write **no** pointer — a
+   pointer would commit the private name. Otherwise (a public sibling, ordinary
+   entry) target the committed `SYNERGY-<project>.md`.
 6. Compose the entry from this project's perspective using the entry format from
    `references/synergy-entry-format.md`. Focus on impact and adoption cost, not
    implementation internals.
@@ -544,9 +569,11 @@ unlogged synergy observations.
    2. If `.claude/synergy-registry.local.json` exists, read it and merge it on
       top of the base registry. Match entries by the `name` key (the
       human-stable identifier across machines and BM entity paths); for each
-      matched entry, fields present in `.local.json` win. Entries in
-      `.local.json` with no matching `name` in the base registry are ignored
-      (the base registry is the authoritative source of which siblings exist).
+      matched entry, fields present in `.local.json` win. A `.local.json`-only
+      entry (no matching base `name`) is **added** as a private sibling when its
+      `file` is `PRIVATE-SYNERGY-<name>.md`, and otherwise **ignored** (the base
+      registry is the authoritative source of which *public* siblings exist).
+      See `references/synergy-entry-format.md` "Private sibling entries".
 
    If no project is identified from the argument, merged registry, or existing
    SYNERGY files, ask the user which sibling project to compare with.
@@ -607,9 +634,12 @@ report that promotion is unavailable and suggest checking Basic Memory manually.
 **Steps:**
 
 1. **Scan for candidates.** Glob all `SYNERGY-*.md` files and read them. (This
-   glob structurally excludes `PRIVATE-SYNERGY-*.md` private overlays — they are
-   never promoted; see `### Private overlay`.) Filter eligible entries by
-   section + structured fields:
+   glob structurally excludes every `PRIVATE-SYNERGY-*.md` — both private
+   *overlays* of public siblings and the sole content file of a *private
+   sibling* registered via `.local.json`. Neither is ever promoted; their names
+   must never reach Basic Memory. See `### Private overlay` and
+   `references/synergy-entry-format.md` "Private sibling entries".) Filter
+   eligible entries by section + structured fields:
    - Extraction Candidates with `Readiness: ready` (always)
    - Shared Patterns with `Status: aligned` (always)
    - Shared Patterns with `Status: drifting` (flag the drift in the draft)
