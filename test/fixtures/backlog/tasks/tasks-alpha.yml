@@ -1,0 +1,35 @@
+# Fixture for check-tasks-smoke.mjs — exercises the real file-parse path in CI.
+# NOT live substrate (lives under test/fixtures/, never under the repo's backlog/).
+meta:
+  slug: alpha
+  title: Smoke fixture — alpha
+tasks:
+  - id: T-1
+    title: Foundation (done)
+    type: chore
+    status: completed
+    priority: high
+    acceptance_criteria:
+      - implemented and tested
+  - id: T-2
+    title: Builds on T-1 — ready
+    type: feature
+    status: pending
+    priority: medium
+    deps:
+      - T-1
+  - id: T-3
+    title: Builds on T-2 — blocked
+    type: task
+    status: pending
+    priority: low
+    deps:
+      - T-2
+  - id: T-4
+    title: In progress and stale
+    type: bug
+    status: in_progress
+    priority: high
+    agent: loop-a
+    updated: "2026-01-01"
+    steps_to_reproduce: do the thing

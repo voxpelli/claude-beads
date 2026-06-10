@@ -1,0 +1,18 @@
+# Fixture for check-tasks-smoke.mjs — cross-file deps + a clean ready task.
+meta:
+  slug: beta
+  title: Smoke fixture — beta
+tasks:
+  - id: T-1
+    title: Cross-file dep on alpha (ready — alpha/T-1 completed)
+    type: feature
+    status: pending
+    priority: low
+    deps:
+      - alpha/T-1
+  - id: T-2
+    title: No deps — top of the ready queue (critical)
+    type: bug
+    status: pending
+    priority: critical
+    steps_to_reproduce: open the app
