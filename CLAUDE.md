@@ -161,6 +161,10 @@ is another daemon/vendor; it can't reproduce `ready`) — there are **no
   schema. The write side is deliberately Edit/Write on the YAML (no CRUD
   helper — substrate-not-opinion). The skill-retarget (`bd` → ready-walker /
   YAML edits) and a `### Files-availability convention` are the next wave.
+- **Target type model (decision `vp-beads-etm`, 2026-06-10): 4 types** —
+  `task` / `doc` / `decision` / `milestone`; bd's other five types are
+  framings carried in `labels:`, `epic` is `task` + `parent:`. The 9-type
+  table below describes **bd (still live)**, not the migration target.
 - Feature branch `feat/tracker-design-exploration` carries this work
   (local-only per user choice — don't push without approval).
 - The superseded Backlog.md dogfood lives in `backlog/_archive/` for provenance.
@@ -535,6 +539,11 @@ Full details + 5-agent validation trail: BM
 observation + `UPSTREAM-claude-code.md` at project root.
 
 ### Issue types (9 total)
+
+**bd-current until cutover** — this table describes the live bd tracker. The
+post-migration substrate uses 4 types (`task`/`doc`/`decision`/`milestone` +
+`labels:` for the framings) per decision `vp-beads-etm`; see `## Active
+migration` above.
 
 All issue types are validated on creation with `validation.on-create=error`. Authoritative source: BM `brew/brew-beads` `### Issue Types (Core Vocabulary)`. Provenance: `engineering/agents/cli-validation-discovery-via-json-error-probing`.
 

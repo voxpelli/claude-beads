@@ -75,7 +75,10 @@ gitignored `.beads/`, no `bd dolt push`).
 
 **Honesty guard (do not overclaim):** bd's read path is fast (`bd stats` ~0.38s, `bd
 doctor` 70/72, 0 errors), 105 issues closed cleanly, and its **9-type vocabulary is
-genuinely good** — so good the migration target keeps it. "Half-broken" is fair to the
+genuinely good** — so good the migration target keeps it. *\[CORRECTED 2026-06-10,
+decision `vp-beads-etm`: the substrate adopts the 4-type model
+(task/doc/decision/milestone + `labels:` for the framings); the credit to bd's taxonomy
+documentation stands, but "the migration target keeps it" no longer does.\]* "Half-broken" is fair to the
 *daemon layer*, unfair to the *data layer*. Lead the rationale with the complexity-delta,
 not data-loss horror stories (the data-loss bugs are config-gated and already neutralized
 here — see §3, class C).
@@ -227,7 +230,7 @@ the skills decide bundling (preserving the format-agnostic stance
 | **`snarktank/ralph`** (MIT, 20k★) | Ryan Carson | The `prd.json`→`progress.txt` lineage hone-ai generalizes. |
 | **"Long-running Agents"** (addyosmani.com) | Addy Osmani | "State lives outside the agent's context… the agent is amnesiac, the filesystem isn't." |
 | **"Effective harnesses for long-running agents"** | Anthropic | `feature-list.json` + `claude-progress.txt` + test-ratchet shape; planner/generator/evaluator triad (independently converged on gen/eval separation). |
-| **beads** (`gastownhall/beads`, MIT) | Steve Yegge & maintainers | The substrate built-on and migrating-from. **Keep** the 9-type issue vocabulary (genuinely good); leave the Dolt substrate. Yegge's bit-rot critique (markdown plans "not queryable", "bit-rot fast") is the steelman the anti-bit-rot linter answers. |
+| **beads** (`gastownhall/beads`, MIT) | Steve Yegge & maintainers | The substrate built-on and migrating-from. ~~**Keep** the 9-type issue vocabulary (genuinely good)~~ *\[CORRECTED 2026-06-10, decision `vp-beads-etm`: 4-type model adopted; bd's framings ride in `labels:`. The taxonomy-documentation credit stands.\]*; leave the Dolt substrate. Yegge's bit-rot critique (markdown plans "not queryable", "bit-rot fast") is the steelman the anti-bit-rot linter answers. |
 | **Backlog.md** (`MrLesk/Backlog.md`, MIT) | MrLesk | Evaluated as a substrate candidate (Phase 2a spike); declined (vendor + MCP-server daemon; can't do `ready`). |
 | **Cursor "Scaling agents"** | Cursor | Non-coordinating scoped workers + per-cycle judge + fresh restart beats locks/OCC — validates file-disjoint + post-wave gate. |
 

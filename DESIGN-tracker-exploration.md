@@ -51,6 +51,15 @@
 > package" framing of v2 is **dropped** — Option C is in-repo `.mjs` helpers, not a separate
 > package (lock-in resistance + platform proximity). **Rename `vp-beads`→`vp-heddle` stays
 > gated at M4**, decoupled from the substrate swap.
+>
+> **Type model RATIFIED (2026-06-10, decision bead `vp-beads-etm`): 4 types, not 9.** The
+> §"Schema — 4 types, not 9" table below is **decided current** — the one piece of the
+> otherwise-historical Phase-3 architecture that carries forward. `task` / `doc` /
+> `decision` / `milestone`; the six bd framings ride in `labels:`, `epic` is `task` +
+> `parent:`. Externally validated (beads itself keys no agent behavior on type; working
+> agent-native trackers are typeless; the exclusivity property survives the smaller enum).
+> Implemented in `scripts/task-schema.mjs`. Per-type required-sections return later only as
+> label-conditional *advisory warnings* — never hard errors.
 
 ## Status
 
@@ -212,7 +221,7 @@ Three reasons over JSONL or refs/wal alternatives:
 
 Default `<config-root>` = `backlog/` to align with Backlog.md convention (so migration in either direction is symmetric — if Phase 3 ships and the user later wants to evaluate Backlog.md again, the storage layouts match).
 
-### Schema — 4 types, not 9
+### Schema — 4 types, not 9 *(RATIFIED current — decision `vp-beads-etm`, 2026-06-10; the rest of this Phase-3 section is v2 history)*
 
 | Type        | Required `##` sections                                      | Notes                                                                                                |
 | ----------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
