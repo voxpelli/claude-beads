@@ -141,24 +141,29 @@ Dev tooling only: validation and linting via `npm run check`.
   utility), research-wave (parallel research with backlog-groomer handoff).
   Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
 
-## Active migration: bd → Backlog.md (Phase 2b)
+## Active migration: bd → flat-YAML (Option C)
 
-Mid-migration as of 2026-05. Phase 2a spike: MIXED verdict — see
-`SPIKE-MIG.1.md` at project root (gitignored). Phase 2b execution plan: the
-`Implementation Plan` section of `backlog/tasks/task-1 - Phase-2b*.md`.
+Verdict (2026-06-09, a 12-agent research round): **Option C — a lean in-repo
+flat-YAML substrate (`backlog/tasks/tasks-<slug>.yml`) read by
+`scripts/ready-walker.mjs` (the files-native `bd ready`) + `validate-tasks.mjs`
+(the integrity gate).** **Backlog.md was evaluated and DECLINED** (its MCP server
+is another daemon/vendor; it can't reproduce `ready`) — there are **no
+`mcp__backlog__*` tools and no Backlog.md MCP server** in this plan. Evidence:
+`RESEARCH-tracker-migration-synthesis-2026-06.md`; architecture:
+`DESIGN-tracker-exploration.md` v3 block. The single canonical schema is
+`scripts/task-schema.mjs`.
 
-- **bd** holds spike history. The MIG epic `vp-beads-l9i` remains OPEN as
-  the Phase 2b parent; all children (`vp-beads-l9i.1`, `.1.1–.1.5`, `.2`) are
-  CLOSED. Don't reopen the closed children.
-- **Backlog.md** holds active Phase 2b work at `backlog/tasks/TASK-1.*.md`.
-  MCP tools: `mcp__backlog__task_*` (server name: `backlog`). Local-scope
-  MCP registration in `~/.claude.json` per-machine; re-add with
-  `claude mcp add backlog -- backlog mcp start` if missing.
-- Feature branch `feat/tracker-design-exploration` carries the Phase 2b work
-  (currently local-only per user choice — don't push without approval).
-- Substrate-not-opinion doctrine: vp-heddle skills will wrap Backlog.md's
-  CRUD primitives but supply their OWN workflow (don't defer to Backlog.md's
-  MCP workflow resources as gospel). See `ROADMAP.md` §6 last bullet.
+- **bd is still the LIVE tracker for this repo's own dev** until the migration
+  executes. Epic `vp-beads-l9i` is the Phase-2b parent (its going-forward
+  children carry the Option-C plan). Use `bd` as usual; don't reopen closed
+  children.
+- **Phase 0 (shipped):** the read/validate tooling above + a single canonical
+  schema. The write side is deliberately Edit/Write on the YAML (no CRUD
+  helper — substrate-not-opinion). The skill-retarget (`bd` → ready-walker /
+  YAML edits) and a `### Files-availability convention` are the next wave.
+- Feature branch `feat/tracker-design-exploration` carries this work
+  (local-only per user choice — don't push without approval).
+- The superseded Backlog.md dogfood lives in `backlog/_archive/` for provenance.
 
 ## Work-tracking substrates
 
@@ -458,12 +463,11 @@ rm -rf directory        # NOT: rm -r directory
 working *on vp-beads*, not a claim about projects that *use* vp-beads — the
 plugin itself supports beadless substrates (see `## Work-tracking substrates`).
 
-This project uses `bd` (beads) for spike/legacy history tracking, and
-**Backlog.md for active Phase 2b work** (see "Active migration" section above).
-For bd: `bd ready` to find available work, `bd update <id> --claim` to claim,
-`bd close <id>` to complete. For Backlog.md: `mcp__backlog__task_list`,
-`mcp__backlog__task_view`, `mcp__backlog__task_edit`, `mcp__backlog__task_create`.
-Do NOT use markdown TODOs or task lists.
+This project uses `bd` (beads) as the **live** tracker for its own development:
+`bd ready` to find available work, `bd update <id> --claim` to claim,
+`bd close <id> --reason "..."` to complete. The bd→flat-YAML migration (Option C)
+is in progress but **not yet executed** — bd stays the active tracker until
+cutover (see "Active migration" above). Do NOT use markdown TODOs or task lists.
 
 ### bd 60s write-throttle quirk
 
@@ -493,10 +497,9 @@ scopes + has interactive UX) succeeds. **Confirmed 2026-05** in this project.
 **MCP twist:** locally-registered MCP servers ARE discoverable from
 sub-agents (ToolSearch finds their schemas), but each `mcp__<server>__*`
 tool name must ALSO be in project-level `permissions.allow` to be
-callable. The local Backlog.md MCP server registered via
-`claude mcp add backlog -- backlog mcp start` is reachable from
-sub-agents only after adding each `mcp__backlog__*` tool name to
-`.claude/settings.local.json`.
+callable — add each tool name to `.claude/settings.local.json`. (Option C uses
+no MCP server, so this no longer applies to task tracking; it remains true for
+any other locally-registered MCP server a sub-agent must call.)
 
 **Workaround pattern (in order):**
 
@@ -520,11 +523,10 @@ sub-agents only after adding each `mcp__backlog__*` tool name to
 silently drops env-var-prefixed commands (`FOO=bar npm test`), so the
 generated rule fails for sub-agents that need such patterns; hand-curate
 those explicitly. Concrete starter snippet for `.claude/settings.local.json`
-when running swarm-wave against Backlog.md:
+when running swarm-wave (add any `mcp__<server>__*` tools a sub-agent must call):
 
 ```json
-"mcp__backlog__task_list", "mcp__backlog__task_view",
-"mcp__backlog__task_create", "mcp__backlog__task_edit",
+"Bash(node scripts/ready-walker.mjs:*)", "Bash(node validate-tasks.mjs:*)",
 "Bash(npx:*)", "Bash(gh api:*)", "Bash(brew info:*)"
 ```
 

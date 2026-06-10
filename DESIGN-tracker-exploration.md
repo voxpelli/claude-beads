@@ -13,7 +13,7 @@
 >
 > **Verdict: Option C — a lean flat-YAML substrate + a `ready-walker`.** One
 > `tasks-<slug>.yml` per epic/slug + a ~150 LOC `ready-walker.mjs` (deterministic
-> transitive-unblock) + a `validate-tasks.mjs` integrity linter cloning the existing
+> single-level ready-walk) + a `validate-tasks.mjs` integrity linter cloning the existing
 > `validate-plugin.mjs` idiom. **Zero new runtime deps** (`js-yaml` already present), no
 > process, no vendor, no SQLite index in v1 (ripgrep for search).
 >

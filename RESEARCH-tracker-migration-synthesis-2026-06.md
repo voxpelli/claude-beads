@@ -19,7 +19,7 @@
 
 - **Substrate verdict: Option C — lean flat-YAML + a `ready-walker`** (three-way bakeoff,
   ~85% confidence). One `tasks-<slug>.yml` per epic/slug + a ~150 LOC `ready-walker.mjs`
-  (deterministic transitive-unblock) + a `validate-tasks.mjs` integrity linter cloning the
+  (deterministic single-level ready-walk) + a `validate-tasks.mjs` integrity linter cloning the
   existing `validate-plugin.mjs` idiom. **Zero new runtime deps** (`js-yaml` already
   present), no process, no vendor, no SQLite index in v1.
 - **Decline Backlog.md** (its MCP server is another daemon/vendor; it can't block on deps
@@ -118,7 +118,9 @@ SQLite/daemon, then reverted to embedded Dolt).
   oracle while files hold canonical state). The migration is fundamentally an **A2**
   decision; A1/A3/A4 ride along only by choice.
 - **The `ready`-walker is THE load-bearing primitive.** A ~150 LOC deterministic
-  transitive-unblock walk over parsed YAML: `ready ⇔ status==todo ∧ ∀dep done`. BM's Task
+  single-level ready computation over parsed YAML: `ready ⇔ status=='pending' ∧ ∀dep
+  'completed'` (transitivity is emergent via the status invariant, not a graph traversal).
+  BM's Task
   type, git-bug, and backlog.md **all lack** a `ready` computation; beads has it trapped in
   Dolt. Reproduce that one computation and querying / BM projection / the draft spec all
   compose around it. It is *also* the one primitive the whole ralph/hone/Anthropic/
