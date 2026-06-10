@@ -89,6 +89,39 @@ console.log('lintTasks — Pass 4 (test-ratchet)')
 assert('completed task with no acceptance_criteria warns', lint([ok({ id: 'T-1', status: 'completed', type: 'task' })]).warnings.some(w => /no acceptance_criteria/.test(w)))
 assert('completed task WITH acceptance_criteria is clean', lint([ok({ id: 'T-1', status: 'completed', type: 'task', acceptance_criteria: ['ok'] })]).warnings.length === 0)
 assert('completed chore (non-ratchet type) needs no acceptance_criteria', lint([ok({ id: 'T-1', status: 'completed', type: 'chore' })]).warnings.length === 0)
+assert('completed task with SCALAR acceptance_criteria still warns (not a list)', lint([ok({ id: 'T-1', status: 'completed', type: 'task', acceptance_criteria: 'done' })]).warnings.some(w => /no acceptance_criteria/.test(w)))
+
+console.log('lintTasks — Pass 0 (shape guard)')
+
+assert('deps as a scalar string errors (not char-split)', lint([ok({ id: 'T-1', deps: 'T-2' })]).errors.some(e => /"deps" must be a list/.test(e)))
+assert('acceptance_criteria as a scalar string errors', lint([ok({ id: 'T-1', acceptance_criteria: 'done' })]).errors.some(e => /"acceptance_criteria" must be a list/.test(e)))
+assert('top-level tasks as a non-array errors cleanly', lintTasks([{ name: 'demo', tasks: 'oops' }]).errors.some(e => /"tasks" must be a list/.test(e)))
+assert('a non-mapping task entry errors', lintTasks([{ name: 'demo', tasks: ['oops'] }]).errors.some(e => /is not a mapping/.test(e)))
+assert('a scalar deps does not crash and skips graph use', (() => { lint([ok({ id: 'T-1', deps: 'T-2' })]); return true })())
+
+console.log('lintTasks — Pass 2 (cycle exhaustiveness + hints)')
+
+assert('two disjoint 2-cycles each produce a distinct cycle error', (() => {
+  const r = lint([
+    ok({ id: 'T-1', deps: ['T-2'] }), ok({ id: 'T-2', deps: ['T-1'] }),
+    ok({ id: 'T-3', deps: ['T-4'] }), ok({ id: 'T-4', deps: ['T-3'] }),
+  ])
+  const cycles = r.errors.filter(e => /cycle/.test(e))
+  return cycles.length === 2 && cycles.some(e => /T-1|T-2/.test(e)) && cycles.some(e => /T-3|T-4/.test(e))
+})())
+assert('a self-loop is detected as a cycle', lint([ok({ id: 'T-1', deps: ['T-1'] })]).errors.some(e => /cycle/.test(e)))
+assert('a dangling bare dep matching another slug suggests it', (() => {
+  const r = lintTasks([
+    { name: 'a', tasks: [ok({ id: 'T-1', status: 'completed', acceptance_criteria: ['x'] })] },
+    { name: 'b', tasks: [ok({ id: 'T-2', deps: ['T-1'] })] }, // bare 'T-1' → 'b/T-1' (dangling)
+  ])
+  return r.errors.some(e => /did you mean a\/T-1/.test(e))
+})())
+
+console.log('lintTasks — Pass 1 (updated date)')
+
+assert('malformed updated date errors', lint([ok({ id: 'T-1', updated: 'yesterday' })]).errors.some(e => /invalid updated/.test(e)))
+assert('valid ISO updated date is clean', lint([ok({ id: 'T-1', updated: '2026-01-01' })]).errors.length === 0)
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

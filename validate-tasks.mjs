@@ -20,24 +20,16 @@
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { argv, exit, stdout } from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  argv, env, exit, stdout,
+} from 'node:process'
 
 import yaml from 'js-yaml'
 
-import { VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES } from './scripts/ready-walker.mjs'
-
-const ID_RE = /^[A-Z0-9][\w.-]*$/i
-const RATCHET_TYPES = new Set(['task', 'bug', 'feature', 'story'])
-const REQUIRED_FIELDS = ['id', 'title', 'status', 'type']
-
-/**
- * Nullish check (handles both a missing YAML key → undefined and `key: null`).
- *
- * @param {unknown} v
- * @returns {boolean}
- */
-const isNil = (v) => v === undefined || v === null
+import {
+  ID_RE, isNil, RATCHET_TYPES, REQUIRED_FIELDS, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
+} from './scripts/task-schema.mjs'
 
 /**
  * Globalize a bare id to its file's slug namespace (`slug/id`); pass through
@@ -50,9 +42,24 @@ const isNil = (v) => v === undefined || v === null
 const glob = (ref, slug) => String(ref).includes('/') ? String(ref) : `${slug}/${ref}`
 
 /**
+ * If a dangling BARE dep matches a task id in a different slug, suggest it —
+ * the most common copy-paste error (a task moved between files keeps bare deps).
+ *
+ * @param {unknown} rawDep    the dep exactly as written (bare or `slug/id`)
+ * @param {string} resolved   the globalized id that failed to resolve
+ * @param {Map<string, { t: any, slug: string }>} all
+ * @returns {string}
+ */
+function crossSlugHint (rawDep, resolved, all) {
+  if (String(rawDep).includes('/')) return ''
+  const match = [...all.keys()].find(k => k !== resolved && k.endsWith(`/${rawDep}`))
+  return match ? ` (did you mean ${match}?)` : ''
+}
+
+/**
  * Pure linter over loaded task files.
  *
- * @param {Array<{ name: string, tasks: any[] }>} files  `name` is the slug
+ * @param {Array<{ name: string, tasks: unknown }>} files  `name` is the slug
  * @returns {{ errors: string[], warnings: string[] }}
  */
 export function lintTasks (files) {
@@ -63,12 +70,31 @@ export function lintTasks (files) {
 
   /** @type {Map<string, { t: any, slug: string }>} */
   const all = new Map()
+  /** Files whose top-level shape is broken — excluded from the value passes. */
+  const badFiles = new Set()
 
-  // --- Pass 1: per-file structural ---
+  // --- Pass 0: shape guard (types, not values) — a wrong YAML shape would
+  // otherwise char-split a scalar into nonsense or throw on a non-iterable. ---
   for (const { name, tasks } of files) {
+    if (!Array.isArray(tasks)) {
+      err(name, `top-level "tasks" must be a list (got ${tasks === null ? 'null' : typeof tasks})`)
+      badFiles.add(name)
+      continue
+    }
+    for (const [i, t] of tasks.entries()) {
+      if (isNil(t) || typeof t !== 'object' || Array.isArray(t)) { err(name, `task at index ${i} is not a mapping`); continue }
+      const label = t.id ?? `index ${i}`
+      if (!isNil(t.deps) && !Array.isArray(t.deps)) err(name, `task ${label}: "deps" must be a list (got ${typeof t.deps})`)
+      if (!isNil(t.acceptance_criteria) && !Array.isArray(t.acceptance_criteria)) err(name, `task ${label}: "acceptance_criteria" must be a list (got ${typeof t.acceptance_criteria})`)
+    }
+  }
+
+  // --- Pass 1: per-file structural (field values) ---
+  for (const { name, tasks } of files) {
+    if (badFiles.has(name)) continue
     const seen = new Set()
-    for (const t of tasks ?? []) {
-      if (isNil(t) || typeof t !== 'object') { err(name, 'task entry is not a mapping'); continue }
+    for (const t of /** @type {any[]} */ (tasks)) {
+      if (isNil(t) || typeof t !== 'object' || Array.isArray(t)) continue // shape error already reported in Pass 0
       const label = t.id ?? '(no id)'
       for (const field of REQUIRED_FIELDS) {
         if (isNil(t[field]) || t[field] === '') err(name, `task ${label} missing required field: ${field}`)
@@ -81,6 +107,9 @@ export function lintTasks (files) {
       if (!isNil(t.status) && !VALID_STATUSES.has(t.status)) err(name, `task ${label}: invalid status "${t.status}"`)
       if (!isNil(t.type) && !VALID_TYPES.has(t.type)) err(name, `task ${label}: invalid type "${t.type}"`)
       if (!isNil(t.priority) && !VALID_PRIORITIES.has(t.priority)) err(name, `task ${label}: invalid priority "${t.priority}"`)
+      if (!isNil(t.updated) && (typeof t.updated !== 'string' || !Number.isFinite(Date.parse(t.updated)))) {
+        err(name, `task ${label}: invalid updated "${t.updated}" (expected an ISO date string)`)
+      }
       if (!isNil(t.id)) all.set(glob(t.id, name), { t, slug: name })
     }
   }
@@ -89,10 +118,10 @@ export function lintTasks (files) {
   /** @type {Map<string, string[]>} */ const deps = new Map()
   for (const [gid, { slug, t }] of all) {
     const resolved = []
-    for (const d of t.deps ?? []) {
+    for (const d of Array.isArray(t.deps) ? t.deps : []) {
       const gd = glob(d, slug)
-      if (!all.has(gd)) err(slug, `task ${t.id}: dep "${gd}" does not exist`)
-      else resolved.push(gd)
+      if (all.has(gd)) resolved.push(gd)
+      else err(slug, `task ${t.id}: dep "${gd}" does not exist${crossSlugHint(d, gd, all)}`)
     }
     deps.set(gid, resolved)
     if (!isNil(t.parent) && !all.has(glob(t.parent, slug))) {
@@ -107,7 +136,7 @@ export function lintTasks (files) {
   // --- Pass 3: status-transition sanity ---
   for (const [, { slug, t }] of all) {
     if (t.status === 'in_progress') {
-      for (const d of t.deps ?? []) {
+      for (const d of Array.isArray(t.deps) ? t.deps : []) {
         const dep = all.get(glob(d, slug))?.t
         if (dep && (dep.status === 'pending' || dep.status === 'in_progress')) {
           warn(slug, `task ${t.id}: in_progress but dep ${glob(d, slug)} is ${dep.status} (claimed before blockers resolved)`)
@@ -121,7 +150,8 @@ export function lintTasks (files) {
 
   // --- Pass 4: test-ratchet ---
   for (const [, { slug, t }] of all) {
-    if (t.status === 'completed' && RATCHET_TYPES.has(t.type) && !(t.acceptance_criteria?.length)) {
+    if (t.status === 'completed' && RATCHET_TYPES.has(t.type) &&
+        !(Array.isArray(t.acceptance_criteria) && t.acceptance_criteria.length)) {
       warn(slug, `task ${t.id}: completed ${t.type} with no acceptance_criteria (state done-ness before marking done)`)
     }
   }
@@ -130,11 +160,15 @@ export function lintTasks (files) {
 }
 
 /**
- * Find dependency cycles via Kahn's algorithm over `dep → dependent` edges:
- * any node never reaching in-degree 0 is part of a cycle.
+ * Find EVERY disjoint dependency cycle via Kahn's algorithm. `deps` maps each
+ * task → its prerequisites (edges point task → prerequisite); in-degree is
+ * counted on the prerequisite side, so a node nothing depends on starts at 0 and
+ * is removed first. Nodes that never reach in-degree 0 are in a cycle; one
+ * representative path is recovered per disjoint cycle component. The recovery
+ * order is sorted, so the output is deterministic across runs.
  *
- * @param {Map<string, string[]>} deps  task → its deps
- * @returns {string[][]} one representative cycle path per detected cycle
+ * @param {Map<string, string[]>} deps  task → its prerequisites
+ * @returns {string[][]} one representative path per disjoint cycle (`[]` if acyclic)
  */
 function findCycles (deps) {
   const indeg = new Map([...deps.keys()].map(k => [k, 0]))
@@ -150,24 +184,34 @@ function findCycles (deps) {
     }
   }
   const stuck = [...deps.keys()].filter(k => !removed.has(k))
+  stuck.sort() // sort the fresh array in place for deterministic recovery order
   if (!stuck.length) return []
-  // Recover one concrete cycle path for the report.
+
   const inCycle = new Set(stuck)
-  const path = []
-  let cur = stuck[0]
-  const visited = new Set()
-  while (cur && !visited.has(cur)) {
-    visited.add(cur)
-    path.push(cur)
-    cur = (deps.get(cur) ?? []).find(d => inCycle.has(d))
+  const covered = new Set()
+  const cycles = []
+  for (const start of stuck) {
+    if (covered.has(start)) continue
+    const path = []
+    let cur = start
+    const visited = new Set()
+    while (cur && !visited.has(cur)) {
+      visited.add(cur)
+      path.push(cur)
+      cur = (deps.get(cur) ?? []).find(d => inCycle.has(d))
+    }
+    if (cur) path.push(cur) // close the loop
+    for (const node of path) covered.add(node)
+    cycles.push(path)
   }
-  if (cur) path.push(cur) // close the loop
-  return [path]
+  return cycles
 }
 
 /** CLI entry. */
 async function main () {
-  const root = new URL('.', import.meta.url).pathname.replace(/\/$/, '')
+  // TASKS_ROOT lets the smoke test point the CLI at test/fixtures/ without
+  // touching the repo's real backlog/. Unset in normal `npm run check`.
+  const root = env.TASKS_ROOT ?? new URL('.', import.meta.url).pathname.replace(/\/$/, '')
   const tasksDir = join(root, 'backlog', 'tasks')
   const json = argv.includes('--json')
 
@@ -178,6 +222,12 @@ async function main () {
   }
   const entries = await readdir(tasksDir)
   const names = entries.filter(f => /^tasks-.+\.ya?ml$/.test(f))
+  // Phantom-files guard: a dir of non-matching files is not the same as an empty
+  // substrate — surface it rather than skip silently ("silent-skip is a bug").
+  const ignored = entries.filter(f => !f.startsWith('.') && !/^tasks-.+\.ya?ml$/.test(f))
+  if (ignored.length && !names.length && !json) {
+    console.warn(`Warning: backlog/tasks/ has ${ignored.length} file(s) not matching tasks-*.yml (ignored): ${ignored.join(', ')}\n  Rename to tasks-<slug>.yml to include them in validation.\n`)
+  }
   if (!names.length) {
     if (!json) console.log('No backlog/tasks/tasks-*.yml found — skipping task validation.')
     else stdout.write(JSON.stringify({ clean: true, skipped: true, errors: [], warnings: [] }) + '\n')

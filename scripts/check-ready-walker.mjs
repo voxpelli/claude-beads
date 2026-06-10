@@ -5,7 +5,7 @@
  * scripts/check-validator.mjs idiom (assert + pass/fail counters).
  */
 
-import { computeReady, computeStats } from './ready-walker.mjs'
+import { computeReady, computeStats, nsId } from './ready-walker.mjs'
 
 let passed = 0
 let failed = 0
@@ -105,6 +105,34 @@ console.log('computeStats')
   assert('stats flags an old in_progress task as stale', s.stale.includes('T-4'))
   assert('stats does not flag a recent task as stale', !computeStats(tasks, 30, new Date('2026-01-15T00:00:00Z')).stale.includes('T-4'))
 }
+
+console.log('computeStats — robustness')
+
+{
+  const s = computeStats([{ id: 'T-x', status: 'in_progress', updated: 'yesterday' }], 30, new Date('2026-06-09T00:00:00Z'))
+  assert('a malformed updated date lands in malformedDates, not stale', s.malformedDates.includes('T-x') && !s.stale.includes('T-x'))
+}
+{
+  const s = computeStats([{ id: 'T-x', status: 'toString', type: 'task', priority: 'medium' }], 30, new Date('2026-06-09T00:00:00Z'))
+  assert('a prototype-name status does not pollute byStatus', !('toString' in s.byStatus))
+}
+
+console.log('nsId')
+
+assert('nsId namespaces a bare id', nsId('T-1', 'alpha') === 'alpha/T-1')
+assert('nsId passes through a slug-qualified id', nsId('beta/T-2', 'alpha') === 'beta/T-2')
+assert('nsId stringifies a numeric id', nsId(1, 'alpha') === 'alpha/1')
+
+console.log('computeReady — cross-file & self-cycle')
+
+assert('a cross-file (slug/id) dep on a completed task is ready', computeReady([
+  { id: 'a/T-1', status: 'completed' },
+  { id: 'b/T-2', status: 'pending', deps: ['a/T-1'] },
+]).ready.some(t => t.id === 'b/T-2'))
+assert('a self-dependent task is blocked, not ready (no infinite loop)', (() => {
+  const r = computeReady([{ id: 'a/T-1', status: 'pending', deps: ['a/T-1'] }])
+  return r.blocked.some(t => t.id === 'a/T-1') && !r.ready.length
+})())
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

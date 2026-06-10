@@ -25,45 +25,87 @@
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { argv, exit, stdout } from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  argv, env, exit, stderr, stdout,
+} from 'node:process'
 
 import yaml from 'js-yaml'
 
-export const VALID_STATUSES = new Set(['pending', 'in_progress', 'completed', 'failed', 'cancelled'])
-export const VALID_TYPES = new Set(['task', 'bug', 'feature', 'chore', 'epic', 'decision', 'spike', 'story', 'milestone'])
-export const VALID_PRIORITIES = new Set(['critical', 'high', 'medium', 'low', 'backlog'])
-
-const PRIORITY_RANK = { critical: 0, high: 1, medium: 2, low: 3, backlog: 4 }
+import {
+  isNil, PRIORITY_RANK, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
+} from './task-schema.mjs'
 
 /**
  * @typedef {object} Task
  * @property {string} id          globally-unique id (loader prefixes with slug)
  * @property {string} [title]
- * @property {string} status
- * @property {string} [priority]
- * @property {string} [type]
+ * @property {import('./task-schema.mjs').Status} status
+ * @property {import('./task-schema.mjs').Priority} [priority]
+ * @property {import('./task-schema.mjs').TaskType} [type]
  * @property {string[]} [deps]    resolvable ids in the same namespace
+ * @property {string} [parent]
+ * @property {string[]} [acceptance_criteria]
  * @property {string} [agent]
  * @property {string} [updated]   ISO date
  */
 
 /**
+ * A task as returned by loadTasks — a Task plus loader-only provenance. The
+ * provenance fields are internal and stripped before any JSON output.
+ *
+ * @typedef {Task & { _slug?: string, _file?: string }} LoadedTask
+ */
+
+/**
  * Namespace a bare id to its file's slug (`slug/id`); pass through slugged ids.
  *
- * @param {string} id
+ * @param {unknown} id
  * @param {string} slug
  * @returns {string}
  */
-const nsId = (id, slug) => String(id).includes('/') ? String(id) : `${slug}/${id}`
+export const nsId = (id, slug) => String(id).includes('/') ? String(id) : `${slug}/${id}`
 
 /**
- * Build a zero-filled tally object keyed by a set of allowed values.
+ * Coerce a YAML `deps` value to a safe namespaced string[]: an array → namespace
+ * each entry; nil → []; any other shape → [] with a stderr warning (the
+ * validator owns the hard error — this just keeps the reader from crashing).
+ *
+ * @param {unknown} raw
+ * @param {string} slug
+ * @param {string} file
+ * @param {string} taskId
+ * @returns {string[]}
+ */
+function safeDeps (raw, slug, file, taskId) {
+  if (isNil(raw)) return []
+  if (Array.isArray(raw)) return raw.map(d => nsId(d, slug))
+  stderr.write(`ready-walker: ${file}: task ${taskId}: "deps" is not a list — treating as empty (run validate-tasks)\n`)
+  return []
+}
+
+/**
+ * Drop loader-only provenance fields before serializing to JSON.
+ *
+ * @param {LoadedTask} t
+ * @returns {Task}
+ */
+const strip = ({ _file, _slug, ...task }) => task
+
+/**
+ * Build a zero-filled tally keyed by a set of allowed values. Uses a
+ * null-prototype object so a junk key like `toString` can't reach the
+ * prototype chain via the `in` operator.
  *
  * @param {Set<string>} keys
  * @returns {Record<string, number>}
  */
-const tally = (keys) => Object.fromEntries([...keys].map(k => [k, 0]))
+const tally = (keys) => {
+  /** @type {Record<string, number>} */
+  const o = Object.create(null)
+  for (const k of keys) o[k] = 0
+  return o
+}
 
 /**
  * Compute ready / blocked / needs-attention partitions over a flat task list.
@@ -112,19 +154,26 @@ export function computeStats (tasks, staleDays = 30, now = new Date()) {
   const byPriority = tally(VALID_PRIORITIES)
   const byType = tally(VALID_TYPES)
   const stale = []
+  const malformedDates = []
   const cutoff = now.getTime() - staleDays * 86_400_000
 
   for (const t of tasks) {
+    // `in` is safe here: tally() objects are null-prototype, so a junk value
+    // like `toString` cannot reach Object.prototype.
     if (t.status in byStatus) byStatus[t.status]++
     const p = t.priority ?? 'medium'
     if (p in byPriority) byPriority[p]++
     const ty = t.type ?? 'task'
     if (ty in byType) byType[ty]++
-    if (t.status === 'in_progress' && t.updated && Date.parse(t.updated) < cutoff) stale.push(t.id)
+    if (t.status === 'in_progress' && t.updated) {
+      const u = Date.parse(t.updated)
+      if (Number.isNaN(u)) malformedDates.push(t.id)
+      else if (u < cutoff) stale.push(t.id)
+    }
   }
 
   const { blocked, ready } = computeReady(tasks)
-  return { total: tasks.length, ready: ready.length, blocked: blocked.length, stale, byStatus, byPriority, byType }
+  return { total: tasks.length, ready: ready.length, blocked: blocked.length, stale, malformedDates, byStatus, byPriority, byType }
 }
 
 /**
@@ -132,21 +181,30 @@ export function computeStats (tasks, staleDays = 30, now = new Date()) {
  * Bare dep/parent ids are namespaced to their slug; `slug/id` deps pass through.
  *
  * @param {string} backlogDir
- * @returns {Promise<Task[]>}
+ * @returns {Promise<LoadedTask[]>}
  */
 export async function loadTasks (backlogDir) {
   const tasksDir = join(backlogDir, 'tasks')
   if (!existsSync(tasksDir)) return []
   const names = await readdir(tasksDir)
   const files = names.filter(f => /^tasks-.+\.ya?ml$/.test(f))
-  /** @type {Task[]} */
+  /** @type {LoadedTask[]} */
   const all = []
   for (const file of files) {
     const slug = file.replace(/^tasks-/, '').replace(/\.ya?ml$/, '')
     const raw = await readFile(join(tasksDir, file), 'utf8')
     const doc = /** @type {any} */ (yaml.load(raw))
-    for (const t of doc?.tasks ?? []) {
-      all.push({ ...t, id: nsId(t.id, slug), deps: (t.deps ?? []).map(d => nsId(d, slug)), _slug: slug, _file: file })
+    const list = doc?.tasks
+    if (!isNil(list) && !Array.isArray(list)) {
+      stderr.write(`ready-walker: ${file}: "tasks" is not a list — skipping file (run validate-tasks)\n`)
+      continue
+    }
+    for (const t of list ?? []) {
+      if (isNil(t) || typeof t !== 'object' || isNil(t.id)) {
+        stderr.write(`ready-walker: ${file}: a task entry has no id — skipping it (run validate-tasks)\n`)
+        continue
+      }
+      all.push({ ...t, id: nsId(t.id, slug), deps: safeDeps(t.deps, slug, file, t.id), _slug: slug, _file: file })
     }
   }
   return all
@@ -173,12 +231,14 @@ const tallyRow = (obj) => Object.entries(obj).filter(([, n]) => n).map(([k, n]) 
  * @returns {string}
  */
 function formatStats (s) {
-  return [
+  const lines = [
     `total ${s.total}  ready ${s.ready}  blocked ${s.blocked}  stale ${s.stale.length}`,
     `status: ${tallyRow(s.byStatus)}`,
     `priority: ${tallyRow(s.byPriority)}`,
     `type: ${tallyRow(s.byType)}`,
-  ].join('\n') + '\n'
+  ]
+  if (s.malformedDates.length) lines.push(`! malformed updated dates: ${s.malformedDates.join(' ')}`)
+  return lines.join('\n') + '\n'
 }
 
 /** CLI entry. */
@@ -189,34 +249,60 @@ async function main () {
     const i = args.indexOf(flag)
     return i !== -1 && args[i + 1] ? args[i + 1] : fallback
   }
+  // Parse a non-negative-integer flag, exiting loudly on bad input (no silent NaN).
+  const numOpt = (/** @type {string} */ flag, /** @type {number} */ fallback) => {
+    const raw = opt(flag, '')
+    if (raw === '') return fallback
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n < 0) { console.error(`error: ${flag} requires a non-negative number (got ${JSON.stringify(raw)})`); exit(1) }
+    return Math.trunc(n)
+  }
   const json = opt('--format', '') === 'json'
-  const root = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
-  const tasks = await loadTasks(join(root, 'backlog'))
+  const root = env.TASKS_ROOT ?? new URL('..', import.meta.url).pathname.replace(/\/$/, '')
+  const backlogDir = join(root, 'backlog')
+  if (!existsSync(backlogDir)) stderr.write(`ready-walker: no backlog/ under ${root} — is this the project root? (set TASKS_ROOT to override)\n`)
+  const tasks = await loadTasks(backlogDir)
 
   if (has('--stats')) {
-    const stats = computeStats(tasks, Number(opt('--days', '30')))
+    const stats = computeStats(tasks, numOpt('--days', 30))
     stdout.write(json ? JSON.stringify(stats, undefined, 2) + '\n' : formatStats(stats))
     return
   }
   if (has('--stale')) {
-    const { stale } = computeStats(tasks, Number(opt('--days', '30')))
-    stdout.write(json ? JSON.stringify({ stale }, undefined, 2) + '\n' : stale.map(id => `  ${id}`).join('\n') + '\n')
+    const { stale } = computeStats(tasks, numOpt('--days', 30))
+    stdout.write(json ? JSON.stringify({ stale }, undefined, 2) + '\n' : (stale.length ? stale.map(id => `  ${id}`).join('\n') : '  (none)') + '\n')
     return
   }
   if (has('--filter')) {
-    const status = opt('--filter', 'pending')
+    const status = opt('--filter', '')
+    if (!VALID_STATUSES.has(status)) { console.error(`error: --filter requires one of: ${[...VALID_STATUSES].join(', ')}`); exit(1) }
     const filtered = tasks.filter(t => t.status === status)
-    stdout.write(json ? JSON.stringify(filtered, undefined, 2) + '\n' : filtered.map(t => line(t)).join('\n') + '\n')
+    stdout.write(json ? JSON.stringify(filtered.map(t => strip(t)), undefined, 2) + '\n' : filtered.map(t => line(t)).join('\n') + '\n')
     return
   }
 
   const result = computeReady(tasks)
-  if (json) { stdout.write(JSON.stringify(result, undefined, 2) + '\n'); return }
-  if (has('--blocked')) {
-    stdout.write(result.blocked.map(t => `${line(t)}  ← blocked by ${t.blockers.join(', ')}`).join('\n') + '\n')
+  // An empty ready queue with blocked tasks is ambiguous: all-claimed, or a cycle.
+  const ambiguous = result.ready.length === 0 && result.blocked.length > 0
+  if (ambiguous) stderr.write(`ready-walker: 0 ready, ${result.blocked.length} blocked — run validate-tasks.mjs to check for a dependency cycle\n`)
+  if (has('--strict') && (result.needsAttention.length || ambiguous)) exit(1)
+
+  if (json) {
+    const payload = {
+      ready: result.ready.map(t => strip(t)),
+      blocked: result.blocked.map(t => strip(t)),
+      needsAttention: result.needsAttention.map(t => strip(t)),
+      ...(ambiguous ? { hint: 'possible dependency cycle — run validate-tasks.mjs' } : {}),
+    }
+    stdout.write(JSON.stringify(payload, undefined, 2) + '\n')
     return
   }
-  stdout.write((result.ready.length ? result.ready.map(t => line(t)).join('\n') : '  (no ready tasks)') + '\n')
+
+  const lines = has('--blocked')
+    ? result.blocked.map(t => `${line(t)}  ← blocked by ${t.blockers.join(', ')}`)
+    : (result.ready.length ? result.ready.map(t => line(t)) : ['  (no ready tasks)'])
+  lines.push(...result.needsAttention.map(t => `${line(t)}  ! needs attention: ${t.reason}`))
+  stdout.write(lines.join('\n') + '\n')
 }
 
 if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
