@@ -6,14 +6,16 @@ meta:
 tasks:
   - id: T-1
     title: Foundation (done)
-    type: chore
+    type: task
+    labels: [chore]
     status: completed
     priority: high
     acceptance_criteria:
       - implemented and tested
   - id: T-2
     title: Builds on T-1 — ready
-    type: feature
+    type: task
+    labels: [feature]
     status: pending
     priority: medium
     deps:
@@ -27,7 +29,8 @@ tasks:
       - T-2
   - id: T-4
     title: In progress and stale
-    type: bug
+    type: task
+    labels: [bug]
     status: in_progress
     priority: high
     agent: loop-a

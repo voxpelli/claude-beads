@@ -93,9 +93,9 @@ console.log('computeStats')
 {
   const tasks = [
     { id: 'T-1', status: 'completed', type: 'task', priority: 'high' },
-    { id: 'T-2', status: 'pending', type: 'bug', priority: 'medium' },
+    { id: 'T-2', status: 'pending', type: 'task', labels: ['bug'], priority: 'medium' },
     { id: 'T-3', status: 'pending', type: 'task', priority: 'low', deps: ['T-2'] },
-    { id: 'T-4', status: 'in_progress', type: 'feature', priority: 'high', updated: '2026-01-01' },
+    { id: 'T-4', status: 'in_progress', type: 'task', labels: ['feature'], priority: 'high', updated: '2026-01-01' },
   ]
   const s = computeStats(tasks, 30, new Date('2026-06-09T00:00:00Z'))
   assert('stats total counts all tasks', s.total === 4)

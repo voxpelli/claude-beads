@@ -13,14 +13,23 @@
  *     - id: T-1               # unique within the file; namespaced to slug/id on load
  *       title: ...            # required
  *       status: pending       # required; one of VALID_STATUSES
- *       type: task            # required; one of VALID_TYPES (the 9 beads types)
+ *       type: task            # required; one of VALID_TYPES (4 kinds — see below)
  *       priority: medium      # optional; one of VALID_PRIORITIES (default medium)
+ *       labels: [bug]         # optional LIST of strings; framings live here, not in type
  *       parent: T-0           # optional; an id in the same or another (slug/id) file
  *       deps: [T-0]           # optional LIST; bare ids resolve to slug/id, `slug/id` pass through
  *       acceptance_criteria:  # optional LIST; the test-ratchet checks it on completed work
  *         - ...
  *       agent: loop-1         # optional; set when claimed (status in_progress)
  *       updated: "2026-06-10" # optional; ISO date — staleness is computed from it
+ *
+ * Type model (decision vp-beads-etm, 2026-06-10): 4 exclusive kinds — `task`
+ * (work), `doc` (reference), `decision` (record), `milestone` (marker). bd's
+ * other five types (`bug` / `feature` / `chore` / `story` / `spike`) are
+ * FRAMINGS of `task`, carried in `labels:`; `epic` is `task` + `parent:`
+ * nesting (or an `epic` label). The enum stays exclusive (exactly one type per
+ * item — the property labels can't give); the framings stay additive. Spike's
+ * "closes with findings, not code" semantics travel with the `spike` label.
  *
  * Ready rule (the only computation that gates work): a task is READY iff
  * `status === 'pending'` and every dep is `completed`. Only `deps` (the `blocks`
@@ -37,14 +46,14 @@
  */
 
 /** @typedef {'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled'} Status */
-/** @typedef {'task' | 'bug' | 'feature' | 'chore' | 'epic' | 'decision' | 'spike' | 'story' | 'milestone'} TaskType */
+/** @typedef {'task' | 'doc' | 'decision' | 'milestone'} TaskType */
 /** @typedef {'critical' | 'high' | 'medium' | 'low' | 'backlog'} Priority */
 
 /** @type {Set<Status>} */
 export const VALID_STATUSES = new Set(['pending', 'in_progress', 'completed', 'failed', 'cancelled'])
 
 /** @type {Set<TaskType>} */
-export const VALID_TYPES = new Set(['task', 'bug', 'feature', 'chore', 'epic', 'decision', 'spike', 'story', 'milestone'])
+export const VALID_TYPES = new Set(['task', 'doc', 'decision', 'milestone'])
 
 /** @type {Set<Priority>} */
 export const VALID_PRIORITIES = new Set(['critical', 'high', 'medium', 'low', 'backlog'])
@@ -60,10 +69,13 @@ export const REQUIRED_FIELDS = ['id', 'title', 'status', 'type']
 
 /**
  * Types whose completion should carry stated acceptance criteria (the
- * test-ratchet). A completed task of one of these with an empty
+ * test-ratchet). A completed item of one of these with an empty
  * `acceptance_criteria` warns — "state done-ness before marking done".
+ * Under the 4-type model only `task` carries work, so only `task` ratchets;
+ * label-conditional refinements (e.g. `spike` → findings) are a future
+ * ADVISORY layer, never hard errors.
  */
-export const RATCHET_TYPES = new Set(['task', 'bug', 'feature', 'story'])
+export const RATCHET_TYPES = new Set(['task'])
 
 /**
  * Nullish check (a missing YAML key → `undefined`; an explicit `key: null` → `null`).

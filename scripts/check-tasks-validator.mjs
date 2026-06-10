@@ -88,7 +88,9 @@ console.log('lintTasks — Pass 4 (test-ratchet)')
 
 assert('completed task with no acceptance_criteria warns', lint([ok({ id: 'T-1', status: 'completed', type: 'task' })]).warnings.some(w => /no acceptance_criteria/.test(w)))
 assert('completed task WITH acceptance_criteria is clean', lint([ok({ id: 'T-1', status: 'completed', type: 'task', acceptance_criteria: ['ok'] })]).warnings.length === 0)
-assert('completed chore (non-ratchet type) needs no acceptance_criteria', lint([ok({ id: 'T-1', status: 'completed', type: 'chore' })]).warnings.length === 0)
+assert('completed doc (non-ratchet type) needs no acceptance_criteria', lint([ok({ id: 'T-1', status: 'completed', type: 'doc' })]).warnings.length === 0)
+assert('a former bd type (chore) is no longer a valid type', lint([ok({ type: 'chore' })]).errors.some(e => /invalid type "chore"/.test(e)))
+assert('framings ride in labels, not type (task + bug label is clean)', lint([ok({ labels: ['bug'] })]).errors.length === 0)
 assert('completed task with SCALAR acceptance_criteria still warns (not a list)', lint([ok({ id: 'T-1', status: 'completed', type: 'task', acceptance_criteria: 'done' })]).warnings.some(w => /no acceptance_criteria/.test(w)))
 
 console.log('lintTasks — Pass 0 (shape guard)')
@@ -97,6 +99,8 @@ assert('deps as a scalar string errors (not char-split)', lint([ok({ id: 'T-1', 
 assert('acceptance_criteria as a scalar string errors', lint([ok({ id: 'T-1', acceptance_criteria: 'done' })]).errors.some(e => /"acceptance_criteria" must be a list/.test(e)))
 assert('top-level tasks as a non-array errors cleanly', lintTasks([{ name: 'demo', tasks: 'oops' }]).errors.some(e => /"tasks" must be a list/.test(e)))
 assert('a non-mapping task entry errors', lintTasks([{ name: 'demo', tasks: ['oops'] }]).errors.some(e => /is not a mapping/.test(e)))
+assert('labels as a scalar string errors', lint([ok({ labels: 'bug' })]).errors.some(e => /"labels" must be a list/.test(e)))
+assert('a non-string labels entry errors', lint([ok({ labels: ['bug', 7] })]).errors.some(e => /"labels" entries must all be strings/.test(e)))
 assert('a scalar deps does not crash and skips graph use', (() => { lint([ok({ id: 'T-1', deps: 'T-2' })]); return true })())
 
 console.log('lintTasks — Pass 2 (cycle exhaustiveness + hints)')

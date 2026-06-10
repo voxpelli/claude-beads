@@ -86,6 +86,10 @@ export function lintTasks (files) {
       const label = t.id ?? `index ${i}`
       if (!isNil(t.deps) && !Array.isArray(t.deps)) err(name, `task ${label}: "deps" must be a list (got ${typeof t.deps})`)
       if (!isNil(t.acceptance_criteria) && !Array.isArray(t.acceptance_criteria)) err(name, `task ${label}: "acceptance_criteria" must be a list (got ${typeof t.acceptance_criteria})`)
+      if (!isNil(t.labels)) {
+        if (!Array.isArray(t.labels)) err(name, `task ${label}: "labels" must be a list (got ${typeof t.labels})`)
+        else if (t.labels.some(l => typeof l !== 'string')) err(name, `task ${label}: "labels" entries must all be strings`)
+      }
     }
   }
 

@@ -5,14 +5,16 @@ meta:
 tasks:
   - id: T-1
     title: Cross-file dep on alpha (ready — alpha/T-1 completed)
-    type: feature
+    type: task
+    labels: [feature]
     status: pending
     priority: low
     deps:
       - alpha/T-1
   - id: T-2
     title: No deps — top of the ready queue (critical)
-    type: bug
+    type: task
+    labels: [bug]
     status: pending
     priority: critical
     steps_to_reproduce: open the app
