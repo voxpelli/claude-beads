@@ -46,18 +46,18 @@ Four horizons. **Only H1 is committed.** H2 is conditional on H1 dogfooding find
 
 ### H1 — Personal use, dogfood (months)
 
-**Scope.** Whichever of (a) Backlog.md substrate + vp-beads supplements (Phase 2b) or (b) from-scratch `@voxpelli/<tracker-name>` standalone package (Phase 3) wins the Phase 2a spike. Single-host, single-user (pelle). Markdown canonical, optional SQLite projection, lockfile concurrency, Constitutional Guardrail middleware. 6–7 MCP tools, no resources, no sampling. Skill shells out to CLI; degraded path uses direct markdown reads.
+**Scope** *(v3 — Option C; supersedes the v2 "Backlog.md (Phase 2b) vs from-scratch (Phase 3)" fork, both declined)*. The lean in-repo flat-YAML substrate: `backlog/tasks/tasks-<slug>.yml` (canonical, git-merged) + `scripts/ready-walker.mjs` + `validate-tasks.mjs` + the canonical `scripts/task-schema.mjs` (4 types per decision `vp-beads-etm` + `labels:` framings). Single-host, single-user (pelle). **No MCP server, no daemon, no SQLite projection, no lockfile concurrency** (solo single-writer atomic-write contract, documented in task-schema.mjs). Skills read via `node scripts/ready-walker.mjs` and write via ordinary Edit/Write on the YAML — no CRUD helper (substrate-not-opinion).
 
 **Success criterion (mirrors weft-ai H1).** Does using the tracker through vp-beads make sprint workflow noticeably better than bd did? Measured by: zero parallel-agent concurrency crashes over 4 swarm-wave sprints; first six-month skill-rework cost <2 sprints; the user does not voluntarily look sideways at bd again.
 
 **What gets built.**
 
-- Phase 2a spike (1 sprint)
-- Phase 2b OR Phase 3 build-out (4 sprints if Backlog.md substrate; 8+ if from-scratch)
-- vp-beads 8-skill refactor against the new substrate (7 bd-shell-out skills;
-  `harden-memories` is dropped/repurposed, not renamed — see TASK-1.7)
-- Constitutional Guardrail (either as PreToolUse hook on Backlog.md MCP, or as in-tree middleware in the from-scratch tracker — same \~50 LOC, different attachment point)
-- Migration tool: `bd export → tracker import`, lossless within the 9→4 type collapse
+- ~~Phase 2a spike~~ *(done — verdict MIXED, then superseded by Option C; see `SPIKE-MIG.1.md` banner)*
+- **Phase 0 (SHIPPED 2026-06-10):** `task-schema.mjs` + `ready-walker.mjs` + `validate-tasks.mjs` + fixtures/smoke tests; `npm run check` carries the substrate gates
+- **Skill-retarget wave** (bd epic children `e42` + `azl`): 7 bd-shell-out skills + 3 hooks + the sprint-review agent move to ready-walker reads / YAML Edit-Write; the `### Files-availability convention` replaces Beads-availability (sprint budget honestly unestimated — the v2 LOC figures were Backlog.md/MCP-shaped and don't transfer; `harden-memories` is dropped/repurposed, not renamed)
+- **Anti-bit-rot gate** *(descoped Constitutional Guardrail)*: `validate-tasks.mjs` at check time + a PostToolUse hook on `tasks-*.yml` edits (`uzu`) — snapshot integrity, not enforcement; the prompt-injection guardrail is deferred with a trigger
+- **Migration tool** (`bj7`): `migrate-from-bd.mjs`, bd JSONL → `tasks-<slug>.yml`, lossless within the decided 9→4 type collapse (framings → `labels:`, epic → `parent:`)
+- **Fresh-context independent reviewer** (`iai`) in the swarm-wave post-wave gate
 
 **What is deliberately NOT built at H1.**
 
@@ -75,9 +75,9 @@ Four horizons. **Only H1 is committed.** H2 is conditional on H1 dogfooding find
 
 **Regression failure modes** (would force a fall-back to bd or to a smaller scope):
 
-- Markdown-per-issue produces unworkable swarm-wave conflict rates (>10% of parallel claims collide)
-- Backlog.md upstream pivots in an incompatible direction during the 4-sprint Phase 2b window
-- Constitutional Guardrail false-positive rate >5% on real issue bodies (the injection-marker regex over-fires on legitimate `system:` prefixes etc.)
+- YAML-per-slug produces unworkable swarm-wave conflict rates (>10% of parallel claims collide — would break the file-disjoint single-owner contract task-schema.mjs documents)
+- ~~Backlog.md upstream pivots incompatibly~~ *(moot — Backlog.md declined per v3 verdict)*
+- The skill-retarget wave reveals a `bd` capability with no flat-YAML equivalent that skills genuinely depend on (would force scope re-expansion)
 
 ### H2 — Multi-project / generic (\~1 year)
 
@@ -176,7 +176,7 @@ Every feature the H1 design considered and cut, plus features H1 didn't mention 
 | **`refs/<scheme>/wal` event sourcing**                        | Working-tree markdown is the human-editable surface; an event log shadowing it doubles the substrate.                                                                            | If H3 advances, CRDT writes naturally land in a non-working-tree ref namespace; the event log emerges as a side effect.  | H3                                                                                |
 | **Tree-sitter symbol integration** (Grite's feature)          | The tracker is type-agnostic; code-aware claims are a different product.                                                                                                         | H3 federation + active need to prevent two agents from editing the same symbol concurrently.                             | H3                                                                                |
 | **`bd remember`-equivalent built-in memory**                  | Claude Code already has 4 memory mechanisms (global CLAUDE.md, project CLAUDE.md, MEMORY.md auto-memory, Basic Memory). Fifth tier is redundant.                                 | Never — explicit rejection in DESIGN v2's "what v1 got wrong" §1.                                                        | Drop. Trigger to revisit: Claude Code drops 2+ of the existing memory mechanisms. |
-| **9-type vocabulary** (bug/feature/chore/story/spike/epic)    | Backlog.md's 4-type model (task/doc/decision/milestone) cuts at actual joints; the other 6 are framings, not kinds.                                                              | Never — explicit rejection in DESIGN v2 §2.                                                                              | Drop.                                                                             |
+| **9-type vocabulary** (bug/feature/chore/story/spike/epic)    | The 4-type model (task/doc/decision/milestone) cuts at actual joints; the other 6 are framings carried in `labels:`, not kinds. **Settled by decision `vp-beads-etm` (2026-06-10), externally validated.** | Never as types. Per-kind required-sections may return as *label-conditional advisory warnings* (spike → findings) — never hard errors. | Drop. |
 | **Hard validation (`validation.on-create=error`)**            | Picoschema soft-validation with `schema_evolve` is more aligned with user's stated preference.                                                                                   | Never — explicit rejection in DESIGN v2 §3.                                                                              | Drop.                                                                             |
 
 ### User-visible feature deferrals
@@ -214,24 +214,24 @@ Every feature the H1 design considered and cut, plus features H1 didn't mention 
 | **Constitutional Guardrail Layer 2** (LLM-based prompt-injection classifier)     | The regex-based markers + length cap catch the obvious cases. ML-based classifier adds dependency and false-positive surface.                       | A real prompt-injection incident slips past Layer 1.                                                             | H2                |
 | **Audit log writer** (harvmcp pattern: NDJSON of every state-changing operation) | Git history is the audit log for markdown-canonical state.                                                                                          | A non-git-tracked mutation path emerges (e.g., SQLite-only operations during a future projection-write feature). | H2                |
 | **Schema migration tooling**                                                     | Picoschema soft-validation handles drift naturally.                                                                                                 | First time a v0 → v1 schema bump strands ≥3 existing issues in the old shape.                                    | H2                |
-| **Cross-tracker bridge** (this tracker ↔ Backlog.md)                             | If Phase 2a chose Backlog.md substrate, no bridge is needed (same storage). If Phase 2a chose from-scratch, both use markdown — `cp` is the bridge. | The tracker forks substantially from Backlog.md's storage layout and a real migration path becomes valuable.     | H2                |
+| **Cross-tracker bridge** (this substrate ↔ Backlog.md) | Backlog.md was declined as substrate (v3); both sides are plain files, so a mechanical map (like `migrate-from-bd.mjs`) is the bridge if ever needed. | Someone actually needs to move a backlog between the two formats. | H2 |
 
 ---
 
 ## Section 3: Migration Milestones (M1–M4)
 
-Per `DESIGN-tracker-exploration.md` §"Graduation roadmap (Phase 3 only)" but applies equally to Phase 2b (Backlog.md substrate path). Phase identifier swapped where relevant.
+Originally per `DESIGN-tracker-exploration.md` §"Graduation roadmap (Phase 3 only)"; M1/M2 retargeted to Option C (v3) — there is no standalone package or npm install until M3 at the earliest (Option C is in-repo helpers).
 
 | Milestone                                                                                                                                       | Trigger                                                                                                                                                                                    | Public ship action                                                                                                                                              |
 | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **M1: working prototype** — code in standalone repo (Phase 3) or vp-beads supplements stable (Phase 2b); npm-installable; dogfooded by vp-beads | Tracker handles the 5 Phase-2a evaluation criteria (migration cleanness; 9→4 collapse; concurrency under swarm-wave; skill-rework cost; threat-model fit)                                  | CHANGELOG entry; vp-beads marketplace bump; no blog post (too early)                                                                                            |
-| **M2: vp-beads migrates off bd**                                                                                                                | Phase 2b supplementary skills work against tracker as well as they did against the Backlog.md spike (Phase 3) OR Constitutional Guardrail + skill refactor stable for 2 sprints (Phase 2b) | CHANGELOG `0.x.0 — substrate migration`; vp-beads marketplace bump; blog post optional; **MEMORY.md and CLAUDE.md updated to drop bd references**               |
+| **M1: working substrate** — the retargeted skills run against `tasks-<slug>.yml` + ready-walker, dogfooded in this repo | The substrate handles the 5 Phase-2a evaluation criteria (migration cleanness; the decided 9→4 collapse per `vp-beads-etm`; concurrency under swarm-wave; skill-rework cost; threat-model fit) | CHANGELOG entry; vp-beads marketplace bump; no blog post (too early) |
+| **M2: vp-beads migrates off bd (cutover)**                                                                                                      | Retargeted skills + `migrate-from-bd.mjs` stable for 2 sprints; bd retired                                                                                                                  | CHANGELOG `0.x.0 — substrate migration`; vp-beads marketplace bump; blog post optional; **MEMORY.md and CLAUDE.md updated to drop bd references**               |
 | **M3: weft-ai adopts**                                                                                                                          | Tracker proves generic enough for the user's second bd-using project                                                                                                                       | npm publish at 1.0.0; README quickstart that doesn't reference vp-beads; cross-post to weft-ai docs                                                             |
 | **M4: standalone identity**                                                                                                                     | External users beyond the user's own projects (signals: ≥1 GitHub issue from non-pelle; ≥1 organic install)                                                                                | Name change settled (per DESIGN §"Naming"); GitHub org transfer if applicable; semver discipline tightened; CONTRIBUTING.md; H2 trigger conditions re-evaluated |
 
 Notes:
 
-- M1 ships under `@voxpelli/<placeholder-name>`. The name is settled at M4, not M1 — early renames are cheap; later renames are expensive.
+- M1 ships nothing on npm (Option C is in-repo helpers); a package name first matters at M3 (weft-ai adoption) and is settled at M4 — early renames are cheap; later renames are expensive.
 - M2 ships an irreversible vp-beads-side change (`bd` shell-outs deleted). Test against the M1 prototype in a worktree before merging.
 - M3 ≠ M4. Adopting a second of the user's own projects is not "external users." Two distinct triggers.
 - M4 is the trigger to **reconsider H2 specifically**. External users may surface H2 features earlier than dogfooding would.
@@ -298,7 +298,7 @@ How the tracker's relationship to existing players evolves across horizons.
 Things explicitly unresolved that will need to resolve at some point.
 
 - **Does the MCP spec stabilize the Tasks primitive in 2026?** If yes, H2 adopts. If it churns or is dropped, H2 ships without it.
-- **Does Backlog.md upstream stay aligned with the tracker's philosophy?** The Phase 2a spike answers H1's version of this. H2 needs a fresh re-evaluation if the substrate path was chosen.
+- ~~Does Backlog.md upstream stay aligned with the tracker's philosophy?~~ *(resolved v3: Backlog.md declined as substrate; the question survives only as the friendly-stance re-evaluation note in Section 4.)*
 - **Does AGPL evolve in a way that changes BM's licensing posture?** Basic Memory's AGPL+CLA model is unusual; if Basic Memory ever relicenses or splits open-core differently, the tracker's BM-integration assumptions shift.
 - **What's the user's tolerance for multi-host complexity if a team forms around any vp-* tool?*\* Currently: explicitly low. May change. H3 advances only if this changes; recheck at every M4 review.
 - **Does Claude Code drop one of its four memory mechanisms?** Triggers revisiting the `bd remember`-equivalent question (currently dropped).
@@ -380,7 +380,7 @@ The tracker is explicitly **not**:
 - The MCP spec ships a primitive the roadmap assumed wouldn't land in the current window
 - A second user emerges (forces M4 re-evaluation)
 
-**First revision** scheduled: end of Phase 2a spike (1–2 sprints out). That's when the H1 scope crystallises into either Phase 2b or Phase 3 and the M1 trigger becomes concrete.
+**First revision** happened: the v3 round (2026-06-09/10) — substrate verdict Option C, type model settled (`vp-beads-etm`), H1 scope rewritten above. **Next revision** scheduled: end of the skill-retarget wave (`e42`), when the M1 trigger becomes concrete.
 
 **Last revision** anticipated: at M4. After M4, this ROADMAP may need to fork into a project-level ROADMAP (tracker repo) and a meta-level one (vp-beads repo) — or this single file may move to the tracker repo and vp-beads may keep its own thinner roadmap focused on skill workflows. That decision is M4 work, not now.
 
@@ -403,7 +403,7 @@ The tracker is explicitly **not**:
 
 - ≥2 substrate-related bugs surface during M1 dogfooding (lockfile leak, projection drift, schema parse failure, etc.)
 - OR the user runs `git status` / `ls .locks/` / SQL `SELECT * FROM ...` three times in a single session to manually diagnose a tracker hiccup
-- OR Phase 2a chose Backlog.md substrate AND Backlog.md doesn't ship a doctor equivalent (it doesn't, as of 2026-05) AND the substrate has any unexpected state of its own
+- OR the flat-YAML substrate accretes any unexpected state of its own beyond the canonical files (it shouldn't — that would itself be a finding)
 
 **Estimated effort when revived:** S–M. \~150 LOC + \~80 LOC tests, modelled on `harvmcp doctor`'s check-ladder pattern. Most of the checks are filesystem inspections (one read each); the SQLite projection sync check is the only non-trivial one.
 
