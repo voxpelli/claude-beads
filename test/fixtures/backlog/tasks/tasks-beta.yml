@@ -17,4 +17,8 @@ tasks:
     labels: [bug]
     status: pending
     priority: critical
-    steps_to_reproduce: open the app
+  - id: DEC-1
+    title: Recorded decision entry — never appears in ready (decision vp-beads-etm type gate)
+    type: decision
+    status: pending
+    priority: medium

@@ -31,10 +31,22 @@
  * item — the property labels can't give); the framings stay additive. Spike's
  * "closes with findings, not code" semantics travel with the `spike` label.
  *
- * Ready rule (the only computation that gates work): a task is READY iff
- * `status === 'pending'` and every dep is `completed`. Only `deps` (the `blocks`
- * analog) affects readiness; transitivity is emergent via the status invariant
- * (a task can't be `completed` until it was itself ready), not a graph walk.
+ * `doc` and `decision` are RESERVED, not yet exercised by real data — there
+ * are zero live instances of either (the current corpus is entirely `task`),
+ * and the schema has no field for their own prose (no `body`/`description`/
+ * `content`). Their content-home is a deliberately open design point (see
+ * decision vp-beads-etm's `## Affects`), left for first real use rather than
+ * built ahead of a consumer (substrate-not-opinion, YAGNI) — until then their
+ * text lives in ordinary repo markdown (`DESIGN-*.md`, `RESEARCH-*.md`), same
+ * as it does today.
+ *
+ * Ready rule (the only computation that gates work): an item is READY iff
+ * `type === 'task'`, `status === 'pending'`, and every dep is `completed`.
+ * Non-task types (`doc`/`decision`/`milestone`) never appear in ready/blocked/
+ * needsAttention — they're records or markers, not work (a milestone has "no
+ * effort, no assignment"). Only `deps` (the `blocks` analog) affects readiness
+ * for `task` items; transitivity is emergent via the status invariant (a task
+ * can't be `completed` until it was itself ready), not a graph walk.
  *
  * Atomic-write contract (load-bearing invariant): the substrate assumes a SOLO,
  * SINGLE-HOST developer with NO concurrent writers to the same `tasks-<slug>.yml`.

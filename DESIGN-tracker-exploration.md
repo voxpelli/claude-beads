@@ -60,6 +60,14 @@
 > agent-native trackers are typeless; the exclusivity property survives the smaller enum).
 > Implemented in `scripts/task-schema.mjs`. Per-type required-sections return later only as
 > label-conditional *advisory warnings* — never hard errors.
+>
+> **Load-bearing follow-up (2026-06):** the type-vs-decorative gap a code-reading review
+> surfaced — `computeReady` originally ignored `type` entirely, so a pending `doc`/`decision`
+> would have surfaced as workable — is closed: `scripts/ready-walker.mjs`'s `computeReady` now
+> gates on `type === 'task'`. `doc` and `decision` remain **reserved and unexercised by real
+> data** (zero live instances; no `body`/`description` field) — their content-home is left an
+> open design point for first real use rather than built ahead of a consumer, per `etm`'s
+> `## Affects`.
 
 ## Status
 

@@ -28,21 +28,21 @@ console.log('computeReady')
 
 assert(
   'pending with no deps is ready',
-  computeReady([{ id: 'T-1', status: 'pending' }]).ready.length === 1
+  computeReady([{ id: 'T-1', status: 'pending', type: 'task' }]).ready.length === 1
 )
 
 assert(
   'pending whose only dep is completed is ready',
   computeReady([
-    { id: 'T-1', status: 'completed' },
-    { id: 'T-2', status: 'pending', deps: ['T-1'] },
+    { id: 'T-1', status: 'completed', type: 'task' },
+    { id: 'T-2', status: 'pending', type: 'task', deps: ['T-1'] },
   ]).ready.some(t => t.id === 'T-2')
 )
 
 {
   const r = computeReady([
-    { id: 'T-1', status: 'pending' },
-    { id: 'T-2', status: 'pending', deps: ['T-1'] },
+    { id: 'T-1', status: 'pending', type: 'task' },
+    { id: 'T-2', status: 'pending', type: 'task', deps: ['T-1'] },
   ])
   assert('pending dep blocks (T-2 blocked, not ready)', r.blocked.some(t => t.id === 'T-2') && !r.ready.some(t => t.id === 'T-2'))
   assert('blocked task records its blocker id', r.blocked.find(t => t.id === 'T-2')?.blockers.includes('T-1') === true)
@@ -51,8 +51,8 @@ assert(
 assert(
   'in_progress dep blocks',
   computeReady([
-    { id: 'T-1', status: 'in_progress' },
-    { id: 'T-2', status: 'pending', deps: ['T-1'] },
+    { id: 'T-1', status: 'in_progress', type: 'task' },
+    { id: 'T-2', status: 'pending', type: 'task', deps: ['T-1'] },
   ]).blocked.some(t => t.id === 'T-2')
 )
 
@@ -60,8 +60,8 @@ assert(
   'failed dep → needs attention, not ready/blocked',
   (() => {
     const r = computeReady([
-      { id: 'T-1', status: 'failed' },
-      { id: 'T-2', status: 'pending', deps: ['T-1'] },
+      { id: 'T-1', status: 'failed', type: 'task' },
+      { id: 'T-2', status: 'pending', type: 'task', deps: ['T-1'] },
     ])
     return r.needsAttention.some(t => t.id === 'T-2') && !r.ready.length && !r.blocked.length
   })()
@@ -69,22 +69,55 @@ assert(
 
 assert(
   'missing dep → needs attention',
-  computeReady([{ id: 'T-2', status: 'pending', deps: ['T-99'] }]).needsAttention.some(t => t.reason.includes('missing'))
+  computeReady([{ id: 'T-2', status: 'pending', type: 'task', deps: ['T-99'] }]).needsAttention.some(t => t.reason.includes('missing'))
 )
 
 assert(
   'in_progress task is not ready (only pending is)',
-  computeReady([{ id: 'T-1', status: 'in_progress' }]).ready.length === 0
+  computeReady([{ id: 'T-1', status: 'in_progress', type: 'task' }]).ready.length === 0
 )
 
 assert(
   'ready is sorted by priority (critical before low)',
   (() => {
     const r = computeReady([
-      { id: 'T-low', status: 'pending', priority: 'low' },
-      { id: 'T-crit', status: 'pending', priority: 'critical' },
+      { id: 'T-low', status: 'pending', type: 'task', priority: 'low' },
+      { id: 'T-crit', status: 'pending', type: 'task', priority: 'critical' },
     ])
     return r.ready[0].id === 'T-crit'
+  })()
+)
+
+console.log('computeReady — type gate (decision vp-beads-etm)')
+
+assert(
+  'a pending doc is never ready',
+  computeReady([{ id: 'D-1', status: 'pending', type: 'doc' }]).ready.length === 0
+)
+assert(
+  'a pending decision is never ready',
+  computeReady([{ id: 'DEC-1', status: 'pending', type: 'decision' }]).ready.length === 0
+)
+assert(
+  'a pending milestone is never ready',
+  computeReady([{ id: 'M-1', status: 'pending', type: 'milestone' }]).ready.length === 0
+)
+assert(
+  'a pending doc is never blocked or needs-attention either — it is simply excluded',
+  (() => {
+    const r = computeReady([{ id: 'D-1', status: 'pending', type: 'doc', deps: ['T-99'] }])
+    return r.ready.length === 0 && r.blocked.length === 0 && r.needsAttention.length === 0
+  })()
+)
+assert(
+  'a pending task is unaffected by sibling non-task items in the same list',
+  (() => {
+    const r = computeReady([
+      { id: 'T-1', status: 'pending', type: 'task' },
+      { id: 'D-1', status: 'pending', type: 'doc' },
+      { id: 'M-1', status: 'pending', type: 'milestone' },
+    ])
+    return r.ready.length === 1 && r.ready[0].id === 'T-1'
   })()
 )
 
@@ -126,11 +159,11 @@ assert('nsId stringifies a numeric id', nsId(1, 'alpha') === 'alpha/1')
 console.log('computeReady — cross-file & self-cycle')
 
 assert('a cross-file (slug/id) dep on a completed task is ready', computeReady([
-  { id: 'a/T-1', status: 'completed' },
-  { id: 'b/T-2', status: 'pending', deps: ['a/T-1'] },
+  { id: 'a/T-1', status: 'completed', type: 'task' },
+  { id: 'b/T-2', status: 'pending', type: 'task', deps: ['a/T-1'] },
 ]).ready.some(t => t.id === 'b/T-2'))
 assert('a self-dependent task is blocked, not ready (no infinite loop)', (() => {
-  const r = computeReady([{ id: 'a/T-1', status: 'pending', deps: ['a/T-1'] }])
+  const r = computeReady([{ id: 'a/T-1', status: 'pending', type: 'task', deps: ['a/T-1'] }])
   return r.blocked.some(t => t.id === 'a/T-1') && !r.ready.length
 })())
 

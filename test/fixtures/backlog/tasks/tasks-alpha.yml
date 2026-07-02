@@ -35,4 +35,12 @@ tasks:
     priority: high
     agent: loop-a
     updated: "2026-01-01"
-    steps_to_reproduce: do the thing
+  - id: D-1
+    title: Reference doc entry — never appears in ready (decision vp-beads-etm type gate)
+    type: doc
+    status: pending
+    priority: low
+  - id: M-1
+    title: Structural milestone marker — never appears in ready (no effort, no assignment)
+    type: milestone
+    status: pending

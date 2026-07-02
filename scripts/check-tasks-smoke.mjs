@@ -66,7 +66,15 @@ console.log('ready-walker CLI (against test/fixtures)')
 }
 {
   const { code, out } = run('scripts/ready-walker.mjs', ['--stats'], FIXTURES)
-  assert('--stats: exit 0 + counts all 6 tasks', code === 0 && /total 6/.test(out))
+  assert('--stats: exit 0 + counts all 9 tasks (6 task + doc/decision/milestone)', code === 0 && /total 9/.test(out))
+}
+{
+  const { code, out } = run('scripts/ready-walker.mjs', ['--format', 'json'], FIXTURES)
+  const data = JSON.parse(out)
+  assert(
+    'default ready set never includes the doc/decision/milestone fixtures (type gate, decision vp-beads-etm)',
+    code === 0 && !data.ready.some((/** @type {any} */ t) => ['alpha/D-1', 'alpha/M-1', 'beta/DEC-1'].includes(t.id))
+  )
 }
 {
   const { code, out } = run('scripts/ready-walker.mjs', ['--stale', '--days', '30'], FIXTURES)

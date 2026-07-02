@@ -15,11 +15,14 @@
  *   node scripts/ready-walker.mjs --stale --days N in_progress tasks not updated in N days
  *   node scripts/ready-walker.mjs --filter <status>  tasks in a given status
  *
- * Ready rule: a task is READY iff `status: pending` and every dep is
- * `completed`; BLOCKED if any dep is pending/in_progress; NEEDS_ATTENTION if a
- * dep is failed/cancelled/missing. (Mirrors beads: only the analog of `blocks`
- * affects readiness; the graph is recomputed, never enforced — see
- * validate-tasks.mjs for the integrity gate.)
+ * Ready rule: a task is READY iff `type: task`, `status: pending`, and every
+ * dep is `completed`; BLOCKED if any dep is pending/in_progress;
+ * NEEDS_ATTENTION if a dep is failed/cancelled/missing. Non-task types
+ * (`doc`/`decision`/`milestone`) are records or markers, never work — they
+ * never appear in ready/blocked/needsAttention (mirrors bd: a milestone has
+ * "no effort, no assignment" per CLAUDE.md's issue-type table). (Mirrors bd:
+ * only the analog of `blocks` affects readiness; the graph is recomputed,
+ * never enforced — see validate-tasks.mjs for the integrity gate.)
  */
 
 import { existsSync } from 'node:fs'
@@ -121,6 +124,13 @@ export function computeReady (tasks) {
 
   for (const task of tasks) {
     if (task.status !== 'pending') continue
+    // Only `task`-type items are workable — `doc`/`decision`/`milestone` are
+    // records or markers (e.g. a milestone has "no effort, no assignment").
+    // `type` is a required field (task-schema.mjs REQUIRED_FIELDS); an absent
+    // value here means malformed/unvalidated input — treat defensively as
+    // ineligible rather than assuming `task` (validate-tasks.mjs is the
+    // authority on shape; this is a second line of defense, not the gate).
+    if (task.type !== 'task') continue
     const active = []   // deps still pending/in_progress → blocks
     const stalled = []  // deps failed/cancelled/missing → needs attention
 
