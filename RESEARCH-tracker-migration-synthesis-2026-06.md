@@ -121,8 +121,11 @@ SQLite/daemon, then reverted to embedded Dolt).
   oracle while files hold canonical state). The migration is fundamentally an **A2**
   decision; A1/A3/A4 ride along only by choice.
 - **The `ready`-walker is THE load-bearing primitive.** A ~150 LOC deterministic
-  single-level ready computation over parsed YAML: `ready ⇔ status=='pending' ∧ ∀dep
-  'completed'` (transitivity is emergent via the status invariant, not a graph traversal).
+  single-level ready computation over parsed YAML: ~~`ready ⇔ status=='pending' ∧ ∀dep
+  'completed'`~~ `ready ⇔ type=='task' ∧ status=='pending' ∧ ∀dep 'completed'` *[CORRECTED
+  2026-07-02, decision `vp-beads-etm`: `computeReady` gates on `type=='task'` so
+  docs/decisions/milestones never surface as ready; the original formula omitted the type
+  gate.]* (transitivity is emergent via the status invariant, not a graph traversal).
   BM's Task
   type, git-bug, and backlog.md **all lack** a `ready` computation; beads has it trapped in
   Dolt. Reproduce that one computation and querying / BM projection / the draft spec all

@@ -68,6 +68,16 @@
 > data** (zero live instances; no `body`/`description` field) — their content-home is left an
 > open design point for first real use rather than built ahead of a consumer, per `etm`'s
 > `## Affects`.
+>
+> **First implementation feedback (2026-07-02):** a read-only shadow dogfood
+> (`scripts/migrate-from-bd.mjs`, a spike) projected this repo's real 131 bd issues into the
+> 4-type YAML shape and dual-ran `ready-walker` against `bd ready`. Result: exactly one clean,
+> fully-explained ready-set divergence — `vp-beads-etm` itself (correctly excluded post-fix; bd
+> itself has the same type-blindness the fix closed). **Scope, stated honestly:** this validated
+> the 9→4 framings-collapse and the `decision`-type gate against real data — it did **not**
+> validate `doc` or `milestone`, since the live corpus has zero instances of either; those two
+> remain synthetic-fixture-tested only. Full findings: local `SPIKE-etm-dogfood-findings.md`
+> (gitignored scratch) + `etm`'s bd `## Affects`.
 
 ## Status
 
