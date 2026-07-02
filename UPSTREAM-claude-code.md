@@ -8,7 +8,7 @@
 
   **Second restriction layer (independent of #18950):** server-side transcript classifier mentioned in 2026 Anthropic engineering "auto mode" blog. Only gates auto-mode; not the primary cause of sub-agent denials we hit.
 
-  Severity: degraded · Ownership: upstream · Workaround: full — see CLAUDE.md "Sub-agent permissions in Task-tool launches" section. Hybrid pattern: run `/fewer-permission-prompts` for baseline, then hand-curate `.claude/settings.local.json` for anticipated new operations. Investigation tracked in Backlog.md TASK-1.9.
+  Severity: degraded · Ownership: upstream · Workaround: full — see CLAUDE.md "Sub-agent permissions in Task-tool launches" section. Hybrid pattern: run `/fewer-permission-prompts` for baseline, then hand-curate `.claude/settings.local.json` for anticipated new operations. Investigation complete (workaround is full); the original spike card lives in `backlog/_archive/` (superseded Backlog.md dogfood).
 
 ## Feature Requests
 

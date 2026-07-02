@@ -154,7 +154,7 @@ is another daemon/vendor; it can't reproduce `ready`) — there are **no
 `scripts/task-schema.mjs`.
 
 - **bd is still the LIVE tracker for this repo's own dev** until the migration
-  executes. Epic `vp-beads-l9i` is the Phase-2b parent (its going-forward
+  executes. Epic `vp-beads-l9i` is the migration parent (its going-forward
   children carry the Option-C plan). Use `bd` as usual; don't reopen closed
   children.
 - **Phase 0 (shipped):** the read/validate tooling above + a single canonical

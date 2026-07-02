@@ -397,8 +397,11 @@ not just the projects — and an honest note on what is kept vs. declined:
 - **[beads](https://github.com/steveyegge/beads)** — Steve Yegge & the
   [gastownhall](https://github.com/gastownhall) maintainers. The substrate vp-beads was
   built on and is now migrating away from (for the operational complexity of its
-  Dolt-backed daemon, not its data model — that part is good). **Kept:** the 9-type issue
-  vocabulary. **Left:** the Dolt substrate.
+  Dolt-backed daemon, not its data model — that part is good). ~~**Kept:** the 9-type
+  issue vocabulary.~~ *Corrected 2026-06-10, decision [`vp-beads-etm`](DESIGN-tracker-exploration.md):
+  the migration adopts a 4-type model (`task`/`doc`/`decision`/`milestone`); bd's other
+  five types ride in `labels:`. The taxonomy-documentation credit stands.* **Left:** the
+  Dolt substrate.
 - **[hone-ai](https://github.com/oskarhane/hone-ai)** — Oskar Hane. The amnesiac-loop file
   shape. **Kept:** the `progress.txt` + `AGENTS.md` accretion *discipline* and the idea of
   a separate reviewer. **Declined:** its three-stage execution loop (vp-beads' skills own
