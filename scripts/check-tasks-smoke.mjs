@@ -77,6 +77,14 @@ console.log('ready-walker CLI (against test/fixtures)')
   )
 }
 {
+  const { code, out } = run('scripts/ready-walker.mjs', ['--blocked'], FIXTURES)
+  assert('--blocked: exit 0 + shows the genuinely blocked task', code === 0 && /alpha\/T-3/.test(out))
+  assert(
+    '--blocked: never includes the doc/decision/milestone fixtures either (type gate applies to all three buckets)',
+    !['alpha/D-1', 'alpha/M-1', 'beta/DEC-1'].some(id => out.includes(id))
+  )
+}
+{
   const { code, out } = run('scripts/ready-walker.mjs', ['--stale', '--days', '30'], FIXTURES)
   assert('--stale: flags the old in_progress task', code === 0 && /alpha\/T-4/.test(out))
 }

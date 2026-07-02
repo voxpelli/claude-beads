@@ -173,7 +173,10 @@ export function computeStats (tasks, staleDays = 30, now = new Date()) {
     if (t.status in byStatus) byStatus[t.status]++
     const p = t.priority ?? 'medium'
     if (p in byPriority) byPriority[p]++
-    const ty = t.type ?? 'task'
+    // No `?? 'task'` default here — mirrors computeReady's deliberate non-
+    // assumption for malformed (type-less) input: `undefined in byType` is
+    // false, so a type-less item is simply untallied, not misclassified.
+    const ty = t.type
     if (ty in byType) byType[ty]++
     if (t.status === 'in_progress' && t.updated) {
       const u = Date.parse(t.updated)

@@ -8,7 +8,10 @@
  * regenerated (never hand-edited) and thrown away. Its purpose is to give the
  * type-model decision its first implementation feedback — dual-run its output
  * against `bd ready` before the exploration branch concludes — not to ship a
- * production migration path.
+ * production migration path. `projectRecords` is exported for reuse by
+ * vp-beads-bj7's eventual test suite when that migrator is built — this
+ * spike itself ships untested by design (its one-time job is done; see
+ * SPIKE-etm-dogfood-findings.md and decision vp-beads-etm's `## Affects`).
  *
  * The FULL lossless migrator (acceptance-criteria extraction from markdown,
  * comment history, --scrub handling, writing into the real substrate) is
@@ -24,6 +27,8 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   argv, exit, stderr, stdout,
 } from 'node:process'
@@ -79,6 +84,7 @@ export function projectRecords (records) {
   const unknownTypes = new Set()
   const untranslatedDepTypes = new Set()
   const deferredIds = []
+  const priorityDefaultedIds = []
   let acceptanceCriteriaSkipped = 0
 
   for (const r of records) {
@@ -88,6 +94,8 @@ export function projectRecords (records) {
 
     const mapped = TYPE_MAP[r.issue_type]
     if (!mapped) { unknownTypes.add(r.issue_type); continue }
+    // Drift guard: every TYPE_MAP value is schema-valid by construction today,
+    // so this can't fire yet — it catches a future bad edit to TYPE_MAP.
     if (!VALID_TYPES.has(mapped.type)) { unknownTypes.add(r.issue_type); continue }
 
     const labels = [...(Array.isArray(r.labels) ? r.labels : []), ...(mapped.label ? [mapped.label] : [])]
@@ -107,12 +115,18 @@ export function projectRecords (records) {
     // dogfood. Record the skip; don't silently drop it.
     if (/## Acceptance Criteria/i.test(r.description ?? '')) acceptanceCriteriaSkipped++
 
+    let priority = PRIORITY_MAP[r.priority]
+    if (!priority) {
+      priorityDefaultedIds.push({ id: r.id, priority: r.priority })
+      priority = 'medium'
+    }
+
     const task = {
       id: r.id,
       title: r.title,
       status,
       type: mapped.type,
-      priority: PRIORITY_MAP[r.priority] ?? 'medium',
+      priority,
     }
     if (labels.length) task.labels = labels
     if (parent) task.parent = parent
@@ -129,23 +143,27 @@ export function projectRecords (records) {
       unknownTypes: [...unknownTypes],
       untranslatedDepTypes: [...untranslatedDepTypes],
       deferredIdsApproximatedAsCancelled: deferredIds,
+      priorityDefaultedIds,
       acceptanceCriteriaSkipped,
       note: 'acceptanceCriteriaSkipped counts records with a "## Acceptance Criteria" markdown ' +
         'section that this read-only spike does not extract (that parsing belongs to the full ' +
-        'lossless migrator, vp-beads-bj7) — not a defect in this projector.',
+        'lossless migrator, vp-beads-bj7) — not a defect in this projector. ' +
+        'priorityDefaultedIds lists records whose bd priority was missing or out of the 0-4 ' +
+        'range and was coerced to \'medium\'; because priority is ready-walker\'s sort key, a ' +
+        'nonempty list means the projected ready ordering may diverge from `bd ready`.',
     },
   }
 }
 
 // --- CLI -------------------------------------------------------------------
 
-if (argv[1] && new URL(import.meta.url).pathname === argv[1]) {
+if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   const [inputPath, outputPath] = argv.slice(2)
   if (!inputPath || !outputPath) {
     stderr.write('usage: node scripts/migrate-from-bd.mjs <bd-export.jsonl> <output.yml>\n')
     exit(1)
   }
-  if (/(?:^|\/)backlog\/tasks(?:\/|$)/.test(outputPath)) {
+  if (/(?:^|\/)backlog\/tasks(?:\/|$)/.test(resolve(outputPath))) {
     stderr.write('refusing to write under backlog/tasks/ — this projector is scratch-only ' +
       '(regenerate, never hand-edit; bd stays canonical until cutover)\n')
     exit(1)
