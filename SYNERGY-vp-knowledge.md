@@ -76,8 +76,8 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   (self-file validation tooling). Distinct from the `@voxpelli/remark-config`
   candidate below: eslint config is *already* a shared external preset both
   consume, so it is a Shared Pattern, not an extraction candidate. Reciprocal
-  not yet filed on vp-knowledge's `SYNERGY-vp-beads.md` (it adopted at 15:36
-  the same day) — surface it via `/sibling-sync`.
+  **filed** on vp-knowledge's `SYNERGY-vp-beads.md` (verified 2026-07-10 via
+  `/sibling-sync`; they pin `@voxpelli/eslint-config@^25.1.0`, commit `a7ad92d`).
 
 ## Divergences
 
@@ -139,8 +139,9 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   duplicate hooks that vp-knowledge already provides.
   Convergence path: delegate-to-theirs · Status: resolved (by design)
 
-- **Agent count and model selection** (2026-03-28) — vp-knowledge has three agents
-  (knowledge-gardener, knowledge-maintainer, knowledge-primer); vp-beads has one
+- **Agent count and model selection** (2026-03-28) — vp-knowledge has four agents
+  (knowledge-gardener, knowledge-maintainer, knowledge-primer, raindrop-gardener
+  — count corrected 2026-07-10; was recorded as three); vp-beads has one
   (sprint-review). vp-knowledge's gardener specifies `model: sonnet` explicitly;
   vp-beads sprint-review uses `model: inherit`. Both approaches are deliberate.
   Convergence path: accept-difference · Reason: different task profiles justify
@@ -208,12 +209,16 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   alongside the shared one, gitignored, skill-aware). This shipped design
   resolves vp-claude's `UPSTREAM-vp-beads.md` `.local.md` feature request — but
   with a different shape than proposed.
-  Convergence path: evaluate · Status: drifting · Last verified: 2026-06-03
-  Reason: decide whether to adopt vp-beads's `PRIVATE-SYNERGY-` convention
-  (migrating the gitignored `.local.md` file to a `PRIVATE-SYNERGY-` overlay) or
-  keep the `.local.md` workaround. Adoption would re-converge the marketplace on
-  one private-overlay mechanism. (Reciprocated from vp-claude's
-  `SYNERGY-vp-beads.md` 2026-06-03 — re-verify from vp-beads's POV.)
+  Convergence path: evaluate · Status: converged · Last verified: 2026-07-10
+  Reason: RESOLVED — vp-claude adopted vp-beads's `PRIVATE-SYNERGY-` convention.
+  Verified 2026-07-10 (`/sibling-sync`): no `SYNERGY-*.local.md` file remains in
+  vp-claude; its sole private sibling is filed as `PRIVATE-SYNERGY-weft-ai.md`
+  and `.gitignore` carries the `PRIVATE-SYNERGY-*.md` wildcard. Only a vestigial
+  `SYNERGY-*.local.md` gitignore line (`.gitignore:9`) survives, matching no
+  file. The marketplace is re-converged on one private-overlay mechanism.
+  Note: both sides' rows still read `drifting` at that check — the `Status:`
+  fields agreed, so bilateral drift detection could not fire. Convergence was
+  only visible from the filesystem, not from either record.
 
 - **Private sibling registration requires a committed entry (no local-only siblings)**
   (2026-06-03) — vp-beads's `synergy-registry.local.json` only *overrides* fields
@@ -224,21 +229,20 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   without a committed entry naming it — `PRIVATE-SYNERGY-` made the *content*
   private, but *registration* (the relationship's existence) is still forced
   public. vp-claude wants local-only registration for proprietary partners.
-  Convergence path: propose-shared · Status: drifting · Last verified: 2026-06-03
-  Reason: filed as a feature request in vp-claude's `UPSTREAM-vp-beads.md`
-  ("synergy-registry: support local-only sibling entries"). Until shipped, the
-  workaround is either a committed entry (public footprint) or a hand-maintained
-  `PRIVATE-SYNERGY-<sibling>.md` doc kept outside the registry machinery.
-  (Reciprocated from vp-claude's `SYNERGY-vp-beads.md` 2026-06-03.)
-  **Implemented (vp-beads-a2k, pending v0.18.0):** `.local.json` now **adds**
-  private siblings when their `file` is `PRIVATE-SYNERGY-<name>.md` — reconciled
-  to ride the existing `PRIVATE-` prefix (no new `local-only` flag), so the
-  "never committed / never promoted / never reciprocated" guarantees are
-  inherited as filesystem facts. A no-commit-leak invariant (private name never
-  reaches a committed file) is enforced by `validate-plugin.mjs` (errors on a
-  `PRIVATE-SYNERGY-*` base entry or a per-name `.gitignore` line). vp-knowledge
-  may now adopt the same convention to drop its `.local.md` workaround — flip
-  this to `converged` once both sides ship.
+  Convergence path: propose-shared · Status: converged · Last verified: 2026-07-10
+  Reason: RESOLVED — both sides shipped. vp-beads's `.local.json` now **adds**
+  private siblings when their `file` is `PRIVATE-SYNERGY-<name>.md` (vp-beads-a2k,
+  shipped v0.18.0, 2026-06-04) — reconciled to ride the existing `PRIVATE-` prefix
+  (no new `local-only` flag), so the "never committed / never promoted / never
+  reciprocated" guarantees are inherited as filesystem facts. A no-commit-leak
+  invariant (private name never reaches a committed file) is enforced by
+  `validate-plugin.mjs` (errors on a `PRIVATE-SYNERGY-*` base entry or a per-name
+  `.gitignore` line). vp-claude consumes it live: `weft-ai` is registered solely in
+  its gitignored `synergy-registry.local.json` with
+  `file: PRIVATE-SYNERGY-weft-ai.md` and no committed base entry — verified
+  2026-07-10 via `/sibling-sync`. Its `UPSTREAM-vp-beads.md` feature request is
+  annotated `_(Resolved 2026-06-16)_` and its `SYNERGY-vp-beads.md` row reads
+  `converged` (LV 2026-07-07); this row was the lagging half.
 
 ## Extraction Candidates
 

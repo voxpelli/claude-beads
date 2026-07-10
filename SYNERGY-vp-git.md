@@ -2,9 +2,10 @@
 
 Tracking cross-project synergy with [vp-git](https://github.com/voxpelli/claude-git).
 
-**Architectural relationship:** vp-beads is sprint orchestration (4 hooks, 1
-agent, 7 skills). vp-git is a focused git-safety plugin (0 hooks, 0 agents,
-1 skill). The two plugins are *tooling-overlapping but domain-disjoint* —
+**Architectural relationship:** vp-beads is sprint orchestration (3 hooks, 1
+agent, 8 skills). vp-git is a focused git-safety plugin (0 hooks, 0 agents,
+3 skills — `rebase-validate`, `stack-cascade`, `tag-audit`; counts re-verified
+2026-07-10). The two plugins are *tooling-overlapping but domain-disjoint* —
 they share plugin-scaffolding infrastructure (manifests, validators, check
 orchestrator) but their feature surfaces don't intersect. vp-git is small
 by feature count but architecturally **upstream for plugin scaffolding** —
@@ -45,9 +46,22 @@ of maintaining both halves catches drift cases a single-source record misses.
   vp-plugins. Cross-references the matching entry in `SYNERGY-vp-knowledge.md`
   (drifting at 25-line gap on that pair) and the proposed
   `@voxpelli/claude-plugin-tools` bundle.
-  Status: drifting · Last verified: 2026-05-09
+  Status: accept-difference (was drifting) · Last verified: 2026-07-10
+  Revival trigger: shared core stable 2+ sprints AND a 3rd plugin needs a
+  core-level change.
   Note: Reciprocates vp-git's entry of the same name (their POV: 330 vs
   435\).
+  Note (2026-07-10, `/sibling-sync`): vp-git **reclassified this to
+  `accept-difference`** on 2026-05-21, judging shared-package extraction
+  *premature* — freezing a shared API mid-divergence costs more than the
+  duplication. Adopted here (`adopt-theirs`); this row previously said
+  `drifting` and framed the pair as a "re-converge candidate", which the
+  sibling had already argued against. Re-measured: vp-beads 617 lines vs
+  vp-git 333 — a **284-line gap**, up from 105. The shared core is real but
+  shrinking as a fraction; each plugin's extensions dominate. Note also that
+  the per-plugin `KNOWN_MCP_PREFIXES` allowlist is accept-difference by
+  design, not drift — each plugin must allowlist only the MCP servers its own
+  skills use, or the audit loses its purpose.
 
 - **`run-p check:*` parallel CI orchestration** (2026-05-09) — Both use
   `npm-run-all2`'s `run-p check:*` for parallel check execution. vp-knowledge
@@ -58,10 +72,14 @@ of maintaining both halves catches drift cases a single-source record misses.
 
 ## Divergences
 
-- **Hooks/agents/skills scope** (2026-05-09) — vp-beads: 4 hooks, 1 agent,
-  7 skills — sprint orchestration platform with extensive lifecycle
-  surface. vp-git: 0 hooks, 0 agents, 1 skill — focused git-safety plugin
-  with minimal surface. Mirrors the parallel divergence in
+- **Hooks/agents/skills scope** (2026-05-09) — vp-beads: 3 hooks, 1 agent,
+  8 skills — sprint orchestration platform with extensive lifecycle
+  surface. vp-git: 0 hooks, 0 agents, 3 skills (`rebase-validate`,
+  `stack-cascade`, `tag-audit`) — focused git-safety plugin
+  with minimal surface. Counts re-verified 2026-07-10 (was recorded as
+  "4 hooks / 7 skills" and "1 skill" — vp-beads retired PreCompact/PostCompact
+  in v0.17.0 and added `/harden-memories`; vp-git added two skills).
+  Mirrors the parallel divergence in
   `SYNERGY-vp-knowledge.md` ("Hooks/agents/skills scope" between vp-beads
   and vp-knowledge), reflecting different plugin domains.
   Convergence path: accept-difference · Reason: different plugin domains
@@ -90,7 +108,13 @@ of maintaining both halves catches drift cases a single-source record misses.
   scripts — direct beneficiary of adopting the lint. Co-extraction candidate
   alongside the `@voxpelli/claude-plugin-tools` bundle already tracked in
   `SYNERGY-vp-knowledge.md` "Paired bundle".
-  Source: vp-git's `check-portability.mjs` · Readiness: ready · Effort: trivial
+  Source: vp-git's `check-portability.mjs` · Readiness: ready (copy-on-demand) · Effort: trivial
+  Note (2026-07-10, `/sibling-sync`): vp-git pins the convergence path as
+  **copy-on-demand, not an npm package** (validated 2026-05-21) — a 106-line
+  self-contained file with no shared state; publishing a dependency for a single
+  consumer fails platform-proximity. When vp-beads wants it, copy the file or
+  git-subtree it. Adopted here; this row previously implied co-extraction into
+  the `@voxpelli/claude-plugin-tools` bundle.
 
 - **plugin-utils.mjs shared utility module** (2026-05-09) — vp-git extracted
   `ROOT`, `formatError`, `formatWarn`, `extractFrontmatter` into a separate
@@ -102,7 +126,17 @@ of maintaining both halves catches drift cases a single-source record misses.
   the vp-plugins marketplace. **vp-git is the de-facto reference
   implementation** for the `@voxpelli/claude-plugin-tools` bundle — they
   did the local-extraction work first.
-  Source: vp-git's `plugin-utils.mjs` · Readiness: ready · Effort: trivial
+  Source: vp-git's `plugin-utils.mjs` · Readiness: refuted (accept-difference)
+  Revival trigger: a 2nd plugin needs the helpers AND the shared surface exceeds
+  ~50 stable lines — even then prefer copy/subtree over a published dependency.
+  Note (2026-07-10, `/sibling-sync`): vp-git **refuted this as premature**
+  (validated 2026-05-21). Two corrections to the claim above: the module exports
+  `ROOT`, `formatLocation`, `extractFrontmatter` (NOT `formatError`/`formatWarn`
+  — those collapsed into `formatLocation`), and the shared surface is only ~18
+  lines of platform-native boilerplate that exists **only** in vp-git — so this
+  is greenfield adoption, not de-duplication of three re-implementations. A
+  versioned 3-repo npm dependency for ~18 lines violates
+  simplicity-over-correctness and the ASK-FIRST dependency gate.
 
 - **Shared `@voxpelli/remark-config` preset** (2026-06-02) — vp-beads's
   `remarkConfig` (pinned `settings` plus `remark-gfm`, `remark-validate-links`,

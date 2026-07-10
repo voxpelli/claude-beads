@@ -72,14 +72,38 @@ Run these in parallel:
 **Recent commits since last retro:**
 
 ```bash
-# Anchor to the commit that created/last modified the previous RETRO file.
-# Edge cases that both result in full-history range (correct for Sprint 1):
-#   1. No prior RETRO-*.md files exist yet
-#   2. RETRO files are gitignored — git log -- RETRO-*.md returns empty
-# In both cases the inner git log returns empty, making the range "..HEAD"
-# which shows all commits — the right behavior for a first retrospective.
-git log --oneline "$(git log -1 --format=%H -- RETRO-*.md)"..HEAD --no-merges
+# An EMPTY anchor makes the range ""..HEAD, which git resolves to ZERO commits —
+# not full history. The two empty-anchor cases are distinct and need opposite
+# handling, so branch on WHY the anchor is empty.
+anchor=$(git log -1 --format=%H -- 'RETRO-*.md')
+prev_retro=$(ls RETRO-*.md 2>/dev/null | sort -V | tail -1)
+
+if [ -n "$anchor" ]; then
+  # RETRO files are tracked — anchor on the previous one.
+  git log --oneline "$anchor"..HEAD --no-merges
+elif [ -z "$prev_retro" ]; then
+  # Genuine first retrospective — full history is correct.
+  git log --oneline --no-merges
+else
+  # RETRO files exist but are gitignored: git has no RETRO anchor. Prefer the
+  # last release tag (platform-native, convention-independent); else fall back
+  # to the previous RETRO file's mtime.
+  tag=$(git describe --tags --abbrev=0 2>/dev/null)
+  if [ -n "$tag" ]; then
+    git log --oneline "$tag"..HEAD --no-merges
+  else
+    git log --oneline --no-merges --since="$(date -r "$prev_retro" '+%Y-%m-%d %H:%M:%S')"
+  fi
+fi
 ```
+
+Anchor on the last **tag**, not on a commit-subject grep. `git log -1 --grep='^feat: v[0-9]'` looks correct but returns the most recent commit *matching the pattern* — when a project's release-commit convention drifts (here, `feat: vN.N.N —` → `chore(release): vN.N.N`), the grep keeps succeeding against an ancient commit and silently reports a range several sprints too wide. A tag lookup fails loudly instead.
+
+**Announce a degraded commit range.** When the gitignored branch runs, tell the
+user which anchor was used (release commit or file mtime) — the range is a
+heuristic, not an exact sprint boundary. The mtime fallback fails entirely on a
+fresh clone with no local RETRO history; say so rather than reporting an empty
+sprint. Silently emitting zero commits is the bug this branch exists to prevent.
 
 **Current upstream status:**
 

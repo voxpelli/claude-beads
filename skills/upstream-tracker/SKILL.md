@@ -140,7 +140,7 @@ have to re-explain something that's already visible in the session.
 
 ```
 - **Short title** (YYYY-MM-DD) — Description of the desired behavior and why
-  it matters for the consuming app. [upstream: <url>]
+  it matters for the consuming app. \[upstream: <url>\]
   Ownership: upstream|us|shared · Workaround: none|partial|full — description
 ```
 
@@ -149,8 +149,8 @@ Upstream URL is optional — add if you've filed a feature request upstream.
 **Entry format for Bugs:**
 
 ```
-- **Short title** (YYYY-MM-DD) [blocking|degraded|minor] — What happens, how to
-  reproduce, and the expected behavior. [upstream: <url>]
+- **Short title** (YYYY-MM-DD) \[blocking|degraded|minor\] — What happens, how to
+  reproduce, and the expected behavior. \[upstream: <url>\]
   Severity: blocking|degraded|minor · Ownership: upstream|us|shared · Workaround: none|partial|full — description
 ```
 
@@ -158,11 +158,19 @@ Severity tag in brackets is optional — use `blocking` (no workaround), `degrad
 (workaround exists but costly), or `minor` (edge case). Upstream URL is optional —
 add if you file an issue or PR upstream.
 
+**Escape the square brackets** (`\[degraded\]`, `\[upstream: <url>\]`) as shown.
+UPSTREAM entries are markdown prose, and an unescaped `[text]` with no matching
+`[text]: url` definition is parsed as a shortcut reference link. In any repo
+running remark-lint's `no-undefined-references` (part of
+`remark-preset-lint-recommended`) or markdownlint with reference checking, that
+fails the build — and with `--frail`, a warning is an error. The escaping applies
+to every bracket in an entry body, not just the severity tag.
+
 **Entry format for Upstream Opportunities:**
 
 ```
 - **Short title** (YYYY-MM-DD) — What was built, why it could be valuable
-  upstream, and the consumer-side motivation. [upstream: <url>]
+  upstream, and the consumer-side motivation. \[upstream: <url>\]
   Source: <file-or-branch> · Merge readiness: direct|needs-redesign|proof-of-concept
   Ownership: us|shared · Workaround: full|partial — description of local solution
 ```

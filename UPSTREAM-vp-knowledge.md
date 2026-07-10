@@ -15,7 +15,12 @@
   Note: The `model: sonnet` default in knowledge-gardener is a separate
   deliberate choice (SYNERGY accept-difference), not part of this FR.
 
-- **tool-intel `brew:` dispatch does not handle third-party taps**
+- *(Resolved 2026-07-02, vp-knowledge v0.32.0 — commit `84bf760`
+  "feat(tool-intel): dispatch third-party Homebrew taps (owner/tap/formula)";
+  `ecosystem-brew.md` now carries a `## Third-Party Tap Formulae
+  (<owner>/<tap>/<formula>)` section. Surfaced by `/sibling-sync` finding (g),
+  2026-07-10. Detailed entry retained below for design context.)*
+  **tool-intel `brew:` dispatch does not handle third-party taps**
   (2026-05-18) — `skills/tool-intel/references/ecosystem-brew.md` only knows
   the `formulae.brew.sh/api/formula/<name>.json` JSON path. Two-slash
   identifiers like `brew:dicklesworthstone/tap/br` (third-party tap, format
