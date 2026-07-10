@@ -132,7 +132,8 @@ export function computeReady (tasks) {
     // authority on shape; this is a second line of defense, not the gate).
     if (task.type !== 'task') continue
     const active = []   // deps still pending/in_progress → blocks
-    const stalled = []  // deps failed/cancelled/missing → needs attention
+    // deps missing or terminal-but-not-completed (failed/cancelled/deferred) → needs attention
+    const stalled = []
 
     for (const depId of task.deps ?? []) {
       const dep = byId.get(depId)

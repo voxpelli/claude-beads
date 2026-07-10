@@ -37,8 +37,12 @@ import yaml from 'js-yaml'
 
 import { VALID_TYPES } from './task-schema.mjs'
 
-/** bd status → task-schema status. `deferred` has no exact analog — see loss report. */
-const STATUS_MAP = {
+/**
+ * bd status → task-schema status. `deferred` has no exact analog — see loss
+ * report. Exported so the real migrator (bootstrap-tasks.mjs / bj7) shares this
+ * single source of truth for the map rather than re-deriving it.
+ */
+export const STATUS_MAP = {
   open: 'pending',
   in_progress: 'in_progress',
   closed: 'completed',
@@ -49,8 +53,8 @@ const STATUS_MAP = {
   deferred: 'cancelled',
 }
 
-/** bd numeric priority → task-schema priority string. */
-const PRIORITY_MAP = { '0': 'critical', '1': 'high', '2': 'medium', '3': 'low', '4': 'backlog' }
+/** bd numeric priority → task-schema priority string. Exported for bj7 reuse. */
+export const PRIORITY_MAP = { '0': 'critical', '1': 'high', '2': 'medium', '3': 'low', '4': 'backlog' }
 
 /**
  * bd's 9 issue_types → the 4-type model (decision vp-beads-etm).
@@ -59,7 +63,7 @@ const PRIORITY_MAP = { '0': 'critical', '1': 'high', '2': 'medium', '3': 'low', 
  *
  * @type {Record<string, { type: string, label?: string }>}
  */
-const TYPE_MAP = {
+export const TYPE_MAP = {
   task: { type: 'task' },
   decision: { type: 'decision' },
   milestone: { type: 'milestone' },

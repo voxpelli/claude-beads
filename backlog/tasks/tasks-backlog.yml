@@ -1,0 +1,349 @@
+meta:
+  slug: backlog
+  title: Standalone backlog (non-epic live work)
+tasks:
+  - id: vp-beads-3q7
+    title: Add remark-lint-fenced-code-flag — require language on fenced code blocks
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    description: >-
+      Follow-up to the remark lint-config work (remark-gfm/validate-links/unordered-list-marker +
+      settings + repo-wide normalize).
+
+
+      Scan at that time: ~95 bare ``` fences (no language) vs 37 tagged across committed markdown.
+      Adding remark-lint-fenced-code-flag would require a language on every fence — a docs-quality
+      gain, but a sizable cleanup.
+
+
+      Scope:
+
+      - Add remark-lint-fenced-code-flag devDep + to remarkConfig.plugins.
+
+      - Decide the policy: many bare fences are command output / plain-text examples / file trees
+      where no language applies — configure `allowEmpty: false` with a chosen default (e.g. `text`)
+      OR tag each fence appropriately (bash/json/jsonc/text/markdown).
+
+      - Tag or allowlist all ~95 existing bare fences; green check:md.
+
+      - Consider whether plain file-tree/illustrative blocks should use ```text vs an allowed-empty
+      exception.
+
+
+      Not blocking; cosmetic/docs-quality. Do after the current beads-optional + lint-config work
+      lands.
+    updated: '2026-06-02'
+  - id: vp-beads-3z0
+    title: add PostToolUse hook for UPSTREAM-*.md write validation
+    status: deferred
+    type: task
+    priority: backlog
+    labels:
+      - feature
+    deps:
+      - vp-beads-emm
+    acceptance_criteria:
+      - >-
+        PostToolUse hook in `hooks/hooks.json` with matcher for `Write` and `Edit` tool calls
+        targeting `UPSTREAM-*.md` files
+      - >-
+        Hook validates: correct section headings, no mixed placeholders with real entries, entry
+        format matches the documented template (including optional structured fields)
+      - Hook reports validation errors as `systemMessage` without blocking the write
+      - >-
+        Hook type chosen based on whether MCP tools are needed (command + additionalContext if yes,
+        prompt if evaluation-only)
+      - '`npm run check` passes'
+    description: >-
+      After any Write/Edit to an UPSTREAM-*.md file, validate that the result conforms to the
+      canonical structure (correct sections, entry format, no stale placeholders mixed with real
+      entries). Depends on: (1) reference files defining the canonical format (vp-beads-emm), (2)
+      deciding whether to use a prompt hook or command hook (prompt hooks can't access MCP tools —
+      lesson from v0.5.0 PreCompact fix).
+    updated: '2026-05-31'
+  - id: vp-beads-46k
+    title: '[hooks] Extract session-start.sh concerns into named shell functions'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    description: >-
+      Deferred recommendation from the v0.17.0 post-review (big-picture architect). session-start.sh
+      is now ~245 lines with two top-level branches (compact vs startup) and ~6 concerns
+      (sensitive-file, private-overlay-tracked, dormancy, Dependabot, trend-review,
+      compaction-recovery+capture). The architect: do NOT split into multiple files (Claude Code
+      fires a single session-start.sh; a dir adds dispatch complexity for no benefit at this size) —
+      instead extract each concern into a named function (check_sensitive_files,
+      check_private_overlays, check_dormancy, check_dependabot, check_trend_review,
+      emit_compact_recovery) called sequentially, so each is testable in isolation and the structure
+      is self-documenting. Pure refactor, no behavior change. Defer to a chore sprint.
+    updated: '2026-06-03'
+  - id: vp-beads-6dk
+    title: Run deferred BM graph audit from RETRO-12 trend review
+    status: pending
+    type: task
+    priority: low
+    description: >-
+      RETRO-12 (the trend-review retro for Sprint 13's autonomous swarm) deferred the Basic Memory
+      graph health audit per the reconciliation plan. The bd-vocabulary checks
+      (doctor/lint/stale/orphans/graph) ran inline; the BM audit is a separate user-supervised
+      session because it involves the knowledge-gardener agent + 2x schema_validate (npm_package +
+      engineering) + 2x schema_diff + 6-bullet manual verification per skills/retrospective/SKILL.md
+      step 4.
+    updated: '2026-05-08'
+  - id: vp-beads-8d5
+    title: '[swarm-wave] Add Ralph Wiggum Technique references to existing skills'
+    status: pending
+    type: task
+    priority: backlog
+    acceptance_criteria:
+      - Add a "Ralph Loop vs Research Wave" section to  with a decision matrix
+      - Add a Ralph-loop anti-pattern to  (e.g., "Wiring Ralph loop into wave execution")
+      - >-
+        Add a one-paragraph caution in  workflow 5 (Research wave) guidelines clarifying Ralph loops
+        are not research agents
+      - >-
+        Add a "naive-first" heuristic step to  workflow 4 (Investigate topic as spike) — suggest
+        Ralph loop for narrow, mechanical, validation-backpressure-friendly topics
+      - Run
+    description: >-
+      ## Problem
+
+
+      The vp-beads plugin documents multi-agent orchestration (swarm-wave) thoroughly, but says
+      nothing about single-agent autonomous loops. Users may assume swarm-wave is the only valid
+      pattern, or worse, try to wire a Ralph loop into wave execution.
+
+
+      ## Why it matters
+
+
+      The Ralph Wiggum Technique (Geoffrey Huntley, 2025) is a documented single-agent autonomous
+      loop with real results (CURSED language, test refactoring, overnight contract delivery). It is
+      complementary to swarm-wave, not a competitor. Users will encounter it in the wild; vp-beads
+      should acknowledge it and draw a safety boundary.
+
+
+      ## Notes
+
+
+      No new files. No new skills. No runtime code. Pure documentation references in existing skill
+      prose. See research findings in conversation context for full mechanics, decision matrix, and
+      safety comparison.
+    updated: '2026-06-02'
+  - id: vp-beads-ayn
+    title: >-
+      feat(plugin): single-source-of-truth for KNOWN_RELATIONSHIPS vocabulary across validator +
+      synergy-tracker docs
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - feature
+    description: >-
+      Sprint 13 Commit 3 + Commit 4 brought the validator's KNOWN_RELATIONSHIPS set and
+      synergy-tracker references/synergy-entry-format.md 'Relationship vocabulary' into agreement
+      (six values: sibling-plugin, shared-tooling, fork, consumer, coordinated-release, dependency).
+      However the two declarations live in independent files with no automated cross-check — a
+      future edit to one without the other would silently re-introduce the docs-vs-code drift that
+      vp-beads-bxc tracked.
+
+
+      Two architectural options to consider:
+
+
+      A. **Reference doc as source-of-truth.** validate-plugin.mjs reads the canonical six values
+      from a structured location in references/synergy-entry-format.md (e.g., a fenced YAML block)
+      at validation time. Single edit point.
+
+
+      B. **Shared JSON config.** Both validate-plugin.mjs and the reference doc render from a shared
+      .claude-plugin/relationship-vocabulary.json. Two consumers, one declaration.
+
+
+      C. **Validator-as-source-of-truth + doc-generator.** A small script generates the markdown
+      table from the validator's set; CI fails if hand-edits don't match the generator output.
+
+
+      Source: post-Sprint-13 review (R3-F3, confidence 85, design-level).
+    updated: '2026-05-08'
+  - id: vp-beads-bma
+    title: extend synergy-tracker workflow 1 step 1b to append entries to existing registry
+    status: pending
+    type: task
+    priority: backlog
+    description: >-
+      Backlog: append-to-existing extension. Out of scope for v0.13.0 sprint — the second-entry case
+      is rare today (vp-beads has 1 sibling); manual JSON edit is acceptable until evidence
+      accumulates. Depends on C2 (the bootstrap flow must exist first). See plan at
+      /Users/pelle/.claude/plans/jazzy-juggling-parrot.md.
+    updated: '2026-05-06'
+  - id: vp-beads-emm
+    title: add reference files for UPSTREAM and vendor-registry formats
+    status: deferred
+    type: task
+    priority: backlog
+    labels:
+      - feature
+    acceptance_criteria:
+      - Design the reference file format (markdown with fenced code blocks, JSON Schema, or both)
+      - >-
+        Create `skills/upstream-tracker/references/upstream-format.md` documenting UPSTREAM-*.md
+        structure including the v0.5.0 enriched fields (Severity, Ownership, Workaround)
+      - >-
+        Create `skills/upstream-tracker/references/vendor-registry-format.md` documenting
+        `.claude/vendor-registry.json` schema
+      - Create `skills/retrospective/references/retro-format.md` documenting RETRO-NN.md template
+      - Reference files are discoverable from the parent SKILL.md (linked or mentioned)
+      - '`npm run check` passes'
+    description: >-
+      Add skills/*/references/ directories documenting the canonical file formats: UPSTREAM-*.md
+      structure (sections, entry formats, severity tags, upstream URLs), vendor-registry.json
+      schema, and RETRO-*.md template. These give Claude a spec to validate against and help users
+      understand the formats without reading SKILL.md in full. Needs content design before
+      implementation.
+    updated: '2026-05-31'
+  - id: vp-beads-kan
+    title: graduate project-name-derivation to non-invocable preloadable skill (revival-triggered)
+    status: pending
+    type: task
+    priority: backlog
+    labels:
+      - feature
+    description: >-
+      Backlog: graduation watch for the project-name derivation algorithm currently shipped as a
+      shared reference doc in v0.12.1
+      (skills/synergy-tracker/references/project-name-derivation.md). Defer until the revival
+      trigger fires per the YAGNI ladder. Depends on B1 (the reference doc must exist first). See
+      plan at /Users/pelle/.claude/plans/jazzy-juggling-parrot.md for the full ladder + rationale.
+    updated: '2026-05-06'
+  - id: vp-beads-mjl
+    title: 'upstream-tracker: clarify redirect rule for sibling projects with shipped skill code'
+    status: pending
+    type: task
+    priority: medium
+    description: >-
+      Sibling friction filed by vp-knowledge in their UPSTREAM-vp-beads.md (2026-05-04, Ownership:
+      upstream = us). Surfaced via /sibling-sync Sprint 14+.
+
+
+      Workflow 1 (Log a new entry) step 1 currently says "If the observation is about a sibling
+      project rather than an upstream package or tool, redirect to /synergy-tracker — this skill
+      only tracks upstream dependency friction, not cross-project patterns." This conflates two
+      distinct cases. When a sibling project is also an upstream skill/hook/agent source (the
+      vp-plugins marketplace pattern: vp-beads, vp-knowledge, vp-git all consume each others
+      artifacts), filing concrete skill improvements (feature requests, bugs in skill prose,
+      contribution opportunities to extract shared logic) IS upstream-tracker work — there IS a real
+      upstream artifact to file against. synergy-tracker is for patterns and divergences, not
+      concrete code requests.
+
+
+      Concrete change: rewrite the redirect rule to distinguish patterns from filable artifacts: "If
+      the observation is a cross-project pattern (shared approach, divergence, extraction candidate,
+      capability gap) between sibling projects, redirect to /synergy-tracker. Sibling projects that
+      ship upstream artifacts (skills, hooks, agents) can still receive upstream-tracker entries for
+      concrete bug reports, feature requests, or contribution opportunities against those
+      artifacts."
+
+
+      vp-knowledge Sprint 19 logged 4 such entries (3 synergy-tracker improvements + retrospective
+      npm run check fallback) that would have been miscategorized under the current rule. The
+      carve-out is exercised in practice (UPSTREAM-vp-knowledge.md and UPSTREAM-vp-beads.md both
+      exist) but undocumented.
+
+
+      Source: vp-knowledge/UPSTREAM-vp-beads.md Feature Requests section, 2026-05-04. Section:
+      Feature Requests.
+    updated: '2026-05-08'
+  - id: vp-beads-orf
+    title: promote project-name-derivation convention to Basic Memory note (revival-triggered)
+    status: pending
+    type: task
+    priority: backlog
+    description: >-
+      Backlog: graduation watch for promoting the project-name derivation algorithm to a
+      cross-project Basic Memory note. Defer until the revival trigger fires per the YAGNI ladder.
+      Depends on B1 (vp-beads-s8w — the reference doc must exist first). See plan at
+      /Users/pelle/.claude/plans/jazzy-juggling-parrot.md for the full ladder + rationale.
+    updated: '2026-05-18'
+  - id: vp-beads-wxy
+    title: extend project-name-derivation tier 3 with non-npm manifest readers (revival-triggered)
+    status: pending
+    type: task
+    priority: backlog
+    labels:
+      - feature
+    description: >-
+      Backlog: ecosystem expansion watch for the project-name derivation algorithm. Currently tier 3
+      reads .claude-plugin/plugin.json and package.json; tier 4 falls back to directory basename.
+      Defer until a real non-npm, non-plugin sibling shows up. Depends on B1 (vp-beads-s8w). See
+      plan at /Users/pelle/.claude/plans/jazzy-juggling-parrot.md for the full ladder + rationale.
+    updated: '2026-05-18'
+  - id: vp-beads-x1h
+    title: 'validate-plugin: cross-skill reference path integrity check'
+    status: pending
+    type: task
+    priority: backlog
+    labels:
+      - feature
+    description: >-
+      Backlog: validate-plugin extension to enforce cross-skill reference path integrity. Currently
+      the validator scans skill prose for mcp__*__* tool patterns but does not verify cross-skill
+      references like skills/synergy-tracker/references/synergy-entry-format.md actually resolve.
+      After v0.12.1 the codebase will have ~5 such cross-skill references — the failure mode is a
+      stale cited path going undetected until a user follows it. Depends on vp-beads-9we because
+      both extend the same validator surface. See plan at
+      /Users/pelle/.claude/plans/jazzy-juggling-parrot.md for the full ladder + rationale.
+    updated: '2026-05-06'
+  - id: vp-beads-xux
+    title: Explore observation normalization for UPSTREAM entries
+    status: deferred
+    type: task
+    priority: backlog
+    labels:
+      - feature
+    acceptance_criteria:
+      - Research document or design note describing the normalization rules
+      - Prototype either as a new workflow (W8) in upstream-tracker or as a hook
+      - No auto-normalization without user confirmation for content-level changes
+    description: >-
+      Normalize entry format inconsistencies across UPSTREAM files: missing Ownership fields,
+      inconsistent severity vocabulary, entries without structured metadata. Inspired by vp-claude's
+      knowledge-maintainer two-tier tag mapping (deterministic auto-fixes for unambiguous cases,
+      confirmation for ambiguous). Future exploration.
+    updated: '2026-05-08'
+  - id: vp-beads-yjp
+    title: bd close persistence broken when .beads/ is gitignored
+    status: pending
+    type: task
+    priority: medium
+    acceptance_criteria:
+      - >-
+        Root cause of `bd close` persistence failure identified (beads upstream or vp-beads
+        workaround)
+      - Workaround documented or upstream issue filed with beads
+      - False-positive `IN_PROGRESS` entries in `bd stats` eliminated
+    description: |-
+      Regular `bd close <id>` reports `✓ Closed` success but state reverts to
+      `IN_PROGRESS` on next `bd show`/`bd stats`/`bd blocked`. Auto-export step emits
+      warning `Warning: auto-export: git add failed: ... .beads ignored by gitignore`,
+      which seems to roll back the JSONL write. `bd close --force` succeeds in-memory
+      and the success message persists in that invocation, but the close ALSO doesn't
+      reliably persist across subsequent `bd` invocations in this configuration.
+      Reproduced 2x on Sprint 24 (vp-claude-lgb + vp-claude-cuz). Both issues continue
+      to appear in `bd blocked` and `bd stats` as `IN_PROGRESS` despite multiple
+      `--force` closes. This is a data-integrity issue: closed work appears unfinished,
+      leading to false-positive blocked-dependency reports and incorrect sprint-tracking
+      metrics.
+      Severity: degraded · Ownership: upstream (beads) · Workaround: partial — `--force`
+      succeeds in the current shell invocation but doesn't persist; verify every close
+      with `bd show <id>` and accept some closes won't stick. Tracked locally as bd
+      `vp-claude-syw`.
+
+      Sibling vp-knowledge tracks this against us in their UPSTREAM-vp-beads.md.
+      Source section: Bugs.
+    updated: '2026-06-02'

@@ -153,18 +153,28 @@ is another daemon/vendor; it can't reproduce `ready`) — there are **no
 `DESIGN-tracker-exploration.md` v3 block. The single canonical schema is
 `scripts/task-schema.mjs`.
 
-- **bd is still the LIVE tracker for this repo's own dev** until the migration
-  executes. Epic `vp-beads-l9i` is the migration parent (its going-forward
-  children carry the Option-C plan). Use `bd` as usual; don't reopen closed
-  children.
-- **Phase 0 (shipped):** the read/validate tooling above + a single canonical
-  schema. The write side is deliberately Edit/Write on the YAML (no CRUD
-  helper — substrate-not-opinion). The skill-retarget (`bd` → ready-walker /
-  YAML edits) and a `### Files-availability convention` are the next wave.
-- **Target type model (decision `vp-beads-etm`, 2026-06-10): 4 types** —
+- **Wave 1 executed (2026-07-10):** the 24 live bd issues were migrated to
+  `backlog/tasks/tasks-migration.yml` + `tasks-backlog.yml` (the decision `etm`
+  to `backlog/decisions/`) by `scripts/bootstrap-tasks.mjs`, and the full
+  131-issue `bd export` was frozen to `backlog/_archive/bd-final-export.jsonl`
+  (the only git-tracked survivor — `.beads/` is gitignored). This repo now
+  tracks its own work in flat-YAML (see `### Issue tracking (flat-YAML)`).
+  `bd` reads still work as a frozen archive; `bd` writes are dead (1.1.0
+  migrate-gate panic) and are not used.
+- **Phase 0 (shipped earlier):** the read/validate tooling + the single canonical
+  schema `scripts/task-schema.mjs`. The write side is deliberately Edit/Write on
+  the YAML (no CRUD helper — substrate-not-opinion). `deferred` was added to the
+  status enum during Wave 1.
+- **Wave 2 (pending — the release gate):** the skill-retarget wave (`vp-beads-e42`)
+  retargets 8 skills + 3 hooks + the sprint-review agent off `bd`, renames
+  `### Beads-availability convention` → `### Files-availability convention`
+  (`vp-beads-azl`, Tier B collapses), drops `harden-memories`, and rewrites the
+  README. Until it lands, skill/agent prose still names `bd` (expected lag).
+- **Type model (decision `vp-beads-etm`, 2026-06-10): 4 types** —
   `task` / `doc` / `decision` / `milestone`; bd's other five types are
-  framings carried in `labels:`, `epic` is `task` + `parent:`. The 9-type
-  table below describes **bd (still live)**, not the migration target.
+  framings carried in `labels:`, `epic` is `task` + `parent:`. This is now the
+  live model for `backlog/tasks/`; the 9-type table below is **historical bd
+  vocabulary**, retained until the e42 doc sweep.
 - Feature branch `feat/tracker-design-exploration` carries this work
   (local-only per user choice — don't push without approval).
 - The superseded Backlog.md dogfood lives in `backlog/_archive/` for provenance.
@@ -461,17 +471,28 @@ rm -f file              # NOT: rm file
 rm -rf directory        # NOT: rm -r directory
 ```
 
-### Issue tracking with beads
+### Issue tracking (flat-YAML — post-bd)
 
 **Scope: this repository's own development.** This is a self-instruction for
 working *on vp-beads*, not a claim about projects that *use* vp-beads — the
-plugin itself supports beadless substrates (see `## Work-tracking substrates`).
+plugin supports multiple substrates (see `## Work-tracking substrates`).
 
-This project uses `bd` (beads) as the **live** tracker for its own development:
-`bd ready` to find available work, `bd update <id> --claim` to claim,
-`bd close <id> --reason "..."` to complete. The bd→flat-YAML migration (Option C)
-is in progress but **not yet executed** — bd stays the active tracker until
-cutover (see "Active migration" above). Do NOT use markdown TODOs or task lists.
+This project tracks its own work in the **flat-YAML substrate** (Option C), **not
+bd** — the data migration executed 2026-07-10 (Wave 1; see "Active migration"
+above). Find ready work with `node scripts/ready-walker.mjs` (`--format json`,
+`--stats`, `--blocked`, `--stale --days N`). Claim / complete by **editing the
+YAML directly** in `backlog/tasks/tasks-<slug>.yml` — set `status: in_progress`
+(+ `agent:`) to claim, `status: completed` to close; there is no CRUD helper
+(substrate-not-opinion — the write side is Edit/Write). Validate every edit with
+`node validate-tasks.mjs`. Decisions live as markdown in `backlog/decisions/`.
+Do NOT use markdown TODOs, ad-hoc task lists, or `bd` (its 1.1.0 writes are dead
+regardless).
+
+The skills, agent, and the `### Beads-availability convention` below still
+describe `bd` until the **e42 skill-retarget wave (Wave 2)** — that lag is
+expected; the live substrate for this repo's own tracking is already flat-YAML.
+The bd-specific quirk subsections that follow are historical, retained until the
+e42 doc sweep.
 
 ### bd 60s write-throttle quirk
 
@@ -538,12 +559,17 @@ Full details + 5-agent validation trail: BM
 `engineering/agents/parallel-agent-orchestration-lessons` last `[gotcha]`
 observation + `UPSTREAM-claude-code.md` at project root.
 
-### Issue types (9 total)
+### Issue types
 
-**bd-current until cutover** — this table describes the live bd tracker. The
-post-migration substrate uses 4 types (`task`/`doc`/`decision`/`milestone` +
-`labels:` for the framings) per decision `vp-beads-etm`; see `## Active
-migration` above.
+**The live model for `backlog/tasks/` is 4 types** (`task` / `doc` / `decision` /
+`milestone` + `labels:` for the framings), per decision `vp-beads-etm` and
+enforced by `scripts/task-schema.mjs` (`VALID_TYPES`). Map a bd framing to a
+label: `bug`/`feature`/`chore`/`story`/`spike` → `task` + `labels: [<framing>]`;
+`epic` → `task` + `parent:`.
+
+**The 9-type table below is historical bd vocabulary** — retained for provenance
+and for reading the frozen `backlog/_archive/bd-final-export.jsonl`, not a
+description of the live substrate. It will be trimmed in the e42 doc sweep.
 
 All issue types are validated on creation with `validation.on-create=error`. Authoritative source: BM `brew/brew-beads` `### Issue Types (Core Vocabulary)`. Provenance: `engineering/agents/cli-validation-discovery-via-json-error-probing`.
 

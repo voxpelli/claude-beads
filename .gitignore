@@ -1,6 +1,6 @@
 .DS_Store
 
-# Ephemeral agent/sprint scratch artifacts (durable record lives in beads)
+# Ephemeral agent/sprint scratch artifacts (durable record lives in backlog/tasks/)
 AGENT-*.md
 RETRO-*.md
 SWARM-*.md

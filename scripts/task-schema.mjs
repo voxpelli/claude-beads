@@ -22,6 +22,19 @@
  *         - ...
  *       agent: loop-1         # optional; set when claimed (status in_progress)
  *       updated: "2026-06-10" # optional; ISO date — staleness is computed from it
+ *       description: |        # optional; migration-introduced (see note below) — PENDING RATIFICATION
+ *         free-text body
+ *
+ * `description` is a recognized OPTIONAL field but it is UNDER REVIEW. It was
+ * added by the bd→YAML migration (bootstrap-tasks.mjs, Wave 1) to preserve each
+ * bd issue's body losslessly, since the terse schema otherwise has no home for
+ * prose. It deliberately REVERSES the original no-body design decision (RETRO-15
+ * deflated the "missing body" criticism as by-design), so it is a change the
+ * user must ratify: keep it for active-work fidelity, or strip it (the full
+ * bodies remain in `backlog/_archive/bd-final-export.jsonl`). `ready-walker`
+ * ignores it and `validate-tasks` tolerates it, so it is non-breaking either way.
+ * If a future unknown-field warning is added to validate-tasks, it must allowlist
+ * `description` or every migrated task will flag at once.
  *
  * Type model (decision vp-beads-etm, 2026-06-10): 4 exclusive kinds — `task`
  * (work), `doc` (reference), `decision` (record), `milestone` (marker). bd's
@@ -31,14 +44,14 @@
  * item — the property labels can't give); the framings stay additive. Spike's
  * "closes with findings, not code" semantics travel with the `spike` label.
  *
- * `doc` and `decision` are RESERVED, not yet exercised by real data — there
- * are zero live instances of either (the current corpus is entirely `task`),
- * and the schema has no field for their own prose (no `body`/`description`/
- * `content`). Their content-home is a deliberately open design point (see
- * decision vp-beads-etm's `## Affects`), left for first real use rather than
- * built ahead of a consumer (substrate-not-opinion, YAGNI) — until then their
- * text lives in ordinary repo markdown (`DESIGN-*.md`, `RESEARCH-*.md`), same
- * as it does today.
+ * `doc` and `decision` do NOT live as rows in `tasks-<slug>.yml`; their
+ * content-home is frontmatter'd markdown under `backlog/decisions/<id>.md` and
+ * `backlog/docs/<id>.md` (the frontmatter carries the schema fields; the body is
+ * the prose the terse row can't hold). The migration exercised this for the first
+ * real `decision` — `backlog/decisions/vp-beads-etm.md`. `milestone` rows DO live
+ * in `tasks-*.yml` (markers, no prose); there are none live yet. Because the
+ * ready-walker only globs `tasks-*.yml`, decision/doc files are naturally outside
+ * the ready computation — a decision "in force" is never surfaced as workable.
  *
  * Ready rule (the only computation that gates work): an item is READY iff
  * `type === 'task'`, `status === 'pending'`, and every dep is `completed`.
@@ -57,12 +70,20 @@
  * upgrade is write-then-rename, not a lock daemon.
  */
 
-/** @typedef {'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled'} Status */
+/** @typedef {'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'deferred'} Status */
 /** @typedef {'task' | 'doc' | 'decision' | 'milestone'} TaskType */
 /** @typedef {'critical' | 'high' | 'medium' | 'low' | 'backlog'} Priority */
 
+/**
+ * `deferred` is an open item consciously postponed — distinct from `cancelled`
+ * (won't do) and from `pending` (workable now). Like every non-`completed`
+ * status it is not `ready` and does not resolve a dependency: a task depending
+ * on a deferred item surfaces in `needsAttention`, never `ready` (see
+ * computeReady in ready-walker.mjs — deferred falls through the dep partition's
+ * catch-all `else` into `stalled`).
+ */
 /** @type {Set<Status>} */
-export const VALID_STATUSES = new Set(['pending', 'in_progress', 'completed', 'failed', 'cancelled'])
+export const VALID_STATUSES = new Set(['pending', 'in_progress', 'completed', 'failed', 'cancelled', 'deferred'])
 
 /** @type {Set<TaskType>} */
 export const VALID_TYPES = new Set(['task', 'doc', 'decision', 'milestone'])

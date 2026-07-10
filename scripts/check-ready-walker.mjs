@@ -68,6 +68,22 @@ assert(
 )
 
 assert(
+  'deferred dep → needs attention, not ready/blocked (deferred never resolves a dep)',
+  (() => {
+    const r = computeReady([
+      { id: 'T-1', status: 'deferred', type: 'task' },
+      { id: 'T-2', status: 'pending', type: 'task', deps: ['T-1'] },
+    ])
+    return r.needsAttention.some(t => t.id === 'T-2' && t.reason.includes('deferred')) && !r.ready.length && !r.blocked.length
+  })()
+)
+
+assert(
+  'a deferred task is never ready (only pending is)',
+  computeReady([{ id: 'T-1', status: 'deferred', type: 'task' }]).ready.length === 0
+)
+
+assert(
   'missing dep → needs attention',
   computeReady([{ id: 'T-2', status: 'pending', type: 'task', deps: ['T-99'] }]).needsAttention.some(t => t.reason.includes('missing'))
 )

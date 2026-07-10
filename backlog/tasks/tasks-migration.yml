@@ -1,0 +1,228 @@
+meta:
+  slug: migration
+  title: Tracker migration off bd (epic vp-beads-l9i)
+tasks:
+  - id: vp-beads-azl
+    title: "Files-availability convention — Wave-1 operating-instructions (rename folded into e42)"
+    status: completed
+    type: task
+    priority: medium
+    labels:
+      - chore
+    parent: vp-beads-l9i
+    acceptance_criteria:
+      - "DONE (Wave 1): operating-instructions retargeted off bd — ### Issue tracking self-instruction, ## Active migration, ### Issue types intro, .gitignore comment"
+      - "FOLDED INTO e42: the ### Beads-availability -> ### Files-availability heading rename + Tier B collapse + audit-silent-skips predicate + validate-plugin text — cited in 7 files, must change atomically with the still-bd skill prose and check-validator fixtures"
+    description: >-
+      At execution: CLAUDE.md ### Beads-availability -> ### Files-availability. Tier B collapses
+      (files always present); predicate = tasks-*.yml exists AND ready-walker runs. Update
+      audit-silent-skips.mjs regex to cover flat-file substrate.
+
+
+      Wave-1 note (2026-07-10): the operating-instructions half shipped; the convention-heading
+      rename moved into e42 because the heading is cited by 7 files and the audit predicate is
+      coupled to check-validator fixtures — they must change atomically with the skill retarget.
+      Title retitled to the shipped half so a status scan doesn't read "convention renamed".
+    updated: '2026-07-10'
+  - id: vp-beads-bj7
+    title: migrate-from-bd.mjs — bd JSONL to tasks-<slug>.yml mechanical map
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-l9i
+    acceptance_criteria:
+      - "DONE: scripts/bootstrap-tasks.mjs migrated the 24 live issues (9->4 collapse; all 10 AC-carriers extracted incl. 8d5's escaped-newline body; full body preserved as description); validate-tasks passes"
+      - "DONE: dual-run ready-walker vs bd ready matches exactly except etm (a decision bd wrongly lists as ready; ready-walker correctly excludes) — the one predicted divergence"
+      - "DONE: satisfied (closed-blocker) deps dropped and reported; deferred preserved as deferred; full 131-issue snapshot frozen to backlog/_archive/bd-final-export.jsonl"
+    description: >-
+      Smaller than the Backlog.md migration script (no id-map break, no AC double-source): map open
+      bd issues to YAML, group by parent into slug triplets, preserve the 9 types as a label/field.
+
+
+      ## 2026-07-02 review-round annotations (deferred work, seeded by scripts/migrate-from-bd.mjs
+      spike)
+
+
+      Note: the Acceptance Criteria above predate decision vp-beads-etm (4-type model, not 9) — this
+
+      bead inherits the corrected 9->4 collapse (framings->labels, epic->parent), not the literal
+
+      9-type-preserved wording above.
+
+
+      **Deferred test suite** (a code-architect designed this in full during the review round; build
+      it
+
+      when this bead productionizes migrate-from-bd.mjs's logic, not before): mirror
+
+      scripts/check-ready-walker.mjs's plain assert()-based idiom. Cases: STATUS_MAP for all 4 bd
+
+      statuses (open/in_progress/closed/deferred) incl. unknown-status skip+loss-tracking; TYPE_MAP
+      9->4
+
+      for all bd types incl. unknown-type skip+loss-tracking; PRIORITY_MAP 0-4 incl.
+      unmapped->medium
+
+      fallback+loss-tracking (see priorityDefaultedIds, added to the spike this round); labels-merge
+
+      (existing + framing label, and whether to dedupe); dependency routing (blocks->deps,
+
+      parent-child->parent, other->loss) incl. missing-dependencies non-crash;
+      acceptanceCriteriaSkipped
+
+      counting; field omission when empty (labels/deps/parent/updated). Deliberately DROP a
+      guardrail
+
+      spawn-test from this suite -- the migrate-from-bd.mjs guardrail enforces never write
+
+      backlog/tasks/, which is exactly the invariant THIS bead's shipped migrator inverts (it is
+      meant
+
+      to write there) -- a permanent test for a deliberately temporary invariant is dead weight.
+
+
+      **Watch-item, not a bug:** a task whose deps: points at a non-task item
+      (decision/doc/milestone)
+
+      that never reaches status: completed will show blocked forever in ready-walker (dep resolution
+      is
+
+      type-agnostic; decisions especially are meant to stay OPEN indefinitely per this project's own
+
+      convention). Inert today (zero live non-task instances), but real bd data migrated by this
+      bead
+
+      could make it a live scenario. No fix decided; pin the intended behavior with a test when it's
+
+      first architecturally relevant, don't guess now.
+    updated: '2026-07-02'
+  - id: vp-beads-e42
+    title: Skill-retarget wave — bd to flat-YAML across 7 skills + 3 hooks + sprint-review agent
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-l9i
+    deps:
+      - vp-beads-azl
+    acceptance_criteria:
+      - every bd call-site in skills/hooks/agent retargeted or announced (no silent skip)
+      - backlog-groomer Tier B stop removed; harden-memories dropped
+      - validate-plugin tool-reference audit passes after each edit
+      - decision recorded on reviewer-as-standalone-primitive
+      - "folded from azl: rename ### Beads-availability -> ### Files-availability convention (Tier B collapse, new predicate) atomically with all 7 citers; update audit-silent-skips.mjs predicate + its check-validator fixtures + validate-plugin.mjs warning text"
+    description: >-
+      Mechanical + substantive retarget per the architect bd<->flat-file table: bd ready ->
+      ready-walker, bd create -> YAML append, bd close -> status edit + progress append, bd remember
+      -> AGENTS.md/MEMORY.md. RETHINK backlog-groomer; DROP harden-memories (dead once bd remember
+      gone). Fold the open thread (#17): should the independent reviewer be a standalone
+      substrate-level primitive?
+    updated: '2026-06-10'
+  - id: vp-beads-iai
+    title: Fresh-context independent reviewer for swarm-wave post-wave gate
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - feature
+    parent: vp-beads-l9i
+    acceptance_criteria:
+      - reviewer launched with clean context, no executor reasoning in scope
+      - checks intent-vs-implementation; confidence threshold distinct from code reviewer
+      - AGENTS.md is read-only to loops; single-writer curation between waves
+    description: >-
+      Net-new (hone-ai does same-agent self-review). Add a fresh-context/escalated-tier reviewer
+      that sees only the diff + PRD/task intent, not the implementer transcript.
+      Generation/evaluation separation; empirically essential (arXiv:2404.13076/2509.19880).
+    updated: '2026-06-09'
+  - id: vp-beads-l2s
+    title: BM-Task frontmatter superset + read-only projection
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-l9i
+    acceptance_criteria:
+      - frontmatter parseable by BM search_notes note_types=[task]
+      - projection is read-only, additive, reversible
+      - ready computation stays in the tracker, not BM
+    description: >-
+      Make tasks-<slug>.yml frontmatter a superset BM memory-tasks (v0.19.0 Task type) can parse:
+      status enum + parent_task + blockers named to match. One read-only skill projects tasks into
+      BM as a secondaryProject. Tracker stays canonical (ready-walker is the engine); BM is a lens.
+    updated: '2026-06-09'
+  - id: vp-beads-l9i
+    title: Tracker migration off bd
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - epic
+    description: >-
+      Parent epic for all work migrating vp-beads off the bd substrate (gastownhall/beads). Driven
+      by the operational complexity-delta of bd-on-Dolt (daemon + dynamic ports + binary DB trees +
+      dual-store JSONL↔Dolt sync + migrations + orphan-process reaping) — unredeemed for a solo
+      single-host dev who turns off its reason-to-exist (cross-machine Dolt merge). Strategic
+      incoherence with Gas Town is positioning, not technical forcing.
+
+
+      SUBSTRATE (v3 verdict, 2026-06-09, superseding the l9i.2 MIXED→Backlog.md verdict): **Option C
+      — lean in-repo flat-YAML** (`backlog/tasks/tasks-<slug>.yml`) + `scripts/ready-walker.mjs`
+      (the files-native `bd ready`) + `validate-tasks.mjs` (integrity gate) + the canonical
+      `scripts/task-schema.mjs`. Zero new runtime deps; no daemon/MCP/index; writes are ordinary
+      Edit/Write (no CRUD helper — substrate-not-opinion). Type model settled by decision
+      `vp-beads-etm` (2026-06-10): 4 types (task/doc/decision/milestone) + `labels:` framings. See
+      `DESIGN-tracker-exploration.md` v3 block + `RESEARCH-tracker-migration-synthesis-2026-06.md`.
+
+
+      ## Success Criteria
+
+
+      - Phase 0 read/validate tooling ships and holds green in `npm run check` (DONE 2026-06-10)
+
+      - The 4-vs-9 type model is settled in a decision bead and implemented in the canonical schema
+      (DONE — `vp-beads-etm`, 4 types)
+
+      - Skill-retarget wave (`e42` + `azl`): 7 skills + 3 hooks + sprint-review agent run against
+      ready-walker/YAML; `### Files-availability convention` replaces Beads-availability
+
+      - `migrate-from-bd.mjs` (`bj7`) maps bd JSONL → tasks-<slug>.yml losslessly within the decided
+      9→4 collapse (framings → labels, epic → parent)
+
+      - Fresh-context independent reviewer (`iai`) lands in the swarm-wave post-wave gate
+
+      - Cutover sprint: bd retired; CLAUDE.md + MEMORY.md drop bd references; v1.0.0-style release
+      cut at cutover (cutover checklist addition, 2026-07-02 review round: also grep-sweep + drop
+      the "per CLAUDE.md issue-type table" citations in scripts/ready-walker.mjs and
+      scripts/task-schema.mjs headers, and re-point/retire the vp-beads-etm / vp-beads-bj7 bead-ID
+      references in code comments -- both will dangle once bd is retired)
+    updated: '2026-07-02'
+  - id: vp-beads-pku
+    title: Flywheel E3 edge — swarm-wave plan reads engineering/agents/* lessons
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - feature
+    parent: vp-beads-l9i
+    acceptance_criteria:
+      - workflow 1 reads engineering/agents/* + AGENTS.md wave-planning lessons pre-fan-out
+      - 'metric logged: rework ratio (fix-iterations per wave) in SWARM-NN run-state'
+      - stop/continue trigger documented (flat after 2-3 sprints = stop)
+    description: >-
+      Close the missing return edge: swarm-wave workflow 1 reads retrospective-written BM lessons
+      before partitioning. Cheapest compounding win. Externally grounded (real past collisions), so
+      it compounds rather than rots.
+    updated: '2026-06-09'
+  - id: vp-beads-uzu
+    title: 'PostToolUse hook: run validate-tasks on tasks-*.yml edits (immediate feedback)'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    parent: vp-beads-l9i
+    description: >-
+      Deferred from vp-beads-40a/8pk (Phase 0). The check:tasks CI stage already gives the integrity
+      guarantee at npm run check time; this hook adds immediate feedback when an agent edits a
+      backlog/tasks/tasks-*.yml mid-session (emits validate-tasks --json as additionalContext).
+      Needs a hooks.json entry + check-hooks.mjs coverage. Optional polish, not load-bearing.
+    updated: '2026-06-09'
