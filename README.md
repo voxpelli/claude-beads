@@ -169,9 +169,11 @@ Writes are plain `Edit`/`Write` on the YAML afterwards — there is no CRUD help
 - **A `dolt sql-server` daemon per repo**, which outlives the session and orphans itself
 - **Injected instructions** — `bd setup claude` writes a managed block into `CLAUDE.md`/`AGENTS.md` and `SessionStart` hooks into `.claude/settings.json`
 
-Five workflows: verify the migration is trusted (refuses otherwise), stop the daemon (pid-checked — a stale `.pid` file must not get something else killed), disarm the git hooks (both install shapes; it confirms `core.hooksPath` actually points into `.beads/` before unsetting, so a husky setup is never collateral), de-colonize the docs and Claude config, and report what is left — including machine-global leftovers (`brew uninstall beads`, the telemetry spool) which it names but never touches.
+Five workflows: verify the migration is trusted (the gate is stricter than it looks — `validate-tasks` returns `clean: true` **and exit 0** for a store that doesn't exist, so the skill requires `skipped: false` and a committed, non-empty store); disarm the git hooks (both install shapes; it confirms `core.hooksPath` really resolves into `.beads/` before unsetting, so a husky setup is never collateral); stop the daemon (pid-checked, SIGTERM only — the daemon holds the Dolt store open and a `kill -9` could corrupt the very archive this skill refuses to delete); de-colonize the docs and Claude config; and report what is left — including machine-global leftovers, which it names but never touches.
 
-Everything it does is reversible: re-arming is `git config core.hooksPath .beads/hooks`.
+Hooks are disarmed **before** the daemon is stopped, because the armed `pre-commit` shim calls `bd`, and any `bd` command re-spawns the daemon — stop it first and the next commit simply brings it back.
+
+Everything is reversible, and the report gives you the exact re-arm command — bd stores an *absolute* `core.hooksPath`, so the skill echoes the original value verbatim rather than guessing a relative one.
 
 ### `/swarm-wave [workflow] [wave-number|topic]` — Multi-agent wave orchestration
 
