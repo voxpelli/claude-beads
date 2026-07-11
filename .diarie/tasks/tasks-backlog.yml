@@ -424,7 +424,7 @@ tasks:
     updated: '2026-07-11'
   - id: vp-beads-sea
     title: Adopt the peowly-commands FOUR-part command shape — setupCommand / doTheWork / formatWorkResult
-    status: pending
+    status: completed
     type: task
     priority: high
     parent: vp-beads-dia
@@ -485,6 +485,78 @@ tasks:
       Do this AFTER vp-beads-tst (done), never with it: moving 161 assertions in the same commit
       that changes what they assert is how a regression gets waved through. That is vp-beads-tst's
       own rule, and it binds its successor.
+
+
+      **THREE CRITERIA ABOVE WERE NOT MET AS WRITTEN.** Recorded rather than quietly reworded,
+      because a row that edits its own criteria to match what shipped is the green check this
+      project keeps hunting:
+
+
+      - *"the line-building helpers move into `lib/format.js`"* — they went to **`lib/ready.js`**
+      instead, beside the `line()` they extend. `format.js` is the stdout/stderr IO module; a pure
+      string builder does no IO, and `line`/`formatStats` already lived in `ready.js`. Following
+      the criterion literally would have split two siblings across modules. The criterion's
+      SUBSTANCE (pure, extracted, unit-tested) is met; only its address changed.
+
+      - *"composition is by spread, INCLUDING subtractively (`...omit(outputFlags, [...])`)"* —
+      **not done, deliberately.** diarie's shared groups are single-flag (`{json}`, `{root}`);
+      there is nothing to subtract. Adding an `omit` helper to satisfy the line would have been
+      cargo-culting the reference instead of the principle. Revive when a command genuinely needs
+      a group-minus-a-flag.
+
+      - *"`lib/flags/index.js` barrel ... (cf. list-dependents-cli)"* — the barrel shipped, but the
+      citation was wrong: **list-dependents-cli has NO barrel**, it imports each group by path
+      (`from '../flags/filter.js'`). The barrel is the peowly-commands *example's* convention. Both
+      are house style. Fourth inference of the sprint refuted by opening the file.
+
+
+      Also: `migrate` was left ALONE. It does not use peowly at all — its `--epic`/`--title` are
+      repeatable `key=value` pairs parsed by `runMigration` — so it has no flag stage to reshape.
+      Forcing the four parts onto it would have been inventing a shape, which is the exact error
+      this row was rewritten to correct. `init` DID take the shape (its work is a side effect, but
+      its output is separable).
+
+
+      `doTheWork` is EXPORTED from each of the four commands. The reference keeps it internal —
+      but the reference does not unit-test it, and in-process testability is this row's whole
+      prize.
+
+
+      Verified: 18 CLI invocations (stdout + stderr + exit code + `--help`) captured before the
+      first edit and diffed after — **byte-identical**. The 161 assertions were the backstop, not
+      the proof: they parse JSON, so a key-order change would have passed every one of them while
+      breaking byte-identity. 21 new assertions (182 total), and all four new guards
+      mutation-proven able to go red.
+
+
+      **That matrix had a hole, and the hole was in the one path this project cares most about.**
+      All 18 invocations ran against CLEAN stores, so none of them exercised a load warning —
+      while the refactor had MOVED warning emission, from the `loadTasks(root, warn)` callback
+      during the load to a replay at the top of `formatWorkResult`. The signature failure of this
+      repo (a guard that drops without reporting) was sitting in an unverified path. Closed by
+      re-running old-vs-new from a `git worktree` at HEAD~1 against a deliberately malformed store
+      (bad priority + bd-fossil `type: bug` + scalar `labels:`): **byte-identical, all three
+      warning lines, right order, `--strict` exit 2 included.** Lesson, and it generalizes: a
+      diff matrix built only from healthy inputs cannot see a change to the unhealthy path.
+
+
+      **`no behaviour change` was TOO STRONG. Two error-ordering changes, both surfaced by that
+      same old-vs-new diff:**
+
+
+      - *Fixed, by preserving the old order.* `setupCommand` initially validated `--filter` before
+      resolving the store, which flipped the double fault (`--filter bogus --root /nowhere`) from
+      `{code: "ENOSTORE"}` to a filter error — dropping the machine-readable code that
+      `### Files-availability convention` makes load-bearing. `requireRoot` now runs first again.
+      `stats` resolves in the opposite order and that asymmetry is ALSO preserved: both orders
+      predate this row, and a refactor that quietly reorders errors is not a refactor.
+
+      - *Kept, deliberately.* `--filter bogus` against a store that WOULD emit load warnings no
+      longer prints those warnings first. The old code loaded the store before checking the flag;
+      the new shape rejects invalid input before doing any work — which is what `setupCommand` is
+      FOR, and preserving it would mean the validator could not live there at all. stdout and the
+      exit code are unchanged; only advisory stderr differs, on a path where the input was already
+      invalid. `format.js` defines stderr as asides, so this is within contract.
     updated: '2026-07-11'
   - id: vp-beads-asg
     title: diarie must self-host its ast-grep config — the guards do not survive extraction

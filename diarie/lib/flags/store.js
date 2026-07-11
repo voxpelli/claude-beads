@@ -1,29 +1,16 @@
 /**
- * flags.js — flag sets composed per command, plus the one place that turns a
- * missing store into an honest answer.
+ * Store-location flags — shared by every command that reads a store.
  *
- * Every read command shares `--json` and `--root`. `--json` is the template's
- * convention (`-j`); the old readers were inconsistent (`ready-walker --format
- * json` but `validate-tasks --json`), and a greenfield CLI should not inherit an
- * incoherence from scripts that no longer exist.
+ * `requireRoot` is deliberately NOT named `validateStoreFlags`: it touches the
+ * filesystem (it searches upward for the store), so it is a resolution seam, not a
+ * pure validator. The pure ones are `validateFilterFlags` and `validateStaleFlags`;
+ * do not hold this up as an example of that pattern.
  */
 
-import { TRACKER_DIR } from './schema.js'
-import { NoStoreError, resolveRoot } from './store.js'
-import { InputError } from './utils/errors.js'
+import { TRACKER_DIR } from '../schema.js'
+import { NoStoreError, resolveRoot } from '../store.js'
+import { InputError } from '../utils/errors.js'
 
-/** Output flags — shared by every command that prints a result. */
-export const outputFlags = /** @satisfies {import('peowly').AnyFlags} */ ({
-  json: {
-    description: 'Output the result as JSON',
-    listGroup: 'Output options',
-    type: 'boolean',
-    'default': false,
-    'short': 'j',
-  },
-})
-
-/** Store-location flags — shared by every command that reads a store. */
 export const storeFlags = /** @satisfies {import('peowly').AnyFlags} */ ({
   root: {
     description: `Project root holding ${TRACKER_DIR}/ (default: search upward from cwd)`,

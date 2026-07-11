@@ -12,6 +12,12 @@
  * What it writes is deliberately tiny — a store is a directory and a list. There is
  * no `.diarierc`, no config, no state file. If this command ever grows a template
  * engine, something has gone wrong with the substrate.
+ *
+ * Four parts, even though the work here is a SIDE EFFECT rather than a computation:
+ * `doTheWork` writes the store and returns what it created, and `formatWorkResult`
+ * decides how to say so. The refusal lives in `doTheWork` because it is a fact about
+ * the disk, not about the arguments. (`migrate` is the one command with no such split
+ * — its flags are repeatable `key=value` pairs parsed by the migrator itself.)
  */
 
 import { existsSync } from 'node:fs'
@@ -20,7 +26,7 @@ import { join } from 'node:path'
 
 import { peowly } from 'peowly'
 
-import { outputFlags, storeFlags } from '../flags.js'
+import { outputFlags, storeFlags } from '../flags/index.js'
 import { jsonOut, textOut } from '../format.js'
 import { TRACKER_DIR } from '../schema.js'
 import { resolveInitRoot } from '../store.js'
@@ -60,37 +66,86 @@ export const init = {
   description: `Create a ${TRACKER_DIR}/ task store`,
 
   async run (argv, meta, { parentName }) {
-    const { flags: opts } = peowly({
-      ...meta,
-      args: argv,
-      description: init.description,
-      name: `${parentName} init`,
-      options: flags,
-      usage: '[--slug <name>] [--root <dir>]',
-    })
+    const input = setupCommand(`${parentName} init`, init.description, argv, meta)
+    const workResult = await doTheWork(input)
 
-    const root = resolveInitRoot({ root: opts.root })
-    const store = join(root, TRACKER_DIR)
-
-    // Refuse, always. Never merge, never overwrite, never "helpfully" back up.
-    if (existsSync(store)) {
-      throw new InputError(`${TRACKER_DIR}/ already exists in ${root} — refusing to touch an existing store`)
-    }
-
-    const tasksFile = join(store, 'tasks', `tasks-${opts.slug}.yml`)
-    await mkdir(join(store, 'tasks'), { recursive: true })
-    await mkdir(join(store, 'decisions'), { recursive: true })
-    await writeFile(tasksFile, STARTER, 'utf8')
-
-    const created = [`${TRACKER_DIR}/tasks/tasks-${opts.slug}.yml`, `${TRACKER_DIR}/decisions/`]
-
-    if (opts.json) return jsonOut({ root, created })
-
-    textOut([
-      `Created a task store in ${root}:`,
-      ...created.map(f => `  ${f}`),
-      '',
-      'Commit it. The store IS the repo — that is the whole idea.',
-    ].join('\n'))
+    formatWorkResult(workResult, input)
   },
+}
+
+/**
+ * @typedef CommandContext
+ * @property {boolean} json
+ * @property {string} root Where the store WILL be — it does not exist yet.
+ * @property {string} slug
+ */
+
+/**
+ * @param {string} name
+ * @param {string} description
+ * @param {string[]} args
+ * @param {import('peowly-commands').CliMeta} meta
+ * @returns {CommandContext}
+ */
+function setupCommand (name, description, args, meta) {
+  const { flags: opts } = peowly({
+    ...meta,
+    args,
+    description,
+    name,
+    options: flags,
+    usage: '[--slug <name>] [--root <dir>]',
+  })
+
+  return { json: opts.json, root: resolveInitRoot({ root: opts.root }), slug: opts.slug }
+}
+
+/**
+ * @typedef WorkResult
+ * @property {string} root
+ * @property {string[]} created Paths, relative to the root.
+ */
+
+/**
+ * Create the store and RETURN what was created. Prints nothing.
+ *
+ * @param {Pick<CommandContext, 'root'|'slug'>} context
+ * @returns {Promise<WorkResult>}
+ * @throws {InputError} when a store is already there
+ */
+export async function doTheWork ({ root, slug }) {
+  const store = join(root, TRACKER_DIR)
+
+  // Refuse, always. Never merge, never overwrite, never "helpfully" back up.
+  if (existsSync(store)) {
+    throw new InputError(`${TRACKER_DIR}/ already exists in ${root} — refusing to touch an existing store`)
+  }
+
+  await mkdir(join(store, 'tasks'), { recursive: true })
+  await mkdir(join(store, 'decisions'), { recursive: true })
+  await writeFile(join(store, 'tasks', `tasks-${slug}.yml`), STARTER, 'utf8')
+
+  return {
+    root,
+    created: [`${TRACKER_DIR}/tasks/tasks-${slug}.yml`, `${TRACKER_DIR}/decisions/`],
+  }
+}
+
+/**
+ * The ONLY place that writes to the terminal (the STORE was written by doTheWork —
+ * two different senses of "write", kept apart on purpose).
+ *
+ * @param {WorkResult} workResult
+ * @param {Pick<CommandContext, 'json'>} context
+ * @returns {void}
+ */
+function formatWorkResult ({ created, root }, { json }) {
+  if (json) return jsonOut({ root, created })
+
+  textOut([
+    `Created a task store in ${root}:`,
+    ...created.map(f => `  ${f}`),
+    '',
+    'Commit it. The store IS the repo — that is the whole idea.',
+  ].join('\n'))
 }
