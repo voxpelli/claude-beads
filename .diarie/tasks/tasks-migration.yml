@@ -98,18 +98,19 @@ tasks:
     updated: '2026-07-02'
   - id: vp-beads-e42
     title: Skill-retarget wave — bd to flat-YAML across 7 skills + 3 hooks + sprint-review agent
-    status: pending
+    status: completed
     type: task
     priority: high
     parent: vp-beads-l9i
     deps:
       - vp-beads-azl
     acceptance_criteria:
-      - every bd call-site in skills/hooks/agent retargeted or announced (no silent skip)
-      - backlog-groomer Tier B stop removed; harden-memories dropped
-      - validate-plugin tool-reference audit passes after each edit
-      - decision recorded on reviewer-as-standalone-primitive
-      - "folded from azl: rename ### Beads-availability -> ### Files-availability convention (Tier B collapse, new predicate) atomically with all 7 citers; update audit-silent-skips.mjs predicate + its check-validator fixtures + validate-plugin.mjs warning text"
+      - "DONE (a41fc99): every bd call-site in skills/hooks/agent retargeted; residual mentions are intentional (Charter citations, mapping explainers)"
+      - "DONE (a41fc99): backlog-groomer Tier B stop removed; harden-memories dropped (skills 8->7)"
+      - "DONE: validate-plugin tool-reference audit passes"
+      - "DONE (a41fc99): folded from azl — ### Beads-availability -> ### Files-availability convention (Tier B collapse, new predicate) across all 7 citers; audit-silent-skips.mjs predicate + check-validator fixtures + validate-plugin.mjs warning text updated"
+      - "DONE (2026-07-11): the doc sweep — CLAUDE.md Session completion (bd close/dolt push were DEAD writes ordered every session), the 'Do not run bd setup claude' reasoning (false in both halves), the 9-type table, the 60s write-throttle quirk, the Active-migration section"
+      - "MOVED to vp-beads-iai: 'decision recorded on reviewer-as-standalone-primitive' — that is iai's question (the fresh-context reviewer), not this wave's. Rehomed rather than dropped."
     description: >-
       Mechanical + substantive retarget per the architect bd<->flat-file table: bd ready ->
       ready-walker, bd create -> YAML append, bd close -> status edit + progress append, bd remember
@@ -128,6 +129,7 @@ tasks:
     acceptance_criteria:
       - reviewer launched with clean context, no executor reasoning in scope
       - checks intent-vs-implementation; confidence threshold distinct from code reviewer
+      - "inherited from vp-beads-e42 (2026-07-11): record the decision on reviewer-as-standalone-primitive — is the independent reviewer a substrate-level primitive, or a swarm-wave-only gate? e42 carried this AC but it was never e42's question; rehomed here rather than dropped. Live evidence for it: the two skill-reviewer passes this session each caught data-loss bugs npm run check could not see, which argues the reviewer earns primitive status."
       - AGENTS.md is read-only to loops; single-writer curation between waves
     description: >-
       Net-new (hone-ai does same-agent self-review). Add a fresh-context/escalated-tier reviewer

@@ -60,9 +60,9 @@ Dev tooling only: validation and linting via `npm run check`.
 
 ### Agent (1)
 
-- **sprint-review** — Proactively triggers at end-of-sprint boundaries (`bd close`,
-  "sprint done", "what did we accomplish"). Reads git history, beads state, and
-  UPSTREAM files, then gives a concise summary and one of five recommendations:
+- **sprint-review** — Proactively triggers at end-of-sprint boundaries (closing
+  tasks, "sprint done", "what did we accomplish"). Reads git history, tracker state,
+  and UPSTREAM files, then gives a concise summary and one of five recommendations:
   not ready, close normally, groom backlog first, do upstream work first, or
   trend-review sprint.
   Read-only — never writes files; defers to `/retrospective` and
@@ -147,43 +147,38 @@ Dev tooling only: validation and linting via `npm run check`.
   utility), research-wave (parallel research with backlog-groomer handoff).
   Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
 
-## Active migration: bd → flat-YAML (Option C)
+## The tracker migration: bd → flat-YAML (done)
 
-Verdict (2026-06-09, a 12-agent research round): **Option C — a lean in-repo
-flat-YAML substrate (`.diarie/tasks/tasks-<slug>.yml`) read by
-`scripts/ready-walker.mjs` (the files-native `bd ready`) + `validate-tasks.mjs`
-(the integrity gate).** **Backlog.md was evaluated and DECLINED** (its MCP server
-is another daemon/vendor; it can't reproduce `ready`) — there are **no
-`mcp__backlog__*` tools and no Backlog.md MCP server** in this plan. Evidence:
-`RESEARCH-tracker-migration-synthesis-2026-06.md`; architecture:
-`DESIGN-tracker-exploration.md` v3 block. The single canonical schema is
-`scripts/task-schema.mjs`.
+This project **has migrated off beads.** Its work lives in a lean in-repo flat-YAML
+substrate — `.diarie/tasks/tasks-<slug>.yml`, read by `scripts/ready-walker.mjs`
+(the files-native `bd ready`) and validated by `validate-tasks.mjs`. The single
+canonical schema is `scripts/task-schema.mjs`. The tracker is named **`diarie`** and
+is being extracted as a standalone npm CLI; until it ships, the in-repo readers are
+what everything calls.
 
-- **Wave 1 executed (2026-07-10):** the 24 live bd issues were migrated to
-  `.diarie/tasks/tasks-migration.yml` + `tasks-backlog.yml` (the decision `etm`
-  to `.diarie/decisions/`) by `scripts/bootstrap-tasks.mjs`, and the full
-  131-issue `bd export` was frozen to `.diarie/_archive/bd-final-export.jsonl`
-  (the only git-tracked survivor — `.beads/` is gitignored). This repo now
-  tracks its own work in flat-YAML (see `### Issue tracking (flat-YAML)`).
-  `bd` reads still work as a frozen archive; `bd` writes are dead (1.1.0
-  migrate-gate panic) and are not used.
-- **Phase 0 (shipped earlier):** the read/validate tooling + the single canonical
-  schema `scripts/task-schema.mjs`. The write side is deliberately Edit/Write on
-  the YAML (no CRUD helper — substrate-not-opinion). `deferred` was added to the
-  status enum during Wave 1.
-- **Wave 2 (pending — the release gate):** the skill-retarget wave (`vp-beads-e42`)
-  retargets 8 skills + 3 hooks + the sprint-review agent off `bd`, renames
-  `### Beads-availability convention` → `### Files-availability convention`
-  (`vp-beads-azl`, Tier B collapses), drops `harden-memories`, and rewrites the
-  README. Until it lands, skill/agent prose still names `bd` (expected lag).
-- **Type model (decision `vp-beads-etm`, 2026-06-10): 4 types** —
-  `task` / `doc` / `decision` / `milestone`; bd's other five types are
-  framings carried in `labels:`, `epic` is `task` + `parent:`. This is now the
-  live model for `.diarie/tasks/`; the 9-type table below is **historical bd
-  vocabulary**, retained until the e42 doc sweep.
-- Feature branch `feat/tracker-design-exploration` carries this work
-  (local-only per user choice — don't push without approval).
-- The superseded Backlog.md dogfood lives in `.diarie/_archive/` for provenance.
+Verdict from a 12-agent research round (2026-06-09), for provenance:
+`RESEARCH-tracker-migration-synthesis-2026-06.md`; architecture in
+`DESIGN-tracker-exploration.md` (v3 block). **Backlog.md was evaluated and
+DECLINED** — its MCP server is another daemon/vendor, and it cannot reproduce
+`ready`. There is no Backlog.md MCP server here; its superseded dogfood lives in
+`.diarie/_archive/` for provenance.
+
+- **The forcing function:** beads 1.1.0's schema-migration gate **panics on every
+  write**, in every repo using the global binary. `bd` reads still work; `bd` writes
+  are dead and are not used.
+- **What shipped:** the read/validate tooling and canonical schema (Phase 0); the
+  data cutover of 24 live issues, with the full 131-issue export frozen to
+  `.diarie/_archive/bd-final-export.jsonl` (Wave 1); the retarget of every skill,
+  the agent, and the hooks off `bd`, plus `### Beads-availability convention` →
+  `### Files-availability convention` and the drop of `/harden-memories` (Wave 2 /
+  `vp-beads-e42`).
+- **What is left of bd:** `.beads/` remains on disk as a frozen, readable archive.
+  Its *machinery* — five git hooks hidden behind `core.hooksPath`, a Dolt daemon —
+  is what `/deintegrate-beads` disarms. Residual `bd` mentions in skill prose are
+  intentional (Integration Charter citations, and mapping explainers like "the
+  files-native `bd ready`").
+- Feature branch `feat/tracker-design-exploration` carries this work (local-only per
+  user choice — don't push without approval).
 
 ## Work-tracking substrates
 
@@ -503,27 +498,6 @@ YAML directly** in `.diarie/tasks/tasks-<slug>.yml` — set `status: in_progress
 Do NOT use markdown TODOs, ad-hoc task lists, or `bd` (its 1.1.0 writes are dead
 regardless).
 
-The skills, agent, and the `### Beads-availability convention` below still
-describe `bd` until the **e42 skill-retarget wave (Wave 2)** — that lag is
-expected; the live substrate for this repo's own tracking is already flat-YAML.
-The bd-specific quirk subsections that follow are historical, retained until the
-e42 doc sweep.
-
-### bd 60s write-throttle quirk
-
-Sequential `bd update`/`bd close`/`bd update --claim` calls within 60s
-silently lose all but the last write — symptom reproducibly observed
-2026-05-18 (6+ hits). Candidate mechanism: `export.auto=true` with
-`export.interval=60s` default + per-CLI auto-import behavior. Workarounds
-(in order): (1) **batch** IDs in a single CLI invocation —
-`bd close ID1 ID2 ID3 --reason "..."` and
-`bd update ID1 ID2 ID3 --claim` work; (2) set `export.interval=0` in
-`.beads/config.yaml` to disable throttle; (3) `git commit` between writes
-— the pre-commit hook forces JSONL re-export. The
-`bd --dolt-auto-commit off + bd vc commit` pattern per upstream docs does
-NOT fix this. Details + mechanism caveat: BM `brew/brew-beads`
-`## Upstream Friction`.
-
 ### Sub-agent permissions in Task-tool launches
 
 Sub-agents launched via the Task tool **don't inherit `permissions.allow`
@@ -576,56 +550,65 @@ observation + `UPSTREAM-claude-code.md` at project root.
 
 ### Issue types
 
-**The live model for `.diarie/tasks/` is 4 types** (`task` / `doc` / `decision` /
-`milestone` + `labels:` for the framings), per decision `vp-beads-etm` and
-enforced by `scripts/task-schema.mjs` (`VALID_TYPES`). Map a bd framing to a
-label: `bug`/`feature`/`chore`/`story`/`spike` → `task` + `labels: [<framing>]`;
-`epic` → `task` + `parent:`.
+**Four exclusive types** (decision `vp-beads-etm`), enforced by
+`scripts/task-schema.mjs` (`VALID_TYPES`):
 
-**The 9-type table below is historical bd vocabulary** — retained for provenance
-and for reading the frozen `.diarie/_archive/bd-final-export.jsonl`, not a
-description of the live substrate. It will be trimmed in the e42 doc sweep.
+| Type        | Lives in                     | When to use                                                                                     |
+| ----------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| `task`      | `.diarie/tasks/tasks-*.yml`  | A unit of work. **The only type the ready-walk surfaces.**                                       |
+| `decision`  | `.diarie/decisions/<id>.md`  | An architectural or product choice, with its reasoning. Stays open indefinitely — never "ready". |
+| `doc`       | `.diarie/docs/<id>.md`       | Reference prose. Nothing in bd mapped to this, so migrations never produce one.                  |
+| `milestone` | `.diarie/tasks/tasks-*.yml`  | A structural marker (`v1.0`, `public-alpha`). No effort, no assignment.                          |
 
-All issue types are validated on creation with `validation.on-create=error`. Authoritative source: BM `brew/brew-beads` `### Issue Types (Core Vocabulary)`. Provenance: `engineering/agents/cli-validation-discovery-via-json-error-probing`.
+**The type is exclusive; the framing is additive.** bd's other five types are
+*framings* of a task and ride in `labels:` — `bug`/`feature`/`chore`/`story`/`spike`
+→ `task` + `labels: [<framing>]`. An `epic` is `task` + `parent:` nesting (plus an
+`epic` label). This is the whole point of collapsing 9 → 4: a type answers "what
+kind of thing is this", which admits exactly one answer; a label answers "how should
+I think about it", which admits several.
 
-| Type        | Required markdown sections                                  | When to use                                                                                                               |
-| ----------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `task`      | `## Acceptance Criteria`                                    | Single atomic unit of work                                                                                                |
-| `bug`       | `## Steps to Reproduce`, `## Acceptance Criteria`           | Something in production/main broke                                                                                        |
-| `feature`   | `## Acceptance Criteria`                                    | New user-facing capability                                                                                                |
-| `chore`     | *(none)*                                                    | Internal maintenance, cleanup, refactor                                                                                   |
-| `epic`      | `## Success Criteria`                                       | Large initiative spanning 5+ issues; tracks work across sprints                                                           |
-| `decision`  | `## Decision`, `## Rationale`, `## Alternatives Considered` | Record an architectural or product choice with reasoning                                                                  |
-| `spike`     | `## Goal`, `## Findings`                                    | Timeboxed investigation (1–3 days) to answer a question before committing to work. Always closes with findings, not code. |
-| `story`     | `## Acceptance Criteria`                                    | User-centric reframing of a feature: "As a \[user], I can \[action] so that \[outcome]"                                   |
-| `milestone` | *(none)*                                                    | Structural marker (e.g., `v1.0`, `public-alpha`, `launch-date`). No effort, no assignment. Groups related issues.         |
+`decision` and `doc` carry prose, which a terse YAML row has no home for — hence the
+markdown files, with the schema fields in frontmatter. Because `ready-walker` only
+globs `tasks-*.yml`, they are structurally outside the ready computation: a decision
+in force is never surfaced as workable. (bd got this wrong — its ready-walk is
+type-blind and lists decisions as ready. Our own dual-run caught it on `vp-beads-etm`.)
+
+bd's 9-type vocabulary survives only in the frozen
+`.diarie/_archive/bd-final-export.jsonl`; `scripts/migrate-from-bd.mjs` holds the
+`TYPE_MAP` that reads it.
 
 ### Session completion
 
 Work is NOT complete until pushed. Before ending a session:
 
-1. `bd close` any finished issues
-2. `npm run check` (if code changed)
-3. `git push` — mandatory, never skip
-4. `bd dolt push` — sync beads to remote
+1. Close finished work in `.diarie/tasks/` — set `status: completed` on the row
+   (and add `acceptance_criteria` if the task shipped without any)
+2. `node validate-tasks.mjs` — the store must be clean
+3. `npm run check` (if code changed)
+4. `git push` — mandatory, never skip
+
+There is no separate tracker sync: the store *is* the repo, so `git push` ships it.
 
 ### Do not run `bd setup claude`
 
-`bd setup claude --check` will report `⚠ CLAUDE.md exists but no beads section
-found` — this is intentional. Do not "fix" it by running `bd setup claude`.
+`bd setup claude --check` will report `✗ No hooks installed` — this is
+intentional. Do not "fix" it.
 
-The `bd setup claude` command appends a \~50-line beads workflow template to
-`CLAUDE.md` (core rules, quick reference, workflow steps, issue types,
-priorities). vp-beads's `SessionStart` hook already injects equivalent
-workflow context dynamically (\~1.5k tokens of `bd` commands plus all
-persistent memories). Adding the static template would double-inject the
-same guidance — once via always-loaded `CLAUDE.md` and once via the hook —
-wasting context tokens with no benefit.
+**What it would actually do** (bd 1.1.0, verified): write `SessionStart` and
+`PreCompact` hook entries running `bd prime` into `.claude/settings.json`, and — in
+older versions — a managed block into `CLAUDE.md`. That is precisely the
+colonization `/deintegrate-beads` exists to *undo*. Do not re-invite it.
 
-The `bd setup claude` template is the right choice for projects *without* a
-Claude Code plugin like vp-beads. Here, the plugin's hook is more current
-and project-tailored. The global hooks side (`~/.claude/settings.json`) is
-unrelated and may be installed via `bd setup claude --global` if missing.
+It is also pointless now: `bd`'s writes are dead (the 1.1.0 migrate gate) and this
+repo's tracker is flat-YAML. The orientation `bd prime` used to give is now
+`hooks/session-start.sh`'s **tracker prime**, which reads `.diarie/` directly.
+
+*(Historical correction, since this section was wrong for a while and the wrongness
+was load-bearing: the ~1.5k-token `bd prime` injection came from the **external
+beads plugin**, never from vp-beads' own hook. Until the tracker prime shipped
+2026-07-11, this plugin's SessionStart hook injected **no** tracker context at all —
+so the old claim that it "already injects equivalent workflow context plus all
+persistent memories" was false in both halves.)*
 
 ## Releasing
 
