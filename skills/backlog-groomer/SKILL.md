@@ -1,16 +1,18 @@
 ---
 name: backlog-groomer
-description: "Manage the beads backlog for this project. Use when the user wants to review or triage open issues, reprioritize the backlog, identify obsolete issues to close, investigate a topic to inform future work, create new issues from research findings, or enrich an existing issue with external context. Trigger phrases: 'groom', 'triage', 'backlog review', 'reprioritize', 'stale issues', 'what should we close', 'too many issues', 'backlog health', 'investigate for backlog', 'research and create issues', 'add context to issue', 'enrich issue', 'plan the work for', 'break down into issues', 'start the sprint', 'plan the sprint', 'plan next sprint', 'what should we work on', 'find duplicates', 'dedup backlog', 'near-duplicates', or any request to audit, prune, or research work tracked in beads."
+description: "Manage the flat-YAML task backlog for this project. Use when the user wants to review or triage open issues, reprioritize the backlog, identify obsolete issues to close, investigate a topic to inform future work, create new issues from research findings, or enrich an existing issue with external context. Trigger phrases: 'groom', 'triage', 'backlog review', 'reprioritize', 'stale issues', 'what should we close', 'too many issues', 'backlog health', 'investigate for backlog', 'research and create issues', 'add context to issue', 'enrich issue', 'plan the work for', 'break down into issues', 'start the sprint', 'plan the sprint', 'plan next sprint', 'what should we work on', 'find duplicates', 'dedup backlog', 'near-duplicates', or any request to audit, prune, or research work tracked in the flat-YAML tracker."
 argument-hint: "[topic]"
 user-invocable: true
 paths:
-  - ".beads/**"
+  - ".diarie/tasks/**"
   - "RETRO-*.md"
   - "UPSTREAM-*.md"
   - "SYNERGY-*.md"
 allowed-tools:
   - Bash
   - Read
+  - Edit
+  - Write
   - Glob
   - Grep
   - mcp__basic-memory__search_notes
@@ -24,43 +26,55 @@ allowed-tools:
 
 # Backlog Groomer
 
-Triage, prioritize, and research work tracked in the beads issue tracker. This
-skill operates on the `bd` CLI — all mutations (create, close, update) require
-explicit user approval before execution.
+Triage, prioritize, and research work tracked in the flat-YAML task substrate
+(`.diarie/tasks/tasks-<slug>.yml`). This skill reads the store via
+`node scripts/ready-walker.mjs` (the files-native `bd ready`) and mutates it
+with plain Edit/Write on the YAML — there is **no CRUD helper**
+(substrate-not-opinion). All mutations (append a task, set `status: completed`,
+edit a row) require explicit user approval before execution, and every YAML edit
+is validated with `node validate-tasks.mjs`.
 
 Determine which workflow the user needs based on their request. If ambiguous,
 default to workflow 1 (review and triage) for grooming requests, or workflow 4
 (Investigate topic as spike) for research requests.
 
-## Issue Types Reference
+## Task Types Reference
 
-Beads v1.0+ defines nine core issue types. Pick the type that matches the
-*shape* of the work, not just its size. The `validation.on-create=error` gate
-enforces required markdown sections per type — a `bd create` will fail if the
-required sections are missing.
+The flat-YAML substrate has **4 exclusive types** (decision `vp-beads-etm`):
+`task` (work), `doc` (reference), `decision` (record), `milestone` (marker). Pick
+the type that matches the *shape* of the item; the finer bd framings (`bug`,
+`feature`, `chore`, `story`, `spike`, `epic`) are **not types** — they ride along
+in `labels:` on a `type: task` entry.
 
-| Type        | Required markdown sections                                  | When to use                                                     |
-| ----------- | ----------------------------------------------------------- | --------------------------------------------------------------- |
-| `task`      | none                                                        | General work item (default)                                     |
-| `bug`       | `## Steps to Reproduce`, `## Acceptance Criteria`           | Defect — behavior diverges from intended                        |
-| `feature`   | `## Acceptance Criteria`                                    | New system capability (system-centric framing)                  |
-| `chore`     | none                                                        | Maintenance / housekeeping with no user-visible behavior change |
-| `epic`      | `## Success Criteria`                                       | Large body of work that decomposes into child issues            |
-| `decision`  | `## Decision`, `## Rationale`, `## Alternatives Considered` | Architecture decision record (ADR) — outcome of deliberation    |
-| `spike`     | `## Goal`, `## Findings`                                    | Timeboxed investigation that reduces uncertainty before a story |
-| `story`     | `## Acceptance Criteria`                                    | User-centric framing of a feature ("As a X, I want Y...")       |
-| `milestone` | none                                                        | Structural marker; contains no work itself                      |
+| Type        | Where it lives                                   | When to use                                                  |
+| ----------- | ------------------------------------------------ | ------------------------------------------------------------ |
+| `task`      | a row in `.diarie/tasks/tasks-<slug>.yml`        | Any workable unit — the only type the ready-walker surfaces  |
+| `doc`       | frontmatter'd markdown in `.diarie/docs/`        | Reference material; never workable                           |
+| `decision`  | frontmatter'd markdown in `.diarie/decisions/`   | Architecture decision record (ADR) — outcome of deliberation |
+| `milestone` | a marker row in `.diarie/tasks/tasks-<slug>.yml` | Release boundary or set marker; contains no work itself      |
 
-**Authoritative source:** the `### Issue Types (Core Vocabulary)` section of
-the Basic Memory note `brew/brew-beads`. The required-sections table was
-discovered empirically per the
-`engineering/agents/cli-validation-discovery-via-json-error-probing` Basic
-Memory note (probe each type with `bd create --json` and parse the error).
+**Framings carried as `labels:` on a `type: task` row** (not distinct types):
 
-Type-pair conventions worth knowing: `spike → story` and `spike → decision`
-(investigation precedes commitment); `epic ⊃ stories ⊃ tasks` (containment
-hierarchy); `milestone ⊐ {epics, stories, tasks}` (set marker for release
-boundaries).
+| Framing   | Encoding                                                     | When to use                                                     |
+| --------- | ------------------------------------------------------------ | --------------------------------------------------------------- |
+| `bug`     | `type: task`, `labels: [bug]`                                | Defect — behavior diverges from intended                        |
+| `feature` | `type: task`, `labels: [feature]`                            | New system capability (system-centric framing)                  |
+| `chore`   | `type: task`, `labels: [chore]`                              | Maintenance / housekeeping with no user-visible behavior change |
+| `story`   | `type: task`, `labels: [story]`                              | User-centric framing of a feature ("As a X, I want Y...")       |
+| `spike`   | `type: task`, `labels: [spike]`                              | Timeboxed investigation; closes with findings, not code         |
+| `epic`    | `type: task`, `labels: [epic]` + children carrying `parent:` | Large body of work that decomposes into child tasks             |
+
+**Authoritative source:** `scripts/task-schema.mjs` (the single canonical
+schema). There is **no hard on-create gate** — unlike bd's
+`validation.on-create=error`, an entry is a workable unit the moment its required
+fields (`id`, `title`, `status`, `type`) are present. `node validate-tasks.mjs`
+warns (a test-ratchet) when a **completed** `task` has no `acceptance_criteria`;
+it never blocks creation.
+
+Type-pair conventions worth knowing: a `spike`-labelled task precedes a `story`
+or a `decision` (investigation precedes commitment); an `epic`-labelled task
+parents its `story`/`task` children via `parent:`; a `milestone` marks a release
+boundary over a set of related tasks.
 
 ## Grooming Workflows
 
@@ -71,51 +85,51 @@ duplicates, blocked chains, and missing context.
 
 **Steps:**
 
-1. Run `bd list --status open` and `bd list --status in_progress` to get the
-   full picture. Run `bd stats` for summary counts.
+1. Run `node scripts/ready-walker.mjs` for the ready queue and read every
+   `.diarie/tasks/*.yml` (Glob + Read) for the full open picture. Parse
+   `node scripts/ready-walker.mjs --format json` for the `{ready, blocked,
+   needsAttention}` buckets, and `node scripts/ready-walker.mjs --filter
+   in_progress` for claimed work. Run `node scripts/ready-walker.mjs --stats`
+   for summary counts.
 
-2. Run `bd stale --days 60` to flag aging issues. Separately flag `in_progress`
-   issues stale >30 days as "stalled."
+2. Run `node scripts/ready-walker.mjs --stale --days 60` to flag stalled work.
+   Note the reader's `--stale` is `in_progress`-scoped (a claimed task not
+   updated in N days = "stalled"). For **pending** items aging without activity,
+   compare each row's `updated:` field (Read the `.diarie/tasks/*.yml`) against
+   the 60-day threshold — there is no reader flag for pending staleness.
 
-3. Run `bd duplicates` to detect content-hash matches (if available; if not,
-   use `bd search` with keywords from suspicious titles for near-matches).
+3. Detect duplicates manually — there is no dedup command in the flat-YAML
+   substrate. Read titles and `labels:` across `.diarie/tasks/*.yml` and use
+   `Grep` with keywords from suspicious titles to surface near-matches (same
+   area prefix, shared keywords, references to the same commit/file). Present
+   each candidate pair with a merge or supersede recommendation: resolve by
+   editing the loser's row to `status: cancelled` and adding a `labels: [duplicate]` plus a note in its `description:` referencing the winner's id
+   (preserves the relationship in the YAML). Apply only with explicit per-pair
+   user approval.
 
-4. Run `bd find-duplicates` (alias `find-dups`) to surface near-duplicates that
-   `bd duplicates` misses. Two-stage similarity architecture:
-   - **Mechanical Jaccard tokenization** is the default
-     (`--method=mechanical`, threshold `0.5`). Free, fast, pre-filters AI calls.
-     Drop to `--threshold=0.4` for more recall when the backlog is small.
-   - **AI semantic comparison** is opt-in (`--method=ai`). Requires
-     `ai.api_key` config and bills per call (mechanical pre-filter limits
-     spend). Only invoke when the user explicitly requests it or
-     `BD_AI_DUPES=1` is set in the environment.
-   - Distinct from `bd duplicates` (which catches only exact content matches).
-   - Present each candidate pair with a merge or supersede recommendation
-     using `bd supersede <loser> <winner>` (preserves history) or
-     `bd duplicate <loser> <winner>` (marks duplicate without closing).
-     Apply only with explicit per-pair user approval.
+4. Run `node scripts/ready-walker.mjs --blocked` to identify tasks stuck on
+   unresolved dependencies (each line names its blocker ids).
 
-5. Run `bd blocked` to identify issues stuck on unresolved dependencies.
-
-6. Cross-reference with `UPSTREAM-*.md` and `SYNERGY-*.md` files if they exist
+5. Cross-reference with `UPSTREAM-*.md` and `SYNERGY-*.md` files if they exist
    (use `Glob` to find them). Note any UPSTREAM friction or SYNERGY extraction
-   candidates that should have a corresponding beads issue.
+   candidates that should have a corresponding task entry.
 
-7. If Basic Memory MCP tools are available, call
+6. If Basic Memory MCP tools are available, call
    `mcp__basic-memory__search_notes` for key dependencies from `package.json`
    to surface known friction not yet in the backlog. Skip silently if
    unavailable.
 
-8. Present a structured triage table:
+7. Present a structured triage table:
 
    ```
    | ID | Title | Age | Priority | Flags |
    |----|-------|-----|----------|-------|
-   | vp-beads-xxx | ... | 45d | P3 | stale, missing description |
+   | vp-beads-xxx | ... | 45d | low | stale, missing description |
    ```
 
-9. Suggest per-issue actions: close, reprioritize, merge with duplicate, refine
-   scope, or leave as-is. **No mutations without explicit per-item approval.**
+8. Suggest per-item actions: close (set `status: completed`/`cancelled`),
+   reprioritize, merge with duplicate, refine scope, or leave as-is. **No
+   mutations without explicit per-item approval.**
 
 ### 2. Reprioritize
 
@@ -125,16 +139,17 @@ relationships.
 **Steps:**
 
 1. Ask the user for current sprint goals if not obvious from conversation
-   context. Infer from recent commits and `bd list --status in_progress` if
-   the user does not state goals explicitly.
-2. Run `bd list --status open` to get all open issues with current priorities.
-3. Run `bd blocked` to identify blocked chains. If `bd dep tree` is available,
-   use it to visualize blocking power — issues that unblock the most downstream
-   work should rank higher.
+   context. Infer from recent commits and `node scripts/ready-walker.mjs --filter in_progress` if the user does not state goals explicitly.
+2. Read every `.diarie/tasks/*.yml` (Glob + Read) to get all open items with
+   their current `priority:` values.
+3. Run `node scripts/ready-walker.mjs --blocked` to identify blocked chains.
+   Trace `parent:` and `deps:` in the YAML to visualize blocking power — tasks
+   that unblock the most downstream work should rank higher.
 4. Propose a reordered priority list with reasoning per change. Present as a
    diff: current priority → proposed priority, with a one-line rationale.
 5. User approves, edits, or rejects each proposed change.
-6. Run `bd update <id> --priority N` per approved change.
+6. Edit the row's `priority:` field per approved change (one of `critical`,
+   `high`, `medium`, `low`, `backlog`), then run `node validate-tasks.mjs`.
 
 ### 3. Suggest closures
 
@@ -142,20 +157,24 @@ Identify issues that are likely obsolete and propose closing them.
 
 **Steps:**
 
-1. Run `bd list --status open`, focusing on P3/P4 items and issues older than
-   60 days.
-2. Cross-reference `git log --oneline -50` with issue titles — use `Grep` to
-   match issue keywords against commit messages. Find issues already addressed
+1. Read every `.diarie/tasks/*.yml` (Glob + Read), focusing on `low`/`backlog`
+   items and rows whose `updated:` is older than 60 days.
+2. Cross-reference `git log --oneline -50` with task titles — use `Grep` to
+   match task keywords against commit messages. Find tasks already addressed
    by commits but never formally closed.
-3. Check `bd list --status closed` for issues that supersede open ones.
-4. Run `bd stale --days 90` for deeply stale items.
+3. Grep the `.diarie/tasks/*.yml` for `status: completed` entries that supersede
+   open ones.
+4. Run `node scripts/ready-walker.mjs --stale --days 90` for deeply stalled
+   `in_progress` items; for pending items, compare `updated:` against 90 days.
 5. Classify each closure candidate:
    - **Addressed by commit**: cite the commit
-   - **Superseded**: cite the replacement issue
+   - **Superseded**: cite the replacement task
    - **Out of scope**: note the scope shift (user must confirm)
    - **Stale beyond recovery**: >120 days, no activity, low priority
 6. Present candidates with rationale per item.
-7. `bd close <id> --reason "..."` per approved closure.
+7. Per approved closure, edit the row to `status: completed` (or `cancelled` for
+   out-of-scope work); record the closure rationale in the commit message (the
+   YAML has no `reason` field). Run `node validate-tasks.mjs` after editing.
 
 See `references/backlog-health-heuristics.md` for closure criteria and
 staleness thresholds.
@@ -168,11 +187,12 @@ staleness thresholds.
 
 Research a topic to inform future work — a timeboxed investigation that
 reduces uncertainty before committing to a story or decision. When the
-investigation is itself worth tracking in beads (e.g. multi-session research),
-the result is a `spike` issue with `## Goal` + `## Findings` sections. When the
-investigation immediately produces actionable items, hand off to workflow 5
-(Create issues from findings) which will create the appropriate downstream
-types (`story`, `feature`, `task`, `decision`, etc.).
+investigation is itself worth tracking (e.g. multi-session research), the
+result is a `spike`-labelled `type: task` capturing its goal and findings in
+`description:`. When the investigation immediately produces actionable items,
+hand off to workflow 5 (Create issues from findings) which will create the
+appropriate downstream entries (`story`/`feature`-labelled tasks, plain tasks,
+a `decision` file, etc.).
 
 Takes a topic from the user's request or the `argument-hint`.
 
@@ -185,8 +205,8 @@ Takes a topic from the user's request or the `argument-hint`.
    relevant matches, call `mcp__basic-memory__read_note` to get full content —
    surface existing engineering notes, package notes, or upstream friction
    entries. If Basic Memory is unavailable, note the gap and proceed.
-3. Check existing beads issues: `bd search <keywords>` to find overlap with
-   already-tracked work.
+3. Check existing tasks: `Grep` the `.diarie/tasks/*.yml` for `<keywords>` to
+   find overlap with already-tracked work.
 4. Scan the codebase: use Glob and Grep for existing code related to the topic.
    Understand the current state — what exists, what patterns are established.
 5. Check Raindrop bookmarks: call `mcp__raindrop__find_bookmarks` with topic
@@ -205,49 +225,56 @@ Takes a topic from the user's request or the `argument-hint`.
 
 ### 5. Create issues from findings
 
-Turn research findings into structured beads issues. Takes output from
+Turn research findings into structured task entries. Takes output from
 workflow 4 (Investigate topic as spike) or user-provided findings.
 
 **Steps:**
 
-1. Review the findings and identify discrete, actionable items. Each issue
+1. Review the findings and identify discrete, actionable items. Each task
    should be completable in roughly one session of focused work.
-2. Dedup check: run `bd search <keywords>` for each proposed title against
-   existing issues. Surface near-matches for the user to review.
-3. Propose structured issues. For each:
+2. Dedup check: `Grep` the `.diarie/tasks/*.yml` for `<keywords>` from each
+   proposed title against existing tasks. Surface near-matches for the user to
+   review.
+3. Propose structured entries. For each:
    - **Title**: `[Area] Action verb + subject` convention
-   - **Type**: pick from the nine core types — `task`, `bug`, `feature`,
-     `chore`, `epic`, `decision`, `spike`, `story`, `milestone`. See the
-     **Issue Types Reference** above for the full table; consult
+   - **Type + framing**: `type:` is one of the 4 kinds (`task`, `doc`,
+     `decision`, `milestone`); the bd framings (`bug`, `feature`, `chore`,
+     `story`, `spike`, `epic`) ride in `labels:` on a `type: task` row. See the
+     **Task Types Reference** above; consult
      `references/backlog-health-heuristics.md` for assignment logic
-   - **Priority**: 0-4 with explicit reasoning
-   - **Description**: must include the type's required sections (e.g. `bug`
-     needs `## Steps to Reproduce` + `## Acceptance Criteria`; `spike` needs
-     `## Goal` + `## Findings`; `decision` needs `## Decision` +
-     `## Rationale` + `## Alternatives Considered`). The
-     `validation.on-create=error` gate will reject creates that miss these
-     headings. Beyond required sections, follow the problem + why it matters
-     - suggested first step pattern
-4. If >3 related issues emerge from one topic: propose a tracking issue
-   (`bd create -t epic`) as a group container, with child issues linked.
-   Use `milestone` instead of `epic` if the parent represents a release
-   boundary or set of work with no decomposition of its own.
+   - **Priority**: one of `critical`, `high`, `medium`, `low`, `backlog` with
+     explicit reasoning
+   - **Body**: put the problem + why it matters + suggested first step in the
+     row's `description:` block scalar, and any checkable outcomes in
+     `acceptance_criteria:`. There is no hard on-create gate — but
+     `node validate-tasks.mjs` warns if a *completed* task has empty
+     `acceptance_criteria`, so state done-ness up front
+4. If >3 related tasks emerge from one topic: propose a parent task
+   (`type: task`, `labels: [epic]`) as a group container, with child tasks
+   carrying `parent: <parent-id>`. Use a `type: milestone` marker row instead
+   if the parent represents a release boundary with no decomposition of its own.
 5. If the investigation itself yielded enough output to warrant a record but
-   not yet enough to commit to downstream work, create a `spike` capturing
-   `## Goal` and `## Findings` rather than forcing premature `story` or
-   `feature` issues.
-6. If >8 issues from one topic: suggest splitting into multiple research
+   not yet enough to commit to downstream work, create a `spike`-labelled
+   `type: task` capturing its goal and findings in `description:` rather than
+   forcing premature `story`/`feature`-labelled tasks.
+6. If >8 tasks from one topic: suggest splitting into multiple research
    sessions rather than creating a sprawling epic.
-7. User approves, edits, or rejects each proposed issue before any `bd create`
-   command runs. Present the full list first, then confirm.
-8. Run `bd create "title" -t <type> -p <priority> --description "..."` per
-   approved issue. The description string must include the literal required
-   markdown headings for the chosen type.
-9. Add dependencies where natural ordering exists: `bd dep add <child> <parent>`.
-   Common type-pair patterns: `spike → story`, `spike → decision`,
-   `story → task`, `epic ⊃ stories`.
-10. Report: created issue IDs, dependency graph, and suggested first issue to
-    start (highest priority with no unsatisfied dependencies).
+7. User approves, edits, or rejects each proposed entry before any Edit/Write
+   runs. Present the full list first, then confirm.
+8. Per approved entry, **append a task entry** to the right
+   `.diarie/tasks/tasks-<slug>.yml` via Edit/Write — `id:` / `title:` /
+   `status: pending` / `type: task` (or `milestone`) / `priority:` / optional
+   `labels:` / `deps:` / `parent:` / `acceptance_criteria:`. A `decision` is not
+   a row — write it as frontmatter'd markdown at `.diarie/decisions/<id>.md`
+   (a `doc` at `.diarie/docs/<id>.md`). Run `node validate-tasks.mjs` after the
+   edits.
+9. Add dependencies where natural ordering exists: edit the child's `deps: [<parent-id>]` for a blocks-relationship, or set `parent: <parent-id>` for
+   parent-child nesting. Common patterns: a `spike`-labelled task before a
+   `story`-labelled one or a `decision`; `story → task`; an `epic`-labelled
+   parent over its children.
+10. Report: created ids, the dependency graph, and the suggested first task to
+    start — run `node scripts/ready-walker.mjs` to confirm which is ready
+    (highest priority with no unsatisfied dependencies).
 
 See `references/backlog-health-heuristics.md` for title conventions, description
 templates, and creation limits.
@@ -259,32 +286,41 @@ work can begin.
 
 **Steps:**
 
-1. User identifies the issue by ID or title. Run `bd show <id>` to read the
-   current state (title, description, status, priority, dependencies).
+1. User identifies the task by id or title. Read its entry in the relevant
+   `.diarie/tasks/tasks-<slug>.yml` to read the current state (title,
+   description, status, priority, deps, parent).
 2. Research the topic using the same pipeline as workflow 4 (Investigate
    topic as spike): Basic Memory search → Raindrop bookmarks → codebase
    scan → external research (DeepWiki, Tavily) as needed.
-3. Draft an enriched description. Preserve the original description and append
-   a `## Research Context` section with findings, relevant links, and suggested
-   approach.
+3. Draft an enriched body. Preserve the existing `description:` and append a
+   `## Research Context` heading within it (the `description:` block scalar
+   holds prose) with findings, relevant links, and suggested approach; add any
+   new checkable outcomes to `acceptance_criteria:`.
 4. Show the draft to the user for approval before applying.
-5. Run `bd update <id> --description "..."` with the enriched description after
-   approval.
+5. Edit the row's `description:` (and `acceptance_criteria:`) with the enriched
+   content after approval, then run `node validate-tasks.mjs`.
 
 ## Guidelines
 
-- **User approval is non-negotiable.** Every write operation (`bd create`,
-  `bd close`, `bd update`) must be explicitly approved per item. Present
-  candidates first, confirm, then execute. Never auto-mutate.
-- **Beads required (Tier B).** Beads is available iff a `.beads/` directory
-  exists **and** `command -v bd` succeeds; this component is **Tier B** per
-  CLAUDE.md `### Beads-availability convention`. Backlog grooming operates on
-  the beads backlog — with no beads there is no backlog to groom. Stop cleanly,
-  naming the missing predicate, and redirect to a beadless alternative: for the
-  planning / sprint triggers in this skill's description ("plan the sprint",
-  "what should we work on", "break down into issues"), use `/swarm-wave` — it
-  plans waves from a `ROADMAP.md` or a manual list — or edit `ROADMAP.md`
-  directly. Do not attempt to groom a `ROADMAP.md` here.
+- **User approval is non-negotiable.** Every write operation (appending a task
+  entry, setting `status: completed`/`cancelled`, editing a row's `priority:` or
+  `description:`) must be explicitly approved per item. Present candidates first,
+  confirm, then execute the Edit/Write. Never auto-mutate.
+- **Validate every edit.** Run `node validate-tasks.mjs` after any change to a
+  `.diarie/tasks/*.yml` file (or a `.diarie/decisions/*.md` / `.diarie/docs/*.md`
+  write) — it is the integrity gate, replacing bd's on-create validation.
+- **Tracker available (Tier B — no stop).** The flat-YAML tracker is available
+  iff a `.diarie/tasks/tasks-*.yml` file exists **and** the tracker reader
+  (`node scripts/ready-walker.mjs`, or the `diarie` CLI) is runnable; this
+  component is **Tier B** per CLAUDE.md `### Files-availability convention`.
+  Unlike the old beads gate, Tier B no longer stops when the store is absent:
+  the store is ordinary in-repo files, so an absent-or-empty `.diarie/tasks/` is
+  simply an empty backlog — operate on it directly. Only redirect when the
+  project tracks its work **elsewhere**: for the planning / sprint triggers in
+  this skill's description ("plan the sprint", "what should we work on", "break
+  down into issues") against a `ROADMAP.md` or manual list, use `/swarm-wave` —
+  it plans waves from a `ROADMAP.md` or a manual list. Do not attempt to groom a
+  `ROADMAP.md` here.
 - **Basic Memory is opportunistic.** Check for BM tool availability and skip
   silently if unavailable. BM enriches grooming with cross-project context but
   is not required for the core workflows.
@@ -292,7 +328,7 @@ work can begin.
   conversation history for recent friction, decisions, and goals rather than
   starting a Q\&A. The user should not have to re-explain context.
 - **Keep output scannable.** Use tables for triage results, diffs for priority
-  changes, numbered lists for issue proposals. Cap output at what fits in a
+  changes, numbered lists for task proposals. Cap output at what fits in a
   conversation turn.
-- **Respect the priority vocabulary.** Use the 0-4 numeric scale consistently:
-  0=critical, 1=high, 2=medium, 3=low, 4=backlog.
+- **Respect the priority vocabulary.** Use the string scale consistently:
+  `critical`, `high`, `medium`, `low`, `backlog` (default `medium`).

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+- **BREAKING — the tracker migrated off beads (`bd`) to a flat-YAML substrate.**
+  Work now lives in `.diarie/tasks/tasks-<slug>.yml` (+ decisions as markdown in
+  `.diarie/decisions/`), read by `scripts/ready-walker.mjs` and validated by
+  `validate-tasks.mjs`. Writes are ordinary `Edit`/`Write` — no CRUD helper
+  (substrate-not-opinion). Forced by beads 1.1.0, whose schema-migration gate
+  broke every `bd` write. The tracker is named **`diarie`** and is being extracted
+  as a standalone npm CLI (not yet published); until it ships, skills call the
+  in-repo readers.
+- **`### Beads-availability convention` → `### Files-availability convention`.**
+  New predicate (`.diarie/tasks/tasks-*.yml` exists AND the reader is runnable);
+  **Tier B no longer stops** (the store is ordinary files, so an absent/empty
+  store is just an empty backlog); "silently skipping a tracker step is a bug"
+  survives, now policed against tracker tokens.
+- **All 7 skills, the sprint-review agent, and `session-start.sh` retargeted off
+  `bd`** onto the tracker. The 9 bd issue types collapsed to **4**
+  (`task`/`doc`/`decision`/`milestone`); bug/feature/chore/story/spike ride in
+  `labels:`; epic = `task` + `parent:`.
+
+### Removed
+
+- **`/harden-memories` skill.** Its store was `bd remember`, which no longer
+  exists. Skills: 8 → 7.
+
 ## [0.18.0][] - 2026-06-04
 
 ### Added

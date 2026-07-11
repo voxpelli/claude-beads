@@ -36,21 +36,27 @@ sprint's worth of work.
 
 ## Workflow
 
-### Beads availability
+### Tracker availability
 
-Beads is available iff a `.beads/` directory exists **and** `command -v bd`
-succeeds; this component is **Tier C** per CLAUDE.md
-`### Beads-availability convention`. Steps 1–3 and the UPSTREAM / SYNERGY /
-Basic Memory parts of the trend review are beads-independent and run unchanged.
-When beads is **unavailable**, the three bd-dependent steps **degrade and
-announce** (never skip silently):
+The flat-YAML tracker is available iff a `.diarie/tasks/tasks-*.yml` file exists
+**and** the tracker reader (`node scripts/ready-walker.mjs`, or the `diarie` CLI)
+is runnable; this component is **Tier C** per CLAUDE.md
+`### Files-availability convention`. Steps 1–3 and the UPSTREAM / SYNERGY /
+Basic Memory parts of the trend review are tracker-independent and run unchanged.
+When the tracker is **unavailable**, the three tracker-dependent steps **degrade
+and announce** (never skip silently):
 
-- **Health audit (step 4)** — replace the `bd` health checks with an announced
+- **Health audit (step 4)** — replace the tracker health checks with an announced
   skip line in the RETRO `### Health audit` subsection (see step 4).
 - **Findings (step 5)** — append a `### Follow-ups (untracked)` task list to the
-  RETRO file instead of running `bd create` (see step 5).
+  RETRO file instead of appending task entries to
+  `.diarie/tasks/tasks-<slug>.yml` (see step 5).
 - **Decision capture (step 5)** — record decisions inline as a `### Decisions`
-  block in the RETRO file instead of `bd create --type=decision` (see step 5).
+  block in the RETRO file instead of writing a `.diarie/decisions/<id>.md`
+  file (see step 5).
+
+The `diarie` CLI replaces `node scripts/ready-walker.mjs` once published; use the
+script path (`node scripts/ready-walker.mjs`) throughout until then.
 
 ### 1. Determine sprint number
 
@@ -61,7 +67,7 @@ ls RETRO-*.md | sort -V | tail -1
 Extract the highest sprint number and increment by 1.
 
 **This file count is canonical for the trend-review heuristic in step 4** —
-do not substitute a user-asserted topic number, release number, or `bd`
+do not substitute a user-asserted topic number, release number, or tracker
 sprint label. If `RETRO-NN.md` count is divisible by 4, this IS a
 trend-review sprint regardless of how the work is verbally framed.
 
@@ -218,64 +224,52 @@ remaining entries.
 drifted, check if Extraction Candidates with `Readiness: ready` have been acted
 on, and review whether `adopt-theirs` Divergences have been adopted.
 
-**Health audit:** Run bd's full health vocabulary in parallel — five focused
-checks covering infrastructure, template compliance, lifecycle hygiene,
-reference integrity, and dependency-graph integrity. Each command emits JSON
-for stable parsing. Surface counts plus the top 3–5 affected items per check
-in the generated `RETRO-NN.md` under a `### Health audit` subsection.
+**Tracker health:** Run the flat-YAML tracker's health vocabulary —
+`validate-tasks` (integrity gate) plus `ready-walker --stats` /
+`--stale` / `--blocked` (counts, lifecycle, and blocked review). Surface
+counts plus the top 3–5 affected items per check in the generated
+`RETRO-NN.md` under a `### Health audit` subsection.
 
-**Beads unavailable (Tier C):** skip the `bd` health checks and render the
-subsection as a single announced line instead — `- _Skipped — beads not active
-in this project._` The UPSTREAM and SYNERGY trend-review parts above and the
-Basic Memory graph health below are beads-independent and still run.
+**Tracker unavailable (Tier C):** skip the tracker health checks and render the
+subsection as a single announced line instead — `- _Skipped — flat-YAML tracker
+not active in this project._` The UPSTREAM and SYNERGY trend-review parts above
+and the Basic Memory graph health below are tracker-independent and still run.
 
 ```bash
-bd doctor --json    # Infrastructure: outdated hooks, gitignore drift, remote config
-bd lint --json      # Template compliance: issues missing required sections per type
-bd stale --json     # Lifecycle: issues with no recent activity
-bd orphans --json   # Reference integrity: refs in commits but issue still open
-bd graph check --json  # Dependency graph: cycles, dangling refs (schema_version: 1)
+node validate-tasks.mjs                    # Integrity: schema/dep-graph/reference integrity across tasks-*.yml
+node scripts/ready-walker.mjs --stats      # Counts: total / pending / in_progress / closed / ready / blocked
+node scripts/ready-walker.mjs --stale --days 30  # Lifecycle: tasks with no recent activity
+node scripts/ready-walker.mjs --blocked    # Blocked review: tasks whose deps are unmet
 ```
 
 Per-check guidance:
 
-- **`bd doctor --json`** — parse `warnings[]`. Auto-fix is gated on user
-  consent: present the warning list and prompt before invoking
-  `bd doctor --fix --yes`. Never auto-apply. Note the **false positive** on the
-  Claude Hook Completeness check — it sometimes flags hooks that are
-  intentionally absent or installed via a plugin (see `UPSTREAM-brew--beads.md`
-  for the open friction entry); skip the prompt for that warning class until it
-  is resolved upstream.
-- **`bd lint --json`** — parse `issues[]`. No auto-fix; lint findings require
-  human triage. List affected issue IDs with the missing section names so the
-  maintainer can update them (e.g., `bd update <id>` adding
-  `## Acceptance Criteria` to a `feature`).
-- **`bd stale --json`** — parse `issues[]`. No auto-fix; suggest one of three
-  human actions per issue: defer (lower priority), close (no longer relevant),
-  or work (claim and progress).
-- **`bd orphans --json`** — parse `issues[]`. If `--json` is unavailable on the
-  installed `bd` version, fall back to text parsing of `bd orphans` output.
-  No auto-fix; suggest closing the issue or unmarking the orphan reference.
-- **`bd graph check --json`** — parse the schema-versioned envelope
-  (`{"clean": bool, "cycles": [...] | null, "schema_version": 1, "summary": {...}}`).
-  When `clean: false`, surface cycle paths and dangling refs with fix
-  recommendations (typically `bd dep remove <blocker> <blocked>` to break
-  a cycle, or `bd close` for stale references — `bd dep` uses subcommands,
-  not flag-form). No auto-fix.
+- **`node validate-tasks.mjs`** — the integrity gate. It validates each task row
+  against `scripts/task-schema.mjs`, checks the dependency graph for cycles and
+  dangling `deps:`/`parent:` refs, and reports rows missing required fields. No
+  auto-fix — findings require human triage; list the affected task IDs with the
+  failing field or dangling ref so the maintainer can edit the YAML directly.
+  Break a dependency cycle or drop a stale reference by editing the offending
+  row's `deps:`/`parent:` list (substrate-not-opinion — plain Edit/Write on the
+  YAML, no CRUD helper).
+- **`node scripts/ready-walker.mjs --stale --days 30`** — lifecycle. No auto-fix;
+  suggest one of three human actions per task: defer (lower `priority`), close
+  (set `status: closed`, no longer relevant), or work (claim and progress).
+- **`node scripts/ready-walker.mjs --blocked`** — blocked review. For each
+  blocked task, flag any blocker whose `status:` is already `closed` — those need
+  a re-run of `node scripts/ready-walker.mjs` to re-evaluate readiness (readiness
+  is recomputed on every walk, never stored), or the row's `deps:` edited to drop
+  the satisfied blocker.
 
 Render in the RETRO file as:
 
 ```markdown
 ### Health audit
 
-- **Infrastructure (`bd doctor`):** {N} warnings — {top items, or "clean"}
-- **Template compliance (`bd lint`):** {N} issues — {top items, or "clean"}
-- **Lifecycle (`bd stale`):** {N} stale issues — {top items, or "clean"}
-- **Reference integrity (`bd orphans`):** {N} orphans — {top items, or "clean"}
-- **Dependency graph (`bd graph check`):** {clean | N cycles, top items}
-- **Stats (`bd stats`):** {total / open / in_progress / closed / ready / blocked counts}
-- **Blocked review (`bd blocked`):** {list blocked issues; for each, run `bd show <id>` to identify its blockers and flag any blockers whose status is currently `closed` — these need `bd update` to re-evaluate readiness}
-- **`bd compact` candidates:** {manual judgment — list closed-issue count and flag if >150 closed since last compact, otherwise "below threshold"}
+- **Integrity (`validate-tasks`):** {N} findings — {top items, or "clean"}
+- **Lifecycle (`ready-walker --stale --days 30`):** {N} stale tasks — {top items, or "clean"}
+- **Stats (`ready-walker --stats`):** {total / pending / in_progress / closed / ready / blocked counts}
+- **Blocked review (`ready-walker --blocked`):** {list blocked tasks; for each, flag any blocker whose status is currently `closed` — edit the row's `deps:` and re-run `ready-walker` to re-evaluate readiness}
 ```
 
 **Basic Memory graph health** (via Basic Memory MCP tools):
@@ -285,7 +279,9 @@ Render in the RETRO file as:
 3. Call `mcp__basic-memory__schema_diff` on both types to detect drift (new observation categories in use but not in schema, or schema fields rarely used)
 4. If notes cluster around a new unschemaed `type`, call `mcp__basic-memory__schema_infer` and consider creating a new schema
 5. Verify all notes have: frontmatter `type` and `tags`, `## Observations`, `## Relations`
-6. Flag notes missing any layer; fix or create beads issues
+6. Flag notes missing any layer; fix or file tracker tasks (append to
+   `.diarie/tasks/tasks-<slug>.yml` per step 5, or the `### Follow-ups
+   (untracked)` RETRO block when the tracker is unavailable)
 
 **Basic Memory notes (project-independent knowledge base):** Basic Memory is a
 cross-project knowledge store — notes there must be written from a general
@@ -300,22 +296,33 @@ Call `mcp__basic-memory__search_notes` and:
 - Check for duplicate notes across directories and merge them
 - Verify tags are consistent and discoverable
 
-### 5. Create beads issues from findings
+### 5. Create tracker tasks from findings
 
 Review the "What could improve" and "Lessons learned" sections for actionable
-items that aren't already tracked. Create beads issues for each:
+items that aren't already tracked. Append a task entry to the appropriate
+`.diarie/tasks/tasks-<slug>.yml` file for each — plain Edit/Write on the YAML,
+no CRUD helper (substrate-not-opinion):
 
-```bash
-bd create "..." -t bug|task|feature|chore -p N --description "..."
+```yaml
+- id: <slug>-<short-id>
+  title: "..."
+  status: pending
+  type: task           # labels: [bug]|[chore]|... carry the framing (4-type model)
+  priority: N          # 0=critical, 1=high, 2=medium, 3=low, 4=backlog
+  acceptance_criteria: "..."
 ```
 
-(`-t` = type; `-p` = priority: 0=critical, 1=high, 2=medium, 3=low, 4=backlog)
+The migration target uses **4 types** (`task` / `doc` / `decision` /
+`milestone`); the old bug/feature/chore framings ride along in `labels:` on a
+`task` row. After appending, run `node scripts/ready-walker.mjs` to re-evaluate
+readiness (it is recomputed on every walk, not stored) and
+`node validate-tasks.mjs` to confirm the new rows pass the integrity gate.
 
 Include code quality issues, process improvements, and any findings that need
 follow-up work. Skip items that are purely observational or already have open
-issues.
+tasks.
 
-**Beads unavailable (Tier C):** there is no backlog to file into — instead
+**Tracker unavailable (Tier C):** there is no store to file into — instead
 append a `### Follow-ups (untracked)` task list to the `RETRO-NN.md` file, one
 checkbox per actionable finding, so the items are still captured:
 
@@ -325,54 +332,58 @@ checkbox per actionable finding, so the items are still captured:
 - [ ] {finding} — {type}, {priority}
 ```
 
-Announce that follow-ups were written to the RETRO file rather than created as
-beads (they can be filed later if beads is adopted).
+Announce that follow-ups were written to the RETRO file rather than appended to
+the tracker (they can be filed later once the tracker is active).
 
 **Decision capture.** When a sprint outcome is a *decision* (an architectural
 or product choice with explicit rationale and rejected alternatives) rather
-than a task, bug, or feature, file it as the `decision` issue type — not a
-generic task. Decision-typed issues are queryable as ADRs and follow the
-supersede workflow.
+than a task, bug, or feature, record it as a `decision`-typed document — not a
+generic task. Decisions live as standalone markdown files under
+`.diarie/decisions/` so they read as ADRs.
 
 Recognize a decision when the sprint surfaced any of:
 
 - A choice between two or more viable approaches with rationale recorded
-- A reversal or revision of a previous decision (use `supersede` to link)
+- A reversal or revision of a previous decision (link it as a supersede)
 - A constraint accepted (e.g., "we will not support X until Y") that future
   work must respect
 
-For each decision, prompt the user to either:
+For each decision, write a `.diarie/decisions/<id>.md` file — plain Edit/Write,
+no CRUD helper (substrate-not-opinion) — with YAML frontmatter plus the
+four-section prose body:
 
-1. **Invoke the upstream `/beads:decision` slash command** — preferred path.
-   The command lives in the upstream `beads` plugin (NOT vp-beads) and wraps
-   `bd create --type=decision` with structured templates plus
-   record/list/show/supersede operations. Use this for the full lifecycle.
-2. **Or create directly via `bd create --type=decision`** with the four-section
-   template:
+```markdown
+---
+id: <slug>-<short-id>
+title: "..."
+type: decision
+status: open
+---
 
-   ```markdown
-   ## Decision
+## Decision
 
-   ## Rationale
+## Rationale
 
-   ## Alternatives Considered
+## Alternatives Considered
 
-   ## Affects
-   ```
+## Affects
+```
 
-   The first three are required by `validation.on-create=error`; `## Affects`
-   is conventional and lists impacted components, files, or future work.
+The first three prose sections are required; `## Affects` is conventional and
+lists impacted components, files, or future work. Run
+`node validate-tasks.mjs` afterward to confirm the file passes the integrity
+gate.
 
-**Lifecycle:** decision-typed issues stay **open** while the decision is in
-force. `open` = active decision, `closed` = superseded or reversed (NOT
-closed-on-create). The retrospective never auto-closes decisions — the
-upstream `/beads:decision` slash command handles supersession when the
-decision is later revised. Cross-reference that command for the full
-lifecycle (record/list/show/supersede) rather than implementing it here.
+**Lifecycle:** decision documents stay **open** while the decision is in force.
+`status: open` = active decision, `status: closed` = superseded or reversed (NOT
+closed-on-create). The retrospective never auto-closes decisions — a later
+revision supersedes the prior file by flipping its `status:` to `closed` and
+linking the successor. Do not implement supersession here; just capture the new
+decision.
 
-**Beads unavailable (Tier C):** record the decision inline in `RETRO-NN.md` as a
-`### Decisions` block carrying the same four sections, instead of
-`bd create --type=decision`:
+**Tracker unavailable (Tier C):** record the decision inline in `RETRO-NN.md` as
+a `### Decisions` block carrying the same four sections, instead of writing a
+`.diarie/decisions/<id>.md` file:
 
 ```markdown
 ### Decisions
@@ -386,7 +397,7 @@ lifecycle (record/list/show/supersede) rather than implementing it here.
 ```
 
 Announce that the decision was captured in the RETRO file; it can be promoted
-to a `decision`-typed bead later if beads is adopted.
+to a `.diarie/decisions/<id>.md` file later once the tracker is active.
 
 ### 6. Knowledge gap audit
 
@@ -404,7 +415,9 @@ Steps:
    vp-knowledge is not installed, skip this step and note in the retrospective
    under "What could improve" that knowledge gap coverage was not audited.
 2. Include Tier 1 gaps in the retrospective under "What could improve"
-3. Create beads issues for the top 3 undocumented packages or tools
+3. File tracker tasks for the top 3 undocumented packages or tools (append to
+   `.diarie/tasks/tasks-<slug>.yml` per step 5, or the `### Follow-ups
+   (untracked)` RETRO block when the tracker is unavailable)
 
 ### 7. Write project-independent learnings to Basic Memory
 

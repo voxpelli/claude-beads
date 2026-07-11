@@ -78,8 +78,9 @@ Apply this ordering when clustering issues into waves:
 2. P2 issues fill remaining Wave 1 slots and Wave 2
 3. P3/P4 issues fill later waves or are deferred
 
-Issues that block other issues (detect with `bd blocked`) must go in an
-earlier wave than their dependents.
+Issues that block other issues (detect with
+`node scripts/ready-walker.mjs --blocked`) must go in an earlier wave than
+their dependents.
 
 ## Wave Size by RAM
 
@@ -90,7 +91,7 @@ coordination cost faster than they increase throughput.
 
 ## File-to-Issue Inference
 
-When a beads issue description does not list explicit files:
+When a tracker task description does not list explicit files:
 
 1. Extract identifiers (function names, type names, constants) from the
    description
@@ -100,7 +101,7 @@ When a beads issue description does not list explicit files:
 4. For issues with no grep anchors: default to "unknown scope" and assign
    to their own wave (single-agent waves are safe)
 
-The same inference serves a **beadless ROADMAP source**: when a ROADMAP item
+The same inference serves a **tracker-less ROADMAP source**: when a ROADMAP item
 declares its scope in prose ("Touches `a.js`, `b.js`"), use it directly;
 otherwise run the steps above over the identifiers named in the item text. An
 item with neither a declared nor an inferable scope is declined or sent to the

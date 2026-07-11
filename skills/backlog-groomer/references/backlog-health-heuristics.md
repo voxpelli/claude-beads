@@ -5,116 +5,116 @@ workflow steps.
 
 ## Staleness Thresholds
 
-An issue is **stale** when it meets ALL of these:
+A task is **stale** when it meets ALL of these:
 
-- Status is `open` (not `in_progress` or `closed`)
-- Not updated in the last 60 days (`bd stale --days 60` — grooming default,
-  stricter than `bd stale`'s 30-day default to reduce noise from recently
-  created items not yet started)
-- No commits reference the issue ID in `git log`
+- Status is `pending` (not `in_progress`, `completed`, or `cancelled`)
+- Not updated in the last 60 days — compare the row's `updated:` field against a
+  60-day threshold (grooming default, stricter than the reader's 30-day default
+  to reduce noise from recently created items not yet started). The
+  `ready-walker.mjs --stale` flag is `in_progress`-scoped, so pending-item
+  staleness is read directly from `updated:` in the `.diarie/tasks/*.yml`
+- No commits reference the task id in `git log`
 
-Issues that are `in_progress` but stale (>30 days without activity) may be
-abandoned — flag separately as "stalled, not stale."
+Tasks that are `in_progress` but stale (>30 days without activity) may be
+abandoned — surface them with `node scripts/ready-walker.mjs --stale --days 30`
+and flag separately as "stalled, not stale."
 
 ## Closure Criteria
 
-An issue is a **closure candidate** when ANY of these apply:
+A task is a **closure candidate** when ANY of these apply:
 
-- **Addressed by commit**: a recent `git log` entry mentions the issue topic
-  or fixes the described problem, but the issue was never formally closed
-- **Superseded**: a newer issue covers the same scope with better description
-  or broader scope — close the older one with a reference to the replacement
-- **Out of scope**: the project direction has shifted and the issue is no longer
-  relevant (user must confirm — never auto-close based on scope inference)
-- **Stale beyond recovery**: open >120 days, no activity, P3/P4 priority, no
-  blocking relationship — the backlog has moved on
+- **Addressed by commit**: a recent `git log` entry mentions the task topic
+  or fixes the described problem, but the row was never set to `completed`
+- **Superseded**: a newer task covers the same scope with better description
+  or broader scope — set the older one to `completed` with a reference to the
+  replacement in its `description:`
+- **Out of scope**: the project direction has shifted and the task is no longer
+  relevant — set `status: cancelled` (user must confirm — never auto-close based
+  on scope inference)
+- **Stale beyond recovery**: pending >120 days, no activity, `low`/`backlog`
+  priority, no blocking relationship — the backlog has moved on
 
 ## Duplicate Detection
 
-Duplicates are issues that describe the same work. Check for:
+Duplicates are tasks that describe the same work. The flat-YAML substrate has
+**no dedup command** (substrate-not-opinion — no CRUD helper); detection is
+manual over the `.diarie/tasks/*.yml` files. Check for:
 
-- **Exact match**: `bd duplicates` finds issues with identical content hashes
-- **Near-match (mechanical)**: `bd find-duplicates` (alias `find-dups`) with
-  the default `--method=mechanical` runs Jaccard tokenization across open
-  issues. Free, fast, no API calls.
-- **Near-match (semantic)**: `bd find-duplicates --method=ai` uses Claude to
-  compare candidate pairs that survive mechanical pre-filtering. Requires
-  `ai.api_key` config and **bills per call**. Opt-in only.
-- **Manual**: similar titles (shared keywords), same labels, or references to
-  the same commit/file. Use `bd search <keywords>` to surface candidates.
-- **Cross-status**: a closed issue may duplicate an open one if the fix was
-  incomplete. `bd duplicates` checks within status groups.
-
-### Threshold guidance for `bd find-duplicates`
-
-| Threshold       | When to use                                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------------------------- |
-| `0.5` (default) | Balanced — catches obvious near-duplicates with low false-positive rate                                       |
-| `0.4`           | More recall — surfaces fuzzier matches; useful for small backlogs (<100 open) where reviewing extras is cheap |
-| `0.6+`          | Higher precision — when you only want strong candidates and don't want to review borderline pairs             |
-
-### AI cost caveat
-
-`--method=ai` bills per AI call against the configured `ai.api_key`. The
-mechanical pre-filter narrows the candidate set first, so cost scales with
-the number of mechanical near-matches, not the size of the backlog. Still:
-default to mechanical, only invoke `--method=ai` when the user explicitly
-requests it or the `BD_AI_DUPES=1` environment variable is set, and surface
-an estimated cost when the candidate set is large.
+- **Similar titles**: shared area prefix (`[auth] …`) or shared keywords. Read
+  the titles across `.diarie/tasks/*.yml` and scan for near-matches.
+- **Shared `labels:`** or references to the same commit/file in `description:`.
+  Use `Grep` with keywords from suspicious titles to surface candidates.
+- **Cross-status**: a `completed` task may duplicate a `pending` one if the fix
+  was incomplete — Grep both statuses, not just open work.
 
 ### Resolving duplicates
 
-When merging, prefer the issue with more context (longer description, more
-comments, more dependency links). Apply per-pair recommendations using:
+When merging, prefer the task with more context (longer `description:`, more
+`deps:`/`parent:` links). Apply per-pair recommendations by **editing the
+loser's row**:
 
-- `bd supersede <loser> <winner>` — closes the loser as superseded, preserves
-  the link in history (preferred when both have meaningful comments/refs)
-- `bd duplicate <loser> <winner>` — marks loser as a duplicate without losing
-  the relationship metadata
+- Set the loser to `status: cancelled` and add `labels: [duplicate]`, then note
+  the winner's id in the loser's `description:` (preserves the relationship in
+  the YAML — the substrate has no `supersede`/`duplicate` verb).
+- If the fix should still ship under the winner, fold any unique
+  `acceptance_criteria:` from the loser into the winner before cancelling.
+
+Run `node validate-tasks.mjs` after the edits.
 
 ## Priority Assignment Logic
 
-| Priority      | When to assign                                                       |
-| ------------- | -------------------------------------------------------------------- |
-| P0 (critical) | Blocks all development: broken builds, data loss, security           |
-| P1 (high)     | Major feature, important bug, blocks other high-priority work        |
-| P2 (medium)   | Default. Nice-to-have feature, non-critical bug, quality improvement |
-| P3 (low)      | Polish, optimization, minor friction. No urgency signal              |
-| P4 (backlog)  | Future idea, exploration, "someday maybe"                            |
+The `priority:` field takes a string from `VALID_PRIORITIES` (default `medium`):
+
+| Priority   | When to assign                                                       |
+| ---------- | -------------------------------------------------------------------- |
+| `critical` | Blocks all development: broken builds, data loss, security           |
+| `high`     | Major feature, important bug, blocks other high-priority work        |
+| `medium`   | Default. Nice-to-have feature, non-critical bug, quality improvement |
+| `low`      | Polish, optimization, minor friction. No urgency signal              |
+| `backlog`  | Future idea, exploration, "someday maybe"                            |
 
 **Reprioritization signals:**
 
-- Issue blocks N other issues → raise priority (blocking power)
-- Issue has been P4 for 3+ sprints with no interest → candidate for closure
-- Issue aligns with stated sprint goal → raise to P1/P2
-- Issue conflicts with current direction → lower or close
+- Task blocks N other tasks → raise priority (blocking power)
+- Task has been `backlog` for 3+ sprints with no interest → candidate for closure
+- Task aligns with stated sprint goal → raise to `high`/`medium`
+- Task conflicts with current direction → lower or close
 
 ## Type Assignment Logic
 
-| Type        | Required markdown sections                                  | When to use                                                               |
-| ----------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `task`      | none                                                        | Defined, bounded work — refactoring, docs, test coverage (default)        |
-| `bug`       | `## Steps to Reproduce`, `## Acceptance Criteria`           | Something broken — unexpected behavior, regression, error                 |
-| `feature`   | `## Acceptance Criteria`                                    | New system capability (system-centric framing)                            |
-| `chore`     | none                                                        | Maintenance — dependency updates, CI config, tooling (no behavior change) |
-| `epic`      | `## Success Criteria`                                       | Large body of work that decomposes into child issues                      |
-| `decision`  | `## Decision`, `## Rationale`, `## Alternatives Considered` | Architecture decision record (ADR) — outcome of deliberation              |
-| `spike`     | `## Goal`, `## Findings`                                    | Timeboxed investigation that reduces uncertainty before a story           |
-| `story`     | `## Acceptance Criteria`                                    | User-centric framing of a feature ("As a X, I want Y...")                 |
-| `milestone` | none                                                        | Release boundary or sprint marker — contains no work itself               |
+The `type:` field is one of **4 exclusive kinds** (decision `vp-beads-etm`); the
+finer bd distinctions ride in `labels:` on a `type: task` row.
 
-All required sections are enforced by `validation.on-create=error` — a
-`bd create` will fail if the description is missing the literal markdown
-headings listed above. The authoritative source is the
-`### Issue Types (Core Vocabulary)` section of the Basic Memory note
-`brew/brew-beads`.
+| Type        | Where it lives                                   | When to use                                                  |
+| ----------- | ------------------------------------------------ | ------------------------------------------------------------ |
+| `task`      | a row in `.diarie/tasks/tasks-<slug>.yml`        | Any workable unit — the only type the ready-walker surfaces  |
+| `doc`       | frontmatter'd markdown in `.diarie/docs/`        | Reference material; never workable                           |
+| `decision`  | frontmatter'd markdown in `.diarie/decisions/`   | Architecture decision record (ADR) — outcome of deliberation |
+| `milestone` | a marker row in `.diarie/tasks/tasks-<slug>.yml` | Release boundary or sprint marker — contains no work itself  |
 
-**Picking between similar types:**
+**Framings carried in `labels:` on a `type: task` row** (not distinct types):
 
-- `task` vs `chore` — does it change user-visible behavior? Behavior change → task; pure maintenance → chore
-- `feature` vs `story` — system-centric vs user-centric framing of the same change. Both are valid; the distinction is audience
-- `epic` vs `milestone` — epics ARE work (decompose into children); milestones are markers (contain no work)
-- `spike` vs `decision` — spike is the investigation; decision is the recorded outcome. `spike → decision` is a common pair
+| Framing   | Encoding                                                     | When to use                                               |
+| --------- | ------------------------------------------------------------ | --------------------------------------------------------- |
+| `bug`     | `type: task`, `labels: [bug]`                                | Something broken — unexpected behavior, regression, error |
+| `feature` | `type: task`, `labels: [feature]`                            | New system capability (system-centric framing)            |
+| `chore`   | `type: task`, `labels: [chore]`                              | Maintenance — dependency updates, CI config, tooling      |
+| `story`   | `type: task`, `labels: [story]`                              | User-centric framing of a feature ("As a X, I want Y...") |
+| `spike`   | `type: task`, `labels: [spike]`                              | Timeboxed investigation; closes with findings, not code   |
+| `epic`    | `type: task`, `labels: [epic]` + children carrying `parent:` | Large body of work that decomposes into child tasks       |
+
+There is **no hard on-create gate** (unlike bd's `validation.on-create=error`):
+an entry is workable the moment its required fields (`id`, `title`, `status`,
+`type`) are present. `node validate-tasks.mjs` warns (a test-ratchet) when a
+**completed** `task` has empty `acceptance_criteria`. The authoritative source
+is `scripts/task-schema.mjs`.
+
+**Picking between similar framings:**
+
+- plain `task` vs `chore` label — does it change user-visible behavior? Behavior change → plain task; pure maintenance → `labels: [chore]`
+- `feature` vs `story` label — system-centric vs user-centric framing of the same change. Both are valid; the distinction is audience
+- `epic` label vs `milestone` type — an `epic`-labelled task IS work (decomposes into children via `parent:`); a `milestone` is a marker row (contains no work)
+- `spike` label vs `decision` type — a `spike`-labelled task is the investigation; a `decision` file is the recorded outcome. A `spike` task preceding a `decision` file is a common pair
 
 ## Issue Title Convention
 
@@ -127,9 +127,11 @@ Examples:
 - `[ci] Enable shellcheck for hook scripts`
 - `[upstream-tracker] Support non-npm tool types`
 
-The area prefix makes issues scannable in `bd list` output.
+The area prefix makes tasks scannable in `node scripts/ready-walker.mjs` output.
 
-## Issue Description Template
+## Task Description Template
+
+Put this in the row's `description:` block scalar:
 
 ```
 **Problem:** What is wrong or missing, in 1-2 sentences.
@@ -139,14 +141,16 @@ The area prefix makes issues scannable in `bd list` output.
 **Suggested first step:** A concrete action to start with.
 ```
 
-Keep descriptions concise. If the issue needs extensive context, use workflow 6
-(Enrich an existing issue) to add a `## Research Context` section after creation.
+Keep descriptions concise, and state checkable outcomes in
+`acceptance_criteria:`. If the task needs extensive context, use workflow 6
+(Enrich an existing issue) to add a `## Research Context` section to the
+`description:` after creation.
 
 ## Creation Limits
 
-- **Per-topic cap**: If research (workflow 4 (Investigate topic as spike)) yields >8 candidate issues, suggest splitting
-  into multiple research sessions or grouping under a tracking issue
-- **Per-session cap**: Creating >15 issues in one grooming session is a signal that
-  the topic needs higher-level scoping first (consider an epic)
-- **Dedup before create**: Always run `bd search <keywords>` before `bd create` to
-  avoid duplicating existing issues
+- **Per-topic cap**: If research (workflow 4 (Investigate topic as spike)) yields >8 candidate tasks, suggest splitting
+  into multiple research sessions or grouping under an `epic`-labelled parent task
+- **Per-session cap**: Appending >15 tasks in one grooming session is a signal that
+  the topic needs higher-level scoping first (consider an `epic`-labelled parent)
+- **Dedup before create**: Always `Grep` the `.diarie/tasks/*.yml` for `<keywords>`
+  before appending a task to avoid duplicating existing work

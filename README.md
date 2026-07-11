@@ -1,11 +1,34 @@
 # vp-beads
 
-A [Claude Code](https://claude.ai/code) plugin that automates the sprint workflow for projects that track work in [beads](https://github.com/steveyegge/beads) — or in a `ROADMAP.md` / `VISION.md` split, or a manual list — backed by [Basic Memory](https://github.com/basicmachines-co/basic-memory). Sync vendor subtrees, track upstream friction, close sprints, run retrospectives — all without leaving your terminal. Beads is the default substrate, not a requirement: skills degrade gracefully without it (see [Work-tracking substrates](#work-tracking-substrates)).
+A [Claude Code](https://claude.ai/code) plugin that automates the sprint workflow for projects that track work in a flat-YAML task store (`diarie`) — or in a `ROADMAP.md` / `VISION.md` split, or a manual list — backed by [Basic Memory](https://github.com/basicmachines-co/basic-memory). Sync vendor subtrees, track upstream friction, close sprints, run retrospectives — all without leaving your terminal. The flat-YAML tracker is the default substrate, not a requirement: skills degrade gracefully without it (see [Work-tracking substrates](#work-tracking-substrates)).
 
 > **Direction:** vp-beads is the calm, sovereign answer to agentic development — one
 > developer amplified by Claude Code agents, on plain text and git, no daemon. The stance
-> and the in-progress migration toward a plain-text substrate live in
-> [`VISION.md`](./VISION.md).
+> behind the plain-text substrate lives in [`VISION.md`](./VISION.md).
+
+## The tracker
+
+Work lives in plain YAML files under `.diarie/tasks/tasks-<slug>.yml`, with
+architectural decisions as markdown in `.diarie/decisions/<id>.md`. No daemon, no
+database, no vendor lock-in — the files are canonical and every read is derived:
+
+```bash
+node scripts/ready-walker.mjs           # what's ready to work on (dependency-aware ready walk)
+node scripts/ready-walker.mjs --stats   # summary counts
+node validate-tasks.mjs                 # integrity gate: schema, dep graph, duplicate ids
+```
+
+Writes are plain `Edit`/`Write` on the YAML — there is deliberately **no CRUD helper**.
+The substrate stays a substrate; the opinions live in the skills.
+
+Four task types: `task`, `doc`, `decision`, `milestone`. Framings like *bug*, *feature*,
+*chore*, *story* and *spike* ride in `labels:`; an epic is a `task` with children pointing
+at it via `parent:`.
+
+This tracker is being extracted as a standalone CLI — **`diarie`** (`diarie ready`,
+`diarie validate`, …) at [diarie.dev](https://diarie.dev). It is **not published yet**;
+until it ships, the skills call the `scripts/ready-walker.mjs` and `validate-tasks.mjs`
+readers directly.
 
 ## What it does
 
@@ -13,13 +36,13 @@ A [Claude Code](https://claude.ai/code) plugin that automates the sprint workflo
 
 Triggers automatically when a sprint closes and gives a concise summary with a single next-step recommendation:
 
-> "bd close worked. What should we do now?"
+> "That's the last task closed. What should we do now?"
 
 > "Okay, I think that's everything for this sprint."
 
 > "Should we do a retro? I've lost track of which sprint we're on."
 
-Reads git history, open beads issues, `UPSTREAM-*.md` files, and (when available) Basic Memory friction notes for cross-project awareness, then recommends one of five actions:
+Reads git history, open tracker tasks, `UPSTREAM-*.md` files, and (when available) Basic Memory friction notes for cross-project awareness, then recommends one of five actions:
 
 | Recommendation                                       | Condition                                                      |
 | ---------------------------------------------------- | -------------------------------------------------------------- |
@@ -39,13 +62,13 @@ Reads git history, open upstream tracking files, and your current conversation t
 /retrospective
 ```
 
-Produces `RETRO-NN.md` covering what went well, what could improve, upstream observations, and lessons learned. Creates beads issues from findings, writes generalizable learnings to Basic Memory, and suggests documentation updates.
+Produces `RETRO-NN.md` covering what went well, what could improve, upstream observations, and lessons learned. Appends new tasks to `.diarie/tasks/` from findings, writes generalizable learnings to Basic Memory, and suggests documentation updates.
 
-On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, beads issue hygiene (`bd stats`, stale `in_progress` items, blocked issues), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
+On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, tracker hygiene (`ready-walker.mjs --stats`, stale `in_progress` items, blocked tasks, `validate-tasks.mjs`), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
 
 ### `/backlog-groomer` — Backlog triage and research
 
-Triage, prioritize, and research work tracked in beads:
+Triage, prioritize, and research the work in the flat-YAML backlog:
 
 ```
 /backlog-groomer
@@ -59,16 +82,6 @@ Six workflows in two groups:
 **Research** — investigate a topic using multi-source research (Basic Memory → DeepWiki → Tavily), create structured issues from findings with title conventions and dependency linking, or enrich an existing issue with research context.
 
 All mutations require explicit user approval. Complements sprint-review (which fires at sprint end) by operating at sprint start.
-
-### `/harden-memories` — Audit and prune `bd remember` entries
-
-Keep the project's `bd remember` store lean so each entry earns its per-session `bd prime` injection cost:
-
-```
-/harden-memories
-```
-
-**Read-only** — it audits and recommends, you run the commands. Reads `bd memories`, classifies each entry with the three-question taxonomy (already in CLAUDE.md / auto-memory MEMORY.md / Basic Memory → remove; stable architecture → migrate; recovery-trigger-only → keep), and presents a triage table **plus the exact `bd forget` / migration commands for you to review and run** — it never writes a file, never writes Basic Memory, and never runs `bd forget` itself, keeping the irreversible delete under your control (no automated "verify-then-delete" can be trusted to gate it). Conservative pruning, never aggressive deletion. Scoped strictly to the `bd remember` store (not Claude Code's Auto Dream, not Basic Memory graph hygiene). Tier B: stops cleanly when beads is absent. Periodic audits (≈ every 4 sprints) typically recover \~40% of the injected-memory token budget.
 
 ### `/upstream-tracker` — Upstream issue tracking
 
@@ -121,7 +134,7 @@ Read-only by default. Surfaces drift, reciprocal gaps, stale-aligned rows, statu
 - **Sync sibling UPSTREAM** — Mode A: shared third-party dependency friction (duplicates, complementary workarounds, sibling-only entries); Mode B: reciprocal sibling-friction pairs (`UPSTREAM-<sibling>.md` ↔ `UPSTREAM-<this>.md`) surfacing what the sibling tracks about us
 - **Apply reciprocation batch** (opt-in `--auto-reciprocate`) — per-entry confirmation, writes only to the sibling side
 
-Workflows 2 and 3 end with a per-sibling two-tier action menu (single `AskUserQuestion`, `header: "Synergy"` + `header: "Upstream"`) that delegates writes to `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or `bd create` via the `Skill` tool — replacing the previous copy-paste hint workflow. Picking "None" yields a report-only run.
+Workflows 2 and 3 end with a per-sibling two-tier action menu (single `AskUserQuestion`, `header: "Synergy"` + `header: "Upstream"`) that delegates writes to `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or appends a task entry to `.diarie/tasks/` via the `Skill` tool — replacing the previous copy-paste hint workflow. Picking "None" yields a report-only run.
 
 ### `/swarm-wave [workflow] [wave-number|topic]` — Multi-agent wave orchestration
 
@@ -135,8 +148,8 @@ Orchestrate multi-agent development sprints using the swarm wave pattern:
 
 Five workflows:
 
-- **Plan a swarm sprint** — sources work from beads (`bd ready`), else a `ROADMAP.md` (read in its own idiom — see [Work-tracking substrates](#work-tracking-substrates)), else a manual list; builds a file-contention map, groups file-disjoint items into waves, and generates a `SWARM-NN.md` plan for approval. Beadless waves track run-state in the `SWARM-NN.md` Item Status table instead of `bd` claim/close
-- **Execute a wave** — claims issues, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
+- **Plan a swarm sprint** — sources work from the tracker (`.diarie/tasks/`, via `ready-walker.mjs`), else a `ROADMAP.md` (read in its own idiom — see [Work-tracking substrates](#work-tracking-substrates)), else a manual list; builds a file-contention map, groups file-disjoint items into waves, and generates a `SWARM-NN.md` plan for approval. Tracker-less waves track run-state in the `SWARM-NN.md` Item Status table instead of task claim/close
+- **Execute a wave** — claims tasks, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
 - **Post-wave gate** — hard blocking quality gate: two review agents (code + domain-specific) in parallel with `npm run check`, sequential tests, fix loop, commit + close. After the final wave, offers `/retrospective` handoff
 - **Map file contention** — standalone utility to build a file-to-issue matrix and flag hot files
 - **Research wave** — parallel research orchestration with dedup, code validation, and handoff to `/backlog-groomer` for issue creation
@@ -145,27 +158,28 @@ Five workflows:
 
 ## Work-tracking substrates
 
-vp-beads does not force beads. It works against whatever substrate a project already uses to track work:
+vp-beads does not force a tracker on you. It works against whatever substrate a project already uses to track work:
 
-- **beads** (`bd`) — the default and richest substrate: typed issues, dependencies, priorities, health checks. Used directly when a `.beads/` directory exists and `bd` is on `PATH`.
+- **Flat-YAML tracker** (`.diarie/`) — the default and richest substrate: typed tasks, dependencies, priorities, labels, and a ready/blocked walk. Used directly when a `.diarie/tasks/` directory exists. See [The tracker](#the-tracker).
 - **`ROADMAP.md`** — a work plan **in whatever structure the project already uses**. `/swarm-wave` reads it in its own idiom (waves, status markers, file scopes) and never imposes a format; it declines cleanly when the file is not a parallelizable work plan. vp-beads never rewrites your ROADMAP.
 - **`VISION.md`** — direction and voice, **not** a backlog. vp-beads never sources work items from it.
 - **Manual list** — `/swarm-wave` can also plan from work items you supply inline, with no file at all.
 
-How each skill behaves without beads is defined once by the `### Beads-availability convention` in [`CLAUDE.md`](CLAUDE.md): Tier A (require-or-fallback — `/swarm-wave`), Tier B (beads-specific stop with a redirect — `/backlog-groomer`), Tier C (degrade-and-announce — `/retrospective`, the sprint-review agent). Silently skipping a `bd` step is treated as a bug.
+How each skill behaves without the tracker is defined once by the `### Files-availability convention` in [`CLAUDE.md`](CLAUDE.md):
 
-### Local-only vs committed beads
+- **Tier A** — require-or-fallback (`/swarm-wave`): the tracker, else a `ROADMAP.md`, else a manual list; it only stops when no work source can be obtained.
+- **Tier B** — tracker-specific, **no stop** (`/backlog-groomer`): it operates on `.diarie/` directly, and an absent or empty store is simply an empty backlog, not an error. It redirects to `/swarm-wave` / `ROADMAP.md` only when the project tracks its work somewhere else.
+- **Tier C** — degrade-and-announce (`/retrospective`, the sprint-review agent): the rest of the workflow runs and every skipped tracker step is announced.
 
-When you do use beads, vp-beads **recommends** (does not mandate) treating `.beads/` as local-only — gitignored, like `SWARM-*.md` and `RETRO-*.md` — rather than committing `issues.jsonl` for cross-machine sharing:
+Silently skipping a tracker step is treated as a bug.
 
-| Aspect              | Local-only (recommended)                                    | Committed (`bd` default)                   |
-| ------------------- | ----------------------------------------------------------- | ------------------------------------------ |
-| `.beads/` in git    | gitignored                                                  | `issues.jsonl` committed                   |
-| Cross-machine share | no (issues are machine-local, disposable)                   | yes (issues travel with the repo)          |
-| Sync edge cases     | avoided (no committed export to go stale)                   | JSONL↔Dolt import races possible           |
-| Best when           | tracker is a private convenience, not a shipped deliverable | issues are part of what collaborators need |
+### The store is committed
 
-This repository itself runs local-only — see [beads configuration in this repository](#beads-configuration-in-this-repository).
+`.diarie/` is a dotted directory but a **git-tracked** one — tasks, decisions, and their
+history are committed and reviewed in PRs like any other project metadata (`.claude/`,
+`.github/`). This is a deliberate reversal of the previous gitignored `.beads/`
+arrangement: with the tracker as plain text in the repo, the backlog travels with the
+clone, diffs in review, and has no export to go stale.
 
 ## Installation
 
@@ -197,7 +211,7 @@ Add to `~/.claude/settings.json`:
 
 ### Required
 
-**[beads](https://github.com/steveyegge/beads)** (`bd` CLI) — git-backed issue tracker; the default work-tracking substrate (recommended, not strictly required — see [Work-tracking substrates](#work-tracking-substrates)). When present, the retrospective skill creates beads issues from findings and runs `bd stats` for health checks; without it, skills degrade per the availability convention rather than stopping.
+**[Node.js](https://nodejs.org)** — runs the tracker readers (`scripts/ready-walker.mjs`, `validate-tasks.mjs`). No other tracker install is needed: the task store is plain YAML in the repo. A standalone `diarie` CLI is [coming](#the-tracker), but nothing depends on it yet.
 
 **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** MCP server — the knowledge graph backend for writing sprint learnings:
 
@@ -213,27 +227,16 @@ claude mcp add basic-memory -- basic-memory mcp
 
 vp-beads intentionally does not duplicate vp-knowledge's BM hooks — see [How it fits together](#how-it-fits-together) and [Relationship to vp-knowledge](#relationship-to-vp-knowledge).
 
-## beads configuration in this repository
+## The tracker in this repository
 
-This project uses **[beads](https://github.com/gastownhall/beads)** (`bd` CLI) for
-issue tracking, configured as a **fully-local** working artifact: the entire
-`.beads/` directory is **gitignored** and never committed or pushed. Issues are
-treated as machine-local, ephemeral working state — like the `SWARM-*.md` and
-`RETRO-*.md` files — not as part of the shared repo. They live only in the local
-Dolt database (`.beads/dolt/`). This deliberately overrides bd's convention of
-committing `.beads/issues.jsonl` for cross-machine sharing.
+vp-beads dogfoods its own substrate. This repo's work lives in
+`.diarie/tasks/tasks-<slug>.yml` (with decisions in `.diarie/decisions/`), read by
+`node scripts/ready-walker.mjs` and gated by `node validate-tasks.mjs` — both wired into
+`npm run check`. The directory is **committed**: the backlog is part of the repo, not a
+machine-local artifact (see [The store is committed](#the-store-is-committed)).
 
-- **Dolt mode:** `server` (localhost, PID managed by `bd`); database `vp_beads`
-- **Not shared via git:** `.beads/` is in `.gitignore`; `bd dolt push` is not used.
-  Issue history is intentionally local — losing it (e.g. a fresh clone) is
-  acceptable, the same way a `SWARM-*.md` scratch file is disposable.
-
-> **Why local-only:** beads here is a convenience, not a deliverable. The
-> tracker data is not part of what this plugin ships or what collaborators need.
-> Keeping it out of git also sidesteps bd's Dolt-sync edge cases (e.g. the
-> JSONL↔Dolt import races that bit earlier versions) by never maintaining a
-> committed export to go stale. A migration off bd is also under exploration
-> (epic `vp-beads-l9i`).
+The earlier beads (`bd`) store has been retired; its final export is kept under
+`.diarie/_archive/` for provenance.
 
 ## Conventions
 
@@ -281,8 +284,6 @@ skills/
     SKILL.md                            Backlog triage and research workflow
     references/
       backlog-health-heuristics.md      Staleness, closure, priority heuristics
-  harden-memories/
-    SKILL.md                            Audit and prune bd remember entries
   retrospective/
     SKILL.md                            Sprint retrospective workflow
   upstream-tracker/
@@ -322,7 +323,7 @@ hooks/
  "groom" / "triage"      -> backlog-groomer skill -> triage table + proposals
  "research X"            -> backlog-groomer skill -> research brief + issue creation
 
- "sprint done" / bd close -> sprint-review agent -> summary + recommendation
+ "sprint done" / task closed -> sprint-review agent -> summary + recommendation
                                                      ├── "run /retrospective"
                                                      ├── "run /upstream-tracker first"
                                                      ├── "run /backlog-groomer"
@@ -330,7 +331,7 @@ hooks/
                                                      └── "not ready yet"
 
  /retrospective          -> retrospective skill   -> RETRO-NN.md
-                                                  -> beads issues from findings
+                                                  -> tasks appended to .diarie/tasks/
                                                   -> Basic Memory learnings
                                                   -> doc update suggestions
 
@@ -350,7 +351,7 @@ hooks/
                                                   -> --auto-reciprocate writes
 
  "swarm sprint" / "wave" -> swarm-wave skill      -> SWARM-NN.md wave plan
- /swarm-wave                                      -> sources: beads / ROADMAP / manual
+ /swarm-wave                                      -> sources: .diarie / ROADMAP / manual
                                                   -> parallel agent execution
                                                   -> post-wave quality gate
                                                   -> chains to /retrospective
@@ -387,7 +388,7 @@ must be bumped manually — the two repos are independent.
 
 ## Possible future additions
 
-- **`vendor-sync` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a beads issue rather than an immediate pull.
+- **`vendor-sync` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a task in `.diarie/tasks/` rather than an immediate pull.
 
 ## Prior art & acknowledgments
 
@@ -396,12 +397,13 @@ not just the projects — and an honest note on what is kept vs. declined:
 
 - **[beads](https://github.com/steveyegge/beads)** — Steve Yegge & the
   [gastownhall](https://github.com/gastownhall) maintainers. The substrate vp-beads was
-  built on and is now migrating away from (for the operational complexity of its
-  Dolt-backed daemon, not its data model — that part is good). ~~**Kept:** the 9-type
-  issue vocabulary.~~ *Corrected 2026-06-10, decision [`vp-beads-etm`](DESIGN-tracker-exploration.md):
-  the migration adopts a 4-type model (`task`/`doc`/`decision`/`milestone`); bd's other
-  five types ride in `labels:`. The taxonomy-documentation credit stands.* **Left:** the
-  Dolt substrate.
+  built on, and has now migrated off (for the operational complexity of its Dolt-backed
+  daemon, not its data model — that part is good; `ready` and the dependency walk are
+  reimplemented over flat files). ~~**Kept:** the 9-type issue vocabulary.~~ *Corrected
+  2026-06-10, decision [`vp-beads-etm`](DESIGN-tracker-exploration.md): the tracker adopts
+  a 4-type model (`task`/`doc`/`decision`/`milestone`); bd's other five types ride in
+  `labels:`. The taxonomy-documentation credit stands.* **Left:** the Dolt substrate. The
+  plugin keeps the name.
 - **[hone-ai](https://github.com/oskarhane/hone-ai)** — Oskar Hane. The amnesiac-loop file
   shape. **Kept:** the `progress.txt` + `AGENTS.md` accretion *discipline* and the idea of
   a separate reviewer. **Declined:** its three-stage execution loop (vp-beads' skills own
@@ -420,7 +422,7 @@ not just the projects — and an honest note on what is kept vs. declined:
 - **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** — the cross-project
   knowledge graph vp-beads writes its learnings to.
 
-The calm-sovereign stance behind the migration rests on a wider canon — local-first
+The calm-sovereign stance behind the substrate rests on a wider canon — local-first
 (Ink & Switch), calm tech (Weiser), convivial tools (Illich), Worse-is-Better (Gabriel) —
 credited in [`VISION.md`](./VISION.md).
 

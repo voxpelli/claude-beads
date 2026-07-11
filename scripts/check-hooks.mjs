@@ -168,20 +168,21 @@ function makeGhStubDir (stdout, exitCode = 0) {
 }
 
 /**
- * Create a temp dir containing a stub `bd` that prints the given JSON and
- * exits with the given status (mirrors makeGhStubDir). Used to exercise the
- * compact branch's in-progress recovery section deterministically.
+ * Create a temp dir containing a stub `diarie` (the tracker CLI the hook
+ * prefers) that prints the given JSON and exits with the given status (mirrors
+ * makeGhStubDir). Used to exercise the compact branch's in-progress recovery
+ * section deterministically, without needing a real `.diarie/` store.
  *
  * @param {string} jsonOutput - JSON the stub prints (e.g. '[{"id":"x-1","title":"..."}]')
  * @param {number} [exitCode]
  * @returns {string} Temp directory path containing the stub
  */
-function makeBdStubDir (jsonOutput, exitCode = 0) {
-  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-bd-stub-'))
+function makeTrackerStubDir (jsonOutput, exitCode = 0) {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-tracker-stub-'))
   const script = `#!/bin/bash\nprintf '%s\\n' ${JSON.stringify(jsonOutput)}\nexit ${exitCode}\n`
-  const bdPath = join(dir, 'bd')
-  writeFileSync(bdPath, script)
-  chmodSync(bdPath, 0o755)
+  const cliPath = join(dir, 'diarie')
+  writeFileSync(cliPath, script)
+  chmodSync(cliPath, 0o755)
   return dir
 }
 
@@ -304,10 +305,10 @@ test('compact source: emits 1 object listing UPSTREAM packages and SWARM file', 
     if (!ctx.includes('SWARM-13.md')) {
       return { ok: false, reason: `additionalContext missing recent SWARM file: ${ctx.slice(0, 200)}` }
     }
-    // HIGH 90 regression guard: no in-progress issues in this dir → must
-    // not surface bd's text-mode "No issues found." filler.
-    if (ctx.includes('No issues found')) {
-      return { ok: false, reason: `bd "No issues found." pollution leaked into context: ${ctx.slice(0, 200)}` }
+    // HIGH 90 regression guard: no tracker store in this dir → the reader emits
+    // nothing, so no in-progress section may appear.
+    if (ctx.includes('In-progress tracker task')) {
+      return { ok: false, reason: `unexpected in-progress section with no tracker store: ${ctx.slice(0, 200)}` }
     }
     return { ok: true }
   } finally {
@@ -315,41 +316,31 @@ test('compact source: emits 1 object listing UPSTREAM packages and SWARM file', 
   }
 })
 
-test('zero in-progress bd issues: empty array → no in-progress section emitted', () => {
-  // HIGH 90 regression test: with a stub bd that returns "[]" for the
-  // JSON status query, the hook must NOT emit any in-progress line. An
-  // UPSTREAM file is included so the hook still produces output (rather
-  // than going silent) — the assertion is specifically about the bd
-  // section's absence.
-  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-zero-bd-'))
-  const bdStubDir = mkdtempSync(join(tmpdir(), 'vp-beads-bd-stub-'))
+test('zero in-progress tracker tasks: empty array → no in-progress section emitted', () => {
+  // HIGH 90 regression test: with a stub tracker CLI that returns "[]", the
+  // hook must NOT emit any in-progress line. An UPSTREAM file is included so
+  // the hook still produces output (rather than going silent) — the assertion
+  // is specifically about the tracker section's absence.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-zero-tracker-'))
+  const stubDir = makeTrackerStubDir('[]')
   try {
     writeFileSync(join(dir, 'UPSTREAM-some-pkg.md'), '_No entries yet._\n')
-    // Stub bd that emits "[]" for any --json query, mimicking zero
-    // in-progress issues in a real .beads/ repo.
-    const bdScript = '#!/bin/bash\nprintf "[]\\n"\nexit 0\n'
-    const bdPath = join(bdStubDir, 'bd')
-    writeFileSync(bdPath, bdScript)
-    chmodSync(bdPath, 0o755)
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
       cwd: dir,
-      pathPrefix: bdStubDir,
+      pathPrefix: stubDir,
     })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
     const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
-    if (ctx.includes('In-progress bd issue')) {
-      return { ok: false, reason: `unexpected in-progress section for empty bd array: ${ctx.slice(0, 200)}` }
-    }
-    if (ctx.includes('No issues found')) {
-      return { ok: false, reason: `bd text-mode filler leaked: ${ctx.slice(0, 200)}` }
+    if (ctx.includes('In-progress tracker task')) {
+      return { ok: false, reason: `unexpected in-progress section for empty tracker array: ${ctx.slice(0, 200)}` }
     }
     return { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
-    rmSync(bdStubDir, { recursive: true, force: true })
+    rmSync(stubDir, { recursive: true, force: true })
   }
 })
 
@@ -377,30 +368,30 @@ test('compact source: empty state still emits the capture nudge (never silent)',
   }
 })
 
-test('compact source: one in-progress bd issue → recovery section with id, title, bd-show hint', () => {
+test('compact source: one in-progress tracker task → recovery section with id, title, file hint', () => {
   // Positive test for the in-progress recovery section — the one piece of
   // compact-branch state an agent cannot re-derive from files. A regression
   // here is silent (hook still exits 0 + emits the preamble), so assert the
   // payload directly.
-  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-bd-claim-'))
-  const bdStubDir = makeBdStubDir('[{"id":"x-1","title":"Implement the feature"}]')
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-tracker-claim-'))
+  const stubDir = makeTrackerStubDir('[{"id":"x-1","title":"Implement the feature"}]')
   try {
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
       cwd: dir,
-      pathPrefix: bdStubDir,
+      pathPrefix: stubDir,
     })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
     const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
-    for (const needle of ['In-progress bd issue', 'x-1', 'Implement the feature', 'bd show']) {
+    for (const needle of ['In-progress tracker task', 'x-1', 'Implement the feature', '.diarie/tasks/']) {
       if (!ctx.includes(needle)) return { ok: false, reason: `missing "${needle}": ${ctx.slice(0, 200)}` }
     }
     return { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
-    rmSync(bdStubDir, { recursive: true, force: true })
+    rmSync(stubDir, { recursive: true, force: true })
   }
 })
 

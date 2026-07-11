@@ -22,54 +22,60 @@ For `bm-enrichment` agents: cap at 15 to avoid write contention.
 
 | Cap                         | Threshold | When Exceeded                                |
 | --------------------------- | --------- | -------------------------------------------- |
-| Beads issues from research  | 15        | Narrow scope or split into multiple sessions |
+| Tasks from research         | 15        | Narrow scope or split into multiple sessions |
 | Write agents per sprint     | 15        | Batch in sequential waves                    |
 | Read-only agents per sprint | 37        | Batch in sequential waves                    |
 | Findings files before dedup | 20        | Run dedup pass before launching more         |
 
-## bd CLI Patterns
+## Tracker CLI Patterns
 
-Common patterns used during swarm sprints:
+Common patterns used during swarm sprints. The reader is
+`node scripts/ready-walker.mjs` (the `diarie` CLI will replace it once
+published; use the script path for now); the store is
+`.diarie/tasks/tasks-<slug>.yml`, edited directly (plain Edit/Write — there is
+no CRUD helper) and validated with `node validate-tasks.mjs`:
 
 ```bash
-# Wave planning — list all ready issues
-bd ready
+# Wave planning — list all ready issues (add --format json to parse)
+node scripts/ready-walker.mjs
 
 # Agent prompt construction — full issue detail
-bd show <id>
+# read the task entry in .diarie/tasks/tasks-<slug>.yml
 
 # Pre-wave — claim issues before launch
-bd update <id> --claim
+# edit the task row: status: in_progress + agent: <name>, then:
+node validate-tasks.mjs
 
 # Post-wave — close completed issues
-bd close <id>
+# edit the task row: status: completed, then:
+node validate-tasks.mjs
 
 # Post-wave — check for unclosed stragglers
-bd list --status in_progress
+node scripts/ready-walker.mjs --filter in_progress
 
 # Sprint summary
-bd stats
+node scripts/ready-walker.mjs --stats
 
 # Dependency-aware ordering (find blocking chains)
-bd blocked
+node scripts/ready-walker.mjs --blocked
 ```
 
-### Beadless run-state equivalents
+### Tracker-less run-state equivalents
 
-When swarm-wave sources waves from a `ROADMAP.md` or a manual list (beads
-absent — no `.beads/` directory, or no `bd` on `PATH`), the `SWARM-NN.md`
-`### Item Status` table replaces the `bd` lifecycle commands. The orchestrator
-owns every write:
+When swarm-wave sources waves from a `ROADMAP.md` or a manual list (tracker
+absent — no `.diarie/tasks/tasks-*.yml` file, or the reader is not runnable),
+the `SWARM-NN.md` `### Item Status` table replaces the tracker lifecycle edits.
+The orchestrator owns every write:
 
-| `bd` command (beads source)    | Beadless equivalent (Item Status table)        |
-| ------------------------------ | ---------------------------------------------- |
-| `bd ready` / `bd list`         | the work items parsed from ROADMAP / supplied  |
-| `bd update <id> --claim`       | set the item's row to `claimed`                |
-| `bd close <id>`                | set the item's row to `done`                   |
-| `bd list --status in_progress` | rows still `claimed` (not `done`) are unclosed |
+| Tracker action (tracker source)             | Tracker-less equivalent (Item Status table)    |
+| ------------------------------------------- | ---------------------------------------------- |
+| `node scripts/ready-walker.mjs`             | the work items parsed from ROADMAP / supplied  |
+| edit task row → `status: in_progress`       | set the item's row to `claimed`                |
+| edit task row → `status: completed`         | set the item's row to `done`                   |
+| `ready-walker.mjs --filter in_progress`     | rows still `claimed` (not `done`) are unclosed |
 
 Items deferred to a later wave are marked `carried`. Agent prompts omit the
-`bd close` line in this mode (see below).
+completion-edit line in this mode (see below).
 
 ## Batch Issue Creation from Research
 
@@ -79,17 +85,18 @@ When workflow 5 (Research wave) produces findings for issue creation:
 2. Hand off to `/backlog-groomer workflow 5 (Create issues from findings)`
    via the Skill tool — reference the findings file
 3. Backlog-groomer deduplicates against existing issues, proposes structured
-   issues, and runs `bd create` with user approval
+   issues, and appends task entries to `.diarie/tasks/tasks-<slug>.yml`
+   (via Edit/Write — no CRUD helper) with user approval
 
-Do not create issues directly from swarm-wave. Backlog-groomer owns `bd
-create` for research findings (it has dedup logic and title conventions).
+Do not create tasks directly from swarm-wave. Backlog-groomer owns task
+creation for research findings (it has dedup logic and title conventions).
 
 ## Agent Prompt Template
 
 Canonical form for task agents launched by workflow 2 (Execute a wave):
 
 ```
-Task: [issue title from bd show]
+Task: [issue title from the task entry]
 Issue: [issue ID]
 
 Scope — you may ONLY modify these files:
@@ -100,13 +107,15 @@ Scope — you may ONLY modify these files:
 Constraint: Do not modify any file outside the scope list above.
 Other files in the same directory are owned by other agents in this wave.
 
-Instructions: Run `bd show [id]` to read the full issue description.
-Implement the requested change within your file scope.
+Instructions: Read the task entry in `.diarie/tasks/tasks-<slug>.yml` for
+the full issue description. Implement the requested change within your file
+scope.
 
 Validation: Run `npm run check` before finishing. If it fails, fix the
 issues within your scope.
 
-Completion: Run `bd close [id]` when the issue is done.
+Completion: Edit your task row to `status: completed` (then run
+`node validate-tasks.mjs`) when the issue is done.
 ```
 
 Key requirements:
@@ -115,11 +124,11 @@ Key requirements:
   globs liberally and wander outside scope
 - **Explicit isolation constraint** — the "do not modify" line prevents
   cross-agent file contention
-- **`bd close` instruction** — without it, issues remain `in_progress`
-  after the agent finishes. **Beadless source:** omit the `bd show`/`bd close`
-  lines; inline the issue description into the prompt and let the agent report
-  completion in its final message — the orchestrator marks the Item Status row
-  `done`.
+- **completion instruction** — without it, tasks remain `in_progress`
+  after the agent finishes. **Tracker-less source:** omit the read-task/
+  completion-edit lines; inline the issue description into the prompt and let
+  the agent report completion in its final message — the orchestrator marks the
+  Item Status row `done`.
 - **`npm run check`** — catches lint/type errors before the post-wave gate
 
 ## Pre-Sprint Research Pattern
@@ -127,7 +136,8 @@ Key requirements:
 Run before workflow 1 (Plan a swarm sprint) when the backlog has items with
 unclear scope:
 
-1. Identify under-specified issues (`bd ready` + scan descriptions)
+1. Identify under-specified issues (`node scripts/ready-walker.mjs` + scan
+   descriptions)
 2. Run workflow 5 (Research wave) with intent `validate` scoped to those
    issues
 3. Hand off enriched findings to `/backlog-groomer workflow 6 (Enrich an

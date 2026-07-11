@@ -484,7 +484,7 @@ for (const file of skillFiles) {
   }
   auditWorkflowReferences(file, content)
   for (const f of auditSilentSkips(content)) {
-    warn(file, `${f.line} — un-announced silent skip of a bd step (CLAUDE.md "### Beads-availability convention" requires announce/Tier): ${f.snippet}`)
+    warn(file, `${f.line} — un-announced silent skip of a tracker step (CLAUDE.md "### Files-availability convention" requires announce/Tier): ${f.snippet}`)
   }
   if ('user-invocable' in fm && typeof fm['user-invocable'] !== 'boolean') {
     error(file, `user-invocable must be a boolean, got ${typeof fm['user-invocable']}`)
@@ -551,7 +551,7 @@ if (existsSync(agentsDir)) {
     }
     auditWorkflowReferences(file, content)
     for (const f of auditSilentSkips(content)) {
-      warn(file, `${f.line} — un-announced silent skip of a bd step (CLAUDE.md "### Beads-availability convention" requires announce/Tier): ${f.snippet}`)
+      warn(file, `${f.line} — un-announced silent skip of a tracker step (CLAUDE.md "### Files-availability convention" requires announce/Tier): ${f.snippet}`)
     }
 
     if ('effort' in fm && !VALID_EFFORT_VALUES.has(String(fm.effort))) {

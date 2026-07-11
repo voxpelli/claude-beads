@@ -1,7 +1,8 @@
 # ROADMAP Interpretation
 
-How swarm-wave reads a `ROADMAP.md` as a work source when beads is unavailable
-(workflow 1 (Plan a swarm sprint), the "No beads, `ROADMAP.md` present" branch).
+How swarm-wave reads a `ROADMAP.md` as a work source when the tracker is
+unavailable (workflow 1 (Plan a swarm sprint), the "No tracker, `ROADMAP.md`
+present" branch).
 
 **The contract is adaptive, never prescriptive.** swarm-wave reads the ROADMAP
 in *its own* idiom and vocabulary. It never reformats the file, never imposes a
@@ -99,10 +100,10 @@ Before any wave executes, present each proposed wave for confirmation showing:
 
 Then follow the normal workflow 1 (Plan a swarm sprint) clustering and approval
 gate. Priority and dependency cues are read in the file's own idiom — wave order
-as written, "depends on …", "sequenced after …". Issue creation stays beads-only
-(swarm-wave never writes a ROADMAP); run-state for a beadless wave lives in the
-`SWARM-NN.md` Item Status table (see `command-patterns.md` "Beadless run-state
-equivalents").
+as written, "depends on …", "sequenced after …". Task creation stays
+tracker-only (swarm-wave never writes a ROADMAP); run-state for a tracker-less
+wave lives in the `SWARM-NN.md` Item Status table (see `command-patterns.md`
+"Tracker-less run-state equivalents").
 
 ## Validation against the surveyed idioms
 

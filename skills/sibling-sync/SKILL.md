@@ -84,8 +84,8 @@ this project's side of the SYNERGY/UPSTREAM files.
   sibling SYNERGY) and 3 (Sync sibling UPSTREAM) end with a per-sibling
   action menu (see "Action-menu protocol" below) that delegates writes to
   the owning skill (`/vp-beads:synergy-tracker`,
-  `/vp-beads:upstream-tracker`) via the `Skill` tool, or runs `bd create`
-  directly for beads issues. /sibling-sync still owns nothing in Basic
+  `/vp-beads:upstream-tracker`) via the `Skill` tool, or appends task entries
+  directly to the flat-YAML tracker. /sibling-sync still owns nothing in Basic
   Memory and nothing in this project's SYNERGY/UPSTREAM files —
   ownership boundaries are unchanged.
 
@@ -146,9 +146,9 @@ the `PRIVATE-SYNERGY-*` `file` predicate:
   - **Reciprocation:** workflow 4 (Apply reciprocation batch) skips it entirely
     (writing `SYNERGY-<this-project>.md` on the sibling's side would expose the
     relationship).
-  - **`bd create`:** the action menu suppresses the UPSTREAM "file beads issues"
-    option (a committed `.beads/*.jsonl` entry would leak the name) — findings
-    stay report-only.
+  - **Task creation:** the action menu suppresses the UPSTREAM "file tracker
+    tasks" option (a committed `.diarie/tasks/*.yml` entry naming the sibling
+    would leak it) — findings stay report-only.
   - **Logging on this side:** any "log unreciprocated entry" follow-up routes to
     the gitignored `PRIVATE-SYNERGY-<name>.md`, never a committed
     `SYNERGY-<name>.md` (delegated to `/synergy-tracker`).
@@ -433,7 +433,7 @@ compare friction tracking on each. Same report-only contract as workflow 2
      `Ownership: upstream` on these entries means THIS project owns the
      fix (we are upstream from the sibling's perspective). Surface ALL
      unresolved entries — every one is a request directed at us. Action
-     hint: file beads issues here or address inline; consider logging a
+     hint: file tracker tasks here or address inline; consider logging a
      cross-reference in our `UPSTREAM-<sibling-name>.md` if a workaround
      is built.
    - **(f) Our unresolved friction against the sibling** — entries in
@@ -493,7 +493,7 @@ via `/upstream-tracker` workflow 7 (Sync from Basic Memory) on its own.
   marks Workaround: partial; we shipped in v0.12.0. See finding (h).
 - "synergy-tracker: mandate bilateral reciprocation" (Feature Requests, 2026-05-04)
   Ownership on their side: upstream (us) · Workaround on their side: full
-  → file beads issue or address inline
+  → file tracker task or address inline
 
 ### (f) Our unresolved friction against the sibling
 - "Agent effort defaults not overridable from parent" (Feature Requests, 2026-04-05)
@@ -515,8 +515,8 @@ via `/upstream-tracker` workflow 7 (Sync from Basic Memory) on its own.
    this workflow's UPSTREAM tier. The "Action-menu protocol" section below
    specifies the full UPSTREAM tier: findings (b) and (d) collapse into a
    single "Update our UPSTREAM" option that delegates to
-   `/vp-beads:upstream-tracker`; finding (e) routes directly to `bd
-   create`; finding (g) delegates to `/vp-beads:upstream-tracker` workflow
+   `/vp-beads:upstream-tracker`; finding (e) routes directly to task
+   creation; finding (g) delegates to `/vp-beads:upstream-tracker` workflow
    3 (Resolve an entry). Findings (a), (c), (f), and (h) are informational
    and not present in the menu. If no UPSTREAM findings are actionable AND
    no SYNERGY findings are actionable for this sibling, skip the prompt
@@ -579,7 +579,7 @@ Memory)'s per-entry confirmation pattern.
    - **Verification reminder for the user**: run `git status` in the
      sibling repo, review the appended entries, commit on that side. /sibling-sync
      does not commit on the sibling's behalf. Also remind the user to file
-     a beads follow-up on the sibling for re-verification next sprint, per
+     a tracker follow-up on the sibling for re-verification next sprint, per
      `/synergy-tracker` workflow 1 (Log a synergy entry)'s reciprocation
      mandate.
 
@@ -636,8 +636,8 @@ Memory)'s per-entry confirmation pattern.
 ## Action-menu protocol
 
 This skill never writes SYNERGY/UPSTREAM/BM directly — even the menu options
-dispatch to the owning skill via the `Skill` tool, or run `bd create` for
-beads issues. The menu is a navigation aid, not a write path. The default
+dispatch to the owning skill via the `Skill` tool, or append task entries to
+the flat-YAML tracker. The menu is a navigation aid, not a write path. The default
 read-only contract from earlier versions still holds: a user who picks
 "None" for both questions receives the report and exits without any
 mutation.
@@ -668,7 +668,7 @@ into a single option to keep the question within the 4-option SDK cap:
 | Option                                          | Trigger                            | Dispatch                                                                                                                                                              |
 | ----------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Update our UPSTREAM (b/d, N total)           | finding (b) > 0 OR finding (d) > 0 | `Skill(skill="/vp-beads:upstream-tracker", args=...)` — args route to workflow 1 (Log a new entry) and/or workflow 7 (Sync from Basic Memory) inside upstream-tracker |
-| 2. File beads issues for sibling's friction (N) | finding (e) > 0                    | `Bash` → `bd create` per entry                                                                                                                                        |
+| 2. File tracker tasks for sibling's friction (N) | finding (e) > 0                    | `Edit`/`Write` → append a task entry to `.diarie/tasks/tasks-<slug>.yml` per finding                                                                                  |
 | 3. Resolve cross-stale entries (N)              | finding (g) > 0                    | `Skill(skill="/vp-beads:upstream-tracker", args=...)` → workflow 3 (Resolve an entry)                                                                                 |
 | 0. None — upstream report only                  | always                             | exit UPSTREAM tier without action                                                                                                                                     |
 
@@ -681,8 +681,8 @@ questions per call).
 `file` is `PRIVATE-SYNERGY-*`, every committed-write menu option is removed
 because it would commit the private name:
 
-- **Q2 option 2 (`bd create`) is suppressed** — a `.beads/*.jsonl` entry naming
-  the sibling would leak it. The finding stays in the report only. (Finding (e)
+- **Q2 option 2 (task creation) is suppressed** — a committed `.diarie/tasks/*.yml`
+  entry naming the sibling would leak it. The finding stays in the report only. (Finding (e)
   does not arise anyway: workflow 3 (Sync sibling UPSTREAM) skips Mode B for
   private siblings.)
 - **Q1 option 2 (Log unreciprocated sibling entries) redirects** — its
@@ -707,19 +707,20 @@ delegated skill receives the prose as narrative context. Templates:
 - **UPSTREAM 3 (Resolve cross-stale entries):**
   `Resolve entries in UPSTREAM-<sibling-name>.md: <titles>. Verify against the sibling's recent changelog/tags first. Invoke workflow 3 (Resolve an entry) for each.`
 
-For UPSTREAM 2 (`bd create`), construct each call with:
+For UPSTREAM 2 (file tracker tasks), append one task entry per finding to
+`.diarie/tasks/tasks-<slug>.yml` via `Edit`/`Write` (substrate-not-opinion —
+there is no CRUD helper; task writes are plain YAML edits). Each entry carries:
 
-- `--title="<entry title from sibling>"`
-- `--type=task` always. The sibling's UPSTREAM file body is plain prose
-  and lacks the structured sections that `bd`'s `validation.on-create=error`
-  requires for `--type=bug` (`## Steps to Reproduce`, `## Acceptance
-  Criteria`) and `--type=feature` (`## Acceptance Criteria`). Filing as
-  `task` always succeeds; the user can refile the resulting issue with
-  `bd update --type=bug` after adding the required sections, or supersede
-  with a properly structured bug-type issue. Note this in the post-batch
-  report: "Filed N task-type beads issues from sibling friction; refile as
-  bug/feature with required sections if needed."
-- `--description="<entry body verbatim>\n\nSibling <sibling-name> tracks this against us in their UPSTREAM-<this-name>.md. Source section: <Bugs | Feature Requests | Upstream Opportunities>."`
+- `id:` — a fresh unique id following the store's existing id convention
+- `title:` — `<entry title from sibling>`
+- `status: pending`
+- `type: task` — set directly. The flat-YAML schema has no hard on-create gate,
+  so the type is a free choice; `validate-tasks.mjs` only *warns* (a
+  test-ratchet) on a *completed* task missing `acceptance_criteria`. No
+  file-as-task-to-dodge-validation workaround is needed.
+- `priority:` — inherit from the sibling entry, or default per the store convention
+- `description:` — `<entry body verbatim>`, followed by a cross-reference line:
+  `Sibling <sibling-name> tracks this against us in their UPSTREAM-<this-name>.md. Source section: <Bugs | Feature Requests | Upstream Opportunities>.`
 
 ### Precedence with `--auto-reciprocate`
 
@@ -742,12 +743,12 @@ Most actions self-resolve on the next sibling-sync run:
 - Q2 option 1 closes findings (b) and (d) on the UPSTREAM side.
 - Q2 option 3 annotates `_(Resolved ...)_` so workflow 3 (Sync sibling UPSTREAM)'s matching logic suppresses finding (g) thereafter.
 
-Only Q2 option 2 (`bd create` for finding (e)) does not self-resolve: the
+Only Q2 option 2 (task creation for finding (e)) does not self-resolve: the
 sibling's `UPSTREAM-<this-name>.md` still carries the entry until the
 sibling annotates it as resolved on their side. Finding (e) will re-fire
 on subsequent sibling-sync runs until that happens. This is expected
-behavior — it reminds the user the friction is real and the local `bd`
-issue tracks our intent. No "skip-already-filed" cache is maintained.
+behavior — it reminds the user the friction is real and the local tracker
+task tracks our intent. No "skip-already-filed" cache is maintained.
 
 ### Failure modes
 
@@ -766,9 +767,9 @@ issue tracks our intent. No "skip-already-filed" cache is maintained.
   parent agent decide whether to re-invoke `/sibling-sync` directly. No
   formal subagent probe is required — best-effort detection by attempting
   the `AskUserQuestion` call and falling back on the SDK error suffices.
-- **`bd create` failure** (e.g., missing required `--description` field for
-  bug type). Report the specific failure and continue to the next entry;
-  don't abort the whole run.
+- **Malformed task entry** (e.g., a YAML entry that fails `node
+  validate-tasks.mjs`). Report the specific failure and continue to the next
+  entry; don't abort the whole run.
 
 ## Sprint Workflow Integration
 

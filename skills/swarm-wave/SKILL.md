@@ -1,11 +1,11 @@
 ---
 name: swarm-wave
-description: "Orchestrate multi-agent development sprints with wave-based parallelism. Use when the user wants to plan a swarm sprint, partition work into file-disjoint waves, map file contention across open issues, run a post-wave quality gate with review agents, manage agent backpressure, run a parallel research wave, or coordinate multiple concurrent agents on a shared codebase. Works with or without beads: sources waves from the beads backlog, from a ROADMAP.md, or from a manually supplied work list. Trigger phrases: 'swarm sprint', 'wave plan', 'launch wave', 'execute wave', 'post-wave gate', 'contention map', 'research wave', 'parallel agents', 'multi-agent sprint', 'agent wave', 'swarm orchestration', 'swarm from ROADMAP', 'wave plan without beads', 'swarm with manual list'."
+description: "Orchestrate multi-agent development sprints with wave-based parallelism. Use when the user wants to plan a swarm sprint, partition work into file-disjoint waves, map file contention across open issues, run a post-wave quality gate with review agents, manage agent backpressure, run a parallel research wave, or coordinate multiple concurrent agents on a shared codebase. Works with or without a tracker: sources waves from the flat-YAML tracker, from a ROADMAP.md, or from a manually supplied work list. Trigger phrases: 'swarm sprint', 'wave plan', 'launch wave', 'execute wave', 'post-wave gate', 'contention map', 'research wave', 'parallel agents', 'multi-agent sprint', 'agent wave', 'swarm orchestration', 'swarm from ROADMAP', 'wave plan without a tracker', 'swarm with manual list'."
 argument-hint: "[workflow] [wave-number|topic]"
 user-invocable: true
 paths:
   - "SWARM-*.md"
-  - ".beads/**"
+  - ".diarie/tasks/**"
 allowed-tools:
   - Bash
   - Read
@@ -27,7 +27,7 @@ files.
 File isolation is the primary safety mechanism — agents within a wave each own
 distinct files, preventing merge conflicts without relying on worktrees.
 
-This skill does not create beads issues (use `/backlog-groomer`), write
+This skill does not create tracker tasks (use `/backlog-groomer`), write
 retrospectives (use `/retrospective`), or gate sprint closure (the
 `sprint-review` agent handles that). It orchestrates the execution phase
 between backlog grooming and sprint close.
@@ -67,13 +67,14 @@ Issues: id1, id2, id3
 ...
 ```
 
-**Item Status is the run-state table.** When beads is available, `bd` is the
-source of truth (claim/close) and this table mirrors it for at-a-glance status.
-When beads is **unavailable** (ROADMAP or manual source), this table *is* the
-source of truth: the orchestrator owns all writes to it — `pending` at plan
-time, `claimed` when an agent launches, `done` when the agent reports complete,
-`carried` when an item is deferred to a later wave. `Item` is a beads id when
-beads is used, otherwise a short slug for the work item.
+**Item Status is the run-state table.** When the flat-YAML tracker is available,
+the `.diarie/tasks/*.yml` files are the source of truth (claim/close via the
+task rows) and this table mirrors them for at-a-glance status. When the tracker
+is **unavailable** (ROADMAP or manual source), this table *is* the source of
+truth: the orchestrator owns all writes to it — `pending` at plan time,
+`claimed` when an agent launches, `done` when the agent reports complete,
+`carried` when an item is deferred to a later wave. `Item` is a task id when the
+tracker is used, otherwise a short slug for the work item.
 
 ## Workflows
 
@@ -88,27 +89,30 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
 
 **Steps:**
 
-1. **Determine the work source (Tier A — require-or-fallback).** Beads is
-   available iff a `.beads/` directory exists **and** `command -v bd` succeeds;
-   this component is **Tier A** per CLAUDE.md `### Beads-availability
-   convention`. Select the wave source by precedence — **beads wins when both
-   beads and a `ROADMAP.md` exist**:
+1. **Determine the work source (Tier A — require-or-fallback).** The flat-YAML
+   tracker is available iff a `.diarie/tasks/tasks-*.yml` file exists **and** the
+   tracker reader (`node scripts/ready-walker.mjs`, or the `diarie` CLI) is
+   runnable; this component is **Tier A** per CLAUDE.md `### Files-availability
+   convention`. Select the wave source by precedence — **the tracker wins when
+   both the tracker and a `ROADMAP.md` exist**:
 
-   - **Beads available** — run `bd ready` and `bd list --status open` to load
-     the candidate issue set.
-   - **No beads, `ROADMAP.md` present** — interpret it as the work source
+   - **Tracker available** — run `node scripts/ready-walker.mjs` and read
+     `.diarie/tasks/*.yml` to load the candidate task set. (The `diarie` CLI
+     will replace `node scripts/ready-walker.mjs` once published; use the script
+     path for now.)
+   - **No tracker, `ROADMAP.md` present** — interpret it as the work source
      following `references/roadmap-interpretation.md` (read it in its own
      idiom; never reformat it). If that interpretation declines the ROADMAP
      (it is not a parallelizable work plan), fall through to the manual path.
-   - **No beads and no usable ROADMAP** — **manual path**: ask the user for the
+   - **No tracker and no usable ROADMAP** — **manual path**: ask the user for the
      work items and their file scopes, reusing the workflow 4 (Map file
      contention) step-1 prompt (item titles + descriptions + the files each
      touches).
 
    Downstream steps operate on the resulting item list regardless of source.
-   Issue creation and `bd` claim/close are beads-only; for a beadless source
-   the `SWARM-NN.md` Item Status table is the run-state equivalent (see
-   `## SWARM Files`).
+   Task creation and claim/close (YAML edits) are tracker-only; for a
+   tracker-less source the `SWARM-NN.md` Item Status table is the run-state
+   equivalent (see `## SWARM Files`).
 2. Read the project structure to understand the codebase layout. Use Glob for
    key source directories and Read for `package.json` and relevant config files.
    This builds the mental model for file contention analysis.
@@ -126,8 +130,9 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
      `references/agent-concurrency-limits.md` and reduce if needed.
    - 4e. Each wave gets one background research agent slot if research
      questions exist for the sprint.
-   - 4f. Issues that block other issues (check with `bd blocked`) must go in
-     an earlier wave than their dependents.
+   - 4f. Issues that block other issues (check with
+     `node scripts/ready-walker.mjs --blocked`) must go in an earlier wave than
+     their dependents.
    - 4g. **Single owner per issue.** When an issue's scope spans files that
      would otherwise be split across multiple agents, assign the whole issue
      to one agent — issue narrative coherence beats wave-level file balance.
@@ -148,11 +153,9 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
    approval.** After approval, suggest: "Run `/swarm-wave execute-wave 1` to
    start Wave 1."
 
-**Note:** GitHub-mirrored beads sync via `bd github sync` runs *post-wave* (or
-post-sprint), not as part of swarm-wave — the bd v1.0.0 Integration Charter
-(`gastownhall/beads@5d524cf7:docs/INTEGRATION_CHARTER.md`) explicitly punts
-cross-tracker orchestration out of bd's scope, and swarm-wave follows the same
-boundary.
+**Note:** Any cross-tracker or remote-mirror sync runs *post-wave* (or
+post-sprint), not as part of swarm-wave — swarm-wave orchestrates the execution
+phase only and does not own tracker↔remote synchronization.
 
 ### 2. Execute a wave
 
@@ -172,22 +175,25 @@ argument.
    Phase 2 (GC cooldown — skip for waves with fewer than 5 agents), and
    Phase 3 (pressure check). If memory pressure is HIGH, reduce agent
    count and note the reduction. If CRITICAL, stop and report.
-4. Claim all wave issues: run `bd update <id> --claim` for each issue ID in
-   the wave. Report the claimed IDs. **Beadless source:** set each item's row
-   in the wave's `### Item Status` table to `claimed` instead (the orchestrator
-   owns these writes).
+4. Claim all wave issues: for each task ID in the wave, edit its row in
+   `.diarie/tasks/tasks-<slug>.yml` to set `status: in_progress` and
+   `agent: <name>`, then run `node validate-tasks.mjs`. Report the claimed IDs.
+   **Tracker-less source:** set each item's row in the wave's `### Item Status`
+   table to `claimed` instead (the orchestrator owns these writes).
 5. Update the wave status to `running` in the SWARM file.
 6. Launch task agents in parallel. For each agent slot in the wave plan,
    use the Agent tool with a prompt built from the canonical template in
    `references/command-patterns.md`. Key elements:
 
-   - Issue title and ID (from `bd show <id>`)
+   - Issue title and ID (from the task entry in
+     `.diarie/tasks/tasks-<slug>.yml`)
    - Exhaustive file scope list (files this agent may modify — never globs)
    - Isolation constraint: "Do not modify any file outside your scope list."
    - Validation: "Run `npm run check` before finishing."
-   - Completion: "Run `bd close <id>` when the issue is done." (Beadless
-     source: omit this line — the agent reports completion in its final
-     message and the orchestrator marks the Item Status row `done`.)
+   - Completion: "Edit your task row to `status: completed` when the issue is
+     done." (Tracker-less source: omit this line — the agent reports completion
+     in its final message and the orchestrator marks the Item Status row
+     `done`.)
 
    If a background research agent is planned for this wave, include it in
    the same parallel launch batch. Research agents write findings to a
@@ -195,12 +201,12 @@ argument.
 
    All agent launches go in a single response (parallel execution).
 7. Wait for all agents to complete. As each agent reports done, log it.
-8. Verify closures: run `bd list --status in_progress` to check for unclosed
-   issues. Any issue still `in_progress` means the agent did not complete —
-   note it for the user (carry forward or retry in the next wave). **Beadless
-   source:** the equivalent check is the wave's `### Item Status` table — any
-   row still `claimed` (not `done`) is the unclosed-item signal; mark deferred
-   items `carried`.
+8. Verify closures: run `node scripts/ready-walker.mjs --filter in_progress` to
+   check for unclosed issues. Any task still `in_progress` means the agent did
+   not complete — note it for the user (carry forward or retry in the next
+   wave). **Tracker-less source:** the equivalent check is the wave's
+   `### Item Status` table — any row still `claimed` (not `done`) is the
+   unclosed-item signal; mark deferred items `carried`.
 9. Update wave status to `gate-pending` in the SWARM file.
 10. Suggest: "Wave N agents complete. Run `/swarm-wave post-wave-gate N` to
     run the quality gate."
@@ -239,7 +245,8 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
    - 5a. Run tests sequentially (workspace-first, root-last if applicable).
    - 5b. If tests pass: commit all wave changes with
      `git commit --no-gpg-sign -m "feat: wave N — [theme] (N issues)"`.
-   - 5c. Close any remaining wave issues with `bd close`.
+   - 5c. Close any remaining wave issues by editing their task rows to
+     `status: completed` (then `node validate-tasks.mjs`).
    - 5d. Update wave status to `committed` in the SWARM file.
    - 5e. Report: "Wave N passed gate and committed. N issues closed."
    - 5f. **If this is the final wave**: offer the retrospective handoff.
@@ -276,12 +283,12 @@ sprint).
 
 **Steps:**
 
-1. Run `bd ready` to get all open issues. If beads is unavailable, ask the
-   user to provide issue titles and descriptions — the same manual path
-   workflow 1 (Plan a swarm sprint) Tier A falls back to.
+1. Run `node scripts/ready-walker.mjs` to get all open issues. If the tracker is
+   unavailable, ask the user to provide issue titles and descriptions — the same
+   manual path workflow 1 (Plan a swarm sprint) Tier A falls back to.
 2. For each issue, identify which files it is likely to touch:
-   - 2a. Read the issue description (`bd show <id>`) — look for explicit
-     file mentions.
+   - 2a. Read the issue description (the task entry in
+     `.diarie/tasks/tasks-<slug>.yml`) — look for explicit file mentions.
    - 2b. Grep/Glob: search for function names, class names, or keywords
      mentioned in the description against the codebase. Map matches to
      files.
@@ -333,7 +340,7 @@ the parallelism and deduplication.
    not match reality — research agents have a 15-20% false positive rate.
 8. Present the merged, validated findings to the user. Suggest: "Run
    `/backlog-groomer workflow 5 (Create issues from findings)` to turn
-   these into issues." Keep the findings cap at roughly 15 beads — more
+   these into issues." Keep the findings cap at roughly 15 tasks — more
    suggests the research scope was too broad.
 
 ## Guidelines
@@ -347,13 +354,14 @@ the parallelism and deduplication.
   gate)) must fully pass before the next wave launches. Never commit wave work that has not
   passed the gate. "Fix it later" is how parallel agent work produces
   cascading failures.
-- **Beads is preferred, not required (Tier A).** swarm-wave needs a *work
-  source*, not beads specifically (per CLAUDE.md `### Beads-availability
-  convention`). Use beads when available; otherwise source waves from a
-  `ROADMAP.md` (workflow 1 (Plan a swarm sprint)) or a manual list, and use the
-  `SWARM-NN.md` Item Status table as run-state in place of `bd` claim/close.
-  Guard every `bd` command so a beadless run never errors. Only stop when no
-  work source can be obtained at all.
+- **The tracker is preferred, not required (Tier A).** swarm-wave needs a *work
+  source*, not the flat-YAML tracker specifically (per CLAUDE.md
+  `### Files-availability convention`). Use the tracker when available;
+  otherwise source waves from a `ROADMAP.md` (workflow 1 (Plan a swarm sprint))
+  or a manual list, and use the `SWARM-NN.md` Item Status table as run-state in
+  place of the YAML task rows' claim/close. Guard every tracker command so a
+  tracker-less run never errors. Only stop when no work source can be obtained
+  at all.
 - **SWARM files are ephemeral.** `SWARM-NN.md` files are working documents,
   not committed artifacts. They should be gitignored.
 - **No mutations without approval.** Wave plans require explicit user
@@ -361,8 +369,9 @@ the parallelism and deduplication.
   described to the user before fix agents launch. `/retrospective` is only
   invoked via the Skill tool after explicit user confirmation.
 - **Agent prompts must be complete.** Each task agent needs: issue title,
-  file scope, isolation constraint, validation command, and `bd close`
-  instruction. See `references/command-patterns.md` for the canonical
+  file scope, isolation constraint, validation command, and completion
+  instruction (edit the task row to `status: completed`). See
+  `references/command-patterns.md` for the canonical
   template. An incomplete prompt is a gate failure waiting to happen.
 - **Research agents are read-only for source files.** Research agents may
   write findings files and may write to Basic Memory (using their own

@@ -24,7 +24,6 @@ skills/
     SKILL.md                          # Backlog triage, research, issue creation
     references/
       backlog-health-heuristics.md    # Staleness, closure, priority, issue templates
-  harden-memories/SKILL.md            # Audit and prune bd remember entries
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
   sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
   synergy-tracker/
@@ -67,23 +66,13 @@ Dev tooling only: validation and linting via `npm run check`.
   `/upstream-tracker` for mutations. When Basic Memory is available, also
   checks for cross-project friction notes on project dependencies.
 
-### Skills (8)
+### Skills (7)
 
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
   investigate-topic-as-spike, create-issues-from-findings, enrich-existing-issue.
   Cross-references Basic Memory for known friction and uses Tavily/DeepWiki for
   external research. User-invocable as `/backlog-groomer`.
-- **harden-memories** — **Read-only** audit of the project's `bd remember`
-  entries so each earns its per-session `bd prime` injection cost. Reads
-  `bd memories`, classifies each entry with the three-question taxonomy
-  (already-captured → remove; stable architecture → migrate to CLAUDE.md /
-  auto-memory MEMORY.md / Basic Memory; recovery-trigger-only → keep), and
-  presents a triage table **plus the exact `bd forget` / migration commands for
-  the user to run** — it never writes or deletes itself (keeps the irreversible
-  `bd forget` under human control). Tier B (beads-specific). Scoped strictly to
-  the `bd remember` store — not Auto Dream, not BM graph hygiene. User-invocable
-  as `/harden-memories`.
 - **retrospective** — Generates a sprint retrospective: reads git history,
   `UPSTREAM-*.md` files, and conversation context, creates `RETRO-NN.md`, runs
   a knowledge gap audit, writes generalizable learnings to Basic Memory, and
@@ -217,43 +206,45 @@ include the name parenthetically. Bare numbers (e.g., "workflow 6") are
 fragile and break silently if workflows are renumbered. Never use shorthand
 like "W3" or "W6" — the codebase spells it out.
 
-### Beads-availability convention
+### Files-availability convention
 
-vp-beads must **not force beads**. Every skill and the agent detect availability
-and degrade along a defined tier — **silently skipping a `bd` step is a bug**: it
-makes a deliberately beadless project look like a broken one. Hooks are **exempt**
-— a hook's silent fallback (e.g. `session-start.sh` omitting the in-progress
-`bd` claim from its compaction-recovery snapshot when `bd` is absent) is recovery
-plumbing, not a user-facing workflow step.
+vp-beads must **not force its flat-YAML tracker**. Every skill and the agent detect
+availability and degrade along a defined tier — **silently skipping a tracker step
+is a bug**: it makes a project that tracks its work elsewhere look like a broken
+one. Hooks are **exempt** — a hook's silent fallback (e.g. `session-start.sh`
+omitting the in-progress claim from its compaction-recovery snapshot when no
+tracker files exist) is recovery plumbing, not a user-facing workflow step.
 
-**Detection predicate (canonical).** Beads is available for a project iff a
-`.beads/` directory exists **and** `command -v bd` succeeds. Both conditions,
-checked every time — neither alone.
+**Detection predicate (canonical).** The flat-YAML tracker is available for a
+project iff a `.diarie/tasks/tasks-*.yml` file exists **and** the tracker reader is
+runnable (`node scripts/ready-walker.mjs` in this repo; the `diarie` CLI once it
+ships — see `## Active migration`). Both conditions, checked every time — neither
+alone. Unlike the old `.beads/` + `bd` binary, these are ordinary committed files
+plus a small pure reader — no daemon, no vendor.
 
 **Tiers.**
 
-- **Tier A — require-or-fallback.** The component needs a work source but not
-  *beads specifically*: use beads when available, else fall back to another
-  source (`ROADMAP.md`, or a manual list) and only stop when no source can be
-  obtained. Components: `swarm-wave` (workflow 1 (Plan a swarm sprint)).
-- **Tier B — beads-specific stop.** The component's whole purpose is operating
-  on a beads-only store; with no beads there is nothing to do. Stop cleanly with
-  a message that names the missing predicate and, **when a beadless alternative
-  exists, redirects to it** (`backlog-groomer` → `/swarm-wave` / `ROADMAP.md`).
-  A component whose store only exists under beads (`harden-memories`, operating
-  on the `bd remember` store) stops without a redirect — there is no beadless
-  equivalent. Components: `backlog-groomer`, `harden-memories`.
-- **Tier C — degrade-and-announce.** The component does useful non-beads work
-  too; when beads is absent it runs the rest and **announces** each skipped
-  bd-dependent step (never skips it silently). Components: `retrospective`,
-  `sprint-review`.
+- **Tier A — require-or-fallback.** The component needs a work source but not the
+  *flat-YAML tracker specifically*: use `.diarie/tasks/` when available, else fall
+  back to another source (`ROADMAP.md`, or a manual list) and only stop when no
+  source can be obtained. Components: `swarm-wave` (workflow 1 (Plan a swarm sprint)).
+- **Tier B — tracker-specific.** The component operates directly on the flat-YAML
+  store. Because the store is ordinary in-repo files (not a daemon that can be
+  absent), there is no "unavailable" stop to guard — it reads via ready-walker and
+  writes with Edit/Write on `.diarie/tasks/`, and an absent-or-empty store is simply
+  an empty backlog. When a project tracks work elsewhere, redirect to the right tool
+  (`backlog-groomer` → `/swarm-wave` / `ROADMAP.md`). Component: `backlog-groomer`.
+- **Tier C — degrade-and-announce.** The component does useful non-tracker work
+  too; when the tracker is absent it runs the rest and **announces** each skipped
+  tracker step (never skips it silently). Components: `retrospective`, `sprint-review`.
 
 **Canonical inline sentence (copy verbatim; change only the tier letter).** Each
 component opens its availability handling with:
 
-> Beads is available iff a `.beads/` directory exists **and** `command -v bd`
-> succeeds; this component is **Tier `X`** per CLAUDE.md
-> `### Beads-availability convention`.
+> The flat-YAML tracker is available iff a `.diarie/tasks/tasks-*.yml` file exists
+> **and** the tracker reader (`node scripts/ready-walker.mjs`, or the `diarie` CLI)
+> is runnable; this component is **Tier `X`** per CLAUDE.md
+> `### Files-availability convention`.
 
 The tier→component mapping lives **only here**. Components cite their tier letter
 and link back — they do not restate this table (it would duplicate and rot, like

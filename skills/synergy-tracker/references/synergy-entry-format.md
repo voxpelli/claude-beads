@@ -298,9 +298,9 @@ file. The structural blocks:
   registry entry whose `file` is `PRIVATE-SYNERGY-*` — structural.
 - **Never reciprocated to the sibling's repo.** sibling-sync workflow 4 (Apply
   reciprocation batch) skips any sibling whose `file` is `PRIVATE-SYNERGY-*`.
-- **Never filed as a public bead.** sibling-sync's action menu suppresses
-  `bd create` for private-sibling findings (a committed `.beads/*.jsonl` entry
-  would leak the name); such findings stay in the ephemeral report.
+- **Never filed as a public task.** sibling-sync's action menu suppresses
+  task creation for private-sibling findings (a committed `.diarie/tasks/*.yml`
+  entry naming the sibling would leak it); such findings stay in the ephemeral report.
 - **Follow-up logging redirects.** Logging an entry for a private sibling writes
   to the gitignored `PRIVATE-SYNERGY-<name>.md`, never a committed
   `SYNERGY-<name>.md`.

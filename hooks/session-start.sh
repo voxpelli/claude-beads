@@ -72,19 +72,24 @@ if [ "$source" = "compact" ]; then
 		parts+=("Recently-modified sprint files (last hour): ${recent_files}. Sprint context likely still in flight — review before resuming.")
 	fi
 
-	# --- In-progress bd claim (hooks are exempt from the silent-skip rule:
-	# this is recovery plumbing, not a user-facing workflow step) ---
-	if command -v bd >/dev/null 2>&1; then
-		in_progress_json=$(bd list --status=in_progress --json 2>/dev/null || echo "")
-		if [ -n "$in_progress_json" ] && [ "$in_progress_json" != "[]" ]; then
-			summary=$(printf '%s' "$in_progress_json" | jq -r '.[0:5][] | "  \(.id) \(.title)"' 2>/dev/null || echo "")
-			if [ -n "$summary" ]; then
-				# shellcheck disable=SC2016
-				parts+=("In-progress bd issue(s):
+	# --- In-progress tracker claim (hooks are exempt from the silent-skip rule:
+	# this is recovery plumbing, not a user-facing workflow step). Prefer the
+	# `diarie` CLI when installed; else the in-repo reader. Both emit a JSON
+	# array of task rows for `--filter in_progress`. ---
+	in_progress_json=""
+	if command -v diarie >/dev/null 2>&1; then
+		in_progress_json=$(diarie ready --filter in_progress --format json 2>/dev/null || echo "")
+	elif [ -f scripts/ready-walker.mjs ]; then
+		in_progress_json=$(node scripts/ready-walker.mjs --filter in_progress --format json 2>/dev/null || echo "")
+	fi
+	if [ -n "$in_progress_json" ] && [ "$in_progress_json" != "[]" ]; then
+		summary=$(printf '%s' "$in_progress_json" | jq -r '.[0:5][] | "  \(.id) \(.title)"' 2>/dev/null || echo "")
+		if [ -n "$summary" ]; then
+			# shellcheck disable=SC2016
+			parts+=("In-progress tracker task(s):
 ${summary}
 
-Use \`bd show <id>\` to recover full context for any claim above.")
-			fi
+Read the task row in \`.diarie/tasks/\` to recover full context for any claim above.")
 		fi
 	fi
 
@@ -219,10 +224,10 @@ if [ "$count" -gt 0 ]; then
 	mod=$((count % 4))
 	if [ "$mod" -eq 3 ]; then
 		next=$((count + 1))
-		parts+=("Trend-review reminder: Sprint ${next} will be a trend-review sprint. When you close this sprint, /retrospective will also run the full UPSTREAM trend review, beads health audit (bd stats, stale issues, blocked issues), and Basic Memory graph audit (schema validation, drift detection, duplicate audit). Plan for a longer retrospective session.")
+		parts+=("Trend-review reminder: Sprint ${next} will be a trend-review sprint. When you close this sprint, /retrospective will also run the full UPSTREAM trend review, tracker health audit (validate-tasks, --stats, stale tasks, blocked tasks), and Basic Memory graph audit (schema validation, drift detection, duplicate audit). Plan for a longer retrospective session.")
 	elif [ "$mod" -eq 0 ]; then
 		current=$((count + 1))
-		parts+=("Trend-review sprint: Sprint ${current} is a trend-review sprint. Running /retrospective will perform the full UPSTREAM trend review, beads health audit, and Basic Memory graph audit in addition to the standard retrospective. Plan for a longer session.")
+		parts+=("Trend-review sprint: Sprint ${current} is a trend-review sprint. Running /retrospective will perform the full UPSTREAM trend review, tracker health audit, and Basic Memory graph audit in addition to the standard retrospective. Plan for a longer session.")
 	fi
 fi
 # --- end trend-review reminder ---

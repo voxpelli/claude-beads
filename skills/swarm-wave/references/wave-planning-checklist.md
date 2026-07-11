@@ -18,8 +18,9 @@ Five checks before launching any wave:
    scope within the same wave. Cross-check the SWARM file's per-agent file
    list before launching.
 5. **Issue descriptions complete** — each issue in the wave has a description
-   the agent can act on. Run `bd show <id>` for each; flag any that are
-   empty or ambiguous.
+   the agent can act on. Read the task entry in
+   `.diarie/tasks/tasks-<slug>.yml` for each; flag any that are empty or
+   ambiguous.
 
 ## Wave Execution Flow
 
@@ -40,11 +41,12 @@ next wave or sprint close
 
 Repeat the execute-wave + post-wave-gate cycle for each wave in the plan.
 
-When beads is the source, `bd` is the run-state (claim/close). When the source
-is a `ROADMAP.md` or a manual list, the `SWARM-NN.md` `### Item Status` table is
-the run-state instead — the orchestrator advances each row
+When the flat-YAML tracker is the source, the `.diarie/tasks/*.yml` task rows
+are the run-state (claim/close via `status:` edits). When the source is a
+`ROADMAP.md` or a manual list, the `SWARM-NN.md` `### Item Status` table is the
+run-state instead — the orchestrator advances each row
 `pending → claimed → done` (or `carried`). See `command-patterns.md`
-"Beadless run-state equivalents".
+"Tracker-less run-state equivalents".
 
 ## Post-Wave Gate Sequence
 
@@ -62,10 +64,11 @@ Six steps, all blocking — the gate must fully pass before proceeding.
    review findings: launch a targeted fix agent. Re-gate from step 1 if
    any HIGH-severity fix was made.
 6. **Commit**: `git commit --no-gpg-sign -m "feat: wave N — [theme]"`.
-   Close completed wave issues with `bd close`. Update wave status to
-   `committed` in the SWARM file. **Beadless source** (ROADMAP / manual): there
-   are no `bd close` calls — mark each completed item `done` in the wave's
-   `### Item Status` table; wave `Status: committed` closes the wave.
+   Close completed wave issues by editing their task rows to `status: completed`
+   (then `node validate-tasks.mjs`). Update wave status to `committed` in the
+   SWARM file. **Tracker-less source** (ROADMAP / manual): there are no task-row
+   edits — mark each completed item `done` in the wave's `### Item Status`
+   table; wave `Status: committed` closes the wave.
 
 ## Retrospective Frequency
 
@@ -83,11 +86,11 @@ Six steps, all blocking — the gate must fully pass before proceeding.
 | Shared file in same wave                     | Agents clobber each other's changes | Split to separate waves                                |
 | Launching before pressure check              | OOM mid-wave kills agents           | Phase 3 check first                                    |
 | Committing before gate passes                | Broken code lands in main           | Gate is non-negotiable                                 |
-| Skipping `bd close` in agent prompt          | Issues stay `in_progress` forever   | Always include completion instruction                  |
+| Skipping the completion edit in agent prompt | Issues stay `in_progress` forever   | Always include completion instruction                  |
 | Research agents writing source files         | Non-deterministic mutations         | Research agents get read-only source access            |
 | >6 code agents on 32GB                       | Context window thrash               | Use the ceiling table in `agent-concurrency-limits.md` |
 | Opening next wave before prior committed     | Interleaved git history             | Serial wave commits                                    |
 | Fat agent prompts (>3 issues per agent)      | Incomplete work, scope creep        | 1-3 issues per agent                                   |
 | No file-scope constraint in prompt           | Agent wanders outside scope         | Exhaustive file list required                          |
 | Parallelizing tests                          | Test interference, flaky results    | Sequential tests after gate                            |
-| Closing sprint with open in\_progress issues | Phantom work, stale claims          | Verify with `bd list --status in_progress`             |
+| Closing sprint with open in\_progress issues | Phantom work, stale claims          | Verify with `ready-walker.mjs --filter in_progress`    |
