@@ -13,6 +13,12 @@
  * These tests cover what that diff structurally cannot: repos unlike vp-beads.
  */
 
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { groupTasks, projectLive, splitBody } from './bootstrap-tasks.mjs'
 
 let passed = 0
@@ -152,6 +158,44 @@ const epicSlugs = new Map([['e-1', 'migration']])
 {
   const g = groupTasks([{ id: 'o-1' }], epicSlugs, 'backlog')
   assert('an --epic with no live members yields an empty (still-written) slug', g.get('migration')?.length === 0)
+}
+
+console.log('\nCLI guards (the two data-loss stops)')
+
+const SCRIPT = fileURLToPath(new URL('bootstrap-tasks.mjs', import.meta.url))
+const EXPORT = fileURLToPath(new URL('../.diarie/_archive/bd-final-export.jsonl', import.meta.url))
+
+/** @param {string[]} args @param {string} [wd] @returns {{ code: number|null, out: string }} */
+const run = (args, wd) => {
+  const r = spawnSync('node', [SCRIPT, EXPORT, ...args], { cwd: wd, encoding: 'utf8' })
+  return { code: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') }
+}
+
+{
+  const dir = mkdtempSync(join(tmpdir(), 'vp-boot-'))
+  try {
+    const { code } = run(['--root', dir])
+    const wrote = existsSync(join(dir, '.diarie', 'tasks', 'tasks-backlog.yml'))
+    assert('an empty root migrates cleanly', code === 0 && wrote)
+
+    // Second run over the now-populated store must STOP. This is the guard that
+    // stands between a re-invocation and every hand-edit made since the cutover.
+    const again = run(['--root', dir])
+    assert('re-running over an existing store refuses (exit 1, names the files)',
+      again.code === 1 && /refusing to overwrite/.test(again.out) && again.out.includes('tasks-backlog.yml'))
+
+    assert('--force overrides the refusal (the deliberate redo path)', run(['--root', dir, '--force']).code === 0)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // Without --root the target is CWD, never the plugin checkout — so a forgotten
+  // --root cannot clobber the tracker of whatever repo happens to ship this script.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-boot-'))
+  try {
+    const { code } = run([], dir)
+    assert('a bare run (no --root) targets CWD, not the script\'s own repo',
+      code === 0 && existsSync(join(dir, '.diarie', 'tasks', 'tasks-backlog.yml')))
+  } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)

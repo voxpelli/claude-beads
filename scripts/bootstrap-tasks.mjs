@@ -35,9 +35,17 @@
  *     closed blocker is already satisfied, and a closed parent is history. Both
  *     are reported; the original edges live on in the archive JSONL.
  *
+ * Two guards, because this now runs against repos that are not this one:
+ *
+ *   - `--root` defaults to the CURRENT DIRECTORY, never the plugin's own checkout.
+ *     A script-relative default would make a forgotten `--root` clobber the
+ *     plugin's tracker with some other project's issues.
+ *   - An existing `tasks-*.yml` store is a HARD STOP (`--force` to override).
+ *     The migration is one-way: re-running replays the export over hand-edits.
+ *
  * Usage:
  *   bd export -o /tmp/bd-export.jsonl
- *   node scripts/bootstrap-tasks.mjs /tmp/bd-export.jsonl \
+ *   node bootstrap-tasks.mjs /tmp/bd-export.jsonl --root . \
  *     --epic vp-beads-l9i=migration \
  *     --title migration='Tracker migration off bd (epic vp-beads-l9i)' \
  *     --default-slug backlog \
@@ -50,10 +58,10 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
-  copyFileSync, mkdirSync, readFileSync, writeFileSync,
+  copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync,
 } from 'node:fs'
 import {
-  argv, exit, stderr, stdout,
+  argv, cwd, exit, stderr, stdout,
 } from 'node:process'
 
 import yaml from 'js-yaml'
@@ -238,25 +246,44 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
       epic: { type: 'string', multiple: true, 'default': [] },
       'default-slug': { type: 'string', 'default': 'backlog' },
       title: { type: 'string', multiple: true, 'default': [] },
+      force: { type: 'boolean', 'default': false },
     },
   })
 
   const [inputPath] = positionals
   if (!inputPath) {
     stderr.write(
-      'usage: node scripts/bootstrap-tasks.mjs <bd-export.jsonl> [options]\n' +
-      '  --root <dir>            project root to write into (default: this repo)\n' +
+      'usage: node bootstrap-tasks.mjs <bd-export.jsonl> [options]\n' +
+      '  --root <dir>            project root to write into (default: the current directory)\n' +
       '  --epic <id>=<slug>      route an epic + its descendants to tasks-<slug>.yml (repeatable)\n' +
       '  --default-slug <slug>   everything else (default: backlog)\n' +
-      '  --title <slug>=<title>  meta.title for a slug (repeatable)\n'
+      '  --title <slug>=<title>  meta.title for a slug (repeatable)\n' +
+      '  --force                 overwrite an existing task store (destroys hand-edits)\n'
     )
     exit(1)
   }
 
-  const root = resolve(values.root ?? resolve(dirname(fileURLToPath(import.meta.url)), '..'))
+  // Default to CWD, never to the plugin's own checkout: this script now ships in a
+  // plugin and is run against OTHER repos, so a script-relative default would make
+  // a forgotten --root silently clobber the plugin's own tracker.
+  const root = resolve(values.root ?? cwd())
   const epicSlugs = parsePairs(values.epic, 'epic')
   const titles = parsePairs(values.title, 'title')
   const defaultSlug = values['default-slug']
+
+  // The migration is a BOOTSTRAP: after it runs, the store is hand-maintained with
+  // Edit/Write. Re-running would silently overwrite that work with the export's
+  // (stale) state, so an existing store is a hard stop rather than a doc warning.
+  const tasksDir = resolve(root, `${TRACKER_DIR}/tasks`)
+  const existing = existsSync(tasksDir) ? readdirSync(tasksDir).filter(f => /^tasks-.*\.yml$/.test(f)) : []
+  if (existing.length && !values.force) {
+    stderr.write(
+      `refusing to overwrite an existing task store: ${tasksDir} already holds ${existing.join(', ')}\n` +
+      'This is a one-way bootstrap, not a sync — re-running replays the bd export over any hand-edits\n' +
+      'made since. Pass --force only to redo a botched migration, or --root <dir> to target elsewhere.\n'
+    )
+    exit(1)
+  }
 
   for (const slug of [...epicSlugs.values(), defaultSlug]) {
     if (!SLUG_RE.test(slug)) {

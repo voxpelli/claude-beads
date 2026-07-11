@@ -245,6 +245,11 @@ plus a small pure reader — no daemon, no vendor.
 - **Tier C — degrade-and-announce.** The component does useful non-tracker work
   too; when the tracker is absent it runs the rest and **announces** each skipped
   tracker step (never skips it silently). Components: `retrospective`, `sprint-review`.
+- **Exempt — the tracker's absence is the precondition, not a degradation.**
+  `migrate-tracker` *creates* the store; it requires `.beads/` present and
+  `.diarie/tasks/` **absent**, and stops when it finds a store already there.
+  Tiering it would invert its meaning. It is the only exemption, and it is
+  structural — do not add others to dodge a tier.
 
 **Canonical inline sentence (copy verbatim; change only the tier letter).** Each
 component opens its availability handling with:
