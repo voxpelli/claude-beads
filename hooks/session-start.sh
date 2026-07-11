@@ -208,17 +208,30 @@ if [ -n "$tracker_cmd" ]; then
 		claims_json=$($tracker_cmd --filter in_progress --json --root "$PWD" 2>/dev/null || echo "[]")
 		[ -n "$claims_json" ] || claims_json="[]"
 
-		n_ready=$(printf '%s' "$queue_json" | jq -r '.ready | length' 2>/dev/null || echo "")
-		n_blocked=$(printf '%s' "$queue_json" | jq -r '.blocked | length' 2>/dev/null || echo "0")
+		# Ask whether `.ready` EXISTS — never `.ready | length` alone. An ENOSTORE payload has
+		# no `.ready`, and `null | length` is **0**: a number, which sails straight through the
+		# numeric guard below and prints a confident "Tracker: 0 ready · 0 blocked". That is the
+		# fictional empty backlog this entire contract exists to kill, reconstructed by the hook
+		# out of an error message. (`jq -e` does NOT save you here — 0 is not falsy.) `has()`
+		# emits nothing for an error payload, so n_ready stays empty and the guard stays quiet.
+		n_ready=$(printf '%s' "$queue_json" | jq -r 'if type == "object" and has("ready") then (.ready | length) else empty end' 2>/dev/null || echo "")
+		n_blocked=$(printf '%s' "$queue_json" | jq -r '[.blocked[]? | select((.children | length) == 0)] | length' 2>/dev/null || echo "0")
+		n_epics=$(printf '%s' "$queue_json" | jq -r '[.blocked[]? | select((.children | length) > 0)] | length' 2>/dev/null || echo "0")
 		n_attn=$(printf '%s' "$queue_json" | jq -r '.needsAttention | length' 2>/dev/null || echo "0")
 		n_claimed=$(printf '%s' "$claims_json" | jq -r 'length' 2>/dev/null || echo "0")
 
 		# A non-numeric n_ready means the reader failed or emitted something
 		# unexpected — stay silent rather than print a broken line.
 		if [ -n "$n_ready" ] && [ "$n_ready" -eq "$n_ready" ] 2>/dev/null; then
+			# "blocked" counts DEP-blocked rows only. An epic is blocked by its own open
+			# children — that is an epic in flight, the healthy state of a container, and
+			# reporting it as a blockage makes a working sprint read as a stalled one.
 			tracker_summary="Tracker: ${n_ready} ready · ${n_blocked} blocked · ${n_claimed} in progress"
+			if [ "$n_epics" -gt 0 ] 2>/dev/null; then
+				tracker_summary="${tracker_summary} · ${n_epics} epic(s) in flight"
+			fi
 			if [ "$n_attn" -gt 0 ] 2>/dev/null; then
-				tracker_summary="${tracker_summary} · ${n_attn} needs attention (deps in a non-completed state)"
+				tracker_summary="${tracker_summary} · ${n_attn} needs attention"
 			fi
 
 			# ready-walker already sorts by priority, so the first rows are the ones worth naming.

@@ -11,7 +11,8 @@ A task is **stale** when it meets ALL of these:
 - Not updated in the last 60 days — compare the row's `updated:` field against a
   60-day threshold (grooming default, stricter than the reader's 30-day default
   to reduce noise from recently created items not yet started). The
-  `diarie ready --stale` flag is `in_progress`-scoped, so pending-item
+  `diarie stats --stale` flag (a `stats` flag — `ready` does not accept it, and will
+  exit 1) is `in_progress`-scoped, so pending-item
   staleness is read directly from `updated:` in the `.diarie/tasks/*.yml`
 - No commits reference the task id in `git log`
 
@@ -107,7 +108,7 @@ There is **no hard on-create gate** (unlike bd's `validation.on-create=error`):
 an entry is workable the moment its required fields (`id`, `title`, `status`,
 `type`) are present. `diarie validate` warns (a test-ratchet) when a
 **completed** `task` has empty `acceptance_criteria`. The authoritative source
-is `scripts/task-schema.mjs`.
+is `diarie/lib/schema.js`.
 
 **Picking between similar framings:**
 

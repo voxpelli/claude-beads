@@ -26,3 +26,8 @@ node_modules/
 # the live task store (`diarie`), deliberately git-tracked and PR-reviewed. Unlike
 # `.beads/` above it is NOT ignored; the dot marks committed project metadata (cf.
 # `.claude/`, `.github/`), not throwaway state. Do not add it here.
+
+# SQLite transient sidecars — WAL/SHM are runtime state, never content.
+# They were committed, which meant they also shipped into every consumer plugin cache.
+.liggare/ledger.sqlite-wal
+.liggare/ledger.sqlite-shm

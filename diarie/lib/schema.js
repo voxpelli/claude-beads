@@ -86,13 +86,26 @@ import { guardedArrayIncludes } from '@voxpelli/typed-utils'
  * A BRAND, not an alias. `GlobalId` is assignable to `string`, but a plain `string` is
  * NOT assignable to `GlobalId` — and the only thing that mints one is `nsId()` below.
  *
- * It exists because of a real bug, and because nothing weaker would have caught it.
- * `loadTasks` globalized `id` and `deps` and left `parent` raw, so `parent` could never
- * equal any `id`. Every type involved was `string`, so nothing complained. The container
- * rule was the first code to trust `parent`, and it would have found zero children for
- * every epic, excluded nothing, and passed a green suite. Neither `unknown` nor a richer
- * object type catches this — you satisfy both with `String(x)`, which IS the bug. Only a
- * brand can tell "a string" apart from "a string that has been through nsId".
+ * It exists because of a real bug. `loadTasks` globalized `id` and `deps` and left `parent`
+ * raw, so `parent` could never equal any `id`. Every type involved was `string`, so nothing
+ * complained. The container rule was the first code to trust `parent`, and it would have
+ * found zero children for every epic, excluded nothing, and passed a green suite.
+ *
+ * `unknown` does NOT catch it — you satisfy `unknown` with `String(x)`, which is the bug.
+ *
+ * **A template-literal type `` `${string}/${string}` `` DOES catch it**, and an earlier
+ * version of this comment claimed otherwise ("only a brand can…"). That was false, and it
+ * was disproved by probe, not by argument: swapping the brand for the template type keeps
+ * tsc at zero errors, keeps type-coverage identical, and still rejects the reverted bug.
+ * The claim is corrected rather than quietly deleted, because a comment that overstates its
+ * own guard is how the next reader gets talked out of a cheaper, better one.
+ *
+ * What the brand adds over the template type is **provenance, not detection**: any
+ * `` `${a}/${b}` `` satisfies the template, whereas a `GlobalId` can only be minted by
+ * `nsId()` below. Given that the whole bug was one caller globalizing by hand and another
+ * forgetting to, "only nsId may produce these" is the property actually worth buying — but
+ * it is a different property than the one that catches the typo, and they should not be
+ * conflated.
  *
  * @typedef {string & { readonly __globalId: unique symbol }} GlobalId
  */

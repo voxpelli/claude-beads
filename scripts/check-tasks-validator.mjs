@@ -127,5 +127,44 @@ console.log('lintTasks — Pass 1 (updated date)')
 assert('malformed updated date errors', lint([ok({ id: 'T-1', updated: 'yesterday' })]).errors.some(e => /invalid updated/.test(e)))
 assert('valid ISO updated date is clean', lint([ok({ id: 'T-1', updated: '2026-01-01' })]).errors.length === 0)
 
+console.log('the BLOCKING graph — one check over the union, not two over the projections')
+
+// THE WORST BUG THIS FILE HAS EVER PINNED. `computeReady` blocks on TWO edge kinds pointing
+// opposite ways: a dep blocks the DEPENDENT (task → dep), a child blocks the PARENT
+// (parent → child). Checking `deps` and `parents` as SEPARATE graphs meant a ring that
+// ALTERNATES edge kinds was acyclic in both projections and cyclic in neither — so every
+// gate went green over a backlog in which nothing could ever be worked, and `ready` sent
+// the human to `validate`, which sent them back. Forever.
+assert(
+  'a task that depends on its own epic is a CYCLE (deps ⨯ containment) — both projections call it clean',
+  lint([
+    { id: 'E', title: 'the epic', status: 'pending', type: 'task', labels: ['epic'] },
+    { id: 'T', title: 'depends on its own epic', status: 'pending', type: 'task', parent: 'E', deps: ['E'] },
+  ]).errors.some(e => /cycle/.test(e))
+)
+
+assert(
+  'a 3-node alternating ring is caught too (X deps Y; Y contains Z; Z deps X)',
+  lint([
+    { id: 'X', title: 'x', status: 'pending', type: 'task', deps: ['Y'] },
+    { id: 'Y', title: 'y', status: 'pending', type: 'task' },
+    { id: 'Z', title: 'z', status: 'pending', type: 'task', parent: 'Y', deps: ['X'] },
+  ]).errors.some(e => /cycle/.test(e))
+)
+
+assert(
+  'a LEGITIMATE deep parent chain is NOT a cycle (guards against over-rejecting)',
+  lint([
+    { id: 'GP', title: 'grandparent', status: 'pending', type: 'task' },
+    { id: 'P', title: 'parent', status: 'pending', type: 'task', parent: 'GP' },
+    { id: 'C', title: 'child', status: 'pending', type: 'task', parent: 'P' },
+  ]).errors.length === 0
+)
+
+assert(
+  'a self-parent still errors (the one-element case)',
+  lint([{ id: 'S', title: 's', status: 'pending', type: 'task', parent: 'S' }]).errors.some(e => /itself/.test(e))
+)
+
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

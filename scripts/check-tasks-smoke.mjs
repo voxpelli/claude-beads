@@ -63,12 +63,17 @@ function assert (name, cond) {
  * @param {string[]} command  the subcommand (e.g. ['ready'])
  * @param {string[]} args
  * @param {string} tasksRoot
+ * @param {Record<string, string>} [extraEnv]
  * @returns {{ code: number, out: string, err: string, both: string }}
  */
-function run (command, args, tasksRoot) {
+function run (command, args, tasksRoot, extraEnv = {}) {
+  // An EMPTY tasksRoot means "do not set the env seam" — exercise the real walk-up from cwd,
+  // which is the only path the plugin-store guard can fire on (an explicit root is allowed:
+  // that is how you develop vp-beads itself).
+  const seam = tasksRoot ? { TASKS_ROOT: tasksRoot } : {}
   const r = spawnSync('node', [join(ROOT, CLI), ...command, ...args], {
     cwd: ROOT,
-    env: { ...env, TASKS_ROOT: tasksRoot },
+    env: { ...env, ...seam, ...extraEnv },
     encoding: 'utf8',
   })
   const out = r.stdout ?? ''
@@ -215,10 +220,23 @@ console.log('\ncontainers: an epic is not workable (vp-beads-epc) — THROUGH lo
       '  - id: C\n    title: its open child\n    status: in_progress\n    type: task\n    parent: E\n')
     const { out } = run(READY, ['--json'], dir)
     const j = JSON.parse(out)
-    assert('container-only backlog: 0 ready, 1 blocked (the shape that used to imply a cycle)',
+    assert('container-only backlog: 0 ready, 1 blocked',
       j.ready.length === 0 && j.blocked.length === 1)
-    assert('...and NO false cycle hint — a tree whose leaves are claimed is not a broken graph',
-      j.hint === undefined)
+
+    // THIS ASSERTION WAS INVERTED, DELIBERATELY, ON EVIDENCE — read before "fixing" it back.
+    //
+    // It used to demand NO hint here, on the theory that an all-container backlog is "a
+    // healthy tree whose leaves are all done". That theory is false: a container only
+    // reaches `blocked` when it has an ACTIVE child. If its leaves were done it would be
+    // READY. So 0-ready-plus-containers means every open child is claimed — or the graph
+    // has a cycle, which is precisely what the dep case already warns about.
+    //
+    // The cost of the old belief was concrete: `--strict` exited 0 on a parent cycle, i.e.
+    // reported a permanently dead backlog as a finished one. Changing a green assertion is
+    // normally how a regression gets waved through; this one is changed because it encoded
+    // a claim that was disproved, and the disproof is above.
+    assert('...and it DOES warn: 0 ready with work outstanding is never just "nothing to do"',
+      typeof j.hint === 'string')
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
@@ -240,6 +258,71 @@ console.log('\ncontainers: an epic is not workable (vp-beads-epc) — THROUGH lo
 {
   const { code } = run(VALIDATE, [], EPICS)
   assert('the container fixtures are themselves a valid store', code === 0)
+}
+
+console.log('\nthe plugin must never serve its OWN backlog to a consumer')
+
+// Proven against a real installed plugin by an adversarial review: `.diarie/` is COMMITTED,
+// so a marketplace install ships vp-beads' 28 tasks into every consumer's plugin cache. The
+// CLI resolves a store by walking UP from cwd — so a cwd anywhere inside that cache finds
+// the wrong store, succeeds, and hands a stranger our backlog as their own. Exit 0, no
+// warning. A confident, plausible, entirely wrong answer.
+//
+// `--root` prevents it and the hooks always pass it — but an audit found 71 documented skill
+// invocations, none of which did. A defense that needs every future sentence to remember is
+// not a defense, so it lives in the CLI.
+{
+  // No TASKS_ROOT: the walk-up from cwd (= the plugin) is exactly the consumer's accident.
+  const { code, err } = run(READY, [], '', { CLAUDE_PLUGIN_ROOT: ROOT })
+  assert('refuses to serve the plugin\'s own store when cwd lands inside the plugin', code !== 0)
+  assert('...and says exactly why, naming --root', /refusing to serve the PLUGIN/.test(err) && /--root/.test(err))
+}
+{
+  // The consumer's real path: run the plugin's CLI, but pointed at THEIR project.
+  const dir = mkdtempSync(join(tmpdir(), 'diarie-consumer-'))
+  try {
+    mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
+    writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-mine.yml'),
+      'tasks:\n  - id: MINE-1\n    title: the consumer own task\n    status: pending\n    type: task\n')
+    const { code, out } = run(READY, ['--json', '--root', dir], ROOT, { CLAUDE_PLUGIN_ROOT: ROOT })
+    const j = JSON.parse(out)
+    assert('an explicit --root still works from inside the plugin (the hooks path)',
+      code === 0 && j.ready.length === 1 && j.ready[0].id === 'mine/MINE-1')
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
+console.log('\nthe loader REPORTS every field it rejects (a guard that drops is not a guard that reports)')
+
+// Mutation-proven gap: replacing the `type` or `labels` guard with an unguarded assignment
+// left all 118 tests green. The centrepiece of the store rewrite had ZERO coverage, and it
+// was hiding two live bugs — a scalar `labels:` re-armed vp-beads-epc, and a typo'd `type:`
+// erased a row from every partition while its parent was told to close itself.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'diarie-reject-'))
+  try {
+    mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
+    writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'),
+      'tasks:\n' +
+      // `labels: epic` as a SCALAR — an ordinary YAML slip, and writing a task IS a hand-edit.
+      '  - id: E\n    title: epic, labels written as a scalar\n    status: pending\n    type: task\n    labels: epic\n' +
+      '  - id: C\n    title: its open child\n    status: pending\n    type: task\n    parent: E\n' +
+      // `type: bug` — a bd fossil; framings live in `labels` now.
+      '  - id: B\n    title: type is a bd framing, not a type\n    status: pending\n    type: bug\n' +
+      '  - id: P\n    title: priority not in the enum\n    status: pending\n    type: task\n    priority: urgent\n')
+
+    const { err, out } = run(READY, ['--json'], dir)
+    const j = JSON.parse(out)
+
+    assert('a scalar `labels:` is REPORTED, not silently dropped', /invalid labels/.test(err))
+    assert('...and it says WHY it matters (a lost `epic` label re-arms the container bug)', /epic/.test(err))
+    assert('an invalid `type:` is REPORTED', /invalid type/.test(err))
+    assert('an invalid `priority:` is REPORTED', /invalid priority/.test(err))
+
+    // The row with a broken type must not simply VANISH — it counts toward `total`, so it
+    // has to appear in an answer. Silently absent from every partition is the whole bug.
+    assert('a row with an invalid `type` surfaces in needsAttention rather than vanishing',
+      j.needsAttention.some((/** @type {any} */ t) => t.id === 'x/B' && /type/.test(t.reason)))
+  } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
 console.log('\nthe --blocked TEXT rendering (the default human output — JSON-only tests miss it)')

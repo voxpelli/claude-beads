@@ -64,7 +64,7 @@ in `labels:` on a `type: task` entry.
 | `spike`   | `type: task`, `labels: [spike]`                              | Timeboxed investigation; closes with findings, not code         |
 | `epic`    | `type: task`, `labels: [epic]` + children carrying `parent:` | Large body of work that decomposes into child tasks             |
 
-**Authoritative source:** `scripts/task-schema.mjs` (the single canonical
+**Authoritative source:** `diarie/lib/schema.js` (the single canonical
 schema). There is **no hard on-create gate** — unlike bd's
 `validation.on-create=error`, an entry is a workable unit the moment its required
 fields (`id`, `title`, `status`, `type`) are present. `diarie validate`

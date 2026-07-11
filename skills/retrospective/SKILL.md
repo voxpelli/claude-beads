@@ -247,19 +247,26 @@ diarie ready --blocked    # Blocked review: tasks whose deps are unmet
 Per-check guidance:
 
 - **`diarie validate`** — the integrity gate. It validates each task row
-  against `scripts/task-schema.mjs`, checks the dependency graph for cycles and
+  against `diarie/lib/schema.js`, checks the dependency graph for cycles and
   dangling `deps:`/`parent:` refs, and reports rows missing required fields. No
   auto-fix — findings require human triage; list the affected task IDs with the
   failing field or dangling ref so the maintainer can edit the YAML directly.
   Break a dependency cycle or drop a stale reference by editing the offending
   row's `deps:`/`parent:` list (substrate-not-opinion — plain Edit/Write on the
   YAML, no CRUD helper).
-- **`diarie stats --stale --days 30`** — lifecycle. No auto-fix;
-  suggest one of three human actions per task: defer (lower `priority`), close
-  (set `status: closed`, no longer relevant), or work (claim and progress).
-- **`diarie ready --blocked`** — blocked review. For each
-  blocked task, flag any blocker whose `status:` is already `closed` — those need
-  a re-run of `diarie ready` to re-evaluate readiness (readiness
+- **`diarie stats --stale --days 30`** — lifecycle. No auto-fix; suggest one of three human
+  actions per task: **defer** (`status: deferred` — consciously postponed, still open),
+  **drop** (`status: cancelled` — won't do), or **work** (claim it: `status: in_progress` +
+  `agent:`). There is no `closed` status; the vocabulary is
+  `pending | in_progress | completed | failed | cancelled | deferred`, and `cancelled`
+  ("won't do") is deliberately distinct from `completed` ("done").
+- **`diarie ready --blocked`** — blocked review. A blocked row carries **`blockers`** (deps
+  that must FINISH FIRST) and/or **`children`** (it is a container — an epic — and the work
+  is in its children). **They are not the same finding and must not be reported as one:** a
+  container blocked by its own open children is an epic in flight, which is healthy and not a
+  grooming signal. For a *dep*-blocked task, flag any blocker already `completed` — that row
+  is unblocked but not actioned, and needs a re-run of `diarie ready` to re-evaluate readiness
+  (readiness
   is recomputed on every walk, never stored), or the row's `deps:` edited to drop
   the satisfied blocker.
 
@@ -309,10 +316,16 @@ no CRUD helper (substrate-not-opinion):
 - id: <slug>-<short-id>
   title: "..."
   status: pending
-  type: task           # labels: [bug]|[chore]|... carry the framing (4-type model)
-  priority: N          # 0=critical, 1=high, 2=medium, 3=low, 4=backlog
-  acceptance_criteria: "..."
+  type: task              # labels: [bug]|[chore]|… carry the framing (4-type model)
+  priority: medium        # critical | high | medium | low | backlog — a STRING enum
+  acceptance_criteria:    # a LIST, never a string
+    - "..."
 ```
+
+**The priority is a string and the criteria are a list.** Both were bd's shape once
+(`priority: 2`, a single free-text criterion) and both are now hard errors —
+`invalid priority "2"`, `"acceptance_criteria" must be a list (got string)`. A template
+that emits them fails the very gate this step then tells you to run.
 
 The migration target uses **4 types** (`task` / `doc` / `decision` /
 `milestone`); the old bug/feature/chore framings ride along in `labels:` on a

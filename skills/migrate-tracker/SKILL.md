@@ -268,13 +268,17 @@ mis-projection.
 
 ## Error handling
 
-- **`ERR_MODULE_NOT_FOUND: js-yaml`** — the plugin cache has no `node_modules`.
-  Run `npm install --prefix "$CLAUDE_PLUGIN_ROOT"` once. (Post-cutover, the same
-  error from the *target* means step 1 of workflow 5 (Cut over) skipped the
-  dependency add.)
+- **`ERR_MODULE_NOT_FOUND`** (`js-yaml`, `@voxpelli/typed-utils`, `peowly`…) — the plugin
+  cache has no `node_modules`. Run `npm install --prefix "$CLAUDE_PLUGIN_ROOT"` once. This
+  is not rare: some plugin caches genuinely ship without one, and the hooks swallow the
+  failure by design (they are recovery plumbing), so the symptom is a tracker that says
+  *nothing* rather than one that complains. **The same error post-cutover means the same
+  thing** — the plugin's own deps, not the target's. There is no "dependency add" step in
+  the target to have skipped: `diarie` is unpublished, so the target never gains its own
+  copy, and workflow 5 (Cut over) says so.
 - **`unmapped bd status for <id>`** — the migrator refuses rather than emit a
   task with no status. bd has statuses beyond the four it maps (`reopened`, …).
-  Add the mapping to `STATUS_MAP` in `scripts/migrate-from-bd.mjs`; do not work
+  Add the mapping to `STATUS_MAP` in `diarie/lib/migrate/bd-map.js` — which is exactly what the error text tells you; do not work
   around it, and do not hand-patch the YAML.
 - **`refusing to overwrite an existing task store`** — the target has already
   migrated. Stop and confirm with the user; reach for `--force` only to redo a
