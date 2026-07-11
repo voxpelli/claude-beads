@@ -55,7 +55,7 @@ tasks:
 
       when this bead productionizes migrate-from-bd.mjs's logic, not before): mirror
 
-      scripts/check-ready-walker.mjs's plain assert()-based idiom. Cases: STATUS_MAP for all 4 bd
+      diarie/test/*.spec.js's node:test idiom. Cases: STATUS_MAP for all 4 bd
 
       statuses (open/in_progress/closed/deferred) incl. unknown-status skip+loss-tracking; TYPE_MAP
       9->4

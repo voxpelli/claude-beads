@@ -12,7 +12,7 @@ tasks:
     acceptance_criteria:
       - a task with at least one non-completed child is excluded from ready (you work the children, not the container)
       - an `epic`-labelled task is excluded from ready regardless of children
-      - a childless task is unaffected; add a fixture covering parent-with-open-children in check-ready-walker.mjs
+      - a childless task is unaffected; add a fixture covering parent-with-open-children in diarie/test/ready.spec.js
       - DESIGN-diarie-vs-beads.md "where beads is ahead" row updated or removed once fixed
       - "the two predicates (structural: open children / declarative: `epic` label) are asserted INDEPENDENTLY — vp-beads-l9i satisfies both, so a structural-only fix passes an l9i-based test unimplemented"
       - "the id-space is coherent: loadTasks globalizes `parent` like `deps`, asserted through a real store on disk (a unit test writes both ids by hand and structurally cannot catch it)"
@@ -422,9 +422,41 @@ tasks:
       an extraction. This epic exists partly to dogfood the container model that
       `vp-beads-epc` just fixed: it is the first row that is deliberately NOT workable.
     updated: '2026-07-11'
+  - id: vp-beads-asg
+    title: diarie must self-host its ast-grep config — the guards do not survive extraction
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dia
+    labels:
+      - chore
+    acceptance_criteria:
+      - "`diarie/sgconfig.yml` + `diarie/.ast-grep/{rules,rule-tests}/` exist and are runnable from inside the workspace alone"
+      - "the diarie-owned rules move there: `no-hardcoded-tracker-dir` (guards `diarie/lib/`) and `no-identical-test-title` (guards `diarie/test/`)"
+      - "the generic JS rules diarie also needs (`no-jsdoc-any-type`, `no-jsdoc-object-typedef`, `no-commonjs-require`, `no-identifier-shadow-call`) are available to the workspace — copied or shared, decide which"
+      - "plugin-only rules STAY at the root (`no-jq-raw-interpolation` guards `hooks/*.sh`)"
+      - "the root `npm run check` still scans everything — the split must not shrink coverage on either side"
+      - "PROVE it: plant a violation of each moved rule and confirm the workspace's own check goes red with no root config present"
+    description: >-
+      The ast-grep suite lives at the repo ROOT (`sgconfig.yml` → `.ast-grep/rules/`), but two
+      of its rules exist solely to guard diarie: `no-hardcoded-tracker-dir` (the `TRACKER_DIR`
+      constant, whose whole point is that a hardcoded segment in guard code stops guarding
+      SILENTLY after a rename) and `no-identical-test-title` (added 2026-07-11 with the test
+      relocation; duplicate `it()` titles run twice under node:test with no warning).
+
+
+      A `git subtree split` of `diarie/` takes neither. The extracted package would ship with
+      both guards gone and every check still green — which is the exact failure mode both rules
+      were written to prevent, applied to the rules themselves.
+
+
+      Also decide the sharing story for the four generic rules: duplicated files drift (see
+      SYNERGY-vp-knowledge.md, where the byte-similar adoption is already logged as a drift
+      risk), but a shared package is a dependency diarie may not want.
+    updated: '2026-07-11'
   - id: vp-beads-tst
     title: Relocate diarie's tests into the workspace (node:test) — extraction-blocking
-    status: pending
+    status: completed
     type: task
     priority: high
     parent: vp-beads-dia
@@ -435,15 +467,49 @@ tasks:
       - the root `check:ready-walker` / `check:tasks-validator` / `check:tasks-smoke` / `check:bootstrap` keys collapse to one `check:diarie` → `npm test --workspace=diarie`
       - "the mutation-verified guards survive the move: the container cases still run THROUGH loadTasks against a real store on disk (a unit test with inline arrays structurally cannot see the id-space bug)"
       - "`check:hooks` and `check:validator` stay with the plugin — they test the plugin, not the tracker"
+      - "assertion parity is EXACT: 40/36/54/31 = 161 before, 161 after, per file"
+      - "each of the four suites is proven able to go RED (one assertion falsified per file → non-zero exit). `pass 161` on its own proves nothing; `pass 0` also passed."
     description: >-
-      diarie's tests currently live in the PLUGIN's `scripts/` and import the package by name.
-      That works only because of the workspace symlink; a subtree split would leave the
-      extracted package with no tests at all. This is the single hardest extraction blocker.
+      DONE 2026-07-11. `npm test --workspace=diarie` reported **`pass 0`** while 1,238 lines of
+      tests sat in the plugin's `scripts/` — a package about to be published whose own test
+      command was vacuously green. 161 assertions moved to `diarie/test/{ready,validate,cli,
+      migrate}.spec.js`, exact parity per file, converted to `node:test` describe/it.
 
 
-      Deliberately deferred out of the CLI work to keep the epic fix reviewable — moving 149
-      assertions in the same commit that changes what they assert is how a regression gets
-      waved through.
+      The real extraction blocker was one line: the migrator tests read their fixture from
+      `.diarie/_archive/bd-final-export.jsonl` — the PLUGIN's frozen archive, which cannot
+      exist in an extracted package. Replaced by a synthetic `test/fixtures/bd-export.jsonl`
+      (19 records, 4.9 KB vs 272 KB) that covers MORE: every TYPE_MAP entry, both edge-drop
+      paths, an unmappable priority, and the escaped-newline body.
+
+
+      Three silent defects were found and fixed while wiring it up, each of which would have
+      passed green:
+
+      - `type-coverage`'s `--ignore-files` resolves from CWD, not the tsconfig dir. The
+      template's `'test/*'` is a NO-OP here (measured: 5439/5593 either way) and would have
+      dropped coverage to 97.24%, under the 98 gate — inviting a threshold cut. It must be
+      `'diarie/test/*'`.
+
+      - `scripts/check-ast-grep.mjs` scans an explicit path list. A rule scoped to
+      `diarie/test/` would have been green and INERT; `ast-grep test` cannot catch that (it
+      replays snapshots, it never walks the tree). Added `diarie/test/` to the runner and
+      PROVED the rule fires by planting a duplicate.
+
+      - Monkey-patching `process.stdout.write` under `node --test` swallows the runner's own
+      TAP stream: it silently dropped 40 of cli.spec.js's 54 results while still reporting
+      "pass". Replaced with a subprocess.
+
+
+      Adding `test/**` to `diarie/tsconfig.json` type-checked the specs for the first time ever
+      and immediately found real gaps (bare-id fixtures vs the `GlobalId` brand; `groupTasks`
+      fixtures that were not `TaskRow`s).
+
+
+      New guard: `.ast-grep/rules/no-identical-test-title.yml` — `node:test` runs BOTH copies of
+      a duplicated `it()` title, silently. The tool for this (`eslint-node-test`) is
+      UNINSTALLABLE here (peer `eslint >=10.4` vs eslint-config's `^9.38.0` — disjoint);
+      reported upstream at voxpelli/eslint-config#476.
     updated: '2026-07-11'
   - id: vp-beads-pub
     title: diarie publish readiness — README, package metadata, the name gate

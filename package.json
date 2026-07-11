@@ -7,20 +7,17 @@
     "check:ast-grep": "node scripts/check-ast-grep.mjs",
     "check:ast-grep-test": "ast-grep test",
     "check:beads-probe": "node scripts/check-beads-probe.mjs",
-    "check:bootstrap": "node scripts/check-bootstrap-tasks.mjs",
+    "check:diarie": "npm test --workspace=diarie",
     "check:hooks": "node scripts/check-hooks.mjs",
     "check:lint": "eslint",
     "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'",
     "check:plugin": "node validate-plugin.mjs",
-    "check:ready-walker": "node scripts/check-ready-walker.mjs",
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
     "check:tasks": "node diarie/cli.js validate",
-    "check:tasks-smoke": "node scripts/check-tasks-smoke.mjs",
-    "check:tasks-validator": "node scripts/check-tasks-validator.mjs",
     "check:tsc": "tsc -p diarie",
-    "check:type-coverage": "type-coverage -p diarie --detail --strict --at-least 98",
+    "check:type-coverage": "type-coverage -p diarie --detail --strict --at-least 98 --ignore-files 'diarie/test/*'",
     "check:validator": "node scripts/check-validator.mjs",
-    "fix:ast-grep": "ast-grep scan --update-all scripts/ diarie/lib/ validate-plugin.mjs"
+    "fix:ast-grep": "ast-grep scan --update-all scripts/ diarie/lib/ diarie/test/ validate-plugin.mjs"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.1",

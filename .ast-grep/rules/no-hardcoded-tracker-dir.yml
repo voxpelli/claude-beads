@@ -13,6 +13,7 @@ severity: error
 files:
   - "scripts/*.mjs"
   - "diarie/lib/**/*.js"
+  - "diarie/test/**/*.js"
   - "validate-plugin.mjs"
 ignores:
   # The definition itself — `export const TRACKER_DIR = '.diarie'`.
@@ -22,6 +23,14 @@ ignores:
   # check-hooks.mjs asserts on the path session-start.sh prints. Building
   # either from the constant would make the assertion tautological.
   - "scripts/check-*.mjs"
+  # Same reason, for the same tests after they moved into the workspace: migrate.spec.js
+  # asserts the migrator WROTE `.diarie/tasks/tasks-backlog.yml`, and an assertion that
+  # builds that path from TRACKER_DIR proves only that the constant equals itself.
+  #
+  # This entry is deliberate, not decorative. `diarie/test/**` is in `files` ABOVE purely
+  # so it can be ignored HERE — leave it out of both and the exemption still happens, but
+  # by accident, invisibly, and nobody can tell an intended exemption from an oversight.
+  - "diarie/test/**/*.js"
 rule:
   any:
     - kind: string

@@ -703,10 +703,19 @@ They fall into five groups: **plugin** (`check:plugin` = validate-plugin.mjs,
 `check:validator` = its unit tests), **prose/style** (`check:md` = remark,
 `check:lint` = eslint, `check:sh` = shellcheck + shfmt, `check:ast-grep` +
 `check:ast-grep-test` = the structural-lint suite), **tracker** (`check:tasks` =
-`node diarie/cli.js validate`, plus `check:ready-walker`, `check:tasks-validator`,
-`check:tasks-smoke`, `check:bootstrap` = the bd→YAML migrator, `check:beads-probe` =
-the de-integration probe), **types** (`check:tsc` + `check:type-coverage`, both scoped
-to the `diarie` workspace), and **hooks** (`check:hooks`).
+`node diarie/cli.js validate`, `check:diarie` = the workspace's OWN suite via
+`npm test --workspace=diarie`, `check:beads-probe` = the de-integration probe),
+**types** (`check:tsc` + `check:type-coverage`, both scoped to the `diarie`
+workspace), and **hooks** (`check:hooks`).
+
+**`diarie`'s tests live in `diarie/test/*.spec.js` (`node:test`), not in `scripts/`.**
+That is not cosmetic: tests outside the workspace do not survive a `git subtree split`,
+and `npm test --workspace=diarie` reported `pass 0` for as long as they lived at the
+root — a package about to be published whose own test command was vacuously green. The
+four scripts that used to hold them (`check-ready-walker`, `check-tasks-validator`,
+`check-tasks-smoke`, `check-bootstrap-tasks`) collapsed into one `check:diarie` key on
+2026-07-11. What remains in `scripts/` tests the **plugin** — hooks, the validator, the
+beads probe, the ast-grep runner — and stays there.
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
 Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`); `ast-grep`
 comes from the pinned `@ast-grep/cli` devDep.

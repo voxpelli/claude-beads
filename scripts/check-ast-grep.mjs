@@ -14,9 +14,13 @@ import { spawnSync } from 'node:child_process'
 const inCi = Boolean(process.env.GITHUB_ACTIONS)
 const formatArgs = inCi ? ['--format', 'github'] : []
 
+// `diarie/test/` is in the outer bound because a rule scoped to a directory nobody scans
+// is a rule that is green and inert. `no-identical-test-title` lives there, and
+// `check:ast-grep-test` cannot cover for it: `ast-grep test` only replays a rule against
+// its own snapshot fixtures — it never walks the tree.
 const result = spawnSync(
   'ast-grep',
-  ['scan', ...formatArgs, 'scripts/', 'diarie/lib/', 'validate-plugin.mjs'],
+  ['scan', ...formatArgs, 'scripts/', 'diarie/lib/', 'diarie/test/', 'validate-plugin.mjs'],
   { stdio: 'inherit' }
 )
 
