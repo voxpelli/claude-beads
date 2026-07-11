@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **SessionStart tracker prime.** The startup branch of `session-start.sh` now reports what
+  is ready, blocked and claimed. It emitted **no tracker state at all** before this — the
+  `bd prime` orientation came from the *external* beads plugin, which died with bd, so every
+  session began blind to the backlog while `CLAUDE.md` claimed otherwise. Two reads
+  (~0.2 s against a 5 s timeout), merged into the hook's single JSON object.
+- **`hooks/post-tasks-validate.sh`** (`vp-beads-uzu`) — PostToolUse validation of
+  `.diarie/tasks/*.yml` edits. Writing a task is a hand-edit (no CRUD helper, by design), so
+  a dangling dep or bad enum could sit undetected until `npm run check`; now it is reported
+  on the edit. Silent when clean; advisory, never blocking.
+- **`/deintegrate-beads` skill.** `/migrate-tracker` moves the work but deliberately leaves
+  `.beads/` standing — and with it the *live machinery*. bd sets `core.hooksPath` →
+  `.beads/hooks/`, so `.git/hooks/` looks pristine while five shims intercept every git
+  operation; `pre-commit` shells out to `bd` and **propagates its exit code**. It also runs a
+  `dolt sql-server` daemon per repo. This disarms all of it and **never deletes `.beads/` or
+  any data** — that is what makes it safe to run. Skills: 8 → 9.
+- **`DESIGN-diarie-vs-beads.md`** — an evidence-first contrast (every claim cites an incident
+  we actually hit), including a candid "where beads is still ahead" section.
+
+### Fixed
+
+- **`### Session completion` ordered dead writes.** It told every session to run `bd close`
+  and `bd dolt push`, both of which have been impossible since bd 1.1.0. Retargeted to the
+  YAML store.
+- **`### Do not run bd setup claude` kept a right conclusion on false reasoning** — it claimed
+  this plugin's hook "already injects equivalent workflow context plus all persistent
+  memories". Neither half was true. Rewritten.
+- The 9-type table, the 60 s write-throttle quirk, and the "Wave 2 pending" section are
+  history, not instructions; removed (`vp-beads-e42`).
+
 - **`/migrate-tracker` skill** — a guided, one-way cutover of *another* project's
   tracker off beads onto the flat-YAML store. beads 1.1.0's write-gate broke every
   repo using the global binary at once, so this is a path the siblings need, not a

@@ -82,6 +82,13 @@ Real gaps. This is also the roadmap.
 - **A memory store.** `bd remember` is gone with the write-gate, and `/harden-memories`
   was deleted with it. (Its contents are, as of 1.1.0, **unrecoverable** — `bd memories`
   hits the same gate.)
+- **Epics as a first-class type.** beads had an `epic` *type*, so its ready-walk could
+  exclude containers structurally. We collapsed epic to `task` + `parent:` (which is the
+  better model — see `### Issue types`), but `computeReady` gates only on *type*, so **a
+  parent with open children currently computes as ready**. The tracker prime caught this
+  on its first run, leading with the migration epic as the next thing to work on. Filed as
+  `vp-beads-epc`; the row above about type-gating is true for `decision`/`milestone` and
+  **not yet true for epics**.
 - **Maturity.** beads has issue types, validation-on-create, a rich CLI, and years of
   work behind it. `diarie` has 734 lines and one real migration.
 

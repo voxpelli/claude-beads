@@ -2,6 +2,35 @@ meta:
   slug: backlog
   title: Standalone backlog (non-epic live work)
 tasks:
+  - id: vp-beads-epc
+    title: ready-walker surfaces an EPIC (a parent with open children) as ready
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - bug
+    acceptance_criteria:
+      - a task with at least one non-completed child is excluded from ready (you work the children, not the container)
+      - an `epic`-labelled task is excluded from ready regardless of children
+      - a childless task is unaffected; add a fixture covering parent-with-open-children in check-ready-walker.mjs
+      - DESIGN-diarie-vs-beads.md "where beads is ahead" row updated or removed once fixed
+    description: >-
+      Found 2026-07-11 by dogfooding the new SessionStart tracker prime: it led with
+      "next ready: vp-beads-l9i (high)" — l9i is the *migration epic*, a container with
+      three open children (iai, l2s, pku). An epic is not workable; its children are.
+
+
+      Root cause is the 4-type collapse (decision vp-beads-etm). bd had a separate `epic`
+      TYPE, so its ready-walk could exclude epics structurally. We made epic = `task` +
+      `parent:` (+ an `epic` label), which is the right model — but `computeReady` only
+      gates on type, so a parent task now computes as ready like any other.
+
+
+      This is the same CLASS of bug as the type-blindness we fixed in ec73dd9 and that we
+      criticize bd for in DESIGN-diarie-vs-beads.md: a non-workable item offered as work.
+      Recorded there under "where beads is still ahead" until this is fixed — the doc must
+      not claim a property the tool does not have.
+    updated: '2026-07-11'
   - id: vp-beads-3q7
     title: Add remark-lint-fenced-code-flag — require language on fenced code blocks
     status: pending
