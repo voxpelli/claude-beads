@@ -137,6 +137,96 @@ assert(
   })()
 )
 
+console.log('computeReady — containers (vp-beads-epc)')
+
+// These cover the RULE. They cannot cover the bug that made the rule necessary: the
+// half-globalized `parent` in loadTasks. Inline arrays let the author write `id` and
+// `parent` in one consistent id-space by hand, which is exactly the coherence the real
+// loader was failing to provide — so all of this stayed green while every epic in the
+// live store computed as ready. The regression guard lives in check-tasks-smoke.mjs,
+// which goes through loadTasks and a real store on disk. Do not move it here.
+
+assert(
+  'a parent with an OPEN child is not ready — it is blocked BY that child',
+  (() => {
+    const r = computeReady([
+      { id: 'P', status: 'pending', type: 'task' },
+      { id: 'C', status: 'pending', type: 'task', parent: 'P' },
+    ])
+    return !r.ready.some(t => t.id === 'P') &&
+      r.blocked.find(t => t.id === 'P')?.children?.includes('C') === true
+  })()
+)
+
+assert(
+  'the CHILD stays ready (you work the children, not the container)',
+  computeReady([
+    { id: 'P', status: 'pending', type: 'task' },
+    { id: 'C', status: 'pending', type: 'task', parent: 'P' },
+  ]).ready.some(t => t.id === 'C')
+)
+
+assert(
+  'children go in `children`, never in `blockers` (a dep must FINISH FIRST; a child is CONTAINED)',
+  (() => {
+    const p = computeReady([
+      { id: 'P', status: 'pending', type: 'task' },
+      { id: 'C', status: 'pending', type: 'task', parent: 'P' },
+    ]).blocked.find(t => t.id === 'P')
+    return p?.blockers.length === 0 && p?.children?.length === 1
+  })()
+)
+
+assert(
+  'a parent whose children are ALL completed is ready again (only OPEN children contain work)',
+  computeReady([
+    { id: 'P', status: 'pending', type: 'task' },
+    { id: 'C', status: 'completed', type: 'task', parent: 'P' },
+  ]).ready.some(t => t.id === 'P')
+)
+
+// The DECLARATIVE predicate, isolated from the structural one. In the live store these
+// two always co-occur (vp-beads-l9i is epic-labelled AND has open children), so a fix
+// that never implements this check would still look correct there.
+assert(
+  'an `epic`-labelled task with NO children is never ready — it needs attention',
+  (() => {
+    const r = computeReady([{ id: 'E', status: 'pending', type: 'task', labels: ['epic'] }])
+    return r.ready.length === 0 && /no open children/.test(r.needsAttention[0]?.reason ?? '')
+  })()
+)
+
+assert(
+  'an `epic`-labelled task whose children are all completed still is not ready (close it, do not work it)',
+  (() => {
+    const r = computeReady([
+      { id: 'E', status: 'pending', type: 'task', labels: ['epic'] },
+      { id: 'C', status: 'completed', type: 'task', parent: 'E' },
+    ])
+    return !r.ready.some(t => t.id === 'E') && r.needsAttention.some(t => t.id === 'E')
+  })()
+)
+
+assert(
+  'an in_progress child still counts as OPEN (a claimed child is not a finished one)',
+  computeReady([
+    { id: 'P', status: 'pending', type: 'task' },
+    { id: 'C', status: 'in_progress', type: 'task', parent: 'P' },
+  ]).blocked.some(t => t.id === 'P')
+)
+
+assert(
+  'a task can be blocked by deps AND by children at once, reported separately',
+  (() => {
+    const p = computeReady([
+      { id: 'D', status: 'pending', type: 'task' },
+      { id: 'P', status: 'pending', type: 'task', deps: ['D'] },
+      { id: 'C', status: 'pending', type: 'task', parent: 'P' },
+    ]).blocked.find(t => t.id === 'P')
+    return p?.blockers.includes('D') === true && p?.children?.includes('C') === true
+  })()
+)
+
 console.log('computeStats')
 
 {

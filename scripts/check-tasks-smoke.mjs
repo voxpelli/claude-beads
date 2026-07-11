@@ -28,6 +28,13 @@ import { TRACKER_DIR } from 'diarie/schema'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const FIXTURES = join(ROOT, 'diarie', 'test', 'fixtures')
+/**
+ * The container/epic cases live in their OWN store. Folding them into FIXTURES would
+ * have shifted that suite's green count assertions ("total 9", "2 file(s)"), and
+ * rewriting a passing assertion to accommodate your own change is how a regression
+ * gets waved through. New behaviour, new fixture; the old guarantees stay untouched.
+ */
+const EPICS = join(ROOT, 'diarie', 'test', 'fixtures-epics')
 
 /** The real CLI, invoked exactly as every consumer invokes it. */
 const CLI = 'diarie/cli.js'
@@ -121,7 +128,71 @@ console.log('ready-walker CLI (against test/fixtures)')
   assert('--days <non-numeric>: exits 1', code === 1)
 }
 
-console.log('validate-tasks CLI (against test/fixtures)')
+console.log('\ncontainers: an epic is not workable (vp-beads-epc) — THROUGH loadTasks')
+
+// These MUST run through the real file-load path, not inline task arrays. The bug was
+// never in the ready rule; it was in the ID-SPACE. `loadTasks` globalized `id` and
+// `deps` to `slug/id` but handed `parent` back raw, so `parent` could never match any
+// `id` and every parent lookup silently found nothing. A unit test writes both by hand,
+// in one consistent id-space, and therefore CANNOT SEE THAT BUG — it would pass against
+// a tracker that still offers every epic as ready. Only a real store on disk can.
+{
+  const { code, out } = run(READY, ['--json'], EPICS)
+  const j = JSON.parse(out)
+  /** @param {string} id @returns {boolean} */
+  const inReady = (id) => j.ready.some((/** @type {any} */ t) => t.id === id)
+  /** @param {string} id @returns {any} */
+  const blockedRow = (id) => j.blocked.find((/** @type {any} */ t) => t.id === id)
+  /** @param {string} id @returns {any} */
+  const attnRow = (id) => j.needsAttention.find((/** @type {any} */ t) => t.id === id)
+
+  assert('exit 0', code === 0)
+
+  // The STRUCTURAL predicate, alone: open children, no epic label.
+  assert('plain parent with an open child is NOT ready', !inReady('alpha/P-OPEN'))
+  assert('...it is blocked, and says which children contain the work',
+    blockedRow('alpha/P-OPEN')?.children?.includes('alpha/C-OPEN') === true)
+  assert('...and the CHILD is ready (you work the children, not the container)', inReady('alpha/C-OPEN'))
+
+  // The DECLARATIVE predicate, alone. This is the assertion the live store cannot make:
+  // vp-beads-l9i is epic-labelled AND has open children, so a structural-only fix makes
+  // it vanish from `ready` anyway and this criterion would pass UNIMPLEMENTED.
+  assert('epic label with NO open children is NOT ready (label predicate, isolated)', !inReady('alpha/E-EMPTY'))
+  assert('...it surfaces in needsAttention rather than vanishing', /no open children/.test(attnRow('alpha/E-EMPTY')?.reason ?? ''))
+
+  // Both at once — the vp-beads-l9i shape. Containment wins and names its children.
+  //
+  // E-OPEN has TWO children on purpose: one bare (alpha/C-EPIC) and one qualified
+  // (beta/C-CROSS). Mutation-testing showed why that matters — with the namespacing
+  // reverted, E-OPEN STILL comes back blocked, because the qualified child resolves
+  // without it. So "is it blocked?" is green for the wrong reason. The assertion that
+  // actually isolates the regression is the BARE child, which is also the only shape
+  // the live store uses.
+  assert('epic WITH open children is BLOCKED (not merely absent from ready)', blockedRow('alpha/E-OPEN') !== undefined)
+  assert('...and its BARE-parent child is counted (the shape the live store uses)',
+    blockedRow('alpha/E-OPEN')?.children?.includes('alpha/C-EPIC') === true)
+  assert('...blocked by its children, not by "blockers" (deps mean something else)',
+    blockedRow('alpha/E-OPEN')?.blockers.length === 0 && (blockedRow('alpha/E-OPEN')?.children?.length ?? 0) === 2)
+
+  // A cross-file parent is written slug-qualified, so it resolves WITHOUT the namespacing
+  // fix and cannot guard it (mutation-tested). What it guards is idempotency: nsId must
+  // pass `alpha/E-OPEN` through, not double-prefix it to `beta/alpha/E-OPEN`.
+  assert('an already-qualified cross-file parent resolves (nsId is idempotent)',
+    blockedRow('alpha/E-OPEN')?.children?.includes('beta/C-CROSS') === true)
+
+  // The CONVERSE — guards a fix that over-excludes every parent forever.
+  assert('parent whose children are ALL completed is STILL ready', inReady('alpha/P-DONE'))
+  assert('a childless task is unaffected', inReady('alpha/PLAIN'))
+
+  // A tree of finished leaves is not a broken graph.
+  assert('containers in `blocked` do NOT trigger the dependency-cycle hint', j.hint === undefined)
+}
+{
+  const { code } = run(VALIDATE, [], EPICS)
+  assert('the container fixtures are themselves a valid store', code === 0)
+}
+
+console.log('\nvalidate-tasks CLI (against test/fixtures)')
 
 {
   const { both: out, code } = run(VALIDATE, [], FIXTURES)

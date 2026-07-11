@@ -72,10 +72,16 @@ export const ready = {
 
     const result = computeReady(tasks)
 
-    // An empty ready queue WITH blocked tasks is ambiguous: everything claimed, or
+    // An empty ready queue WITH DEP-blocked tasks is ambiguous: everything claimed, or
     // a dependency cycle nobody has noticed. Say so rather than shrug.
-    const ambiguous = result.ready.length === 0 && result.blocked.length > 0
-    if (ambiguous) warn(`0 ready, ${result.blocked.length} blocked — run \`${parentName} validate\` to check for a dependency cycle`)
+    //
+    // Gated on dep-blocked entries specifically. Containers (a parent with open
+    // children) also live in `blocked`, but an all-epics backlog is not a cycle — it
+    // is a perfectly healthy tree whose leaves are all done. Counting them here would
+    // point every reader at `validate` to hunt a cycle that does not exist.
+    const depBlocked = result.blocked.filter(t => t.blockers.length)
+    const ambiguous = result.ready.length === 0 && depBlocked.length > 0
+    if (ambiguous) warn(`0 ready, ${depBlocked.length} blocked — run \`${parentName} validate\` to check for a dependency cycle`)
 
     // An OBJECT — the full partition. Pinned.
     if (opts.json) {
@@ -89,7 +95,16 @@ export const ready = {
       })
     } else {
       const lines = opts.blocked
-        ? result.blocked.map(t => `${line(t)}  ← blocked by ${t.blockers.join(', ')}`)
+        // A container and a dep-blocked task are both "blocked", but not for the same
+        // reason, and the reader has to be able to tell: one is waiting on prerequisites,
+        // the other IS the work its children are doing. A task can be both.
+        ? result.blocked.map(t => {
+          const why = [
+            ...(t.blockers.length ? [`← blocked by ${t.blockers.join(', ')}`] : []),
+            ...(t.children?.length ? [`← contains ${t.children.length} open: ${t.children.join(', ')}`] : []),
+          ]
+          return `${line(t)}  ${why.join('  ')}`
+        })
         : (result.ready.length ? result.ready.map(t => line(t)) : ['  (no ready tasks)'])
       lines.push(...result.needsAttention.map(t => `${line(t)}  ! needs attention: ${t.reason}`))
       textOut(lines.join('\n'))

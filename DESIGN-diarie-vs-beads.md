@@ -44,7 +44,7 @@ have prevented it, and no amount of care can prevent the next one.
 | **Never writes to your `CLAUDE.md`, `AGENTS.md`, or `.claude/settings.json`.** | `bd setup claude` injects a managed block into `CLAUDE.md`/`AGENTS.md` and `SessionStart`/`PreCompact` hook entries into `.claude/settings.json`. | Substrate, not opinion. `ROADMAP.md` names the anti-goal outright: *"a tool that colonizes project `CLAUDE.md` files"*. |
 | **The data *is* the repo.** Plain YAML: committed, diffable, reviewable in a PR, editable in any editor. The entire backlog is **617 lines**. | `.beads/` is a **32 MB Dolt database**, and bd's own `.beads/.gitignore` leaves only fragments tracked. In this repo the whole directory is gitignored — so **none of the issue history was in git at all.** The migration's committed JSONL archive is the first time it ever was. | Lock-in resistance; data portability. You cannot be locked into a text file. |
 | **A point release cannot break your writes.** Writing is `Edit`. There is no write path to break. | See "The forcing function" above. | Platform proximity. |
-| **Ready-walk is type-gated:** a `decision` is a record, a `milestone` is a marker, and neither is ever "workable". | Type-blind — lists `decision` and `milestone` issues as ready. Our own dual-run caught it on `vp-beads-etm`: `bd ready` offered a *decision* as the next thing to work on. | Correctness where it is cheap. |
+| **Nothing unworkable is ever offered as work.** A `decision` is a record, a `milestone` is a marker, and a container — a parent with open children — is the sum of its children, not a task. None are ever "ready". | Type-blind — lists `decision` and `milestone` issues as ready. Our own dual-run caught it on `vp-beads-etm`: `bd ready` offered a *decision* as the next thing to work on. bd got containers right, though, and for a reason we gave up: it had an `epic` *type*. | Correctness where it is cheap. We had to earn back, in logic, what bd got structurally — see `## The uncomfortable one`. |
 | **Uninstalling is deleting a folder.** | The tracker is dead and it still owns your git hooks, a daemon, and two git-config keys — which is why `/deintegrate-beads` had to be written at all. `bd hooks uninstall` cannot even clean its own default install shape (its `--help` admits it only touches `.git/hooks/`). | An exit ramp is a feature. |
 
 ---
@@ -82,15 +82,8 @@ Real gaps. This is also the roadmap.
 - **A memory store.** `bd remember` is gone with the write-gate, and `/harden-memories`
   was deleted with it. (Its contents are, as of 1.1.0, **unrecoverable** — `bd memories`
   hits the same gate.)
-- **Epics as a first-class type.** beads had an `epic` *type*, so its ready-walk could
-  exclude containers structurally. We collapsed epic to `task` + `parent:` (which is the
-  better model — see `### Issue types`), but `computeReady` gates only on *type*, so **a
-  parent with open children currently computes as ready**. The tracker prime caught this
-  on its first run, leading with the migration epic as the next thing to work on. Filed as
-  `vp-beads-epc`; the row above about type-gating is true for `decision`/`milestone` and
-  **not yet true for epics**.
 - **Maturity.** beads has issue types, validation-on-create, a rich CLI, and years of
-  work behind it. `diarie` has 734 lines and one real migration.
+  work behind it. `diarie` has one real migration behind it.
 
 A tracker that does less is only better if the things it dropped were the things
 costing you. That was true here — a daemon, a DB, hidden git hooks, and telemetry were
@@ -104,7 +97,29 @@ beads' ready-walk being type-blind is the kind of bug we could have written ours
 We *did* write it: `computeReady` was type-blind too, until a 10-agent review caught it
 in 2026-07 (`ec73dd9`). The dual-run against bd is what proved both were wrong.
 
-Simplicity buys fewer *classes* of failure — a daemon that cannot orphan, a write path
-that cannot break, hooks that cannot hijack. It does not buy correctness. That still has
-to be earned, and the only reason we know our ready-walk is right is that we ran it
-against 131 real issues and explained every divergence.
+Then we wrote it again. Collapsing bd's `epic` *type* into `task` + `parent:` is the
+better model, but it moved the container check from the type gate — where it was
+structural and free — into logic nobody wrote. So `computeReady` offered the migration
+epic itself as the next thing to work on, and the dogfooded tracker prime led with it on
+its first run. Fixed 2026-07-11 (`vp-beads-epc`): a parent with open children is now
+blocked *by* those children, and children ride in their own field, because a dep must
+finish first while a child is merely contained.
+
+The fix is the part worth keeping. `loadTasks` globalized `id` and `deps` into a
+`slug/id` namespace but handed `parent` back raw, so `parent` could never equal any
+`id` — every parent lookup had been silently finding nothing. The obvious fix (index
+children by parent, compare to id) would therefore have found **zero children for every
+epic**, concluded there was nothing to exclude, changed no behaviour, and **passed a
+green test suite** — including a unit test, which writes `id` and `parent` by hand in one
+consistent id-space and so cannot see the incoherence at all. It was caught by asking why
+the ids in a debug print did not match, and pinned by reverting the fix to watch the
+tests go red.
+
+That is the whole lesson, and it is the same one every time: **the failure mode here is
+never a crash. It is a green check over work not done.** The validator that passed on a
+missing store. The `--json` branch that emitted no JSON. The probe that counted prose as
+tasks. The tracker that printed an empty backlog when it was lost. Simplicity buys fewer
+*classes* of failure — a daemon that cannot orphan, a write path that cannot break, hooks
+that cannot hijack. It does not buy correctness. That still has to be earned, and the only
+reason we trust the ready-walk is that we ran it against 131 real issues, explained every
+divergence, and now break it on purpose to confirm the tests notice.
