@@ -48,10 +48,10 @@ if command -v diarie >/dev/null 2>&1; then
 	result=$(diarie validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
 elif [ -x "$PROJECT_ROOT/node_modules/.bin/diarie" ]; then
 	result=$("$PROJECT_ROOT/node_modules/.bin/diarie" validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
-elif [ -f "$PROJECT_ROOT/diarie/lib/validate.js" ]; then
-	result=$(node "$PROJECT_ROOT/diarie/lib/validate.js" --json --root "$PROJECT_ROOT" 2>/dev/null || true)
-elif [ -n "$PLUGIN_ROOT" ] && [ -f "$PLUGIN_ROOT/diarie/lib/validate.js" ]; then
-	result=$(node "$PLUGIN_ROOT/diarie/lib/validate.js" --json --root "$PROJECT_ROOT" 2>/dev/null || true)
+elif [ -f "$PROJECT_ROOT/diarie/cli.js" ]; then
+	result=$(node "$PROJECT_ROOT/diarie/cli.js" validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
+elif [ -n "$PLUGIN_ROOT" ] && [ -f "$PLUGIN_ROOT/diarie/cli.js" ]; then
+	result=$(node "$PLUGIN_ROOT/diarie/cli.js" validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
 fi
 [ -n "$result" ] || exit 0
 

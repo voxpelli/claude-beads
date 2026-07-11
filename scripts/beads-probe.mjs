@@ -43,9 +43,8 @@ import {
   argv, cwd, exit, stdout,
 } from 'node:process'
 
-import yaml from 'js-yaml'
-
 import { TRACKER_DIR } from 'diarie/schema'
+import yaml from 'js-yaml'
 
 /** Hook names bd installs. */
 const BD_HOOKS = new Set(['pre-commit', 'post-merge', 'pre-push', 'post-checkout', 'prepare-commit-msg'])

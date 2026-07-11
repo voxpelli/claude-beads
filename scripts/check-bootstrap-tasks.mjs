@@ -21,7 +21,9 @@ import {
   existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync,
 } from 'node:fs'
 
-import { groupTasks, normalizeBody, projectLive, splitBody } from '../diarie/lib/migrate/bootstrap.js'
+import {
+  groupTasks, normalizeBody, projectLive, splitBody,
+} from '../diarie/lib/migrate/bootstrap.js'
 
 let passed = 0
 let failed = 0

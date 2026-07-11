@@ -13,7 +13,9 @@
  */
 
 export * from './schema.js'
-export { computeReady, computeStats, formatStats, line } from './ready.js'
+export {
+  computeReady, computeStats, formatStats, line,
+} from './ready.js'
 export { lintTasks } from './validate.js'
 export {
   listTaskFiles, loadTasks, NoStoreError, nsId, resolveInitRoot, resolveRoot, slugOf,

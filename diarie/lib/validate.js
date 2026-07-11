@@ -1,9 +1,9 @@
 /**
- * validate-tasks.mjs — integrity gate for the flat-YAML task substrate.
+ * validate.js — the integrity gate.
  *
- * Mirrors validate-plugin.mjs: a standalone ESM script with `errors`/`warnings`
- * arrays and a non-zero exit on any error. The pure `lintTasks()` helper is
- * exported for unit tests; the CLI wraps it with file IO.
+ * PURE: `lintTasks()` takes already-parsed files and returns errors/warnings. No
+ * filesystem, no process, no exit codes. `commands/validate.js` does the IO and
+ * owns the exit codes; `store.js` owns finding the store.
  *
  * Four passes:
  *   1. per-file structural — required fields, enum values, unique ids
@@ -22,25 +22,11 @@
  * to know whether the gate had been real. A missing store is now ENOSTORE and a
  * non-zero exit; the `skipped` flag is gone with the defect it papered over. An
  * EMPTY store is still perfectly clean — see store.js.
- *
- * TEMPORARY: the `main()` at the bottom keeps `node diarie/lib/validate.js`
- * runnable so `npm run check` stays green across the move. Stage 2 replaces it
- * with `diarie validate` and deletes it.
  */
-
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import {
-  argv, exit, stderr, stdout,
-} from 'node:process'
-
-import yaml from 'js-yaml'
 
 import {
   ID_RE, isNil, RATCHET_TYPES, REQUIRED_FIELDS, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
 } from './schema.js'
-import { listTaskFiles, NoStoreError, resolveRoot, slugOf } from './store.js'
 
 /**
  * Globalize a bare id to its file's slug namespace (`slug/id`); pass through
@@ -220,86 +206,4 @@ function findCycles (deps) {
     cycles.push(path)
   }
   return cycles
-}
-
-/**
- * TEMPORARY CLI entry — replaced by `diarie validate` in Stage 2. See the header.
- */
-async function main () {
-  const args = argv.slice(2)
-  const json = args.includes('--json')
-  const rootIdx = args.indexOf('--root')
-  const rootArg = rootIdx !== -1 ? args[rootIdx + 1] : undefined
-
-  /** @type {string} */
-  let root
-  try {
-    root = resolveRoot({ root: rootArg })
-  } catch (err) {
-    // A missing store is an ERROR, not a clean one. This replaces the old
-    // `{clean:true, skipped:true}` exit-0, which made "no store" and "no problems"
-    // indistinguishable to every consumer.
-    if (err instanceof NoStoreError) {
-      if (json) stdout.write(JSON.stringify({ error: err.message, code: err.code }, undefined, 2) + '\n')
-      else stderr.write(`diarie: ${err.message}\n`)
-      exit(1)
-    }
-    throw err
-  }
-
-  const { ignored, names, tasksDir } = await listTaskFiles(root)
-
-  // Phantom-files guard: a dir of non-matching files is not the same as an empty
-  // substrate — surface it rather than skip silently ("silent-skip is a bug").
-  if (ignored.length && !names.length && !json) {
-    console.warn(`Warning: tasks/ has ${ignored.length} file(s) not matching tasks-*.yml (ignored): ${ignored.join(', ')}\n  Rename to tasks-<slug>.yml to include them in validation.\n`)
-  }
-
-  // An EMPTY store is a legitimately clean store — it is an ABSENT one that is an
-  // error, and that was caught above. No `skipped` flag: there is nothing to skip.
-  const files = []
-  /** @type {string[]} */
-  const parseErrors = []
-  for (const name of names) {
-    const slug = slugOf(name)
-    let doc
-    try {
-      doc = /** @type {any} */ (yaml.load(await readFile(join(tasksDir, name), 'utf8')))
-    } catch (err) {
-      // Collect, do NOT exit here. Bailing out on stderr meant `--json` emitted NO JSON
-      // at all for an unparseable store — so every consumer that reads stdout (both hooks)
-      // saw empty output and concluded there was nothing to say, on the single commonest
-      // hand-edit mistake. `--json` must ALWAYS emit JSON; that is the contract.
-      parseErrors.push(`${name}: invalid YAML — ${/** @type {Error} */ (err).message}`)
-      continue
-    }
-    files.push({ name: slug, tasks: doc?.tasks ?? [] })
-  }
-
-  const lint = lintTasks(files)
-  const errors = [...parseErrors, ...lint.errors]
-  const { warnings } = lint
-
-  if (json) {
-    stdout.write(JSON.stringify({ clean: errors.length === 0, errors, warnings }, undefined, 2) + '\n')
-    if (errors.length) exit(1)
-    return
-  }
-  if (warnings.length) {
-    console.warn('Task validation warnings:\n')
-    for (const w of warnings) console.warn(`  ~ ${w}`)
-    console.warn('')
-  }
-  if (errors.length) {
-    console.error('Task validation failed:\n')
-    for (const e of errors) console.error(`  - ${e}`)
-    console.error(`\n${errors.length} error(s) found.`)
-    exit(1)
-  } else {
-    console.log(`Task validation passed (${files.length} file(s)).`)
-  }
-}
-
-if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
-  main().catch(err => { stderr.write(String(err?.stack ?? err) + '\n'); exit(1) })
 }

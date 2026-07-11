@@ -92,7 +92,7 @@ export class NoStoreError extends Error {
  * @returns {string}
  * @throws {NoStoreError} when no `.diarie/` is found
  */
-export function resolveRoot ({ root, cwd = process.cwd() } = {}) {
+export function resolveRoot ({ cwd = process.cwd(), root } = {}) {
   // EVERY path is verified, including the explicit ones. An explicit `--root`
   // that holds no store is still "told to look and found nothing" — and it is
   // the case that matters most, because the hooks ALWAYS pass `--root`. Trusting
@@ -122,7 +122,7 @@ export function resolveRoot ({ root, cwd = process.cwd() } = {}) {
  * @param {string} [options.cwd]
  * @returns {string}
  */
-export function resolveInitRoot ({ root, cwd = process.cwd() } = {}) {
+export function resolveInitRoot ({ cwd = process.cwd(), root } = {}) {
   return resolve(root ?? env.TASKS_ROOT ?? cwd)
 }
 
@@ -157,6 +157,20 @@ export function resolveInitRoot ({ root, cwd = process.cwd() } = {}) {
  * @returns {string}
  */
 export const nsId = (id, slug) => String(id).includes('/') ? String(id) : `${slug}/${id}`
+
+/**
+ * Drop the loader-only provenance fields (`_slug`, `_file`) before output.
+ *
+ * Lives here, in the module that ADDS them — a leak is otherwise inevitable, and it
+ * happened: the first cut of `diarie ready --json` emitted `_slug`/`_file` into
+ * every consumer's parsed output because the stripping lived in the old reader's
+ * private scope and the new command simply forgot. The thing that creates a mess
+ * should own cleaning it up.
+ *
+ * @param {LoadedTask} t
+ * @returns {Task}
+ */
+export const strip = ({ _file, _slug, ...task }) => task
 
 /**
  * Coerce a YAML `deps` value to a safe namespaced string[]: an array → namespace

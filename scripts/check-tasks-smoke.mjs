@@ -29,9 +29,11 @@ import { TRACKER_DIR } from 'diarie/schema'
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const FIXTURES = join(ROOT, 'diarie', 'test', 'fixtures')
 
-/** The two substrate entries, at their post-move paths. */
-const READY = 'diarie/lib/ready.js'
-const VALIDATE = 'diarie/lib/validate.js'
+/** The real CLI, invoked exactly as every consumer invokes it. */
+const CLI = 'diarie/cli.js'
+const READY = ['ready']
+const VALIDATE = ['validate']
+const STATS = ['stats']
 
 let passed = 0
 let failed = 0
@@ -51,13 +53,13 @@ function assert (name, cond) {
  * `both` is offered for the assertions that genuinely don't care which stream a
  * human-readable message landed on.
  *
- * @param {string} script   path relative to repo root (e.g. 'diarie/lib/ready.js')
+ * @param {string[]} command  the subcommand (e.g. ['ready'])
  * @param {string[]} args
  * @param {string} tasksRoot
  * @returns {{ code: number, out: string, err: string, both: string }}
  */
-function run (script, args, tasksRoot) {
-  const r = spawnSync('node', [join(ROOT, script), ...args], {
+function run (command, args, tasksRoot) {
+  const r = spawnSync('node', [join(ROOT, CLI), ...command, ...args], {
     cwd: ROOT,
     env: { ...env, TASKS_ROOT: tasksRoot },
     encoding: 'utf8',
@@ -76,18 +78,18 @@ console.log('ready-walker CLI (against test/fixtures)')
   assert('default: omits the blocked task (alpha/T-3)', !/alpha\/T-3 /.test(out))
 }
 {
-  const { both: out, code } = run(READY, ['--format', 'json'], FIXTURES)
+  const { both: out, code } = run(READY, ['--json'], FIXTURES)
   const data = JSON.parse(out)
-  assert('--format json: exit 0 + parses', code === 0 && Array.isArray(data.ready))
-  assert('--format json: ready includes beta/T-2', data.ready.some((/** @type {any} */ t) => t.id === 'beta/T-2'))
-  assert('--format json: provenance fields stripped', !out.includes('_slug') && !out.includes('_file'))
+  assert('--json: exit 0 + parses', code === 0 && Array.isArray(data.ready))
+  assert('--json: ready includes beta/T-2', data.ready.some((/** @type {any} */ t) => t.id === 'beta/T-2'))
+  assert('--json: provenance fields stripped', !out.includes('_slug') && !out.includes('_file'))
 }
 {
-  const { both: out, code } = run(READY, ['--stats'], FIXTURES)
-  assert('--stats: exit 0 + counts all 9 tasks (6 task + doc/decision/milestone)', code === 0 && /total 9/.test(out))
+  const { both: out, code } = run(STATS, [], FIXTURES)
+  assert('stats: exit 0 + counts all 9 tasks (6 task + doc/decision/milestone)', code === 0 && /total 9/.test(out))
 }
 {
-  const { both: out, code } = run(READY, ['--format', 'json'], FIXTURES)
+  const { both: out, code } = run(READY, ['--json'], FIXTURES)
   const data = JSON.parse(out)
   assert(
     'default ready set never includes the doc/decision/milestone fixtures (type gate, decision vp-beads-etm)',
@@ -103,8 +105,8 @@ console.log('ready-walker CLI (against test/fixtures)')
   )
 }
 {
-  const { both: out, code } = run(READY, ['--stale', '--days', '30'], FIXTURES)
-  assert('--stale: flags the old in_progress task', code === 0 && /alpha\/T-4/.test(out))
+  const { both: out, code } = run(STATS, ['--stale', '--days', '30'], FIXTURES)
+  assert('stats --stale: flags the old in_progress task', code === 0 && /alpha\/T-4/.test(out))
 }
 {
   const { both: out, code } = run(READY, ['--filter', 'in_progress'], FIXTURES)
@@ -115,7 +117,7 @@ console.log('ready-walker CLI (against test/fixtures)')
   assert('--filter <invalid>: exits 1', code === 1)
 }
 {
-  const { code } = run(READY, ['--stats', '--days', 'abc'], FIXTURES)
+  const { code } = run(STATS, ['--days', 'abc'], FIXTURES)
   assert('--days <non-numeric>: exits 1', code === 1)
 }
 
@@ -180,7 +182,10 @@ console.log('\nvalidate-tasks CLI (error paths, via tmpdir)')
     mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
     writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'), 'tasks: [ : : not yaml')
     const { both: out, code } = run(VALIDATE, [], dir)
-    assert('malformed YAML: exits 1 with a clear message', code === 1 && /invalid YAML/.test(out))
+    // Exit 2, not 1. The CLI distinguishes "you got it wrong" (1: bad flag, no store)
+    // from "it ran and the answer is no" (2: your store is invalid). A CI script can
+    // now tell a misconfigured diarie from a broken backlog.
+    assert('malformed YAML: exits 2 (ResultError) with a clear message', code === 2 && /invalid YAML/.test(out))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
@@ -196,7 +201,7 @@ console.log('\nvalidate-tasks CLI (error paths, via tmpdir)')
     let parsed
     try { parsed = JSON.parse(out) } catch { /* stays undefined */ }
     assert('--json on UNPARSEABLE yaml still emits JSON (the contract) with the error',
-      code === 1 && parsed?.clean === false && /invalid YAML/.test(String(parsed?.errors ?? '')))
+      code === 2 && parsed?.clean === false && /invalid YAML/.test(String(parsed?.errors ?? '')))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
@@ -205,7 +210,7 @@ console.log('\nvalidate-tasks CLI (error paths, via tmpdir)')
     mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
     writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'), 'tasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n  - id: T-1\n    title: b\n    status: pending\n    type: task\n')
     const { both: out, code } = run(VALIDATE, [], dir)
-    assert('duplicate id: exits 1 with "duplicate id"', code === 1 && /duplicate id/.test(out))
+    assert('duplicate id: exits 2 with "duplicate id"', code === 2 && /duplicate id/.test(out))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 

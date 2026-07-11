@@ -11,32 +11,13 @@
  * `milestone`) are records or markers, never work — they never appear in any
  * partition. (Only the analog of bd's `blocks` affects readiness; the graph is
  * recomputed, never enforced — see validate.js for the integrity gate.)
- *
- * TEMPORARY: the `main()` at the bottom keeps `node diarie/lib/ready.js` runnable
- * so `npm run check` stays green across the move. Stage 2 replaces it with
- * `diarie ready` and deletes it. It is not the CLI; it is scaffolding.
  */
-
-import { fileURLToPath } from 'node:url'
-import {
-  argv, exit, stderr, stdout,
-} from 'node:process'
 
 import {
   PRIORITY_RANK, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
 } from './schema.js'
-import { loadTasks, NoStoreError, resolveRoot } from './store.js'
 
 /** @typedef {import('./store.js').Task} Task */
-/** @typedef {import('./store.js').LoadedTask} LoadedTask */
-
-/**
- * Drop loader-only provenance fields before serializing to JSON.
- *
- * @param {LoadedTask} t
- * @returns {Task}
- */
-const strip = ({ _file, _slug, ...task }) => task
 
 /**
  * Build a zero-filled tally keyed by a set of allowed values. Uses a
@@ -164,87 +145,4 @@ export function formatStats (s) {
   ]
   if (s.malformedDates.length) lines.push(`! malformed updated dates: ${s.malformedDates.join(' ')}`)
   return lines.join('\n') + '\n'
-}
-
-/**
- * TEMPORARY CLI entry — replaced by `diarie ready` in Stage 2. See the file
- * header. Kept only so `npm run check` stays green across the move.
- */
-async function main () {
-  const args = argv.slice(2)
-  const has = (/** @type {string} */ flag) => args.includes(flag)
-  const opt = (/** @type {string} */ flag, /** @type {string} */ fallback) => {
-    const i = args.indexOf(flag)
-    return i !== -1 && args[i + 1] ? args[i + 1] : fallback
-  }
-  const numOpt = (/** @type {string} */ flag, /** @type {number} */ fallback) => {
-    const raw = opt(flag, '')
-    if (raw === '') return fallback
-    const n = Number(raw)
-    if (!Number.isFinite(n) || n < 0) { stderr.write(`error: ${flag} requires a non-negative number (got ${JSON.stringify(raw)})\n`); exit(1) }
-    return Math.trunc(n)
-  }
-  const json = opt('--format', '') === 'json' || has('--json')
-
-  /** @type {string} */
-  let root
-  try {
-    root = resolveRoot({ root: opt('--root', '') || undefined })
-  } catch (err) {
-    // A missing store is an ERROR, not an empty backlog. It goes to stdout under
-    // --json and carries a non-zero exit, because stderr is the stream every
-    // caller discards — which is precisely how this defect survived so long.
-    if (err instanceof NoStoreError) {
-      if (json) stdout.write(JSON.stringify({ error: err.message, code: err.code }, undefined, 2) + '\n')
-      else stderr.write(`diarie: ${err.message}\n`)
-      exit(1)
-    }
-    throw err
-  }
-
-  const tasks = await loadTasks(root, msg => stderr.write(`diarie: ${msg}\n`))
-
-  if (has('--stats')) {
-    const stats = computeStats(tasks, numOpt('--days', 30))
-    stdout.write(json ? JSON.stringify(stats, undefined, 2) + '\n' : formatStats(stats))
-    return
-  }
-  if (has('--stale')) {
-    const { stale } = computeStats(tasks, numOpt('--days', 30))
-    stdout.write(json ? JSON.stringify({ stale }, undefined, 2) + '\n' : (stale.length ? stale.map(id => `  ${id}`).join('\n') : '  (none)') + '\n')
-    return
-  }
-  if (has('--filter')) {
-    const status = opt('--filter', '')
-    if (!VALID_STATUSES.has(/** @type {any} */ (status))) { stderr.write(`error: --filter requires one of: ${[...VALID_STATUSES].join(', ')}\n`); exit(1) }
-    const filtered = tasks.filter(t => t.status === status)
-    stdout.write(json ? JSON.stringify(filtered.map(t => strip(t)), undefined, 2) + '\n' : filtered.map(t => line(t)).join('\n') + '\n')
-    return
-  }
-
-  const result = computeReady(tasks)
-  // An empty ready queue with blocked tasks is ambiguous: all-claimed, or a cycle.
-  const ambiguous = result.ready.length === 0 && result.blocked.length > 0
-  if (ambiguous) stderr.write(`diarie: 0 ready, ${result.blocked.length} blocked — run \`diarie validate\` to check for a dependency cycle\n`)
-  if (has('--strict') && (result.needsAttention.length || ambiguous)) exit(1)
-
-  if (json) {
-    stdout.write(JSON.stringify({
-      ready: result.ready.map(t => strip(t)),
-      blocked: result.blocked.map(t => strip(t)),
-      needsAttention: result.needsAttention.map(t => strip(t)),
-      ...(ambiguous ? { hint: 'possible dependency cycle — run `diarie validate`' } : {}),
-    }, undefined, 2) + '\n')
-    return
-  }
-
-  const lines = has('--blocked')
-    ? result.blocked.map(t => `${line(t)}  ← blocked by ${t.blockers.join(', ')}`)
-    : (result.ready.length ? result.ready.map(t => line(t)) : ['  (no ready tasks)'])
-  lines.push(...result.needsAttention.map(t => `${line(t)}  ! needs attention: ${t.reason}`))
-  stdout.write(lines.join('\n') + '\n')
-}
-
-if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
-  main().catch(err => { stderr.write(String(err?.stack ?? err) + '\n'); exit(1) })
 }

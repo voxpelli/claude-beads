@@ -14,7 +14,7 @@
     "check:plugin": "node validate-plugin.mjs",
     "check:ready-walker": "node scripts/check-ready-walker.mjs",
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
-    "check:tasks": "node diarie/lib/validate.js",
+    "check:tasks": "node diarie/cli.js validate",
     "check:tasks-smoke": "node scripts/check-tasks-smoke.mjs",
     "check:tasks-validator": "node scripts/check-tasks-validator.mjs",
     "check:validator": "node scripts/check-validator.mjs",

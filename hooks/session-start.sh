@@ -39,17 +39,17 @@ _hook_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 _plugin_root=$(dirname -- "$_hook_dir")
 
 # Emits the full `ready` invocation prefix, not just a binary name: the installed CLI
-# takes `ready` as a SUBCOMMAND, while the in-repo entry (diarie/lib/ready.js) IS ready.
-# Returning a bare name would make callers append `ready` to the wrong form.
+# takes `ready` as a SUBCOMMAND, and so does the in-repo cli.js. Returning a bare
+# binary name would leave each caller to append it, which is a place to get it wrong.
 diarie_ready_cmd() {
 	if command -v diarie >/dev/null 2>&1; then
 		echo "diarie ready"
 	elif [ -x "$PWD/node_modules/.bin/diarie" ]; then
 		echo "$PWD/node_modules/.bin/diarie ready"
-	elif [ -f "$PWD/diarie/lib/ready.js" ]; then
-		echo "node $PWD/diarie/lib/ready.js"
-	elif [ -f "$_plugin_root/diarie/lib/ready.js" ]; then
-		echo "node $_plugin_root/diarie/lib/ready.js"
+	elif [ -f "$PWD/diarie/cli.js" ]; then
+		echo "node $PWD/diarie/cli.js ready"
+	elif [ -f "$_plugin_root/diarie/cli.js" ]; then
+		echo "node $_plugin_root/diarie/cli.js ready"
 	fi
 }
 
