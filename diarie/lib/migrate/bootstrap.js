@@ -65,10 +65,13 @@ import {
   argv, cwd, exit, stderr, stdout,
 } from 'node:process'
 
+import { isStringArray } from '@voxpelli/typed-utils'
 import yaml from 'js-yaml'
 
 import { TRACKER_DIR, VALID_STATUSES, VALID_TYPES } from '../schema.js'
-import { PRIORITY_MAP, STATUS_MAP, TYPE_MAP } from './bd-map.js'
+import {
+  parseBdExport, PRIORITY_MAP, STATUS_MAP, TYPE_MAP,
+} from './bd-map.js'
 
 /** A slug becomes a `tasks-<slug>.yml` filename — keep it filesystem-plain. */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/
@@ -132,7 +135,7 @@ export function splitBody (body) {
  * @param {Set<string>} liveIds ids of every issue being migrated
  * @param {string[]} droppedEdges accumulator for dropped (non-live) edges
  * @param {string[]} [priorityDefaulted] accumulator for coerced priorities
- * @returns {import('../store.js').Task} the task record
+ * @returns {import('../schema.js').TaskRow} the task row (bare ids — the loader namespaces them)
  */
 export function projectLive (r, liveIds, droppedEdges, priorityDefaulted = []) {
   // Throw, never fall through: an absent value yields `undefined`, js-yaml then DROPS
@@ -154,7 +157,11 @@ export function projectLive (r, liveIds, droppedEdges, priorityDefaulted = []) {
     throw new Error(`bad type map for ${r.id}: ${r.issue_type}`)
   }
 
-  const labels = [...(Array.isArray(r.labels) ? r.labels : []), ...(mapped.label ? [mapped.label] : [])]
+  // isStringArray, not Array.isArray: the latter narrows `unknown` to `any[]`, so a bd
+  // export with `labels: [{...}]` would flow straight into `TaskRow.labels: string[]`
+  // unchecked. (It fails later, at validate — but a migration that fails at the gate is a
+  // migration you have to run twice.)
+  const labels = [...(isStringArray(r.labels) ? r.labels : []), ...(mapped.label ? [mapped.label] : [])]
 
   /** @type {string[]} */
   const deps = []
@@ -194,7 +201,7 @@ export function projectLive (r, liveIds, droppedEdges, priorityDefaulted = []) {
   const priority = PRIORITY_MAP[String(r.priority)]
   if (!priority) priorityDefaulted.push(`${r.id} (bd priority: ${JSON.stringify(r.priority)}) → medium`)
 
-  /** @type {import('../store.js').Task} */
+  /** @type {import('../schema.js').TaskRow} */
   const task = {
     id: r.id,
     // Spread-conditional, not `title: r.title`. The reason is tsc, not the validator:
@@ -223,7 +230,7 @@ export function projectLive (r, liveIds, droppedEdges, priorityDefaulted = []) {
  * or descends from it (transitively — a grandchild follows its grandparent);
  * everything else falls to `defaultSlug`.
  *
- * @param {any[]} tasks projected live tasks (decisions already removed)
+ * @param {import('../schema.js').TaskRow[]} tasks projected live rows (decisions already removed)
  * @param {Map<string, string>} epicSlugs epic id → slug
  * @param {string} defaultSlug
  * @returns {Map<string, any[]>} slug → tasks
@@ -234,11 +241,13 @@ export function groupTasks (tasks, epicSlugs, defaultSlug) {
   /**
    * Walk up the parent chain to the first id with an explicit slug.
    *
-   * @param {any} task
+   * @param {import('../schema.js').TaskRow} task
    * @returns {string} the slug it routes to
    */
   const slugFor = (task) => {
+    /** @type {Set<string>} */
     const seen = new Set()
+    /** @type {import('../schema.js').TaskRow | undefined} */
     let cur = task
     while (cur && !seen.has(cur.id)) {
       seen.add(cur.id) // a parent cycle would otherwise spin here
@@ -254,6 +263,8 @@ export function groupTasks (tasks, epicSlugs, defaultSlug) {
   for (const task of tasks) {
     const slug = slugFor(task)
     const bucket = grouped.get(slug)
+    // A `?.push()` here would silently DISCARD a migrated task if this invariant ever
+    // broke — in a file whose stated failure mode is silent data loss. Refuse instead.
     if (!bucket) throw new Error(`internal: no bucket for slug "${slug}" — refusing to drop task ${task.id}`)
     bucket.push(task)
   }
@@ -265,7 +276,7 @@ export function groupTasks (tasks, epicSlugs, defaultSlug) {
  *
  * @param {string} slug
  * @param {string} title
- * @param {any[]} tasks
+ * @param {import('../schema.js').TaskRow[]} tasks
  * @returns {string}
  */
 function dumpTasks (slug, title, tasks) {
@@ -386,14 +397,22 @@ export async function runMigration (args) {
   }
 
   const raw = readFileSync(inputPath, 'utf8')
-  const records = raw.split('\n').filter(Boolean).map(l => JSON.parse(l)).filter(r => r._type === 'issue')
+  // One checked parse boundary, shared with the spike — see parseBdExport. Before it, the
+  // rows were `any`, so `BdIssue` bound to nothing and tsc checked this migrator against
+  // a shape it had never actually seen.
+  const records = parseBdExport(raw)
 
   // Archive the FULL snapshot first — the only git-tracked survivor of bd history.
   mkdirSync(resolve(root, `${TRACKER_DIR}/_archive`), { recursive: true })
   copyFileSync(resolve(inputPath), resolve(root, `${TRACKER_DIR}/_archive/bd-final-export.jsonl`))
 
   const live = records.filter(r => r.status !== 'closed')
-  const liveIds = new Set(live.map(r => r.id))
+  // `.filter(Boolean)` is not cosmetic: BdIssue.id is optional (bd's export is foreign and
+  // we do not get to insist on it), so an id-less row would otherwise put `undefined` into
+  // liveIds and make every edge-liveness check nonsense. projectLive throws on such a row
+  // anyway — this just keeps the set honest.
+  /** @type {Set<string>} */
+  const liveIds = new Set(live.flatMap(r => r.id ? [r.id] : []))
   /** @type {string[]} */
   const droppedEdges = []
   /** @type {string[]} */
@@ -407,7 +426,11 @@ export async function runMigration (args) {
   const decisions = []
   for (const r of live) {
     const task = projectLive(r, liveIds, droppedEdges, priorityDefaulted)
-    if (task.type === 'decision') decisions.push({ task, body: r.description })
+    // `?? ''` because BdIssue.description is optional and dumpDecision takes a string. This
+    // was a live type lie until the parse boundary stopped being `any`: an undescribed bd
+    // decision passed `undefined` into a `@param {string}`. It survived only because
+    // normalizeBody does `body ?? ''` two calls down.
+    if (task.type === 'decision') decisions.push({ task, body: r.description ?? '' })
     else tasks.push(task)
   }
 

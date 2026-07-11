@@ -33,6 +33,7 @@ import {
   argv, exit, stderr, stdout,
 } from 'node:process'
 
+import { isObject, isStringArray } from '@voxpelli/typed-utils'
 import yaml from 'js-yaml'
 
 import { TRACKER_DIR, VALID_TYPES } from '../schema.js'
@@ -45,7 +46,7 @@ import { TRACKER_DIR, VALID_TYPES } from '../schema.js'
  * we do not get to insist on its shape, only to survive it. The maps below turn each
  * field into something the schema recognises and report anything they cannot.
  *
- * @typedef {object} BdIssue
+ * @typedef BdIssue
  * @property {string} [id]
  * @property {string} [title]
  * @property {string} [status]        bd's vocabulary: open / in_progress / closed / deferred
@@ -58,12 +59,55 @@ import { TRACKER_DIR, VALID_TYPES } from '../schema.js'
  */
 
 /**
- * @typedef {object} BdDependency
+ * @typedef BdDependency
  * @property {string} [type]              `blocks` → a dep; `parent-child` → a parent
  * @property {string} [depends_on_id]
  */
 
-/** @typedef {import('../store.js').Task} Task */
+/** @typedef {import('../schema.js').TaskRow} TaskRow */
+
+/**
+ * bd exports more than issues (`_type` also covers dependencies, comments, …). This is the
+ * predicate that says which rows are ours, and — being a type predicate — it is what makes
+ * `BdIssue` bind to real data instead of decorating an `any`.
+ *
+ * @param {unknown} r
+ * @returns {r is BdIssue}
+ */
+const isBdIssue = (r) => isObject(r) && r['_type'] === 'issue'
+
+/**
+ * Parse a `bd export` JSONL snapshot into issue records.
+ *
+ * THE PARSE BOUNDARY, and it has to be a real one. `JSON.parse` returns `any`, and `any`
+ * is assignable to everything — so passing it straight to a `@param {BdIssue}` bound
+ * `BdIssue` to NOTHING. tsc was not checking the migrator against bd's export; it was
+ * checking it against a type that never touched a byte of real data, while every field
+ * guard downstream looked redundant to the compiler.
+ *
+ * `unknown[]` plus one predicate fixes that: from here on, `BdIssue` is the actual type
+ * of the actual rows, and each guard in projectLive/projectRecords is a checked narrowing
+ * rather than decoration.
+ *
+ * The line-splitting half of this is now also `@voxpelli/ndjson`'s `ndjsonParseString`
+ * (extracted 2026-07-11 from list-dependents-cli, which had the same code and a bug: it
+ * dropped the final record when the input lacked a trailing newline). Swap to it once that
+ * package is on npm — diarie cannot take an unpublished runtime dep without stranding the
+ * plugin's `$PLUGIN_ROOT/diarie/cli.js` hook rung, which resolves deps from the plugin
+ * cache. The `filter(Boolean)` below is what spares us that bug in the meantime; verified
+ * against the real 131-record archive and against an unterminated input.
+ *
+ * What would NOT move into that package is the predicate — `_type === 'issue'` is bd's
+ * vocabulary, not NDJSON's, and it is the part that earns the type.
+ *
+ * @param {string} contents  the raw JSONL
+ * @returns {BdIssue[]}      issue rows only (bd also exports other `_type`s)
+ */
+export function parseBdExport (contents) {
+  /** @type {unknown[]} */
+  const parsed = contents.split('\n').filter(Boolean).map(l => JSON.parse(l))
+  return parsed.filter(r => isBdIssue(r))
+}
 
 /**
  * bd status → task-schema status. `deferred` has no exact analog — see loss
@@ -118,10 +162,10 @@ export const TYPE_MAP = {
 
 /**
  * @param {BdIssue[]} records   parsed bd export lines (regular issues only)
- * @returns {{ tasks: Task[], loss: object }}
+ * @returns {{ tasks: TaskRow[], loss: object }}
  */
 export function projectRecords (records) {
-  /** @type {Task[]} */
+  /** @type {TaskRow[]} */
   const tasks = []
   const unknownStatuses = new Set()
   const unknownTypes = new Set()
@@ -148,7 +192,11 @@ export function projectRecords (records) {
     // so this can't fire yet — it catches a future bad edit to TYPE_MAP.
     if (!VALID_TYPES.has(mapped.type)) { unknownTypes.add(r.issue_type); continue }
 
-    const labels = [...(Array.isArray(r.labels) ? r.labels : []), ...(mapped.label ? [mapped.label] : [])]
+    // isStringArray, not Array.isArray: the latter narrows `unknown` to `any[]`, so a bd
+    // export with `labels: [{...}]` would flow straight into `TaskRow.labels: string[]`
+    // unchecked. (It fails later, at validate — but a migration that fails at the gate is
+    // a migration you have to run twice.)
+    const labels = [...(isStringArray(r.labels) ? r.labels : []), ...(mapped.label ? [mapped.label] : [])]
 
     /** @type {string[]} */
     const deps = []
@@ -175,7 +223,7 @@ export function projectRecords (records) {
       priority = 'medium'
     }
 
-    /** @type {Task} */
+    /** @type {TaskRow} */
     const task = {
       id: r.id,
       // Spread-conditional, not `title: r.title`. The reason is tsc, not the validator:
@@ -240,8 +288,7 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
     exit(1)
   }
 
-  const lines = readFileSync(inputPath, 'utf8').split('\n').filter(Boolean)
-  const records = lines.map(l => JSON.parse(l)).filter(r => r._type === 'issue')
+  const records = parseBdExport(readFileSync(inputPath, 'utf8'))
   const { loss, tasks } = projectRecords(records)
 
   writeFileSync(outputPath, yaml.dump({ meta: { slug: 'vp-beads', title: 'Shadow projection of bd (read-only spike)' }, tasks }))

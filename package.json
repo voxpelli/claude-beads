@@ -18,7 +18,7 @@
     "check:tasks-smoke": "node scripts/check-tasks-smoke.mjs",
     "check:tasks-validator": "node scripts/check-tasks-validator.mjs",
     "check:tsc": "tsc -p diarie",
-    "check:type-coverage": "type-coverage -p diarie --detail --strict --at-least 88",
+    "check:type-coverage": "type-coverage -p diarie --detail --strict --at-least 98",
     "check:validator": "node scripts/check-validator.mjs",
     "fix:ast-grep": "ast-grep scan --update-all scripts/ diarie/lib/ validate-plugin.mjs"
   },

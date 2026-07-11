@@ -74,9 +74,55 @@
  * upgrade is write-then-rename, not a lock daemon.
  */
 
+import { guardedArrayIncludes } from '@voxpelli/typed-utils'
+
 /** @typedef {'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'deferred'} Status */
 /** @typedef {'task' | 'doc' | 'decision' | 'milestone'} TaskType */
 /** @typedef {'critical' | 'high' | 'medium' | 'low' | 'backlog'} Priority */
+
+/**
+ * A task id that has been globalized into the `slug/id` namespace.
+ *
+ * A BRAND, not an alias. `GlobalId` is assignable to `string`, but a plain `string` is
+ * NOT assignable to `GlobalId` — and the only thing that mints one is `nsId()` below.
+ *
+ * It exists because of a real bug, and because nothing weaker would have caught it.
+ * `loadTasks` globalized `id` and `deps` and left `parent` raw, so `parent` could never
+ * equal any `id`. Every type involved was `string`, so nothing complained. The container
+ * rule was the first code to trust `parent`, and it would have found zero children for
+ * every epic, excluded nothing, and passed a green suite. Neither `unknown` nor a richer
+ * object type catches this — you satisfy both with `String(x)`, which IS the bug. Only a
+ * brand can tell "a string" apart from "a string that has been through nsId".
+ *
+ * @typedef {string & { readonly __globalId: unique symbol }} GlobalId
+ */
+
+/**
+ * A task AS WRITTEN TO DISK — the YAML row, before any loader has seen it.
+ *
+ * The distinction from `store.js`'s `Task` is not pedantry; it is the whole point of the
+ * brand. A row on disk carries BARE ids (`T-1`, `parent: T-0`) which only mean anything
+ * relative to their file's slug. A loaded `Task` carries `GlobalId`s (`alpha/T-1`). They
+ * are different types that had both been called `string`, which is precisely how `parent`
+ * came to be globalized in one place and not the other without anyone noticing.
+ *
+ * The migrator PRODUCES rows (it writes YAML). The readers CONSUME tasks. Nothing should
+ * accept both.
+ *
+ * @typedef TaskRow
+ * @property {string} id
+ * @property {string} [title]
+ * @property {Status} status
+ * @property {Priority} [priority]
+ * @property {TaskType} [type]
+ * @property {string[]} [deps]
+ * @property {string} [parent]
+ * @property {string[]} [labels]
+ * @property {string[]} [acceptance_criteria]
+ * @property {string} [agent]
+ * @property {string} [updated]
+ * @property {string} [description]
+ */
 
 /**
  * `deferred` is an open item consciously postponed — distinct from `cancelled`
@@ -155,6 +201,37 @@ export const isNil = (v) => v === undefined || v === null
  *
  * @param {unknown} ref   a task id or reference, bare or already `slug/id`
  * @param {string} slug   the slug of the file the reference was written in
- * @returns {string}
+ * @returns {GlobalId}
  */
-export const nsId = (ref, slug) => String(ref).includes('/') ? String(ref) : `${slug}/${ref}`
+export const nsId = (ref, slug) => /** @type {GlobalId} */ (
+  String(ref).includes('/') ? String(ref) : `${slug}/${ref}`
+)
+
+/**
+ * Membership tests that actually NARROW.
+ *
+ * `Set<Status>.has()` does not narrow — it returns a bare boolean, and it refuses a
+ * `string` argument outright, which is how `commands/ready.js` ended up casting `--filter`
+ * through `any` at the exact boundary the Set was supposed to be guarding. Widening the
+ * Sets to `Set<string>` would lose the vocabulary; `guardedArrayIncludes` keeps both, by
+ * narrowing `unknown` to the Set's own member type.
+ *
+ * The schema is the authority on the vocabulary; it should also be the authority on how
+ * to CHECK it, or every consumer improvises — and one of them improvised with `any`.
+ *
+ * @param {unknown} v
+ * @returns {v is Status}
+ */
+export const isStatus = (v) => guardedArrayIncludes(VALID_STATUSES, v)
+
+/**
+ * @param {unknown} v
+ * @returns {v is TaskType}
+ */
+export const isTaskType = (v) => guardedArrayIncludes(VALID_TYPES, v)
+
+/**
+ * @param {unknown} v
+ * @returns {v is Priority}
+ */
+export const isPriority = (v) => guardedArrayIncludes(VALID_PRIORITIES, v)

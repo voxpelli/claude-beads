@@ -1,0 +1,7 @@
+id: no-identifier-shadow-call
+valid:
+- "const result = isAdmin(request)"
+- "const isAdminResult = isAdmin(request)"
+invalid:
+- "const isAdmin = isAdmin(request)"
+- "const config = config(options)"

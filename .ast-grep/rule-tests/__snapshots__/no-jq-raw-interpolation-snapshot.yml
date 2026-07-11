@@ -1,0 +1,22 @@
+id: no-jq-raw-interpolation
+snapshots:
+  ? |
+    #!/bin/bash
+    jq -cn "{name: \"$1\"}"
+  : labels:
+    - source: '"{name: \"$1\"}"'
+      style: primary
+      start: 19
+      end: 35
+    - source: jq
+      style: secondary
+      start: 12
+      end: 14
+    - source: 'jq -cn "{name: \"$1\"}"'
+      style: secondary
+      start: 12
+      end: 35
+    - source: $1
+      style: secondary
+      start: 29
+      end: 31
