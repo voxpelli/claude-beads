@@ -136,6 +136,25 @@ Read-only by default. Surfaces drift, reciprocal gaps, stale-aligned rows, statu
 
 Workflows 2 and 3 end with a per-sibling two-tier action menu (single `AskUserQuestion`, `header: "Synergy"` + `header: "Upstream"`) that delegates writes to `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or appends a task entry to `.diarie/tasks/` via the `Skill` tool — replacing the previous copy-paste hint workflow. Picking "None" yields a report-only run.
 
+### `/migrate-tracker [path-to-project]` — Guided bd → flat-YAML cutover
+
+Migrate a project's issue tracker off beads (`bd`) onto the flat-YAML tracker:
+
+```
+/migrate-tracker
+/migrate-tracker ../some-other-project
+```
+
+For projects still on beads. **beads 1.1.0's schema-migration gate panics on every write** — and because the binary is installed globally, every repo on beads broke at once. This is the cutover path vp-beads itself took. bd **reads** still work, and reads are all a migration needs, so no data is lost. Five workflows:
+
+- **Detect and assess** — confirm bd is present and readable; census live vs closed issues; warn when `.beads/` is gitignored (meaning no bd history is in git today)
+- **Export and archive** — freeze the full `bd export` snapshot to `.diarie/_archive/bd-final-export.jsonl`, the only git-tracked survivor
+- **Migrate** — dry-run into a scratch root first; collapse bd's 9 issue types to 4 (framings ride in `labels:`); extract `## Acceptance Criteria`; drop edges to closed issues rather than dangle them, and report every one
+- **Verify** — `validate-tasks` plus a **dual-run** against `bd ready`. Exactly one divergence is expected (bd's ready-walk is type-blind and lists `decision`s as workable); anything else is a migration bug
+- **Cut over** — retarget the project's own `CLAUDE.md`/`AGENTS.md` off bd; leave `.beads/` on disk as a frozen archive
+
+Writes are plain `Edit`/`Write` on the YAML afterwards — there is no CRUD helper, by design.
+
 ### `/swarm-wave [workflow] [wave-number|topic]` — Multi-agent wave orchestration
 
 Orchestrate multi-agent development sprints using the swarm wave pattern:
@@ -300,6 +319,8 @@ skills/
       project-name-derivation.md        Four-tier project-name derivation algorithm
   sibling-sync/
     SKILL.md                            Bilateral SYNERGY/UPSTREAM reconciliation
+  migrate-tracker/
+    SKILL.md                            Guided bd → flat-YAML tracker cutover
   swarm-wave/
     SKILL.md                            Multi-agent wave orchestration
     references/

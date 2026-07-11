@@ -1,0 +1,158 @@
+/**
+ * Unit tests for the bd → flat-YAML migrator (`bootstrap-tasks.mjs`).
+ *
+ * This suite exists because the migrator stopped being a one-shot: `/migrate-tracker`
+ * runs it against sibling repos, and its failure mode is SILENT DATA LOSS (a body
+ * that parses wrong drops its acceptance criteria without erroring), not a crash.
+ * Every case below is a bug that actually bit, or a generalization the vp-beads
+ * migration could never have exercised.
+ *
+ * NOTE the characterization test that guards the whole pipeline is NOT here — it
+ * is a one-time proof recorded in the commit: the generalized migrator, given
+ * vp-beads's parameters, reproduces the original 24-issue migration byte-for-byte.
+ * These tests cover what that diff structurally cannot: repos unlike vp-beads.
+ */
+
+import { groupTasks, projectLive, splitBody } from './bootstrap-tasks.mjs'
+
+let passed = 0
+let failed = 0
+
+/**
+ * @param {string} name
+ * @param {boolean} cond
+ */
+function assert (name, cond) {
+  if (cond) {
+    passed++
+    console.log(`  ✓ ${name}`)
+  } else {
+    failed++
+    console.error(`  ✗ ${name}`)
+  }
+}
+
+/**
+ * A minimal bd issue, with per-case overrides merged on top.
+ *
+ * @param {any} over fields to override on the base issue
+ * @returns {any} a bd-shaped issue record
+ */
+const issue = (over) => ({ id: 'p-1', title: 't', status: 'open', issue_type: 'task', priority: 2, ...over })
+
+console.log('splitBody')
+
+{
+  const { acceptanceCriteria, description } = splitBody('Intro.\n\n## Acceptance Criteria\n\n- one\n- two\n')
+  assert('extracts AC bullets and keeps the rest as description',
+    acceptanceCriteria.join('|') === 'one|two' && description === 'Intro.')
+}
+{
+  // The vp-beads-8d5 bug: the body stored literal backslash-n, so the heading was
+  // never line-anchored and the AC vanished with no error. Cost 1 of 10 carriers.
+  const { acceptanceCriteria } = splitBody(String.raw`Intro.\n\n## Acceptance Criteria\n\n- one\n- two`)
+  assert('escaped-newline body (8d5): AC still extracted, not silently dropped',
+    acceptanceCriteria.join('|') === 'one|two')
+}
+{
+  const { acceptanceCriteria, description } = splitBody('## Acceptance Criteria\n- a\n\n## Notes\nkeep me')
+  assert('AC section ends at the next ## heading', acceptanceCriteria.join('|') === 'a' && description === '## Notes\nkeep me')
+}
+{
+  const { acceptanceCriteria } = splitBody('## Acceptance Criteria\n- [ ] unchecked\n- [x] checked')
+  assert('strips task-list checkbox markers', acceptanceCriteria.join('|') === 'unchecked|checked')
+}
+{
+  const { acceptanceCriteria, description } = splitBody('Just a body.')
+  assert('no AC heading: empty list, body preserved', acceptanceCriteria.length === 0 && description === 'Just a body.')
+}
+
+console.log('\nprojectLive (edges to non-live issues)')
+
+const liveIds = new Set(['p-1', 'p-live'])
+
+{
+  /** @type {string[]} */
+  const dropped = []
+  const t = projectLive(issue({ dependencies: [{ depends_on_id: 'p-closed', type: 'blocks' }] }), liveIds, dropped)
+  assert('a blocks-dep on a CLOSED issue is dropped, not dangled',
+    t.deps === undefined && dropped.length === 1 && dropped[0].includes('blocks'))
+}
+{
+  /** @type {string[]} */
+  const dropped = []
+  const t = projectLive(issue({ dependencies: [{ depends_on_id: 'p-live', type: 'blocks' }] }), liveIds, dropped)
+  assert('a blocks-dep on a LIVE issue is kept', t.deps?.join(',') === 'p-live' && dropped.length === 0)
+}
+{
+  // vp-beads never hit this — every one of its parents was still live. A sibling
+  // repo with a COMPLETED epic would emit a dangling parent and fail validate-tasks.
+  /** @type {string[]} */
+  const dropped = []
+  const t = projectLive(issue({ dependencies: [{ depends_on_id: 'p-closed', type: 'parent-child' }] }), liveIds, dropped)
+  assert('a parent-child edge to a CLOSED epic is dropped, not dangled',
+    t.parent === undefined && dropped.length === 1 && dropped[0].includes('parent'))
+}
+{
+  /** @type {string[]} */
+  const dropped = []
+  const t = projectLive(issue({ dependencies: [{ depends_on_id: 'p-live', type: 'parent-child' }] }), liveIds, dropped)
+  assert('a parent-child edge to a LIVE epic is kept', t.parent === 'p-live' && dropped.length === 0)
+}
+
+console.log('\nprojectLive (type / status / priority mapping)')
+
+{
+  const t = projectLive(issue({ status: 'deferred' }), liveIds, [])
+  assert('deferred survives as deferred (the spike approximated it to cancelled)', t.status === 'deferred')
+}
+{
+  const t = projectLive(issue({ issue_type: 'bug' }), liveIds, [])
+  assert('a bd framing (bug) collapses to type=task + a label', t.type === 'task' && t.labels?.includes('bug'))
+}
+{
+  const t = projectLive(issue({ issue_type: 'decision' }), liveIds, [])
+  assert('decision stays its own type (it is routed to decisions/, not a task row)', t.type === 'decision')
+}
+{
+  const t = projectLive(issue({ priority: 99 }), liveIds, [])
+  assert('an unmapped priority defaults to medium rather than emitting an invalid enum', t.priority === 'medium')
+}
+{
+  let threw = false
+  try { projectLive(issue({ issue_type: 'nonsense' }), liveIds, []) } catch { threw = true }
+  assert('an unknown issue_type throws loudly (never a silently wrong type)', threw)
+}
+
+console.log('\ngroupTasks (slug routing)')
+
+const epicSlugs = new Map([['e-1', 'migration']])
+
+{
+  const tasks = [
+    { id: 'e-1' },
+    { id: 'c-1', parent: 'e-1' },
+    { id: 'g-1', parent: 'c-1' }, // grandchild — must follow the epic transitively
+    { id: 'o-1' },
+  ]
+  const g = groupTasks(tasks, epicSlugs, 'backlog')
+  assert('the epic, its child, AND its grandchild land in the epic slug',
+    g.get('migration')?.map(t => t.id).join(',') === 'e-1,c-1,g-1')
+  assert('an unparented task falls to the default slug', g.get('backlog')?.map(t => t.id).join(',') === 'o-1')
+}
+{
+  const g = groupTasks([{ id: 'o-1' }], new Map(), 'backlog')
+  assert('no --epic given: everything lands in one default-slug file', g.size === 1 && g.get('backlog')?.length === 1)
+}
+{
+  // A malformed export could carry a parent cycle; routing must terminate.
+  const g = groupTasks([{ id: 'a', parent: 'b' }, { id: 'b', parent: 'a' }], epicSlugs, 'backlog')
+  assert('a parent cycle terminates and falls to the default slug', g.get('backlog')?.length === 2)
+}
+{
+  const g = groupTasks([{ id: 'o-1' }], epicSlugs, 'backlog')
+  assert('an --epic with no live members yields an empty (still-written) slug', g.get('migration')?.length === 0)
+}
+
+console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)
+if (failed > 0) process.exit(1)

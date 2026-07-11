@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`/migrate-tracker` skill** — a guided, one-way cutover of *another* project's
+  tracker off beads onto the flat-YAML store. beads 1.1.0's write-gate broke every
+  repo using the global binary at once, so this is a path the siblings need, not a
+  vp-beads-only chore. Five workflows: detect-and-assess, export-and-archive,
+  migrate (dry-run first), verify (`validate-tasks` **plus** a dual-run against
+  `bd ready` — exactly one divergence is expected, since bd's ready-walk is
+  type-blind and lists decisions as workable), and cut-over. Skills: 7 → 8.
+- **`scripts/bootstrap-tasks.mjs` generalized** from a vp-beads one-shot into a
+  repo-agnostic migrator: `--root`, `--epic <id>=<slug>` (repeatable, routes an
+  epic and its descendants), `--default-slug`, `--title <slug>=<text>`. Verified by
+  characterization: given vp-beads's parameters it reproduces the original
+  24-issue migration **byte-for-byte**. Two things the vp-beads run could never
+  have exercised are now handled — a `parent` edge to a **closed** epic is dropped
+  rather than dangled (it would have failed `validate-tasks` in any repo with a
+  completed epic), and epic routing is transitive. Covered by a new
+  `check:bootstrap` stage; this deliberately reverses `vp-beads-bj7`'s
+  "retire the migrator after one run" decision, because a tool other repos run —
+  whose failure mode is *silent data loss* — earns kept tests.
 - **ast-grep structural lint** (`sgconfig.yml` + `.ast-grep/rules/` +
   `.ast-grep/rule-tests/`, two new `npm run check` stages — 10 → 12). Adopted
   from vp-knowledge; see `SYNERGY-vp-knowledge.md`. Seeded with one rule,

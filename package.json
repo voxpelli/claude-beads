@@ -6,6 +6,7 @@
     "check": "run-p check:*",
     "check:ast-grep": "node scripts/check-ast-grep.mjs",
     "check:ast-grep-test": "ast-grep test",
+    "check:bootstrap": "node scripts/check-bootstrap-tasks.mjs",
     "check:hooks": "node scripts/check-hooks.mjs",
     "check:lint": "eslint",
     "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'",

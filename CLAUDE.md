@@ -26,6 +26,7 @@ skills/
       backlog-health-heuristics.md    # Staleness, closure, priority, issue templates
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
   sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
+  migrate-tracker/SKILL.md            # Guided bd → flat-YAML cutover (for other repos)
   synergy-tracker/
     SKILL.md                          # Cross-project synergy tracking (sibling projects)
     references/
@@ -66,8 +67,15 @@ Dev tooling only: validation and linting via `npm run check`.
   `/upstream-tracker` for mutations. When Basic Memory is available, also
   checks for cross-project friction notes on project dependencies.
 
-### Skills (7)
+### Skills (8)
 
+- **migrate-tracker** — Guided, one-way cutover of a project's issue tracker off
+  beads (`bd`) onto the flat-YAML tracker. Five workflows: detect-and-assess,
+  export-and-archive, migrate (dry-run first), verify (validate + a dual-run
+  against `bd ready`), cut-over. Wraps `scripts/bootstrap-tasks.mjs`, the
+  generalized migrator. Aimed at *other* repos — vp-beads already migrated; the
+  siblings (vp-knowledge, vp-git) broke on the same global beads 1.1.0 binary.
+  User-invocable as `/migrate-tracker`.
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
   investigate-topic-as-spike, create-issues-from-findings, enrich-existing-issue.
