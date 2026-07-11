@@ -1,0 +1,76 @@
+# Fixture for the CONTAINER cases (vp-beads-epc). Its own store, deliberately:
+# adding these to test/fixtures/ would have forced a rewrite of that suite's passing
+# count assertions ("total 9", "2 file(s)") — and editing a green assertion to make
+# room for your own change is how a regression gets waved through.
+#
+# Two INDEPENDENT predicates are under test here, and the live store cannot separate
+# them: vp-beads-l9i is BOTH epic-labelled AND has open children, so a fix that only
+# ever implements the structural check still makes it vanish from `ready`. These
+# fixtures pull the two apart.
+meta:
+  slug: alpha
+  title: Container fixture — alpha
+tasks:
+  # --- STRUCTURAL predicate, on its own: a parent with open children, NO epic label.
+  - id: P-OPEN
+    title: Plain parent with an open child — blocked by containment, not by a label
+    type: task
+    status: pending
+    priority: high
+  - id: C-OPEN
+    title: The open child — this is the workable thing, not its parent
+    type: task
+    status: pending
+    priority: medium
+    parent: P-OPEN
+
+  # --- The CONVERSE: a parent whose children are ALL completed is ready AGAIN. Only
+  # OPEN children contain work; a finished container may still carry integration work.
+  # Guards a fix that over-excludes every parent forever.
+  - id: P-DONE
+    title: Parent whose children are all completed — still ready on its own merits
+    type: task
+    status: pending
+    priority: medium
+  - id: C-DONE
+    title: Completed child
+    type: task
+    status: completed
+    priority: low
+    parent: P-DONE
+    acceptance_criteria:
+      - done
+
+  # --- DECLARATIVE predicate, ISOLATED: epic-labelled with NO open children. This is
+  # the row that fails if the `epic` label check is never written — the live store has
+  # no such case, so without this fixture that criterion passes unimplemented.
+  - id: E-EMPTY
+    title: Epic label, nothing open inside it — close it or add children
+    type: task
+    status: pending
+    priority: high
+    labels:
+      - epic
+
+  # --- BOTH predicates at once (the vp-beads-l9i shape) — containment wins, and it
+  # reports WHICH children hold it.
+  - id: E-OPEN
+    title: Epic label AND open children — blocked by its children
+    type: task
+    status: pending
+    priority: critical
+    labels:
+      - epic
+  - id: C-EPIC
+    title: The epic's open child
+    type: task
+    status: pending
+    priority: high
+    parent: E-OPEN
+
+  # --- Control: a childless task is entirely unaffected by any of this.
+  - id: PLAIN
+    title: Childless task — untouched by the container rules
+    type: task
+    status: pending
+    priority: low
