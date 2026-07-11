@@ -423,7 +423,7 @@ tasks:
       `vp-beads-epc` just fixed: it is the first row that is deliberately NOT workable.
     updated: '2026-07-11'
   - id: vp-beads-sea
-    title: Give diarie the template's seam — parse / act / render, so a command is testable without spawning
+    title: Adopt the peowly-commands FOUR-part command shape — setupCommand / doTheWork / formatWorkResult
     status: pending
     type: task
     priority: high
@@ -431,34 +431,60 @@ tasks:
     labels:
       - refactor
     acceptance_criteria:
-      - "each command splits into a PURE parse (argv → an input object), an act (the I/O), and a render (result → string) — `run()` only wires them and writes"
-      - "a command's flag parsing and its output rendering can be asserted IN-PROCESS, with no spawn and no stdout capture"
-      - "the `--blocked` text rendering (`← contains N open:` vs `← blocked by`) is tested as a pure function on a result object"
-      - "the spawn tests that remain are the ones that genuinely need a process: exit codes, ENOSTORE-on-stdout, the CLAUDE_PLUGIN_ROOT guard"
-      - "no behaviour change: all 161 assertions still pass, and the two pinned JSON shapes (`ready --json` OBJECT, `ready --filter` ARRAY) are unchanged"
-      - "type-level tests (tstyche `typetests/*.tst.ts`) over the public `exports` map — the template's answer for a contract that ships"
+      - "FOUR PARTS per command, per `peowly-commands/example/complete/commands/single/index.js` — the authoritative shape, from the library's own examples: (1) the `CliCommand` definition, whose `run()` holds NO logic; (2) `setupCommand(name, description, args, meta)` → `void | CommandContext` (the peowly parse; `void` = help was shown); (3) `doTheWork(input, context)` → `void | WorkResult` — **returns typed DATA, never prints**; (4) `formatWorkResult(workResult, context)` → `void` — the ONLY place that writes. `run()` wires them and guards each stage on the void."
+      - "part (3) is the point: because `doTheWork` RETURNS a `WorkResult` instead of printing, it is unit-testable in-process — no spawn, no stdout capture. That is the seam diarie lacks, and it is why the one in-process test had to hijack `process.stdout.write` and silently broke the TAP stream."
+      - "flags become a DIRECTORY of reusable, composable groups with a barrel: `lib/flags/index.js` re-exporting `lib/flags/<group>.js`, each group declared `/** @satisfies {import('peowly').AnyFlags} */` (diarie already does this part, just in one flat file)"
+      - "each flag group owns BOTH halves — the definitions (`<group>Flags`) AND its validator (`validate<Group>Flags`) — in the same module, so a flag's declaration and its meaning cannot drift apart"
+      - "the validators are pure, exported and UNIT-tested: they are the seam that is genuinely testable without a process (cf. list-dependents-cli `validateInputFlags`/`validateFilterFlags`, compare-eslint-configs `findDefaultConfig`). diarie's are currently trapped in `run()` — the `--filter` status guard and the `--days` numeric coercion"
+      - "composition is by spread, INCLUDING subtractively: `...omit(outputFlags, ['named'])` is how a command takes a group minus one flag (list-dependents-cli/lib/commands/filter.js:56-61)"
+      - "the `CommandContext` type is declared per command — as a local `@typedef` (peowly-commands' example) or centrally in `lib/cli-types.d.ts` (list-dependents-cli). Either is house style; pick one and be consistent"
+      - "the line-building helpers (`← contains N open:` vs `← blocked by`) move out of `run()` into pure functions in `lib/format.js` and are unit-tested"
+      - "the new unit tests go in `*.spec.js`; the spawn tests STAY and stay named `cli.spec.js` — the reference splits exactly this way (`audit.spec.js` pure vs `audit.cli.spec.js` spawn)"
+      - "no behaviour change: all 161 assertions still pass, and the two pinned JSON shapes (`ready --json` OBJECT, `ready --filter` ARRAY) are byte-identical"
     description: >-
-      `voxpelli/node-cli-template` splits `lib/command.js` (pure parse) → `lib/action.js` (do) →
-      `lib/format.js` (print), which is why its whole test suite is `command(['example'])` — a
-      pure call, no spawn, nothing to capture. **diarie has no such seam**: every `run()` parses,
-      loads, computes and prints in one function, writing straight to stdout via `jsonOut`.
+      **Read the shape, do not re-derive it.** Sources, in order of authority:
 
 
-      So diarie's tests spawn — not by choice, but because there is no other door in. That cost
-      is now measured: the ONE test that tried to drive `cli()` in-process had to monkey-patch
-      `process.stdout.write`, which under `node --test` swallows the runner's own TAP stream — it
-      silently dropped 40 of cli.spec.js's 54 results while still printing "pass". The workaround
-      is a subprocess; the fix is the seam.
+      - `peowly-commands/example/complete/commands/single/index.js` — the FOUR-part form
+      (setupCommand → doTheWork → formatWorkResult). This is the target.
+
+      - `peowly-commands/example/complete/commands/multi/one.js` — the three-part form, for a
+      command with no separable output stage.
+
+      - `list-dependents-cli/lib/commands/format.js` — the same, in production, with
+      `lib/flags/` split into composable groups.
 
 
-      The same shape exists across the other peowly-commands consumers (compare-eslint-configs,
-      eslint-formatter-summary, list-dependents-cli, @voxpelli/mcp-client) — read one before
-      designing this, rather than inventing a fourth arrangement.
+      diarie diverges: `commands/ready.js`'s `run()` is ~90 lines that parse, load, compute,
+      build lines, print, and throw — in one function. Nothing inside it can be reached except by
+      spawning a process.
+
+
+      **The fourth part is the whole prize.** `doTheWork()` returns a typed `WorkResult`; it does
+      not print. Only `formatWorkResult()` writes. That is what makes the *work* assertable
+      in-process, and it is what diarie has no equivalent of.
+
+
+      **Correcting an earlier draft of this row**, because the mistake is instructive: it claimed
+      the goal was a "parse / act / render" split of my own invention, and separately claimed the
+      house pattern made CLI tests unnecessary. Both were wrong, and reading the actual code
+      refuted them — `compare-eslint-configs` **spawns** its CLI tests (`execFileAsync`),
+      `setupCommand` is never exported, and the render layer returns `void`. So spawning the CLI
+      is house style, not a diarie mistake, and diarie's existing pure-vs-spawn test split
+      (`ready.spec.js` / `cli.spec.js`) already matches the reference's `audit.spec.js` /
+      `audit.cli.spec.js`. What was genuinely missing was the `doTheWork` return value and the
+      flag validators — narrower, and real.
+
+
+      Motivating cost, measured: the one test that tried to drive `cli()` in-process had to
+      monkey-patch `process.stdout.write`, which under `node --test` swallows the runner's own TAP
+      stream — it silently dropped 40 of cli.spec.js's 54 results while still printing "pass".
+      Worked around with a subprocess (2026-07-11); the fix is this row.
 
 
       Do this AFTER vp-beads-tst (done), never with it: moving 161 assertions in the same commit
-      that changes what they assert is how a regression gets waved through. That is the task's own
-      rule and it applies to its successor.
+      that changes what they assert is how a regression gets waved through. That is vp-beads-tst's
+      own rule, and it binds its successor.
     updated: '2026-07-11'
   - id: vp-beads-asg
     title: diarie must self-host its ast-grep config — the guards do not survive extraction
