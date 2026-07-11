@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- **ast-grep structural lint** (`sgconfig.yml` + `.ast-grep/rules/` +
+  `.ast-grep/rule-tests/`, two new `npm run check` stages — 10 → 12). Adopted
+  from vp-knowledge; see `SYNERGY-vp-knowledge.md`. Seeded with one rule,
+  **`no-hardcoded-tracker-dir`**, which enforces that the tracker path segment
+  lives only in `TRACKER_DIR` (`scripts/task-schema.mjs`) and every other tool
+  imports it — so renaming the store stays a one-line change. `@ast-grep/cli` is
+  a pinned devDep.
+
 ### Changed
 
 - **BREAKING — the tracker migrated off beads (`bd`) to a flat-YAML substrate.**

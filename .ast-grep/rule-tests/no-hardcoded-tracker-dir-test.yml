@@ -1,0 +1,29 @@
+id: no-hardcoded-tracker-dir
+valid:
+  # The sanctioned form — the constant, never the literal.
+  - |
+    import { TRACKER_DIR } from './task-schema.mjs'
+    const tasksDir = join(root, TRACKER_DIR, 'tasks')
+  - |
+    stdout.write(`No ${TRACKER_DIR}/tasks/ directory found — skipping.\n`)
+  # `backlog` is ALSO a priority value. It is not a path; do not flag it.
+  - |
+    export const VALID_PRIORITIES = new Set(['critical', 'high', 'medium', 'low', 'backlog'])
+  - |
+    export const PRIORITY_MAP = { '4': 'backlog' }
+  # A tasks-<slug>.yml filename that merely contains the word.
+  - |
+    write(`${TRACKER_DIR}/tasks/tasks-backlog.yml`, body)
+invalid:
+  # A hardcoded segment in path construction.
+  - |
+    const tasksDir = join(root, '.diarie', 'tasks')
+  # A hardcoded path inside a template literal.
+  - |
+    const p = `${root}/.diarie/tasks/tasks-x.yml`
+  # A guard message that would drift out of sync after a rename.
+  - |
+    stderr.write('refusing to write under .diarie/tasks/\n')
+  # The pre-rename legacy segment.
+  - |
+    const tasksDir = join(root, 'backlog/tasks')

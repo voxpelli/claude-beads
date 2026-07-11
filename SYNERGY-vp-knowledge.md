@@ -8,6 +8,20 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 
 ## Shared Patterns
 
+- **ast-grep structural-lint suite** (2026-07-11) — Adopted from vp-knowledge, which
+  had it first: `sgconfig.yml` → `.ast-grep/rules/` + `.ast-grep/rule-tests/`
+  (snapshot-tested via `ast-grep test`), a `scripts/check-ast-grep.mjs` runner that
+  switches to `--format github` under CI, `check:ast-grep` + `check:ast-grep-test`
+  stages, and a pinned `@ast-grep/cli` devDep. vp-beads copied the layout verbatim and
+  seeded it with one rule of its own — `no-hardcoded-tracker-dir`, which enforces that
+  no tool re-forks the `.diarie` path segment now that `TRACKER_DIR` centralizes it.
+  vp-knowledge's rule set is broader (7 rules: CommonJS, JSDoc `any`, `set -euo
+  pipefail`, jq interpolation, identifier shadowing, …); several are project-agnostic
+  and are adoption candidates here.
+  Status: aligned · Last verified: 2026-07-11
+  Note: the runner and config are byte-similar, so they are a convergence-drift risk
+  like `validate-plugin.mjs` above — keep them in sync.
+
 - **validate-plugin.mjs tool-reference audit** (2026-03-28) — Both plugins maintain a
   `validate-plugin.mjs` that audits `mcp__*__*` tool patterns mentioned in skill/agent
   prose against the declared `allowed-tools` or `tools` frontmatter. Changes to either

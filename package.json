@@ -4,6 +4,8 @@
   "description": "vp-beads Claude Code plugin: sprint-workflow automation skills, an agent, and hooks for projects using beads and Basic Memory, plus the .mjs validation tooling that powers npm run check.",
   "scripts": {
     "check": "run-p check:*",
+    "check:ast-grep": "node scripts/check-ast-grep.mjs",
+    "check:ast-grep-test": "ast-grep test",
     "check:hooks": "node scripts/check-hooks.mjs",
     "check:lint": "eslint",
     "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'",
@@ -13,9 +15,11 @@
     "check:tasks": "node validate-tasks.mjs",
     "check:tasks-smoke": "node scripts/check-tasks-smoke.mjs",
     "check:tasks-validator": "node scripts/check-tasks-validator.mjs",
-    "check:validator": "node scripts/check-validator.mjs"
+    "check:validator": "node scripts/check-validator.mjs",
+    "fix:ast-grep": "ast-grep scan --update-all scripts/ validate-tasks.mjs validate-plugin.mjs"
   },
   "devDependencies": {
+    "@ast-grep/cli": "^0.44.1",
     "@voxpelli/eslint-config": "^25.1.0",
     "eslint": "^9.39.4",
     "js-yaml": "^4.1.0",

@@ -624,17 +624,37 @@ up the new version (`/plugin install vp-beads@vp-plugins`).
 npm run check
 ```
 
-Runs four checks in parallel via `run-p check:*` (`npm-run-all2`):
-`check:plugin` (validate-plugin.mjs) + `check:md` (remark) +
-`check:sh` (shellcheck + shfmt on all `hooks/*.sh` files) +
-`check:hooks` (hook integration tests via `scripts/check-hooks.mjs`).
+Runs **12 checks in parallel** via `run-p check:*` (`npm-run-all2`) — the
+authoritative list is the `check:*` keys in `package.json`, not this paragraph.
+They fall into four groups: **plugin** (`check:plugin` = validate-plugin.mjs,
+`check:validator` = its unit tests), **prose/style** (`check:md` = remark,
+`check:lint` = eslint, `check:sh` = shellcheck + shfmt, `check:ast-grep` +
+`check:ast-grep-test` = the structural-lint suite), **tracker** (`check:tasks` =
+validate-tasks.mjs, plus `check:ready-walker`, `check:tasks-validator`,
+`check:tasks-smoke`), and **hooks** (`check:hooks`).
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
-Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`).
+Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`); `ast-grep`
+comes from the pinned `@ast-grep/cli` devDep.
 
 `validate-plugin.mjs` includes a tool-reference audit: any `mcp__*__*` tool
 pattern mentioned in skill/agent prose but missing from the `allowed-tools` or
 `tools` frontmatter will fail validation. This catches the most common bug class
 in this plugin (missing `allowed-tools` entries).
+
+### ast-grep structural lint
+
+`sgconfig.yml` → `.ast-grep/rules/` (rules) + `.ast-grep/rule-tests/` (snapshot
+fixtures, run by `ast-grep test`). Adopted from vp-knowledge; see
+`SYNERGY-vp-knowledge.md`. To add a rule, write both files and run
+`ast-grep test --update-all` to seed the snapshot.
+
+The one rule so far is **`no-hardcoded-tracker-dir`**: the tracker path segment
+lives *only* in `TRACKER_DIR` (`scripts/task-schema.mjs`), and every other tool
+must import it. Two exemptions, both deliberate — `task-schema.mjs` (it *is* the
+definition) and `scripts/check-*.mjs` (test fixtures must state the literal, or
+the assertion becomes tautological). The rule matters most in guard code: a
+hardcoded segment in `migrate-from-bd.mjs`'s refuse-to-write check would not
+*error* after a rename, it would silently stop guarding.
 
 ### Hook type constraint
 

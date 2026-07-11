@@ -19,6 +19,8 @@
  * testable in isolation (see `scripts/check-validator.mjs`).
  */
 
+import { TRACKER_DIR } from './task-schema.mjs'
+
 // Module-scope line helpers — pure, so they are not re-created per call.
 const blank = (/** @type {string} */ slice) => slice.replaceAll(/[^\n]/g, ' ')
 const isListItem = (/** @type {string} */ l) => /^\s*(?:[-*+]|\d+\.)\s/.test(l)
@@ -58,7 +60,7 @@ export function auditSilentSkips (content) {
   for (const u of units) {
     const t = u.text.toLowerCase()
     const skips = t.includes('skip') && /silent(?:ly)?/.test(t)
-    const tracker = /\bready-walker\b/.test(t) || t.includes('.diarie') || /\bdiarie\b/.test(t)
+    const tracker = /\bready-walker\b/.test(t) || t.includes(TRACKER_DIR) || /\bdiarie\b/.test(t)
     const exempt = t.includes('announce') || t.includes('tier')
     if (skips && tracker && !exempt) {
       findings.push({ line: u.startLine, snippet: u.text.trim().slice(0, 120) })

@@ -27,7 +27,7 @@
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   argv, exit, stderr, stdout,
@@ -35,7 +35,7 @@ import {
 
 import yaml from 'js-yaml'
 
-import { VALID_TYPES } from './task-schema.mjs'
+import { TRACKER_DIR, VALID_TYPES } from './task-schema.mjs'
 
 /**
  * bd status → task-schema status. `deferred` has no exact analog — see loss
@@ -167,8 +167,12 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
     stderr.write('usage: node scripts/migrate-from-bd.mjs <bd-export.jsonl> <output.yml>\n')
     exit(1)
   }
-  if (/(?:^|\/)\.diarie\/tasks(?:\/|$)/.test(resolve(outputPath))) {
-    stderr.write('refusing to write under .diarie/tasks/ — this projector is scratch-only ' +
+  // Segment-wise rather than a regex: the tracker dir is TRACKER_DIR-derived, and
+  // splitting on `sep` needs no escaping of its leading dot.
+  const segments = resolve(outputPath).split(sep)
+  const trackerAt = segments.indexOf(TRACKER_DIR)
+  if (trackerAt !== -1 && segments[trackerAt + 1] === 'tasks') {
+    stderr.write(`refusing to write under ${TRACKER_DIR}/tasks/ — this projector is scratch-only ` +
       '(regenerate, never hand-edit; the live store is owned by bootstrap-tasks.mjs / Edit)\n')
     exit(1)
   }
