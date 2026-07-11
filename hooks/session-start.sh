@@ -9,8 +9,10 @@
 #       Replaces the retired precompact.sh (reflect) and post-compact.sh
 #       (recover) hooks.
 #
-#   otherwise (startup/resume/clear) → sensitive-file warning, dormancy nudge,
-#       Dependabot alert summary, trend-review reminder.
+#   otherwise (startup/resume/clear) → sensitive-file warning, TRACKER PRIME
+#       (ready/blocked/in-progress — the orientation the external beads plugin's
+#       `bd prime` used to give), dormancy nudge, Dependabot alert summary,
+#       trend-review reminder.
 #
 # Emits exactly ONE JSON object with all content merged into additionalContext.
 # Prior versions emitted multiple separate objects; Claude Code reads only the
@@ -158,11 +160,18 @@ fi
 # Two reads, ~0.2s total against a 5s timeout: the queue (counts AND titles) and
 # the in-progress claims. `--stats` is not enough — it returns counts without
 # titles. Ids come back namespaced as `<slug>/<id>`; strip the slug for display.
+# Gate on the STORE, not just the reader. The canonical predicate (CLAUDE.md
+# `### Files-availability convention`) is a `.diarie/tasks/tasks-*.yml` AND a runnable
+# reader — gating on the reader alone made the prime announce
+# "Tracker: 0 ready · 0 blocked" in a repo with no tracker at all. That is not a silent
+# skip, it is a confident false report, which is worse.
 tracker_cmd=""
-if command -v diarie >/dev/null 2>&1; then
-	tracker_cmd="diarie ready"
-elif [ -f scripts/ready-walker.mjs ]; then
-	tracker_cmd="node scripts/ready-walker.mjs"
+if compgen -G ".diarie/tasks/tasks-*.yml" >/dev/null 2>&1; then
+	if command -v diarie >/dev/null 2>&1; then
+		tracker_cmd="diarie ready"
+	elif [ -f scripts/ready-walker.mjs ]; then
+		tracker_cmd="node scripts/ready-walker.mjs"
+	fi
 fi
 
 if [ -n "$tracker_cmd" ]; then
@@ -185,13 +194,16 @@ if [ -n "$tracker_cmd" ]; then
 			fi
 
 			# ready-walker already sorts by priority, so the first rows are the ones worth naming.
-			next_ready=$(printf '%s' "$queue_json" | jq -r '[.ready[0:3][] | "\(.id | sub("^.*/"; "")) (\(.priority))"] | join(" · ")' 2>/dev/null || echo "")
-			if [ -n "$next_ready" ] && [ "$next_ready" != "null" ]; then
+			# `priority` and `title` are OPTIONAL in the schema, so an unvalidated store would
+			# render "T-1 (null)" / "T-1 null". Default them the way ready-walker already
+			# defaults priority for sorting.
+			next_ready=$(printf '%s' "$queue_json" | jq -r '[.ready[0:3][] | "\(.id | sub("^.*/"; "")) (\(.priority // "medium"))"] | join(" · ")' 2>/dev/null || echo "")
+			if [ -n "$next_ready" ]; then
 				tracker_summary="${tracker_summary}
   next ready: ${next_ready}"
 			fi
 
-			claims=$(printf '%s' "$claims_json" | jq -r '.[0:3][] | "    \(.id | sub("^.*/"; "")) \(.title)"' 2>/dev/null || echo "")
+			claims=$(printf '%s' "$claims_json" | jq -r '.[0:3][] | "    \(.id | sub("^.*/"; "")) \(.title // "(untitled)")"' 2>/dev/null || echo "")
 			if [ -n "$claims" ]; then
 				tracker_summary="${tracker_summary}
   in progress:

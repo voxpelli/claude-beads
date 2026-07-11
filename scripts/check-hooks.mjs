@@ -514,6 +514,10 @@ test('startup: tracker prime emits counts, next-ready and claims', () => {
   // state, so every session began blind to the backlog. The reader namespaces ids
   // as `<slug>/<id>` — the prime must strip the slug, or the display is unreadable.
   const dir = mkdtempSync(join(tmpdir(), 'vp-beads-startup-prime-'))
+  // The prime gates on the STORE existing, not merely on a runnable reader — otherwise it
+  // announced "Tracker: 0 ready" in repos with no tracker at all. So the fixture needs one.
+  mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
+  writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-x.yml'), 'tasks: []\n')
   const queue = JSON.stringify({
     ready: [{ id: 'backlog/p-1', title: 'First', priority: 'high' }, { id: 'backlog/p-2', title: 'Second', priority: 'low' }],
     blocked: [{ id: 'backlog/p-3', title: 'Third' }],
@@ -542,6 +546,29 @@ test('startup: tracker prime emits counts, next-ready and claims', () => {
   }
 })
 
+test('startup: reader present but NO STORE → prime stays silent', () => {
+  // Gating on the reader alone made the prime announce "Tracker: 0 ready · 0 blocked" in a
+  // repo with no tracker at all — not a silent skip but a confident FALSE REPORT, which is
+  // worse. The canonical predicate needs BOTH a store and a runnable reader.
+  const dir = makeTempDirWithRetros(0)
+  const stubDir = makeTrackerStubDir('[]', 0, JSON.stringify({ ready: [], blocked: [], needsAttention: [] }))
+  try {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), {
+      cwd: dir,
+      pathPrefix: stubDir,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects } = parseJsonObjects(stdout)
+    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    return ctx.includes('Tracker:')
+      ? { ok: false, reason: `announced a tracker that does not exist: ${ctx.slice(0, 120)}` }
+      : { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(stubDir, { recursive: true, force: true })
+  }
+})
+
 test('startup: no tracker → prime stays silent (never a broken line)', () => {
   // Hooks are exempt from the silent-skip rule. With no `diarie` on PATH and no
   // in-repo reader, the prime must emit nothing rather than a half-built line.
@@ -564,6 +591,8 @@ test('startup: tracker prime does not break the single-object contract', () => {
   // second object is a silent capability loss. The prime appends to `parts`, and
   // this asserts it did not start emitting its own object.
   const dir = makeTempDirWithRetros(3)
+  mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
+  writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-x.yml'), 'tasks: []\n')
   const queue = JSON.stringify({ ready: [{ id: 'backlog/p-1', title: 'T', priority: 'medium' }], blocked: [], needsAttention: [] })
   const stubDir = makeTrackerStubDir('[]', 0, queue)
   try {

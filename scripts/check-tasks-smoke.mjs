@@ -130,6 +130,22 @@ console.log('validate-tasks CLI (error paths, via tmpdir)')
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
+  // `--json` MUST always emit JSON. The YAML-parse catch used to write to stderr and exit,
+  // bypassing the --json branch entirely — so an unparseable store produced NO stdout, and
+  // every consumer that reads stdout (both hooks) saw empty output and concluded there was
+  // nothing to report. That is on the single commonest hand-edit mistake there is.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-tasks-'))
+  try {
+    mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
+    writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'), 'tasks:\n  - id: T-1\n    title: "unclosed\n')
+    const { code, out } = run('validate-tasks.mjs', ['--json'], dir)
+    let parsed
+    try { parsed = JSON.parse(out) } catch { /* stays undefined */ }
+    assert('--json on UNPARSEABLE yaml still emits JSON (the contract) with the error',
+      code === 1 && parsed?.clean === false && /invalid YAML/.test(String(parsed?.errors ?? '')))
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
   const dir = mkdtempSync(join(tmpdir(), 'vp-tasks-'))
   try {
     mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })

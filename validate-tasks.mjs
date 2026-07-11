@@ -239,19 +239,27 @@ async function main () {
   }
 
   const files = []
+  /** @type {string[]} */
+  const parseErrors = []
   for (const name of names) {
     const slug = name.replace(/^tasks-/, '').replace(/\.ya?ml$/, '')
     let doc
     try {
       doc = /** @type {any} */ (yaml.load(await readFile(join(tasksDir, name), 'utf8')))
     } catch (err) {
-      console.error(`Task validation failed:\n\n  - ${name}: invalid YAML — ${/** @type {Error} */ (err).message}\n`)
-      exit(1)
+      // Collect, do NOT exit here. Bailing out on stderr meant `--json` emitted NO JSON
+      // at all for an unparseable store — so every consumer that reads stdout (both hooks)
+      // saw empty output and concluded there was nothing to say, on the single commonest
+      // hand-edit mistake. `--json` must ALWAYS emit JSON; that is the contract.
+      parseErrors.push(`${name}: invalid YAML — ${/** @type {Error} */ (err).message}`)
+      continue
     }
     files.push({ name: slug, tasks: doc?.tasks ?? [] })
   }
 
-  const { errors, warnings } = lintTasks(files)
+  const lint = lintTasks(files)
+  const errors = [...parseErrors, ...lint.errors]
+  const { warnings } = lint
 
   if (json) {
     stdout.write(JSON.stringify({ clean: errors.length === 0, errors, warnings }, undefined, 2) + '\n')

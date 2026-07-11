@@ -21,7 +21,7 @@ import {
   existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync,
 } from 'node:fs'
 
-import { groupTasks, projectLive, splitBody } from './bootstrap-tasks.mjs'
+import { groupTasks, normalizeBody, projectLive, splitBody } from './bootstrap-tasks.mjs'
 
 let passed = 0
 let failed = 0
@@ -74,6 +74,18 @@ console.log('splitBody')
   const { acceptanceCriteria, description } = splitBody('Just a body.')
   assert('no AC heading: empty list, body preserved', acceptanceCriteria.length === 0 && description === 'Just a body.')
 }
+
+{
+  // The DECISION path never got the normalization the TASK path had — and a decision is
+  // ENTIRELY prose, so its whole payload rendered as one line of `\n` gibberish. vp-beads
+  // never saw it: its 6 decisions didn't carry the artifact and its 1 artifact-carrying
+  // issue was a task. Only a sibling repo would have hit it.
+  const raw = String.raw`## Decision\nWe chose X.\n\n## Rationale\nBecause Y.`
+  const out = normalizeBody(raw)
+  assert('normalizeBody un-escapes literal backslash-n (the decision path needs it too)',
+    out.includes('\n## Rationale') && !out.includes('\\n'))
+}
+assert('normalizeBody tolerates an absent body', normalizeBody() === '')
 
 console.log('\nprojectLive (edges to non-live issues)')
 

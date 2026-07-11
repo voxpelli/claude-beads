@@ -7,14 +7,16 @@
  * is one of those bugs.
  */
 
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  mkdirSync, mkdtempSync, rmSync, writeFileSync,
 } from 'node:fs'
 
-import { probeHooks, probeMigration, probeResidue } from './beads-probe.mjs'
+import {
+  probeDaemon, probeHooks, probeMigration, probeResidue,
+} from './beads-probe.mjs'
 
 let passed = 0
 let failed = 0
@@ -43,7 +45,23 @@ function makeRepo () {
   spawnSync('git', ['-C', dir, 'init', '-q'])
   spawnSync('git', ['-C', dir, 'config', 'user.email', 't@t'])
   spawnSync('git', ['-C', dir, 'config', 'user.name', 't'])
+  // This machine signs commits globally. Without this the setup `git commit` fails, its
+  // ignored exit status hides it, and the assertions fail for a reason unrelated to them.
+  spawnSync('git', ['-C', dir, 'config', 'commit.gpgsign', 'false'])
   return dir
+}
+
+/**
+ * Commit everything, loudly. A silent setup failure produces a baffling assertion failure.
+ *
+ * @param {string} dir
+ */
+function commitAll (dir) {
+  const add = spawnSync('git', ['-C', dir, 'add', '-A'])
+  const commit = spawnSync('git', ['-C', dir, 'commit', '-qm', 'x'], { encoding: 'utf8' })
+  if (add.status !== 0 || commit.status !== 0) {
+    throw new Error(`test setup: git commit failed — ${commit.stderr ?? ''}`)
+  }
 }
 
 /**
@@ -71,8 +89,7 @@ console.log('probeMigration (the gate that must not pass vacuously)')
   const dir = makeRepo()
   try {
     writeStore(dir, 'meta:\n  slug: x\ntasks: []\n')
-    spawnSync('git', ['-C', dir, 'add', '-A'])
-    spawnSync('git', ['-C', dir, 'commit', '-qm', 'x'])
+    commitAll(dir)
     const m = probeMigration(dir)
     assert('store exists but is EMPTY → NOT trusted (clean is not enough)',
       m.storeExists === true && m.taskCount === 0 && m.trusted === false)
@@ -92,10 +109,106 @@ console.log('probeMigration (the gate that must not pass vacuously)')
   const dir = makeRepo()
   try {
     writeStore(dir, ONE_TASK)
-    spawnSync('git', ['-C', dir, 'add', '-A'])
-    spawnSync('git', ['-C', dir, 'commit', '-qm', 'x'])
+    commitAll(dir)
     const m = probeMigration(dir)
     assert('committed store with real tasks → trusted', m.taskCount === 1 && m.committed === true && m.trusted === true)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
+{
+  // `git ls-files` reads the INDEX, so a `git add`-ed but never-committed store reported
+  // committed:true — in a repo with NO COMMITS AT ALL. Its only durable copy would have
+  // been the index, and bd was about to be disarmed. `ls-tree HEAD` asks history.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, ONE_TASK)
+    spawnSync('git', ['-C', dir, 'add', '-A']) // staged, deliberately NOT committed
+    const m = probeMigration(dir)
+    assert('STAGED but never committed → NOT trusted (ls-files reads the index, not history)',
+      m.taskCount === 1 && m.committed === false && m.trusted === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // The migration preserves every bd body as a `description:` block scalar, and bd bodies
+  // routinely quote YAML. A regex count of `- id:` therefore counted PROSE as tasks — so an
+  // EMPTY store reported as trusted. That is the vacuous gate this function exists to kill,
+  // reintroduced inside it. Parse the YAML; do not pattern-match it.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, 'meta:\n  slug: x\ntasks: []\nnotes: |\n  the bd body said:\n    - id: T-1\n      title: something\n')
+    commitAll(dir)
+    const m = probeMigration(dir)
+    assert('a `- id:` inside a block scalar is PROSE, not a task → NOT trusted',
+      m.taskCount === 0 && m.trusted === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // A store we cannot parse is a store we cannot vouch for.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: "unclosed\n')
+    commitAll(dir)
+    const m = probeMigration(dir)
+    assert('an UNPARSEABLE store → malformed, NOT trusted', m.malformed === true && m.trusted === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
+console.log('\nprobeDaemon (the function that authorizes killing a process)')
+
+{
+  const dir = makeRepo()
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  try {
+    const d = probeDaemon(dir)
+    assert('no pid file → never signal (and do not pretend a daemon was stopped)',
+      d.pidFile === null && d.safeToSignal === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // A pid file that outlived its process is the whole pid-reuse hazard.
+  const dir = makeRepo()
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  try {
+    writeFileSync(join(dir, '.beads', 'dolt-server.pid'), '999999\n')
+    const d = probeDaemon(dir)
+    assert('a DEAD pid → not signalable', d.safeToSignal === false && d.owned?.alive === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // THE FALSE-POSITIVE THAT KILLS SOMEONE ELSE'S PROCESS. A live process whose argv merely
+  // CONTAINS "dolt" and the right `-P <port>` used to pass: `isDolt` was /dolt/i over the
+  // whole command line, and the port was the only ownership evidence. It is not enough —
+  // a pid and its port are freed TOGETHER when a daemon dies, so a sibling repo's dolt can
+  // inherit both. Ownership is now proven from the process CWD.
+  const dir = makeRepo()
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  // Detached, or it dies with the shell that spawned it and the fixture proves nothing.
+  const fake = spawn('sleep', ['30'], { detached: true, stdio: 'ignore' })
+  fake.unref()
+  try {
+    writeFileSync(join(dir, '.beads', 'dolt-server.pid'), `${fake.pid}\n`)
+    writeFileSync(join(dir, '.beads', 'dolt-server.port'), '50426\n')
+    const d = probeDaemon(dir)
+    assert('a live NON-dolt process at the recorded pid → NOT signalable',
+      d.owned?.alive === true && d.owned.isDolt === false && d.safeToSignal === false)
+  } finally {
+    if (fake.pid) { try { process.kill(fake.pid) } catch { /* already gone */ } }
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
+  // A half-dead daemon leaves a truncated port file. That string used to be interpolated
+  // straight into `new RegExp` — `5042(6` threw "Unterminated group" and took the WHOLE
+  // probe down, migration gate included, in a tool whose own header promises that a
+  // malformed store must not crash reconnaissance.
+  const dir = makeRepo()
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  try {
+    writeFileSync(join(dir, '.beads', 'dolt-server.pid'), '999999\n')
+    writeFileSync(join(dir, '.beads', 'dolt-server.port'), '5042(6\n')
+    let threw = false
+    try { probeDaemon(dir) } catch { threw = true }
+    assert('a CORRUPT port file does not crash the probe', threw === false)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
@@ -176,7 +289,12 @@ console.log('\nprobeHooks (shape, ownership, and what unsetting would ARM)')
     const lefthook = h.otherHookManagers.find(m => m.name === 'lefthook.yml')
     assert('husky → clobbered-by-bd (its mechanism IS core.hooksPath)', husky?.effect === 'clobbered-by-bd')
     assert('lefthook → dormant-rearms-on-unset (it lives in .git/hooks/)', lefthook?.effect === 'dormant-rearms-on-unset')
-    assert('the husky remedy refuses to hand-write a path (v8 vs v9 differ)', /installer/.test(husky?.remedy ?? ''))
+    // Behavioural, not prose-pinned: the remedy must NOT be a hand-written hooksPath
+    // command, because husky v8 uses .husky and v9 uses .husky/_ and a guess is a fresh
+    // silent break. (An earlier version asserted the substring "installer" — reword the
+    // sentence and the test failed for no behavioural reason.)
+    assert('the husky remedy is not a hand-written core.hooksPath command',
+      !/git\s+config\s+core\.hooksPath/.test(husky?.remedy ?? ''))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
@@ -190,8 +308,7 @@ console.log('\nprobeResidue (what deleting .beads/ would actually do)')
   try {
     mkdirSync(join(dir, '.beads'), { recursive: true })
     writeFileSync(join(dir, '.beads', 'config.yaml'), 'x: 1\n')
-    spawnSync('git', ['-C', dir, 'add', '-A'])
-    spawnSync('git', ['-C', dir, 'commit', '-qm', 'x'])
+    commitAll(dir)
     spawnSync('git', ['-C', dir, 'config', 'beads.role', 'maintainer'])
     const r = probeResidue(dir)
     assert('tracked .beads/ files are counted (rm -rf would stage deletions)',
@@ -211,4 +328,3 @@ console.log('\nprobeResidue (what deleting .beads/ would actually do)')
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)
-if (!existsSync(join(process.cwd(), 'scripts', 'beads-probe.mjs'))) process.exit(0)

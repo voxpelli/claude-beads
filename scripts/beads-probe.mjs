@@ -42,6 +42,8 @@ import {
   argv, cwd, exit, stdout,
 } from 'node:process'
 
+import yaml from 'js-yaml'
+
 import { TRACKER_DIR } from './task-schema.mjs'
 
 /** Hook names bd installs. */
@@ -79,25 +81,37 @@ export function probeMigration (root) {
     ? readdirSync(tasksDir).filter(f => /^tasks-.+\.ya?ml$/.test(f))
     : []
 
-  // Count `- id:` rows without parsing YAML — the probe stays dependency-light and a
-  // malformed store should not crash reconnaissance.
+  // PARSE the YAML; do not pattern-match it. Counting `/^\s*-\s+id:/` looked
+  // "dependency-light" and was simply wrong: the migration preserves every bd body as a
+  // `description:` block scalar, and bd bodies routinely quote YAML — so a `- id:` inside
+  // prose inflated the count, and a store holding `tasks: []` reported as trusted. That is
+  // the exact vacuous gate this function exists to close, reintroduced one layer down.
   let taskCount = 0
+  let malformed = false
   for (const f of files) {
-    const text = readFileSync(join(tasksDir, f), 'utf8')
-    taskCount += (text.match(/^\s*-\s+id:/gm) ?? []).length
+    try {
+      const doc = /** @type {any} */ (yaml.load(readFileSync(join(tasksDir, f), 'utf8')))
+      if (Array.isArray(doc?.tasks)) taskCount += doc.tasks.length
+    } catch {
+      // A store we cannot parse is a store we cannot vouch for.
+      malformed = true
+    }
   }
 
-  const tracked = run('git', ['-C', root, 'ls-files', `${TRACKER_DIR}/tasks`]).out
-  const committedFiles = tracked ? tracked.split('\n').filter(Boolean) : []
+  // `ls-files` reads the INDEX, so a `git add`-ed but never-committed store answered
+  // "committed: true" — in a repo with no commits at all. `ls-tree HEAD` asks history.
+  const inHead = run('git', ['-C', root, 'ls-tree', '-r', '--name-only', 'HEAD', '--', `${TRACKER_DIR}/tasks`])
+  const committedFiles = inHead.ok && inHead.out ? inHead.out.split('\n').filter(Boolean) : []
 
   return {
     storeExists: files.length > 0,
     files,
     taskCount,
+    malformed,
     committed: committedFiles.length > 0,
     committedFiles,
-    // The gate. All three, not any one.
-    trusted: files.length > 0 && taskCount > 0 && committedFiles.length > 0,
+    // The gate. All of them, not any one.
+    trusted: files.length > 0 && taskCount > 0 && !malformed && committedFiles.length > 0,
   }
 }
 
@@ -109,19 +123,24 @@ export function probeMigration (root) {
  */
 export function probeHooks (root) {
   const raw = run('git', ['-C', root, 'config', '--get', 'core.hooksPath'])
-  const origin = run('git', ['-C', root, 'config', '--show-origin', '--get', 'core.hooksPath'])
   const value = raw.ok ? raw.out : null
-  // `--show-origin` prints `file:<path>\t<value>` — the scope is the file it came from.
-  const originFile = origin.ok ? (origin.out.split('\t')[0] ?? '').replace(/^file:/, '') : null
-  const scope = originFile === null
-    ? null
-    : (originFile.includes('.git/config') ? 'local' : 'global-or-other')
+
+  // `--show-scope` (git >= 2.26) returns git's OWN answer: local | global | system |
+  // worktree | command. Do NOT infer it by string-matching the origin path — that call
+  // reported `global-or-other` for a submodule (whose config lives in
+  // `.git/modules/<name>/config` yet IS local), so the skill would refuse to disarm a repo
+  // it safely could. Worse, "global-or-other" is not a git scope, and an agent told to
+  // "unset at the scope the probe reports" could reach for `--global --unset` and delete
+  // the user's unrelated global hooksPath.
+  const scopeRun = run('git', ['-C', root, 'config', '--show-scope', '--get', 'core.hooksPath'])
+  const scope = scopeRun.ok && scopeRun.out ? (scopeRun.out.split(/\s+/)[0] ?? null) : null
 
   // bd stores an ABSOLUTE path, so resolve before matching — a relative-prefix check
   // against `.beads/` misses the real value entirely and the skill silently skips the
-  // one thing it exists to do.
+  // one thing it exists to do. Compare against THIS root's .beads/hooks: a `includes()`
+  // test would claim another repo's `.beads/hooks` as our own.
   const resolved = value ? resolve(root, value) : null
-  const isBeads = Boolean(resolved?.includes(join('.beads', 'hooks')))
+  const isBeads = resolved === resolve(root, '.beads', 'hooks')
 
   const shimDir = join(root, '.beads', 'hooks')
   const shims = existsSync(shimDir) ? readdirSync(shimDir).filter(f => BD_HOOKS.has(f)) : []
@@ -152,7 +171,7 @@ export function probeHooks (root) {
 
   return {
     shape: value && isBeads ? 'hooksPath' : (dormantBdHooks.length ? 'git-hooks' : 'none'),
-    hooksPath: { value, resolved, origin: originFile, scope, isBeads },
+    hooksPath: { value, resolved, scope, isBeads },
     shims,
     gitHooks: { dormantBdHooks, otherGitHooks },
     otherHookManagers: managers,
@@ -173,34 +192,53 @@ export function probeHooks (root) {
 export function probeDaemon (root) {
   const pidFile = join(root, '.beads', 'dolt-server.pid')
   const portFile = join(root, '.beads', 'dolt-server.port')
-  const pid = existsSync(pidFile) ? readFileSync(pidFile, 'utf8').trim() : null
-  const port = existsSync(portFile) ? readFileSync(portFile, 'utf8').trim() : null
+  const rawPid = existsSync(pidFile) ? readFileSync(pidFile, 'utf8').trim() : null
+  const rawPort = existsSync(portFile) ? readFileSync(portFile, 'utf8').trim() : null
+  // Only ever trust digits. A half-dead daemon can leave a truncated port file, and that
+  // string used to be interpolated straight into `new RegExp` — `5042(6` threw
+  // "Unterminated group" and took the WHOLE probe down, migration gate and all.
+  const pid = rawPid && /^\d+$/.test(rawPid) ? rawPid : null
+  const port = rawPort && /^\d+$/.test(rawPort) ? rawPort : null
+
+  const beadsDir = resolve(root, '.beads')
 
   let owned = null
-  if (pid && /^\d+$/.test(pid)) {
+  if (pid) {
     const args = run('ps', ['-p', pid, '-o', 'args='])
     const alive = args.ok && args.out.length > 0
-    const isDolt = alive && /dolt/i.test(args.out)
-    // Does the live process belong to THIS repo? The repo path is NOT in dolt's args
-    // (verified: `dolt sql-server -H 127.0.0.1 -P 50426 --loglevel=warning`) — the only
-    // link is the PORT, which bd records in .beads/dolt-server.port. Matching on the
-    // path would fail closed forever; matching on `comm` alone would let pid-reuse
-    // hand us a SIBLING repo's daemon, which is the whole hazard.
-    const matchesTarget = Boolean(isDolt && port && new RegExp(`-P\\s+${port}\\b`).test(args.out))
-    owned = { pid, port, alive, isDolt, matchesTarget, args: alive ? args.out : null }
+    // `/dolt/i` over the whole command line was far too loose — ANY process with "dolt"
+    // somewhere in argv passed. Require the actual `dolt sql-server` invocation.
+    const isDolt = alive && /dolt\s+sql-server/i.test(args.out)
+
+    // Ownership, in order of strength:
+    //  1. the process CWD. dolt runs *inside* `<root>/.beads/dolt`, so this is direct
+    //     proof, not a correlation. (An earlier comment claimed the repo path was
+    //     unavailable and settled for the port — that was simply wrong.)
+    //  2. the port, as corroboration only. It is WEAK on its own: a pid and its port are
+    //     freed together when a daemon dies, so a sibling repo's dolt can inherit BOTH —
+    //     which is precisely the pid-reuse hazard we are defending against.
+    const cwdOut = run('lsof', ['-p', pid, '-a', '-d', 'cwd', '-Fn']).out
+    const cwdLine = cwdOut.split('\n').find(l => l.startsWith('n'))?.slice(1) ?? null
+    const cwdInTarget = Boolean(cwdLine && resolve(cwdLine).startsWith(beadsDir))
+    const portMatches = Boolean(port && new RegExp(String.raw`-P\s+${port}\b`).test(args.out))
+
+    owned = { pid, port, alive, isDolt, cwd: cwdLine, cwdInTarget, portMatches, args: alive ? args.out : null }
   }
 
+  // Parse the pid FIELD; `line.startsWith(pid)` was a prefix match, so our pid 4443
+  // silently hid a genuinely different daemon at 44430 from the do-not-touch list.
   const all = run('ps', ['ax', '-o', 'pid=,args=']).out.split('\n')
-    .filter(l => /dolt\s+sql-server/i.test(l))
     .map(l => l.trim())
-  const orphans = all.filter(l => !pid || !l.startsWith(pid))
+    .filter(l => /dolt\s+sql-server/i.test(l))
+  const others = all.filter(l => (l.split(/\s+/)[0] ?? '') !== pid)
 
   return {
     pidFile: existsSync(pidFile) ? pidFile : null,
     owned,
-    // Safe to signal ONLY when we can prove it is a live dolt belonging to this target.
-    safeToSignal: Boolean(owned?.alive && owned.isDolt && owned.matchesTarget),
-    otherDoltProcesses: orphans,
+    // Signal ONLY on proof: a live `dolt sql-server` whose cwd is inside THIS target's
+    // .beads/. Falling closed costs an orphaned daemon; falling open kills someone else's.
+    safeToSignal: Boolean(owned?.alive && owned.isDolt && owned.cwdInTarget),
+    otherDoltProcesses: others,
   }
 }
 
@@ -239,8 +277,13 @@ export function probeResidue (root) {
  * @returns {any}
  */
 export function probe (root) {
+  // Without git, every git-derived answer below degrades to a benign-looking DEFAULT
+  // rather than an error: "nothing tracked", "no hooksPath", "not committed". The skill
+  // would then tell the user that `rm -rf .beads/` merely frees disk. Say so explicitly.
+  const gitAvailable = run('git', ['-C', root, 'rev-parse', '--git-dir']).ok
   return {
     root,
+    gitAvailable,
     migration: probeMigration(root),
     hooks: probeHooks(root),
     daemon: probeDaemon(root),
@@ -273,7 +316,7 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   stdout.write(`\nhooks: shape=${hooks.shape}\n`)
   if (hooks.hooksPath.value) {
     stdout.write(`  core.hooksPath = ${hooks.hooksPath.value}\n`)
-    stdout.write(`    scope=${hooks.hooksPath.scope} origin=${hooks.hooksPath.origin} isBeads=${hooks.hooksPath.isBeads}\n`)
+    stdout.write(`    scope=${hooks.hooksPath.scope} isBeads=${hooks.hooksPath.isBeads}\n`)
     if (hooks.hooksPath.scope !== 'local') stdout.write('    ! not local — `git config --local --unset` CANNOT clear this\n')
     stdout.write(`  re-arm: ${hooks.reArmCommand}\n`)
   }
@@ -290,8 +333,8 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
 
   stdout.write('\ndaemon\n')
   if (!daemon.pidFile) stdout.write('  no .beads/dolt-server.pid — nothing to stop from a pid file\n')
-  else if (daemon.safeToSignal) stdout.write(`  pid ${daemon.owned.pid} is this target's dolt — safe to SIGTERM\n`)
-  else stdout.write(`  pid ${daemon.owned?.pid ?? '?'} NOT confirmed as this target's dolt — do NOT signal it\n`)
+  else if (daemon.safeToSignal) stdout.write(`  pid ${daemon.owned.pid} — cwd is ${daemon.owned.cwd} → this target's dolt, safe to SIGTERM\n`)
+  else stdout.write(`  pid ${daemon.owned?.pid ?? '?'} NOT proven to be this target's dolt — do NOT signal it\n`)
   for (const o of daemon.otherDoltProcesses) stdout.write(`  other dolt process (do not touch): ${o}\n`)
 
   stdout.write('\nresidue\n')

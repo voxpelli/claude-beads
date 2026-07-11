@@ -74,6 +74,23 @@ import { TRACKER_DIR, VALID_STATUSES, VALID_TYPES } from './task-schema.mjs'
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/
 
 /**
+ * Undo bd's create-time escaping artifact: some issue bodies store a literal
+ * backslash-n instead of a real newline.
+ *
+ * EVERY path that touches a bd body must go through this. It lived inside `splitBody`
+ * once, which meant the TASK path was normalized and the DECISION path was not — and a
+ * decision is *entirely* prose, so its whole payload rendered as one line of `\n`
+ * gibberish. vp-beads never saw it (its 6 decisions happened not to carry the artifact,
+ * and its 1 artifact-carrying issue was a task), so only a sibling repo would have.
+ *
+ * @param {string} [body]
+ * @returns {string}
+ */
+export function normalizeBody (body) {
+  return (body ?? '').replaceAll('\\n', '\n')
+}
+
+/**
  * Split a bd markdown body into extracted acceptance criteria and the remaining
  * description. The AC section runs from a `## Acceptance Criteria` heading to the
  * next `##` heading (or EOF); its bullet lines become the list, and the body with
@@ -83,10 +100,9 @@ const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/
  * @returns {{ description: string, acceptanceCriteria: string[] }}
  */
 export function splitBody (body) {
-  // A handful of bd issues stored their body with literal backslash-n instead of
-  // real newlines (a create-time escaping artifact) — normalize so the heading
-  // becomes line-anchored and the description doesn't render as `\n` gibberish.
-  const lines = (body ?? '').replaceAll('\\n', '\n').split('\n')
+  // Normalize first, or the `## Acceptance Criteria` heading is never line-anchored and
+  // the criteria SILENTLY vanish (the vp-beads-8d5 bug).
+  const lines = normalizeBody(body).split('\n')
   const acIdx = lines.findIndex(l => /^##\s+Acceptance Criteria\s*$/i.test(l))
   if (acIdx === -1) return { description: lines.join('\n').trim(), acceptanceCriteria: [] }
 
@@ -222,7 +238,9 @@ function dumpTasks (slug, title, tasks) {
 function dumpDecision (task, body) {
   const { description, ...front } = task
   const fm = yaml.dump(front, { lineWidth: 100, noRefs: true }).trimEnd()
-  return `---\n${fm}\n---\n\n${(body ?? '').trim()}\n`
+  // normalizeBody, not the raw body: a decision is ENTIRELY prose, so an unnormalized
+  // escaping artifact turns the whole file into one line of `\n` gibberish.
+  return `---\n${fm}\n---\n\n${normalizeBody(body).trim()}\n`
 }
 
 /**
