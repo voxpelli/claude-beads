@@ -6,6 +6,7 @@
     "check": "run-p check:*",
     "check:ast-grep": "node scripts/check-ast-grep.mjs",
     "check:ast-grep-test": "ast-grep test",
+    "check:beads-probe": "node scripts/check-beads-probe.mjs",
     "check:bootstrap": "node scripts/check-bootstrap-tasks.mjs",
     "check:hooks": "node scripts/check-hooks.mjs",
     "check:lint": "eslint",

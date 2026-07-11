@@ -14,10 +14,12 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync,
+} from 'node:fs'
 
 import { groupTasks, projectLive, splitBody } from './bootstrap-tasks.mjs'
 
@@ -172,7 +174,13 @@ console.log('\nCLI guards (the two data-loss stops)')
 const SCRIPT = fileURLToPath(new URL('bootstrap-tasks.mjs', import.meta.url))
 const EXPORT = fileURLToPath(new URL('../.diarie/_archive/bd-final-export.jsonl', import.meta.url))
 
-/** @param {string[]} args @param {string} [wd] @returns {{ code: number|null, out: string }} */
+/**
+ * Run the migrator CLI against the frozen archive.
+ *
+ * @param {string[]} args
+ * @param {string} [wd] working dir (to exercise the CWD default)
+ * @returns {{ code: number|null, out: string }}
+ */
 const run = (args, wd) => {
   const r = spawnSync('node', [SCRIPT, EXPORT, ...args], { cwd: wd, encoding: 'utf8' })
   return { code: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') }

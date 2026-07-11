@@ -79,11 +79,14 @@ Dev tooling only: validation and linting via `npm run check`.
   siblings (vp-knowledge, vp-git) broke on the same global beads 1.1.0 binary.
   User-invocable as `/migrate-tracker`.
 - **deintegrate-beads** — De-integrates beads *after* the migration is trusted. Five
-  workflows: verify-migration, stop-daemon, disarm-git-hooks, de-colonize
+  workflows: probe-verify-confirm, disarm-git-hooks, stop-daemon, de-colonize
   (CLAUDE.md/AGENTS.md blocks + Claude hooks + bd perms), report-what-is-left.
-  **Never deletes `.beads/` or any data** — it disarms machinery (bd hides five
-  git hooks behind `core.hooksPath`, so `.git/hooks/` looks clean while every
-  commit routes through `bd`) and reports the rest. User-invocable as
+  **The hooks are disarmed BEFORE the daemon is stopped** — the armed `pre-commit`
+  shim calls `bd`, which re-spawns the daemon, so stopping it first just brings it
+  back on the next commit. **Never deletes `.beads/` or any data** — it disarms
+  machinery (bd hides five git hooks behind `core.hooksPath`, so `.git/hooks/` looks
+  clean while every commit routes through `bd`) and reports the rest. All detection
+  lives in the tested `scripts/beads-probe.mjs`, not in prose. User-invocable as
   `/deintegrate-beads`.
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
