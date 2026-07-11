@@ -65,7 +65,7 @@ Six steps, all blocking — the gate must fully pass before proceeding.
    any HIGH-severity fix was made.
 6. **Commit**: `git commit --no-gpg-sign -m "feat: wave N — [theme]"`.
    Close completed wave issues by editing their task rows to `status: completed`
-   (then `node validate-tasks.mjs`). Update wave status to `committed` in the
+   (then `diarie validate`). Update wave status to `committed` in the
    SWARM file. **Tracker-less source** (ROADMAP / manual): there are no task-row
    edits — mark each completed item `done` in the wave's `### Item Status`
    table; wave `Status: committed` closes the wave.
@@ -93,4 +93,4 @@ Six steps, all blocking — the gate must fully pass before proceeding.
 | Fat agent prompts (>3 issues per agent)      | Incomplete work, scope creep        | 1-3 issues per agent                                   |
 | No file-scope constraint in prompt           | Agent wanders outside scope         | Exhaustive file list required                          |
 | Parallelizing tests                          | Test interference, flaky results    | Sequential tests after gate                            |
-| Closing sprint with open in\_progress issues | Phantom work, stale claims          | Verify with `ready-walker.mjs --filter in_progress`    |
+| Closing sprint with open in\_progress issues | Phantom work, stale claims          | Verify with `diarie ready --filter in_progress`    |

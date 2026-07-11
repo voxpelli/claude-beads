@@ -49,7 +49,12 @@
 > triplet over-fits a repo whose p50 issue lifespan is 1 hour; the rare epic-scale
 > initiative is modelled as epic→children). The open-core "tracker = standalone npm
 > package" framing of v2 is **dropped** — Option C is in-repo `.mjs` helpers, not a separate
-> package (lock-in resistance + platform proximity). **Rename `vp-beads`→`vp-heddle` stays
+> package (lock-in resistance + platform proximity). *(AMENDED 2026-07-11, decision
+> `vp-beads-dcl`: it is now an in-repo npm **workspace** with a `bin` — `private: true`,
+> unpublished, name still gated. The lock-in-resistance test still passes, because it asks
+> the right question: it is a pure reader over committed files, no daemon, no index, no
+> service, and deleting it costs you a `bin`, not your data. The `.mjs`-helpers clause is
+> superseded; the no-vendor-product principle is not.)* **Rename `vp-beads`→`vp-heddle` stays
 > gated at M4**, decoupled from the substrate swap.
 >
 > **Type model RATIFIED (2026-06-10, decision bead `vp-beads-etm`): 4 types, not 9.** The

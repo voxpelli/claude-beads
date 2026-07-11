@@ -307,7 +307,7 @@ to mutate the project. The boundary is enforced both by the frontmatter
   - editing task rows in `.diarie/tasks/*.yml` (claim/close/create) — only the
     user does these
 - **Read-only by design.** The agent reads git history, tracker state (via
-  `node scripts/ready-walker.mjs`), and UPSTREAM/SYNERGY files; it may call
+  `diarie ready`), and UPSTREAM/SYNERGY files; it may call
   `mcp__basic-memory__search_notes` to detect cross-project friction; it must
   not call any Basic Memory write tool, edit any `.diarie/tasks/` file, or run
   any shell command that modifies the working tree. If a finding requires

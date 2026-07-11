@@ -154,11 +154,15 @@ Dev tooling only: validation and linting via `npm run check`.
 ## The tracker migration: bd → flat-YAML (done)
 
 This project **has migrated off beads.** Its work lives in a lean in-repo flat-YAML
-substrate — `.diarie/tasks/tasks-<slug>.yml`, read by `scripts/ready-walker.mjs`
-(the files-native `bd ready`) and validated by `validate-tasks.mjs`. The single
-canonical schema is `scripts/task-schema.mjs`. The tracker is named **`diarie`** and
-is being extracted as a standalone npm CLI; until it ships, the in-repo readers are
-what everything calls.
+substrate — `.diarie/tasks/tasks-<slug>.yml`, read by `diarie ready` (the files-native
+`bd ready`) and validated by `diarie validate`. The single canonical schema is
+`diarie/lib/schema.js`.
+
+The tracker is a real CLI: the **`diarie` npm workspace** at `diarie/` (`cli.js` +
+`lib/`), with `ready` / `stats` / `validate` / `init` / `migrate`. It is **built but not
+published** — `private: true`, held behind the name gate (`diarie.dev` + an npm
+placeholder). Everything already calls the CLI; nothing calls a loose `.mjs` reader,
+because there are none left.
 
 Verdict from a 12-agent research round (2026-06-09), for provenance:
 `RESEARCH-tracker-migration-synthesis-2026-06.md`; architecture in
@@ -444,7 +448,7 @@ backlog-groomer (skill)   → triage backlog, research new work, create issues
   ↓ then
 swarm-wave (skill)        → plan waves, execute with parallel agents   [optional]
   ↓ or                        (workflow 1 (Plan) plans, workflows 2 (Execute) + 3 (Gate) loop per wave)
-node scripts/ready-walker.mjs → normal development cycle
+diarie ready → normal development cycle
 
 (sprint end)
 sprint-review (agent)     → proactive summary + backlog health signal
@@ -518,12 +522,12 @@ plugin supports multiple substrates (see `## Work-tracking substrates`).
 
 This project tracks its own work in the **flat-YAML substrate** (Option C), **not
 bd** — the data migration executed 2026-07-10 (Wave 1; see "Active migration"
-above). Find ready work with `node scripts/ready-walker.mjs` (`--format json`,
+above). Find ready work with `diarie ready` (`--json`,
 `--stats`, `--blocked`, `--stale --days N`). Claim / complete by **editing the
 YAML directly** in `.diarie/tasks/tasks-<slug>.yml` — set `status: in_progress`
 (+ `agent:`) to claim, `status: completed` to close; there is no CRUD helper
 (substrate-not-opinion — the write side is Edit/Write). Validate every edit with
-`node validate-tasks.mjs`. Decisions live as markdown in `.diarie/decisions/`.
+`diarie validate`. Decisions live as markdown in `.diarie/decisions/`.
 Do NOT use markdown TODOs, ad-hoc task lists, or `bd` (its 1.1.0 writes are dead
 regardless).
 
@@ -569,7 +573,7 @@ those explicitly. Concrete starter snippet for `.claude/settings.local.json`
 when running swarm-wave (add any `mcp__<server>__*` tools a sub-agent must call):
 
 ```json
-"Bash(node scripts/ready-walker.mjs:*)", "Bash(node validate-tasks.mjs:*)",
+"Bash(node diarie/cli.js:*)", "Bash(diarie:*)",
 "Bash(npx:*)", "Bash(gh api:*)", "Bash(brew info:*)"
 ```
 
@@ -580,7 +584,7 @@ observation + `UPSTREAM-claude-code.md` at project root.
 ### Issue types
 
 **Four exclusive types** (decision `vp-beads-etm`), enforced by
-`scripts/task-schema.mjs` (`VALID_TYPES`):
+`diarie/lib/schema.js` (`VALID_TYPES`):
 
 | Type        | Lives in                     | When to use                                                                                     |
 | ----------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -603,7 +607,7 @@ in force is never surfaced as workable. (bd got this wrong — its ready-walk is
 type-blind and lists decisions as ready. Our own dual-run caught it on `vp-beads-etm`.)
 
 bd's 9-type vocabulary survives only in the frozen
-`.diarie/_archive/bd-final-export.jsonl`; `scripts/migrate-from-bd.mjs` holds the
+`.diarie/_archive/bd-final-export.jsonl`; `diarie/lib/migrate/bd-map.js` holds the
 `TYPE_MAP` that reads it.
 
 ### Session completion
@@ -612,7 +616,7 @@ Work is NOT complete until pushed. Before ending a session:
 
 1. Close finished work in `.diarie/tasks/` — set `status: completed` on the row
    (and add `acceptance_criteria` if the task shipped without any)
-2. `node validate-tasks.mjs` — the store must be clean
+2. `diarie validate` — the store must be clean
 3. `npm run check` (if code changed)
 4. `git push` — mandatory, never skip
 
@@ -660,15 +664,16 @@ up the new version (`/plugin install vp-beads@vp-plugins`).
 npm run check
 ```
 
-Runs **14 checks in parallel** via `run-p check:*` (`npm-run-all2`) — the
+Runs every `check:*` key in parallel via `run-p check:*` (`npm-run-all2`) — the
 authoritative list is the `check:*` keys in `package.json`, not this paragraph.
-They fall into four groups: **plugin** (`check:plugin` = validate-plugin.mjs,
+They fall into five groups: **plugin** (`check:plugin` = validate-plugin.mjs,
 `check:validator` = its unit tests), **prose/style** (`check:md` = remark,
 `check:lint` = eslint, `check:sh` = shellcheck + shfmt, `check:ast-grep` +
 `check:ast-grep-test` = the structural-lint suite), **tracker** (`check:tasks` =
-validate-tasks.mjs, plus `check:ready-walker`, `check:tasks-validator`,
+`node diarie/cli.js validate`, plus `check:ready-walker`, `check:tasks-validator`,
 `check:tasks-smoke`, `check:bootstrap` = the bd→YAML migrator, `check:beads-probe` =
-the de-integration probe), and **hooks** (`check:hooks`).
+the de-integration probe), **types** (`check:tsc` + `check:type-coverage`, both scoped
+to the `diarie` workspace), and **hooks** (`check:hooks`).
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
 Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`); `ast-grep`
 comes from the pinned `@ast-grep/cli` devDep.
@@ -685,12 +690,19 @@ fixtures, run by `ast-grep test`). Adopted from vp-knowledge; see
 `SYNERGY-vp-knowledge.md`. To add a rule, write both files and run
 `ast-grep test --update-all` to seed the snapshot.
 
-The one rule so far is **`no-hardcoded-tracker-dir`**: the tracker path segment
-lives *only* in `TRACKER_DIR` (`scripts/task-schema.mjs`), and every other tool
-must import it. Two exemptions, both deliberate — `task-schema.mjs` (it *is* the
+Six rules. Five are adopted from vp-knowledge/vp-claude — `no-jsdoc-any-type` (prefer
+`unknown` + a guard; this is the ratchet that keeps type-coverage from sliding back),
+`no-jsdoc-object-typedef` (auto-fixable), `no-commonjs-require`, `no-identifier-shadow-call`,
+`no-jq-raw-interpolation` (the hooks build jq programs). Deliberately NOT adopted:
+vp-claude's `bash-require-set-euo-pipefail` — a Claude Code hook that aborts on any failing
+command *blocks the tool call*, and these hooks are required to degrade quietly.
+
+The sixth, and the only one native here, is **`no-hardcoded-tracker-dir`**: the tracker path segment
+lives *only* in `TRACKER_DIR` (`diarie/lib/schema.js`), and every other tool
+must import it. Two exemptions, both deliberate — `schema.js` (it *is* the
 definition) and `scripts/check-*.mjs` (test fixtures must state the literal, or
 the assertion becomes tautological). The rule matters most in guard code: a
-hardcoded segment in `migrate-from-bd.mjs`'s refuse-to-write check would not
+hardcoded segment in `bd-map.js`'s refuse-to-write check would not
 *error* after a rename, it would silently stop guarding.
 
 ### Hook type constraint

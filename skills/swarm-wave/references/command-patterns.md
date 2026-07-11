@@ -29,35 +29,33 @@ For `bm-enrichment` agents: cap at 15 to avoid write contention.
 
 ## Tracker CLI Patterns
 
-Common patterns used during swarm sprints. The reader is
-`node scripts/ready-walker.mjs` (the `diarie` CLI will replace it once
-published; use the script path for now); the store is
+Common patterns used during swarm sprints. The reader is `diarie ready`; the store is
 `.diarie/tasks/tasks-<slug>.yml`, edited directly (plain Edit/Write — there is
-no CRUD helper) and validated with `node validate-tasks.mjs`:
+no CRUD helper) and validated with `diarie validate`:
 
 ```bash
-# Wave planning — list all ready issues (add --format json to parse)
-node scripts/ready-walker.mjs
+# Wave planning — list all ready issues (add --json to parse)
+diarie ready
 
 # Agent prompt construction — full issue detail
 # read the task entry in .diarie/tasks/tasks-<slug>.yml
 
 # Pre-wave — claim issues before launch
 # edit the task row: status: in_progress + agent: <name>, then:
-node validate-tasks.mjs
+diarie validate
 
 # Post-wave — close completed issues
 # edit the task row: status: completed, then:
-node validate-tasks.mjs
+diarie validate
 
 # Post-wave — check for unclosed stragglers
-node scripts/ready-walker.mjs --filter in_progress
+diarie ready --filter in_progress
 
 # Sprint summary
-node scripts/ready-walker.mjs --stats
+diarie stats
 
 # Dependency-aware ordering (find blocking chains)
-node scripts/ready-walker.mjs --blocked
+diarie ready --blocked
 ```
 
 ### Tracker-less run-state equivalents
@@ -69,10 +67,10 @@ The orchestrator owns every write:
 
 | Tracker action (tracker source)             | Tracker-less equivalent (Item Status table)    |
 | ------------------------------------------- | ---------------------------------------------- |
-| `node scripts/ready-walker.mjs`             | the work items parsed from ROADMAP / supplied  |
+| `diarie ready`             | the work items parsed from ROADMAP / supplied  |
 | edit task row → `status: in_progress`       | set the item's row to `claimed`                |
 | edit task row → `status: completed`         | set the item's row to `done`                   |
-| `ready-walker.mjs --filter in_progress`     | rows still `claimed` (not `done`) are unclosed |
+| `diarie ready --filter in_progress`     | rows still `claimed` (not `done`) are unclosed |
 
 Items deferred to a later wave are marked `carried`. Agent prompts omit the
 completion-edit line in this mode (see below).
@@ -115,7 +113,7 @@ Validation: Run `npm run check` before finishing. If it fails, fix the
 issues within your scope.
 
 Completion: Edit your task row to `status: completed` (then run
-`node validate-tasks.mjs`) when the issue is done.
+`diarie validate`) when the issue is done.
 ```
 
 Key requirements:
@@ -136,7 +134,7 @@ Key requirements:
 Run before workflow 1 (Plan a swarm sprint) when the backlog has items with
 unclear scope:
 
-1. Identify under-specified issues (`node scripts/ready-walker.mjs` + scan
+1. Identify under-specified issues (`diarie ready` + scan
    descriptions)
 2. Run workflow 5 (Research wave) with intent `validate` scoped to those
    issues

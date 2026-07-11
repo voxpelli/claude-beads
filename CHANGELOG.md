@@ -9,6 +9,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The tracker is a real CLI: `diarie`.** The three loose readers
+  (`scripts/ready-walker.mjs`, `validate-tasks.mjs`, `scripts/task-schema.mjs`) are now an
+  npm workspace at `diarie/` — `cli.js` + `lib/`, built on the `node-cli-template` shape
+  (`peowly` / `peowly-commands`, an InputError/ResultError boundary). Commands: `ready`,
+  `stats`, `validate`, `init`, `migrate`. It is **built but not published** (`private: true`,
+  held behind the name gate); every skill, agent and hook calls it, and resolves it on PATH →
+  `node_modules/.bin` → the project's `diarie/cli.js` → the plugin's own checkout.
+- **`--root` on every command**, replacing the `TASKS_ROOT` env convention (which still
+  works, and is what the tests use). This is what makes one binary safe to run against
+  another repo — and it is load-bearing: `.diarie/` is committed, so a marketplace install
+  ships vp-beads' own backlog into every consumer's plugin cache. A CLI that fell back to a
+  cwd-walk would hand a consumer *our* tasks and call them theirs.
+- **`diarie stats` is a subcommand**, not flags on `ready`. `--stats` / `--stale` moved.
+  `ready --format json` is now `ready --json` — the old readers disagreed with each other
+  on this and a greenfield CLI should not inherit an incoherence from scripts that no longer
+  exist.
+- **Types.** `tsc --noEmit` (strict, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`),
+  `type-coverage` at 98%, and `knip`, all scoped to the workspace. They found real bugs — see
+  Fixed.
+- **`GlobalId`, a branded id type.** `nsId()` is the only thing that can mint one, and the
+  store's `id`/`parent`/`deps` are `GlobalId`, so a raw string cannot reach them. It catches
+  the `parent` bug below **at compile time**, which nothing weaker does: `unknown` and a
+  richer object type are both satisfied by `String(x)`, which *is* the bug.
+- Five ast-grep rules adopted from vp-knowledge/vp-claude (`no-jsdoc-any-type`,
+  `no-jsdoc-object-typedef`, `no-commonjs-require`, `no-identifier-shadow-call`,
+  `no-jq-raw-interpolation`).
+
+### Fixed
+
+- **BREAKING — a missing store is an ERROR (`ENOSTORE`), not an empty backlog.** Pointed at a
+  directory with no `.diarie/`, the tracker printed a well-formed, entirely fictional
+  `{"ready":[],"blocked":[],"needsAttention":[]}` to **stdout**, sent its only warning to
+  **stderr — a stream ten call sites pipe to `/dev/null`** — and exited **0**. An ABSENT
+  store and an EMPTY one were indistinguishable to every consumer. Now: absent → exit 1 with
+  `{"error":…,"code":"ENOSTORE"}` on stdout; empty-but-present → exit 0, still perfectly
+  clean. `validate`'s `skipped` flag is gone with the defect it existed to paper over.
+- **An epic was offered as work** (`vp-beads-epc`). `diarie ready` led with the migration
+  epic — a container with three open children — at high priority. A parent with open children
+  is now `blocked` **by those children** (their own `children:` field: a dep must FINISH
+  FIRST, a child is CONTAINED), and an `epic`-labelled task with nothing open inside it
+  surfaces in `needsAttention` ("close it or add children") rather than vanishing.
+- **`loadTasks` handed out a half-globalized task.** It namespaced `id` and `deps` into the
+  `slug/id` id-space and left `parent` raw, so `parent` could never equal any `id`. Nothing
+  was broken by it *at the time* — nothing read `parent`. It was a trap for the first reader
+  that did, and the container fix above was that reader: it would have found **zero children
+  for every epic**, excluded nothing, and passed a green suite. Root cause was the id rule
+  existing twice (`store.nsId` and a private `validate.glob`), one copy incomplete; it now
+  lives once, in `schema.js`.
+- **A `cancelled` / `failed` / `deferred` child entombed its parent in `blocked` forever**,
+  while the *dependency* logic routed exactly those statuses to `needsAttention`. And a
+  `milestone` child blocked its parent permanently — milestones live in `tasks-*.yml`, are
+  never worked, so never complete. Children are now typed and bucketed exactly like deps.
+- **A dangling `parent:` was invisible to `ready`** (a dangling *dep* was not). It now
+  surfaces — which also makes it the recurrence detector: if the id-spaces ever diverge
+  again, every parent dangles and every row says so at once.
+- **`validate`'s `doc?.tasks ?? []` laundered a broken file into a clean empty one**, making
+  `lintTasks`' own Pass-0 guard unreachable. A `task:` typo, or a truncation to just `meta:`,
+  made an entire file's backlog vanish while `validate`, `ready` and `stats` all exited 0.
+- **A parent ring (A→B→A) passed validation** — `findCycles` walked `deps` only. Each member
+  is the other's open child, so the ready-walk blocked all of them forever. Self-parenting
+  was only the one-element case.
+- **`cli(argv)`'s parameter did nothing.** `peowly-commands` takes `args`, not `argv`; the
+  key was silently ignored and the parser fell back to `process.argv`. Found by tsc.
+- **The migrator dropped data silently**: unrecognised bd edge types went unreported, and an
+  unmappable priority was coerced to `medium` with no word — while the read-only spike it
+  replaced reported both. Priority is the ready-queue's sort key.
+
+### Changed
+
 - **SessionStart tracker prime.** The startup branch of `session-start.sh` now reports what
   is ready, blocked and claimed. It emitted **no tracker state at all** before this — the
   `bd prime` orientation came from the *external* beads plugin, which died with bd, so every

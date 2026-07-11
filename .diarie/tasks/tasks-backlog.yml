@@ -391,3 +391,88 @@ tasks:
       Sibling vp-knowledge tracks this against us in their UPSTREAM-vp-beads.md.
       Source section: Bugs.
     updated: '2026-06-02'
+
+  - id: vp-beads-dia
+    title: diarie — the tracker as a standalone CLI (epic)
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - epic
+    description: >-
+      The tracker became a real CLI (an npm workspace at `diarie/`) rather than three loose
+      .mjs readers — decision `vp-beads-dcl`, which reconciles this against v3's "Option C is
+      in-repo .mjs helpers, NOT a standalone npm package".
+
+
+      Built, unpublished, `private: true`. The children below are what stands between it and
+      an extraction. This epic exists partly to dogfood the container model that
+      `vp-beads-epc` just fixed: it is the first row that is deliberately NOT workable.
+    updated: '2026-07-11'
+  - id: vp-beads-tst
+    title: Relocate diarie's tests into the workspace (node:test) — extraction-blocking
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dia
+    labels:
+      - chore
+    acceptance_criteria:
+      - tests live in `diarie/test/*.spec.js` using `node:test`, not in the plugin's `scripts/`
+      - the root `check:ready-walker` / `check:tasks-validator` / `check:tasks-smoke` / `check:bootstrap` keys collapse to one `check:diarie` → `npm test --workspace=diarie`
+      - "the mutation-verified guards survive the move: the container cases still run THROUGH loadTasks against a real store on disk (a unit test with inline arrays structurally cannot see the id-space bug)"
+      - "`check:hooks` and `check:validator` stay with the plugin — they test the plugin, not the tracker"
+    description: >-
+      diarie's tests currently live in the PLUGIN's `scripts/` and import the package by name.
+      That works only because of the workspace symlink; a subtree split would leave the
+      extracted package with no tests at all. This is the single hardest extraction blocker.
+
+
+      Deliberately deferred out of the CLI work to keep the epic fix reviewable — moving 149
+      assertions in the same commit that changes what they assert is how a regression gets
+      waved through.
+    updated: '2026-07-11'
+  - id: vp-beads-pub
+    title: diarie publish readiness — README, package metadata, the name gate
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dia
+    labels:
+      - chore
+    acceptance_criteria:
+      - "`diarie/README.md` exists (an npm package with no README is a package nobody reads)"
+      - "publish metadata: description, license, repository, keywords, author"
+      - "`private: true` is removed ONLY after the name gate closes — `diarie.dev` registered AND a placeholder npm package published"
+      - the declaration build emits .d.ts (diarie is a library-with-a-bin; vp-beads imports its pure functions)
+    description: >-
+      BLOCKED ON A USER ACTION, not on code: the name gate. `diarie` must not be exposed
+      publicly — no push, no npm publish, no released plugin naming it — until the domain and
+      an npm placeholder are secured. Everything else here is mechanical.
+    updated: '2026-07-11'
+  - id: vp-beads-ext
+    title: Extract diarie from vp-beads (git subtree split)
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dia
+    deps:
+      - vp-beads-tst
+      - vp-beads-pub
+    labels:
+      - chore
+    acceptance_criteria:
+      - "`git subtree split` preserves the workspace's history (the in-repo staging exists precisely so this is a split, not a rewrite)"
+      - vp-beads depends on the published `diarie` rather than carrying it
+      - "the plugin's hook rung 4 (`$PLUGIN_ROOT/diarie/cli.js`) is retired in favour of the consumer's own `node_modules/.bin/diarie`"
+      - "`/migrate-tracker` can finally say `npx diarie migrate` — today it must say `node <path-to-vp-beads>/diarie/cli.js migrate`"
+    description: >-
+      The whole point of building in-repo first: extraction is a subtree split, not a rewrite.
+      Gated on tests moving (tst) and the name (pub).
+
+
+      It also fixes a cost this repo currently eats: diarie's devDependencies (typescript,
+      knip, type-coverage) land in EVERY consumer's plugin cache, because a marketplace install
+      installs the plugin's package.json. That is disk, not runtime — and it is the most
+      concrete argument for extraction there is.
+    updated: '2026-07-11'

@@ -79,7 +79,7 @@ Apply this ordering when clustering issues into waves:
 3. P3/P4 issues fill later waves or are deferred
 
 Issues that block other issues (detect with
-`node scripts/ready-walker.mjs --blocked`) must go in an earlier wave than
+`diarie ready --blocked`) must go in an earlier wave than
 their dependents.
 
 ## Wave Size by RAM

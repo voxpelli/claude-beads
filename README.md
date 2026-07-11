@@ -13,9 +13,9 @@ architectural decisions as markdown in `.diarie/decisions/<id>.md`. No daemon, n
 database, no vendor lock-in — the files are canonical and every read is derived:
 
 ```bash
-node scripts/ready-walker.mjs           # what's ready to work on (dependency-aware ready walk)
-node scripts/ready-walker.mjs --stats   # summary counts
-node validate-tasks.mjs                 # integrity gate: schema, dep graph, duplicate ids
+diarie ready           # what's ready to work on (dependency-aware ready walk)
+diarie stats   # summary counts
+diarie validate                 # integrity gate: schema, dep graph, duplicate ids
 ```
 
 Writes are plain `Edit`/`Write` on the YAML — there is deliberately **no CRUD helper**.
@@ -25,10 +25,12 @@ Four task types: `task`, `doc`, `decision`, `milestone`. Framings like *bug*, *f
 *chore*, *story* and *spike* ride in `labels:`; an epic is a `task` with children pointing
 at it via `parent:`.
 
-This tracker is being extracted as a standalone CLI — **`diarie`** (`diarie ready`,
-`diarie validate`, …) at [diarie.dev](https://diarie.dev). It is **not published yet**;
-until it ships, the skills call the `scripts/ready-walker.mjs` and `validate-tasks.mjs`
-readers directly.
+The tracker is a real CLI — **`diarie`** (`diarie ready`, `diarie stats`,
+`diarie validate`, `diarie init`, `diarie migrate`) — at
+[diarie.dev](https://diarie.dev). It lives in this repo as an npm workspace and is **not
+published to npm yet**. Skills and hooks resolve it in order: on `PATH`, else the
+project's `node_modules/.bin/diarie`, else `node diarie/cli.js`, else the plugin's own
+checkout.
 
 ## What it does
 
@@ -64,7 +66,7 @@ Reads git history, open upstream tracking files, and your current conversation t
 
 Produces `RETRO-NN.md` covering what went well, what could improve, upstream observations, and lessons learned. Appends new tasks to `.diarie/tasks/` from findings, writes generalizable learnings to Basic Memory, and suggests documentation updates.
 
-On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, tracker hygiene (`ready-walker.mjs --stats`, stale `in_progress` items, blocked tasks, `validate-tasks.mjs`), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
+On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, tracker hygiene (`diarie ready --stats`, stale `in_progress` items, blocked tasks, `diarie validate`), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
 
 ### `/backlog-groomer` — Backlog triage and research
 
@@ -187,7 +189,7 @@ Orchestrate multi-agent development sprints using the swarm wave pattern:
 
 Five workflows:
 
-- **Plan a swarm sprint** — sources work from the tracker (`.diarie/tasks/`, via `ready-walker.mjs`), else a `ROADMAP.md` (read in its own idiom — see [Work-tracking substrates](#work-tracking-substrates)), else a manual list; builds a file-contention map, groups file-disjoint items into waves, and generates a `SWARM-NN.md` plan for approval. Tracker-less waves track run-state in the `SWARM-NN.md` Item Status table instead of task claim/close
+- **Plan a swarm sprint** — sources work from the tracker (`.diarie/tasks/`, via `diarie ready`), else a `ROADMAP.md` (read in its own idiom — see [Work-tracking substrates](#work-tracking-substrates)), else a manual list; builds a file-contention map, groups file-disjoint items into waves, and generates a `SWARM-NN.md` plan for approval. Tracker-less waves track run-state in the `SWARM-NN.md` Item Status table instead of task claim/close
 - **Execute a wave** — claims tasks, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
 - **Post-wave gate** — hard blocking quality gate: two review agents (code + domain-specific) in parallel with `npm run check`, sequential tests, fix loop, commit + close. After the final wave, offers `/retrospective` handoff
 - **Map file contention** — standalone utility to build a file-to-issue matrix and flag hot files
@@ -284,7 +286,7 @@ Add to `~/.claude/settings.json`:
 
 ### Required
 
-**[Node.js](https://nodejs.org)** — runs the tracker readers (`scripts/ready-walker.mjs`, `validate-tasks.mjs`). No other tracker install is needed: the task store is plain YAML in the repo. A standalone `diarie` CLI is [coming](#the-tracker), but nothing depends on it yet.
+**[Node.js](https://nodejs.org)** — runs the tracker readers (`diarie ready`, `diarie validate`). No other tracker install is needed: the task store is plain YAML in the repo. A standalone `diarie` CLI is [coming](#the-tracker), but nothing depends on it yet.
 
 **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** MCP server — the knowledge graph backend for writing sprint learnings:
 
@@ -304,7 +306,7 @@ vp-beads intentionally does not duplicate vp-knowledge's BM hooks — see [How i
 
 vp-beads dogfoods its own substrate. This repo's work lives in
 `.diarie/tasks/tasks-<slug>.yml` (with decisions in `.diarie/decisions/`), read by
-`node scripts/ready-walker.mjs` and gated by `node validate-tasks.mjs` — both wired into
+`diarie ready` and gated by `diarie validate` — both wired into
 `npm run check`. The directory is **committed**: the backlog is part of the repo, not a
 machine-local artifact (see [The store is committed](#the-store-is-committed)).
 

@@ -11,12 +11,12 @@ A task is **stale** when it meets ALL of these:
 - Not updated in the last 60 days — compare the row's `updated:` field against a
   60-day threshold (grooming default, stricter than the reader's 30-day default
   to reduce noise from recently created items not yet started). The
-  `ready-walker.mjs --stale` flag is `in_progress`-scoped, so pending-item
+  `diarie ready --stale` flag is `in_progress`-scoped, so pending-item
   staleness is read directly from `updated:` in the `.diarie/tasks/*.yml`
 - No commits reference the task id in `git log`
 
 Tasks that are `in_progress` but stale (>30 days without activity) may be
-abandoned — surface them with `node scripts/ready-walker.mjs --stale --days 30`
+abandoned — surface them with `diarie stats --stale --days 30`
 and flag separately as "stalled, not stale."
 
 ## Closure Criteria
@@ -59,7 +59,7 @@ loser's row**:
 - If the fix should still ship under the winner, fold any unique
   `acceptance_criteria:` from the loser into the winner before cancelling.
 
-Run `node validate-tasks.mjs` after the edits.
+Run `diarie validate` after the edits.
 
 ## Priority Assignment Logic
 
@@ -105,7 +105,7 @@ finer bd distinctions ride in `labels:` on a `type: task` row.
 
 There is **no hard on-create gate** (unlike bd's `validation.on-create=error`):
 an entry is workable the moment its required fields (`id`, `title`, `status`,
-`type`) are present. `node validate-tasks.mjs` warns (a test-ratchet) when a
+`type`) are present. `diarie validate` warns (a test-ratchet) when a
 **completed** `task` has empty `acceptance_criteria`. The authoritative source
 is `scripts/task-schema.mjs`.
 
@@ -127,7 +127,7 @@ Examples:
 - `[ci] Enable shellcheck for hook scripts`
 - `[upstream-tracker] Support non-npm tool types`
 
-The area prefix makes tasks scannable in `node scripts/ready-walker.mjs` output.
+The area prefix makes tasks scannable in `diarie ready` output.
 
 ## Task Description Template
 

@@ -55,8 +55,10 @@ and announce** (never skip silently):
   block in the RETRO file instead of writing a `.diarie/decisions/<id>.md`
   file (see step 5).
 
-The `diarie` CLI replaces `node scripts/ready-walker.mjs` once published; use the
-script path (`node scripts/ready-walker.mjs`) throughout until then.
+`diarie` is resolved the same way the hooks resolve it: on `PATH` if installed, else
+`node_modules/.bin/diarie`, else `node diarie/cli.js` from the project root, else from the
+plugin's own checkout. It is not on npm yet, so in a consumer repo the last rung is the
+live one.
 
 ### 1. Determine sprint number
 
@@ -225,7 +227,7 @@ drifted, check if Extraction Candidates with `Readiness: ready` have been acted
 on, and review whether `adopt-theirs` Divergences have been adopted.
 
 **Tracker health:** Run the flat-YAML tracker's health vocabulary —
-`validate-tasks` (integrity gate) plus `ready-walker --stats` /
+`validate-tasks` (integrity gate) plus `diarie stats` /
 `--stale` / `--blocked` (counts, lifecycle, and blocked review). Surface
 counts plus the top 3–5 affected items per check in the generated
 `RETRO-NN.md` under a `### Health audit` subsection.
@@ -236,15 +238,15 @@ not active in this project._` The UPSTREAM and SYNERGY trend-review parts above
 and the Basic Memory graph health below are tracker-independent and still run.
 
 ```bash
-node validate-tasks.mjs                    # Integrity: schema/dep-graph/reference integrity across tasks-*.yml
-node scripts/ready-walker.mjs --stats      # Counts: total / pending / in_progress / closed / ready / blocked
-node scripts/ready-walker.mjs --stale --days 30  # Lifecycle: tasks with no recent activity
-node scripts/ready-walker.mjs --blocked    # Blocked review: tasks whose deps are unmet
+diarie validate                    # Integrity: schema/dep-graph/reference integrity across tasks-*.yml
+diarie stats      # Counts: total / pending / in_progress / closed / ready / blocked
+diarie stats --stale --days 30  # Lifecycle: tasks with no recent activity
+diarie ready --blocked    # Blocked review: tasks whose deps are unmet
 ```
 
 Per-check guidance:
 
-- **`node validate-tasks.mjs`** — the integrity gate. It validates each task row
+- **`diarie validate`** — the integrity gate. It validates each task row
   against `scripts/task-schema.mjs`, checks the dependency graph for cycles and
   dangling `deps:`/`parent:` refs, and reports rows missing required fields. No
   auto-fix — findings require human triage; list the affected task IDs with the
@@ -252,12 +254,12 @@ Per-check guidance:
   Break a dependency cycle or drop a stale reference by editing the offending
   row's `deps:`/`parent:` list (substrate-not-opinion — plain Edit/Write on the
   YAML, no CRUD helper).
-- **`node scripts/ready-walker.mjs --stale --days 30`** — lifecycle. No auto-fix;
+- **`diarie stats --stale --days 30`** — lifecycle. No auto-fix;
   suggest one of three human actions per task: defer (lower `priority`), close
   (set `status: closed`, no longer relevant), or work (claim and progress).
-- **`node scripts/ready-walker.mjs --blocked`** — blocked review. For each
+- **`diarie ready --blocked`** — blocked review. For each
   blocked task, flag any blocker whose `status:` is already `closed` — those need
-  a re-run of `node scripts/ready-walker.mjs` to re-evaluate readiness (readiness
+  a re-run of `diarie ready` to re-evaluate readiness (readiness
   is recomputed on every walk, never stored), or the row's `deps:` edited to drop
   the satisfied blocker.
 
@@ -268,7 +270,7 @@ Render in the RETRO file as:
 
 - **Integrity (`validate-tasks`):** {N} findings — {top items, or "clean"}
 - **Lifecycle (`ready-walker --stale --days 30`):** {N} stale tasks — {top items, or "clean"}
-- **Stats (`ready-walker --stats`):** {total / pending / in_progress / closed / ready / blocked counts}
+- **Stats (`diarie stats`):** {total / pending / in_progress / closed / ready / blocked counts}
 - **Blocked review (`ready-walker --blocked`):** {list blocked tasks; for each, flag any blocker whose status is currently `closed` — edit the row's `deps:` and re-run `ready-walker` to re-evaluate readiness}
 ```
 
@@ -314,9 +316,9 @@ no CRUD helper (substrate-not-opinion):
 
 The migration target uses **4 types** (`task` / `doc` / `decision` /
 `milestone`); the old bug/feature/chore framings ride along in `labels:` on a
-`task` row. After appending, run `node scripts/ready-walker.mjs` to re-evaluate
+`task` row. After appending, run `diarie ready` to re-evaluate
 readiness (it is recomputed on every walk, not stored) and
-`node validate-tasks.mjs` to confirm the new rows pass the integrity gate.
+`diarie validate` to confirm the new rows pass the integrity gate.
 
 Include code quality issues, process improvements, and any findings that need
 follow-up work. Skip items that are purely observational or already have open
@@ -371,7 +373,7 @@ status: open
 
 The first three prose sections are required; `## Affects` is conventional and
 lists impacted components, files, or future work. Run
-`node validate-tasks.mjs` afterward to confirm the file passes the integrity
+`diarie validate` afterward to confirm the file passes the integrity
 gate.
 
 **Lifecycle:** decision documents stay **open** while the decision is in force.

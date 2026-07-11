@@ -15,10 +15,17 @@
 > architecture: `DESIGN-tracker-exploration.md` v3 block. The substrate verdict changed and
 > two framings below are corrected:
 >
-> - **Substrate = Option C — lean flat-YAML + a `ready-walker`** (in-repo `.mjs` helpers,
+> - **Substrate = Option C — lean flat-YAML + a ready-walk** (in-repo `.mjs` helpers,
 >   **not** a standalone npm package or MCP server): `tasks-<slug>.yml`, `ready-walker.mjs`,
 >   and `validate-tasks.mjs` cloning `validate-plugin.mjs`; **zero new runtime deps**; no
->   process, no vendor, no index in v1. **Backlog.md is declined** (another daemon/vendor;
+>   process, no vendor, no index in v1.
+>
+>   **AMENDED 2026-07-11 — decision `vp-beads-dcl`.** The parenthesis is no longer true of
+>   the code: the tracker is a **`diarie` npm workspace** with a `bin` and five runtime
+>   deps, and the three named files no longer exist. What is NOT amended is the *gate* — it
+>   is `private: true` and unpublished, and M3/M4 below still govern publishing and the name.
+>   The package boundary moved earlier than planned; the **npm** boundary did not move at
+>   all. "No process, no vendor, no index" still holds exactly. **Backlog.md is declined** (another daemon/vendor;
 >   can't block on deps → can't do `ready`) — this **supersedes** the Phase-2a spike and the
 >   v2 "open-core standalone tracker package" framing that several constraints below assume.
 > - **H1 additions:** (a) **close the flywheel return edge** — `swarm-wave` workflow 1 reads

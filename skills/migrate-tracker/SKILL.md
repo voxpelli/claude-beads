@@ -74,30 +74,33 @@ degrades when the tracker is *absent*, but an absent tracker plus a present
 
 **Edges to closed issues are dropped, not carried.** A `blocks` dep on a closed
 issue is already satisfied; a `parent` pointing at a completed epic is history.
-Carrying either would dangle and fail `validate-tasks`. The migrator drops them
+Carrying either would dangle and fail `diarie validate`. The migrator drops them
 and **reports each one** — the original edges survive in the archive JSONL.
 
 ## Prerequisites
 
-Everything runs from the plugin — **nothing needs to be copied into the target
-project to perform or verify the migration.** Use `${CLAUDE_PLUGIN_ROOT}` for the
-plugin path, and the `TASKS_ROOT` env var to point the readers at the target:
+Everything runs from the plugin's own `diarie` CLI — **nothing is copied into the target
+project.** Every command takes `--root`, so one binary serves any repo:
 
 ```bash
-# migrate INTO the target (--root), read/verify the target (TASKS_ROOT)
-node "$CLAUDE_PLUGIN_ROOT/scripts/bootstrap-tasks.mjs" <export.jsonl> --root <target>
-TASKS_ROOT=<target> node "$CLAUDE_PLUGIN_ROOT/validate-tasks.mjs"
-TASKS_ROOT=<target> node "$CLAUDE_PLUGIN_ROOT/scripts/ready-walker.mjs" --format json
+DIARIE="node $CLAUDE_PLUGIN_ROOT/diarie/cli.js"
+
+$DIARIE migrate <export.jsonl> --root <target>   # write the store
+$DIARIE validate --root <target>                 # integrity gate
+$DIARIE ready --json --root <target>             # what is workable
 ```
 
-**Preflight:** these scripts import `js-yaml`, which is a *devDependency*. A
-marketplace-installed plugin cache has no `node_modules`, so the first run may
-fail with `ERR_MODULE_NOT_FOUND`. If it does, run
-`npm install --prefix "$CLAUDE_PLUGIN_ROOT"` once.
+**Always pass `--root`.** It is not a convenience: without it the CLI walks up from the
+current directory and would find *the plugin's own* `.diarie/` — which is committed, so a
+marketplace install ships vp-beads' backlog into every consumer's cache. A missing store is
+an error (`ENOSTORE`, non-zero exit), never an empty backlog, so a wrong `--root` fails
+loudly rather than reporting that the target has no work.
 
-The target gets its own copy of the readers at the end, in workflow 5 (Cut over)
-step 1 — that is what lets it find ready work once the plugin is out of the
-picture. Until then, `TASKS_ROOT` is all you need.
+*(`TASKS_ROOT` still works and is what the test suite uses, but `--root` is the interface.
+Prose that leads with the env var is describing the readers that no longer exist.)*
+
+**Preflight:** `diarie` needs its runtime dependencies. If the first run fails with
+`ERR_MODULE_NOT_FOUND`, run `npm install --prefix "$CLAUDE_PLUGIN_ROOT"` once.
 
 ## Workflows
 
@@ -152,10 +155,10 @@ large epic whose family would dominate the file.
 
 ```bash
 # Dry-run into a scratch dir; the project is not touched.
-node "$CLAUDE_PLUGIN_ROOT/scripts/bootstrap-tasks.mjs" /tmp/bd-export.jsonl --root /tmp/dry
+$DIARIE migrate /tmp/bd-export.jsonl --root /tmp/dry
 
 # Route a big epic into its own file (repeatable):
-node "$CLAUDE_PLUGIN_ROOT/scripts/bootstrap-tasks.mjs" /tmp/bd-export.jsonl --root /tmp/dry \
+$DIARIE migrate /tmp/bd-export.jsonl --root /tmp/dry \
   --epic <epic-id>=<slug> --title <slug>='Human title' --default-slug backlog
 ```
 
@@ -173,7 +176,7 @@ When the dry-run looks right, re-run with `--root <target-project>`.
 Three checks, in order. Do not skip the dual-run — it is what catches a
 mis-projection.
 
-1. **Integrity:** `TASKS_ROOT=<target> node "$CLAUDE_PLUGIN_ROOT/validate-tasks.mjs"`
+1. **Integrity:** `$DIARIE validate --root <target>`
    → clean.
 2. **Dual-run:** compare the new reader against bd itself. The reader namespaces
    ids as `<slug>/<id>`, so strip the slug before comparing or **every** line will
@@ -183,7 +186,7 @@ mis-projection.
    # --limit 0 = unlimited. bd's default is 100; on a big backlog the truncated
    # tail would show up as dozens of phantom "yaml-only" ids and bury the real signal.
    bd -C <target> --readonly ready --limit 0 --json | jq -r '.[].id' | sort > /tmp/bd-ready
-   TASKS_ROOT=<target> node "$CLAUDE_PLUGIN_ROOT/scripts/ready-walker.mjs" --format json \
+   $DIARIE ready --json --root <target> \
      | jq -r '.ready[].id' | sed 's|.*/||' | sort > /tmp/yaml-ready
    diff /tmp/bd-ready /tmp/yaml-ready
    ```
@@ -209,24 +212,26 @@ mis-projection.
 
 ### 5. Cut over
 
-1. **Install the readers into the target — before documenting them.** Everything
-   so far ran from the plugin; the target itself still has no way to find ready
-   work. Copy `validate-tasks.mjs` to the target **root** and `ready-walker.mjs` +
-   `task-schema.mjs` to `<target>/scripts/`, then add `js-yaml` to the target's
-   dependencies (`npm install js-yaml`). The layout is not negotiable —
-   `validate-tasks.mjs` imports `./scripts/task-schema.mjs` and resolves the
-   tracker dir from its own location, so anywhere but the root makes it validate
-   nothing and **exit 0**. Skipping this step means step 3 commits a `CLAUDE.md`
-   documenting two commands the project does not have.
+1. **Settle how the target will reach `diarie` — before documenting it.** There is nothing
+   to copy: the tracker is a package now, not three loose files, and this step used to
+   `cp` them into the target. Say the true thing instead.
 
-   ```bash
-   cp -f "$CLAUDE_PLUGIN_ROOT/validate-tasks.mjs" <target>/
-   cp -f "$CLAUDE_PLUGIN_ROOT/scripts/ready-walker.mjs" \
-         "$CLAUDE_PLUGIN_ROOT/scripts/task-schema.mjs" <target>/scripts/
-   ```
+   `diarie` is **not on npm yet** (it is held behind a name gate). So the target reaches it
+   the same way the hooks do — first rung that resolves wins:
 
-   Confirm: `node validate-tasks.mjs` from the target root reports the real file
-   count, not "skipping". (The standalone tracker CLI will retire this step.)
+   | rung | when |
+   | --- | --- |
+   | `diarie` on `PATH` | globally installed |
+   | `./node_modules/.bin/diarie` | **once `diarie` is published — the goal** |
+   | `node <plugin>/diarie/cli.js --root .` | **today, for a consumer repo** |
+
+   Until it publishes, the target depends on this plugin being installed. That is a real
+   limitation and the `CLAUDE.md` you write in step 3 must not pretend otherwise: document
+   the command that actually works *there*, not the one that works here.
+
+   Confirm before proceeding: `$DIARIE validate --root <target>` reports the real file
+   count. An absent store errors (`ENOSTORE`); it no longer "skips" and exits 0, which is
+   what used to make this step's failure invisible.
 2. **Doc-grep, then edit.** Operating instructions are loaded into every
    session, so a stale `bd` pointer does damage on every run — and these edits
    routinely expand beyond the file you expect. Enumerate before drafting:
@@ -235,10 +240,10 @@ mis-projection.
    `\bbd\b` (the `Grep` tool, or `grep -rni`). The sweep is the authority on
    scope, not your initial guess at it.
 3. Retarget what the grep found — editing those files, or **creating** a
-   `CLAUDE.md` if the project has none: how to find ready work
-   (`node scripts/ready-walker.mjs`), how to claim (`status: in_progress` +
-   `agent:`), how to close (`status: completed`), how to validate
-   (`node validate-tasks.mjs`). Writes are **plain `Edit`/`Write` on the YAML** —
+   `CLAUDE.md` if the project has none: how to find ready work (`diarie ready`), how to
+   claim (`status: in_progress` + `agent:`), how to close (`status: completed`), how to
+   validate (`diarie validate`) — spelled with whichever rung from step 1 actually resolves
+   in that repo. Writes are **plain `Edit`/`Write` on the YAML** —
    there is no CRUD helper, and that is deliberate (substrate-not-opinion).
 4. Leave `<target>/.beads/` on disk as a frozen read-only archive. Do not delete
    it — `bd` reads still work, and the memory store may be recoverable later via a
@@ -281,7 +286,7 @@ mis-projection.
   first that the store is freshly migrated (a hand-edited one diverges
   legitimately) and that `bd` was pinned with `-C <target>`; then treat it as a
   migration bug.
-- **`validate-tasks` fails after migration** — a real projection bug. The
+- **`diarie validate` fails after migration** — a real projection bug. The
   likeliest causes are a dangling edge (should be impossible — edges to non-live
   issues are dropped) or a status-less row (should now throw). Report it; do not
   hand-edit the YAML to make the error go away, or the archive and the store will

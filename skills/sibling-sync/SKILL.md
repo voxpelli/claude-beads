@@ -715,7 +715,7 @@ there is no CRUD helper; task writes are plain YAML edits). Each entry carries:
 - `title:` — `<entry title from sibling>`
 - `status: pending`
 - `type: task` — set directly. The flat-YAML schema has no hard on-create gate,
-  so the type is a free choice; `validate-tasks.mjs` only *warns* (a
+  so the type is a free choice; `diarie validate` only *warns* (a
   test-ratchet) on a *completed* task missing `acceptance_criteria`. No
   file-as-task-to-dodge-validation workaround is needed.
 - `priority:` — inherit from the sibling entry, or default per the store convention
@@ -768,7 +768,7 @@ task tracks our intent. No "skip-already-filed" cache is maintained.
   formal subagent probe is required — best-effort detection by attempting
   the `AskUserQuestion` call and falling back on the SDK error suffices.
 - **Malformed task entry** (e.g., a YAML entry that fails `node
-  validate-tasks.mjs`). Report the specific failure and continue to the next
+  diarie validate`). Report the specific failure and continue to the next
   entry; don't abort the whole run.
 
 ## Sprint Workflow Integration

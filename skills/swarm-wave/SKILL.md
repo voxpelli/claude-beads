@@ -96,10 +96,8 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
    `### Files-availability convention`. Select the wave source by precedence — **the
    tracker wins when both the tracker and a `ROADMAP.md` exist**:
 
-   - **Tracker available** — run `node scripts/ready-walker.mjs` and read
-     `.diarie/tasks/*.yml` to load the candidate task set. (The `diarie` CLI
-     will replace `node scripts/ready-walker.mjs` once published; use the script
-     path for now.)
+   - **Tracker available** — run `diarie ready` and read
+     `.diarie/tasks/*.yml` to load the candidate task set.
    - **No tracker, `ROADMAP.md` present** — interpret it as the work source
      following `references/roadmap-interpretation.md` (read it in its own
      idiom; never reformat it). If that interpretation declines the ROADMAP
@@ -131,7 +129,7 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
    - 4e. Each wave gets one background research agent slot if research
      questions exist for the sprint.
    - 4f. Issues that block other issues (check with
-     `node scripts/ready-walker.mjs --blocked`) must go in an earlier wave than
+     `diarie ready --blocked`) must go in an earlier wave than
      their dependents.
    - 4g. **Single owner per issue.** When an issue's scope spans files that
      would otherwise be split across multiple agents, assign the whole issue
@@ -177,7 +175,7 @@ argument.
    count and note the reduction. If CRITICAL, stop and report.
 4. Claim all wave issues: for each task ID in the wave, edit its row in
    `.diarie/tasks/tasks-<slug>.yml` to set `status: in_progress` and
-   `agent: <name>`, then run `node validate-tasks.mjs`. Report the claimed IDs.
+   `agent: <name>`, then run `diarie validate`. Report the claimed IDs.
    **Tracker-less source:** set each item's row in the wave's `### Item Status`
    table to `claimed` instead (the orchestrator owns these writes).
 5. Update the wave status to `running` in the SWARM file.
@@ -201,7 +199,7 @@ argument.
 
    All agent launches go in a single response (parallel execution).
 7. Wait for all agents to complete. As each agent reports done, log it.
-8. Verify closures: run `node scripts/ready-walker.mjs --filter in_progress` to
+8. Verify closures: run `diarie ready --filter in_progress` to
    check for unclosed issues. Any task still `in_progress` means the agent did
    not complete — note it for the user (carry forward or retry in the next
    wave). **Tracker-less source:** the equivalent check is the wave's
@@ -246,7 +244,7 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
    - 5b. If tests pass: commit all wave changes with
      `git commit --no-gpg-sign -m "feat: wave N — [theme] (N issues)"`.
    - 5c. Close any remaining wave issues by editing their task rows to
-     `status: completed` (then `node validate-tasks.mjs`).
+     `status: completed` (then `diarie validate`).
    - 5d. Update wave status to `committed` in the SWARM file.
    - 5e. Report: "Wave N passed gate and committed. N issues closed."
    - 5f. **If this is the final wave**: offer the retrospective handoff.
@@ -283,7 +281,7 @@ sprint).
 
 **Steps:**
 
-1. Run `node scripts/ready-walker.mjs` to get all open issues. If the tracker is
+1. Run `diarie ready` to get all open issues. If the tracker is
    unavailable, ask the user to provide issue titles and descriptions — the same
    manual path workflow 1 (Plan a swarm sprint) Tier A falls back to.
 2. For each issue, identify which files it is likely to touch:

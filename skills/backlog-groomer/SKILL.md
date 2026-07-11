@@ -28,11 +28,11 @@ allowed-tools:
 
 Triage, prioritize, and research work tracked in the flat-YAML task substrate
 (`.diarie/tasks/tasks-<slug>.yml`). This skill reads the store via
-`node scripts/ready-walker.mjs` (the files-native `bd ready`) and mutates it
+`diarie ready` (the files-native `bd ready`) and mutates it
 with plain Edit/Write on the YAML — there is **no CRUD helper**
 (substrate-not-opinion). All mutations (append a task, set `status: completed`,
 edit a row) require explicit user approval before execution, and every YAML edit
-is validated with `node validate-tasks.mjs`.
+is validated with `diarie validate`.
 
 Determine which workflow the user needs based on their request. If ambiguous,
 default to workflow 1 (review and triage) for grooming requests, or workflow 4
@@ -67,7 +67,7 @@ in `labels:` on a `type: task` entry.
 **Authoritative source:** `scripts/task-schema.mjs` (the single canonical
 schema). There is **no hard on-create gate** — unlike bd's
 `validation.on-create=error`, an entry is a workable unit the moment its required
-fields (`id`, `title`, `status`, `type`) are present. `node validate-tasks.mjs`
+fields (`id`, `title`, `status`, `type`) are present. `diarie validate`
 warns (a test-ratchet) when a **completed** `task` has no `acceptance_criteria`;
 it never blocks creation.
 
@@ -85,14 +85,14 @@ duplicates, blocked chains, and missing context.
 
 **Steps:**
 
-1. Run `node scripts/ready-walker.mjs` for the ready queue and read every
+1. Run `diarie ready` for the ready queue and read every
    `.diarie/tasks/*.yml` (Glob + Read) for the full open picture. Parse
-   `node scripts/ready-walker.mjs --format json` for the `{ready, blocked,
-   needsAttention}` buckets, and `node scripts/ready-walker.mjs --filter
-   in_progress` for claimed work. Run `node scripts/ready-walker.mjs --stats`
+   `diarie ready --json` for the `{ready, blocked,
+   needsAttention}` buckets, and `diarie ready --filter
+   in_progress` for claimed work. Run `diarie stats`
    for summary counts.
 
-2. Run `node scripts/ready-walker.mjs --stale --days 60` to flag stalled work.
+2. Run `diarie stats --stale --days 60` to flag stalled work.
    Note the reader's `--stale` is `in_progress`-scoped (a claimed task not
    updated in N days = "stalled"). For **pending** items aging without activity,
    compare each row's `updated:` field (Read the `.diarie/tasks/*.yml`) against
@@ -107,7 +107,7 @@ duplicates, blocked chains, and missing context.
    (preserves the relationship in the YAML). Apply only with explicit per-pair
    user approval.
 
-4. Run `node scripts/ready-walker.mjs --blocked` to identify tasks stuck on
+4. Run `diarie ready --blocked` to identify tasks stuck on
    unresolved dependencies (each line names its blocker ids).
 
 5. Cross-reference with `UPSTREAM-*.md` and `SYNERGY-*.md` files if they exist
@@ -139,17 +139,17 @@ relationships.
 **Steps:**
 
 1. Ask the user for current sprint goals if not obvious from conversation
-   context. Infer from recent commits and `node scripts/ready-walker.mjs --filter in_progress` if the user does not state goals explicitly.
+   context. Infer from recent commits and `diarie ready --filter in_progress` if the user does not state goals explicitly.
 2. Read every `.diarie/tasks/*.yml` (Glob + Read) to get all open items with
    their current `priority:` values.
-3. Run `node scripts/ready-walker.mjs --blocked` to identify blocked chains.
+3. Run `diarie ready --blocked` to identify blocked chains.
    Trace `parent:` and `deps:` in the YAML to visualize blocking power — tasks
    that unblock the most downstream work should rank higher.
 4. Propose a reordered priority list with reasoning per change. Present as a
    diff: current priority → proposed priority, with a one-line rationale.
 5. User approves, edits, or rejects each proposed change.
 6. Edit the row's `priority:` field per approved change (one of `critical`,
-   `high`, `medium`, `low`, `backlog`), then run `node validate-tasks.mjs`.
+   `high`, `medium`, `low`, `backlog`), then run `diarie validate`.
 
 ### 3. Suggest closures
 
@@ -164,7 +164,7 @@ Identify issues that are likely obsolete and propose closing them.
    by commits but never formally closed.
 3. Grep the `.diarie/tasks/*.yml` for `status: completed` entries that supersede
    open ones.
-4. Run `node scripts/ready-walker.mjs --stale --days 90` for deeply stalled
+4. Run `diarie stats --stale --days 90` for deeply stalled
    `in_progress` items; for pending items, compare `updated:` against 90 days.
 5. Classify each closure candidate:
    - **Addressed by commit**: cite the commit
@@ -174,7 +174,7 @@ Identify issues that are likely obsolete and propose closing them.
 6. Present candidates with rationale per item.
 7. Per approved closure, edit the row to `status: completed` (or `cancelled` for
    out-of-scope work); record the closure rationale in the commit message (the
-   YAML has no `reason` field). Run `node validate-tasks.mjs` after editing.
+   YAML has no `reason` field). Run `diarie validate` after editing.
 
 See `references/backlog-health-heuristics.md` for closure criteria and
 staleness thresholds.
@@ -247,7 +247,7 @@ workflow 4 (Investigate topic as spike) or user-provided findings.
    - **Body**: put the problem + why it matters + suggested first step in the
      row's `description:` block scalar, and any checkable outcomes in
      `acceptance_criteria:`. There is no hard on-create gate — but
-     `node validate-tasks.mjs` warns if a *completed* task has empty
+     `diarie validate` warns if a *completed* task has empty
      `acceptance_criteria`, so state done-ness up front
 4. If >3 related tasks emerge from one topic: propose a parent task
    (`type: task`, `labels: [epic]`) as a group container, with child tasks
@@ -266,14 +266,14 @@ workflow 4 (Investigate topic as spike) or user-provided findings.
    `status: pending` / `type: task` (or `milestone`) / `priority:` / optional
    `labels:` / `deps:` / `parent:` / `acceptance_criteria:`. A `decision` is not
    a row — write it as frontmatter'd markdown at `.diarie/decisions/<id>.md`
-   (a `doc` at `.diarie/docs/<id>.md`). Run `node validate-tasks.mjs` after the
+   (a `doc` at `.diarie/docs/<id>.md`). Run `diarie validate` after the
    edits.
 9. Add dependencies where natural ordering exists: edit the child's `deps: [<parent-id>]` for a blocks-relationship, or set `parent: <parent-id>` for
    parent-child nesting. Common patterns: a `spike`-labelled task before a
    `story`-labelled one or a `decision`; `story → task`; an `epic`-labelled
    parent over its children.
 10. Report: created ids, the dependency graph, and the suggested first task to
-    start — run `node scripts/ready-walker.mjs` to confirm which is ready
+    start — run `diarie ready` to confirm which is ready
     (highest priority with no unsatisfied dependencies).
 
 See `references/backlog-health-heuristics.md` for title conventions, description
@@ -298,7 +298,7 @@ work can begin.
    new checkable outcomes to `acceptance_criteria:`.
 4. Show the draft to the user for approval before applying.
 5. Edit the row's `description:` (and `acceptance_criteria:`) with the enriched
-   content after approval, then run `node validate-tasks.mjs`.
+   content after approval, then run `diarie validate`.
 
 ## Guidelines
 
@@ -306,7 +306,7 @@ work can begin.
   entry, setting `status: completed`/`cancelled`, editing a row's `priority:` or
   `description:`) must be explicitly approved per item. Present candidates first,
   confirm, then execute the Edit/Write. Never auto-mutate.
-- **Validate every edit.** Run `node validate-tasks.mjs` after any change to a
+- **Validate every edit.** Run `diarie validate` after any change to a
   `.diarie/tasks/*.yml` file (or a `.diarie/decisions/*.md` / `.diarie/docs/*.md`
   write) — it is the integrity gate, replacing bd's on-create validation.
 - **Tracker available (Tier B).** The flat-YAML tracker is available iff a
