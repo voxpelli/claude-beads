@@ -302,6 +302,39 @@ The tier→component mapping lives **only here**. Components cite their tier let
 and link back — they do not restate this table (it would duplicate and rot, like
 the per-skill tables this section deliberately omits).
 
+### Reader conventions — a guard that DROPS must also REPORT
+
+Every reader of the store (`diarie/lib/store.js`'s `loadTasks` above all) narrows untrusted
+YAML through type guards. **A guard that rejects a value must also report it, naming the
+CONSEQUENCE** — not `invalid priority`, but *"invalid priority `urgent` — it will be treated
+as `medium`"*. The consequence is the part that tells the reader whether to care.
+
+This is not style. Sprint 16 hardened the loader with guards, forgot the `else` branch on
+three of them, and shipped three silent bugs that *read as diligence*:
+
+- `labels: epic` written as a scalar → the whole list is rejected → `isEpic` is false →
+  **the container is offered as ready work.** `vp-beads-epc`, re-armed by the guard added to
+  make the loader safe.
+- `type: bug` (a bd fossil — framings live in `labels:` now) → the field is dropped → the row
+  appears in **no partition and no tally** while still counting toward `total`, and its parent,
+  seeing no open child, is told to close an epic whose work has not started.
+- `priority: urgent` → silently becomes `medium` on every surface.
+
+Two corollaries:
+
+- **Represent the malformed row; never delete it.** Dropping a bad row hides it from the human
+  whose typo it is. `validate` is the authority that rejects; the reader's job is to be honest.
+- **A malformed required field makes the row BROKEN, not merely non-workable.** `computeReady`
+  excludes a `doc`/`decision`/`milestone` silently — correctly, they are well-formed things
+  that are not work. It must NOT exclude a row with a missing-or-invalid `type` the same way;
+  that row surfaces in `needsAttention`. The two exclusions look identical in code and are
+  opposite in meaning.
+
+**The validator does not save you here**: the read path and the validate path are different
+commands, and what runs on every session (the hook, the agent, the prime) calls the *reader*.
+Also check the validator's *element* checks — `Array.isArray` is not "are the elements
+strings", and an unquoted `key: value` inside a YAML list item silently becomes a nested map.
+
 ### Retrospective file convention
 
 - Named `RETRO-NN.md` in the project root
@@ -682,6 +715,29 @@ comes from the pinned `@ast-grep/cli` devDep.
 pattern mentioned in skill/agent prose but missing from the `allowed-tools` or
 `tools` frontmatter will fail validation. This catches the most common bug class
 in this plugin (missing `allowed-tools` entries).
+
+### Doc-grep the VOCABULARY, not just the command name
+
+The global CLAUDE.md already requires a doc-grep before any feature-removal, rename, or
+guidance-correction plan. Sprint 16 found the hole in it: **a sweep targeting command names is
+structurally blind to DATA vocabulary.**
+
+`git grep ready-walker` finds every invocation. It finds **nothing** about `priority: 2`,
+`status: closed`, or a scalar where the schema wants a list — the *enum values, field shapes
+and status names of the substrate you just replaced*. Those are the fossils, and they hide in
+the write paths.
+
+What survived a sweep described in its own commit as complete:
+
+- `/retrospective`'s task template emitted `priority: 2` (bd's 0–4 numeric scheme) and a string
+  `acceptance_criteria` — **both HARD ERRORS**, in the skill's *primary write path*, which then
+  told you to run the very gate that rejects them.
+- `status: closed` — a status that does not exist in `VALID_STATUSES` at all, which made the
+  surrounding blocked-review conditional **dead code that could never fire**.
+
+So on a substrate swap, grep **both**: the commands (`ready-walker`, `--format json`) *and* the
+values (`priority: [0-9]`, `status: closed`, every retired enum member). The commands are what
+the sweep sees; the values are what it misses.
 
 ### ast-grep structural lint
 
