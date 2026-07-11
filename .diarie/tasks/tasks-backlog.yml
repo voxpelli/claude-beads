@@ -128,17 +128,30 @@ tasks:
     updated: '2026-06-03'
   - id: vp-beads-6dk
     title: Run deferred BM graph audit from RETRO-12 trend review
-    status: pending
+    status: completed
     type: task
     priority: low
+    acceptance_criteria:
+      - the 6-step BM graph health procedure ran (knowledge-gardener + schema_validate x2 + schema_diff x2)
+      - findings are triaged into rows rather than left in a report — see bmg, jyr, bsv, sev
+      - the unresolved-relation ratio is recorded as a BASELINE so a future review can see drift
     description: >-
-      RETRO-12 (the trend-review retro for Sprint 13's autonomous swarm) deferred the Basic Memory
-      graph health audit per the reconciliation plan. The bd-vocabulary checks
-      (doctor/lint/stale/orphans/graph) ran inline; the BM audit is a separate user-supervised
-      session because it involves the knowledge-gardener agent + 2x schema_validate (npm_package +
-      engineering) + 2x schema_diff + 6-bullet manual verification per skills/retrospective/SKILL.md
-      step 4.
-    updated: '2026-05-08'
+      Ran in Sprint 16 (2026-07-11), three sprints later than scheduled. The findings are filed as
+      their own rows — vp-beads-bmg (four note defects), vp-beads-jyr (a person note that does not
+      exist under either of the two spellings pointing at it), vp-beads-bsv (a counting bug in the
+      audit tool itself), vp-beads-sev (schema evolution, blocked on that bug).
+
+
+      BASELINE, recorded so the next trend review can measure drift rather than re-deriving it:
+      **1,240 of 11,716 relations are unresolved (10.6%)** across ~1,700 notes. Deliberately NOT
+      fixed. Some are correct by construction — a graph that grows by linking forward always
+      carries forward-references, and at least one dangles ON PURPOSE (`avoided_by [[diarie]]`,
+      held by the name gate). The number is only meaningful as a trend; a single reading of it is
+      not a defect count.
+
+
+      The audit's most valuable finding was that the audit TOOL is wrong: see vp-beads-bsv.
+    updated: '2026-07-11'
   - id: vp-beads-8d5
     title: '[swarm-wave] Add Ralph Wiggum Technique references to existing skills'
     status: pending
@@ -548,4 +561,147 @@ tasks:
       `bash-require-set-euo-pipefail` is correct THERE and actively harmful HERE — a Claude Code
       hook that aborts on any failing command blocks the tool call, and these hooks are required
       to degrade quietly.
+    updated: '2026-07-11'
+  - id: vp-beads-bmg
+    title: Fix four Basic Memory note defects found by the Sprint 16 graph audit
+    status: completed
+    type: task
+    priority: medium
+    labels:
+      - chore
+    acceptance_criteria:
+      - npm-livereload has a "## Relations" section (depends_on chokidar/ws/livereload-js/opts; used_by basis-sley)
+      - the "Bash HEREDOC inside $()" tooling note is linked into the tooling/shell cluster
+      - the two fourth-wall observations are GONE from the Andris Reinman note, and the [source] one REMAINS
+      - Basis Lic's banned `fills_gap_in` relation is RENAMED, not deleted — the edge still exists and its target still resolves
+    description: >-
+      Four small defects, each verified by reading the note itself rather than trusting the
+      gardener's report.
+
+
+      Three are mechanical. The fourth is not, and it is why this is a knowledge-maintainer run
+      and not a regex: `Basis Lic` uses the banned relation verb `fills_gap_in`, but HERE it means
+      an unaddressed **market** layer, not graph coverage. The relation is TRUE; only the
+      vocabulary is ambiguous with the graph-coverage sense the ban exists to prevent. Deleting
+      the edge would destroy a real fact in the name of a style rule.
+
+
+      The Andris Reinman pair is the pure fourth-wall anti-pattern: `[raindrop] No bookmarked
+      articles surfaced` and `[readwise] No highlighted passages surfaced` are inventory claims
+      about the GRAPH wearing the costume of observations about a PERSON. The rule is explicit —
+      never claim "X has zero presence"; cite artifacts or say nothing. The `[source]` observation
+      stays: research provenance is legitimate.
+    updated: '2026-07-11'
+  - id: vp-beads-jyr
+    title: Jyri Engeström — a duplicate edge on the Jaiku note that silently resolved to the WRONG entity
+    status: completed
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - the Jaiku note carries ONE `created_by` relation, and it resolves to the person
+      - the unaccented duplicate (Engestrom) is gone
+      - no person note had to be created — it already existed
+    description: >-
+      Closed. The reported defect was "two spellings, NEITHER resolving, person note missing".
+      All three halves were wrong, and the truth was worse.
+
+
+      The person note **already existed** (`Jyri Engeström - Social Objects Theorist and Jaiku
+      Co-founder`), so no /people-intel research was needed. The accented edge **resolved
+      correctly**. And the unaccented duplicate did not dangle — it **silently fuzzy-resolved to
+      the WRONG ENTITY**, `Social Objects Theory - Object-Centered Sociality`. The graph was
+      asserting that Jaiku was *created by a theory*.
+
+
+      That is the whole lesson, and it is this sprint's lesson again in a different substrate: a
+      DANGLING link is visible and harmless; a link that resolves CONFIDENTLY TO THE WRONG THING is
+      neither. BM resolves wiki-links by exact title match and falls back to fuzzy search — so a
+      near-miss title does not fail, it lands somewhere plausible. Fixed by deleting the duplicate
+      line; one correct edge remains.
+    updated: '2026-07-11'
+  - id: vp-beads-bsv
+    title: 'basic-memory: sync duplicates observation rows — 19% of the index is duplicates, files are clean'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+      - upstream
+    acceptance_criteria:
+      - a paste-ready GitHub issue (title, body, SQL reproduction, graph-wide evidence) is DRAFTED into UPSTREAM-basic-memory.md
+      - nothing is filed on GitHub without an explicit in-the-moment go-ahead
+      - the friction is promoted to a "## Upstream Friction" entry on the brew-basic-memory entity note in BM
+      - 'the write-up states the CORRECTED finding: the tool reports the index faithfully; the INDEX is corrupt, not the tool'
+      - the local index is repaired (bm reset --reindex) only with explicit user consent — it drops and rebuilds their graph DB
+    description: >-
+      Basic Memory's SQLite index holds every observation of some entities TWO or THREE times. The
+      markdown files on disk are CLEAN. This is index corruption, not note corruption.
+
+
+      Measured, not inferred: the file `npm-markdown-or-chalk.md` has 23 observation lines, 23
+      distinct; the `observation` table has 48 rows, 24 distinct for that entity. Graph-wide:
+      **26,832 observation rows vs 21,740 distinct (entity, content) pairs → 5,092 duplicate rows,
+      across 241 of 1,654 entities (14.6%).** Factor is almost always exactly 2x, sometimes 3x.
+
+
+      THE MECHANISM IS NOT ESTABLISHED — and the write-up must not pretend it is. The duplicates
+      are HISTORICAL: the current write path tests clean. Three notes were edited and re-measured
+      (a find_replace deleting observations, a relation rename, a whole-section insert) and NONE
+      duplicated anything. An early draft of this row asserted "consistent with a re-sync inserting
+      rows without deleting the old ones" — that was the same unmeasured-inference reflex that
+      produced the original wrong finding, caught this time before it shipped.
+
+
+      What IS reproducible, and is therefore what the issue leads with: `bm status` says "No
+      changes" and `bm doctor` passes ON THIS INDEX. The health vocabulary cannot see a 19%
+      duplicate rate. That detection gap is the actionable defect.
+
+
+      THE CORRECTION THAT MATTERS, and the reason this row was rewritten: the original finding
+      claimed `schema_validate` "double-counts and invents a phantom `note` category". BOTH HALVES
+      WERE WRONG, and wrong in the direction that blamed the tool instead of the data.
+      `schema_validate` reports the index FAITHFULLY — the observation really is in the database
+      twice. The `note` category is REAL: BM parses any `- ` bullet as an observation and defaults
+      an uncategorized one to `note`; the culprit bullet lives in the `## Upstream Friction`
+      section that OUR OWN /upstream-tracker writes. And `schema_diff` is unaffected — its
+      numerators are note-presence counts, several are ODD (31, 19, 23, 11 — a doubled integer
+      cannot be odd), and its denominator matches `bm project info` exactly.
+
+
+      So the claim "every schema-evolution decision is being made on inflated numbers" is REFUTED.
+      That was a plausible, confident inference that no one had measured. The measurement took one
+      SQL query.
+    updated: '2026-07-11'
+  - id: vp-beads-sev
+    title: Declare `limitation` and `depends_on` on the `engineering` BM schema
+    status: cancelled
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - 'CANCELLED — the premise was false: both fields are already declared in the engineering schema'
+    description: >-
+      CANCELLED, premise refuted before any work was done. The Sprint 16 graph audit reported
+      `limitation` (31 notes) and `depends_on` (31 notes) as "in active use but UNDECLARED" on the
+      `engineering` type. Both are in fact **already declared** — `limitation?(array)` and
+      `depends_on?(array)` are right there in `main/schema/engineering`, read directly.
+
+
+      `schema_diff` reports them under `dropped_fields`, which does NOT mean "missing from the
+      schema" — it means DECLARED BUT UNDER-USED (31 of 343 notes = 9.0%, well BELOW the 25%
+      evolution threshold, not "well past" it as the audit claimed). `new_fields` is EMPTY. There
+      is no undeclared field on this type and no schema evolution to perform.
+
+
+      The revival trigger, if this ever comes back: `schema_diff engineering` reporting a
+      non-empty `new_fields` array. Note the *opposite* signal does exist and is mildly
+      interesting — the type is OVER-specified (18 dropped_fields, several at 0% usage, plus 8
+      cardinality mismatches). That is a different, low-value task, and nobody has asked for it.
+
+
+      Filed, verified, and killed inside one session. The lesson is the one the sprint kept
+      teaching: a review finding is a hypothesis, not a fact. Reading the schema took 30 seconds.
     updated: '2026-07-11'
