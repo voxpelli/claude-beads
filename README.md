@@ -155,6 +155,24 @@ For projects still on beads. **beads 1.1.0's schema-migration gate panics on eve
 
 Writes are plain `Edit`/`Write` on the YAML afterwards — there is no CRUD helper, by design.
 
+### `/deintegrate-beads [path-to-project]` — Disarm bd after the migration
+
+`/migrate-tracker` moves the work but deliberately leaves `.beads/` standing. This runs afterwards and takes bd's hands off the wheel:
+
+```
+/deintegrate-beads
+```
+
+**It never deletes `.beads/` or any data** — it disarms *machinery*, which is a different thing and is why it is safe to run. What bd leaves behind is easy to miss:
+
+- **Five git hooks you cannot see.** `bd init` sets `git config core.hooksPath` → `.beads/hooks/`, so `.git/hooks/` looks pristine while `pre-commit`, `post-merge`, `pre-push`, `post-checkout` and `prepare-commit-msg` intercept every git operation. `pre-commit` shells out to `bd` and **propagates its exit code**. In this very repo, every commit was still routing through the dead binary weeks after the migration
+- **A `dolt sql-server` daemon per repo**, which outlives the session and orphans itself
+- **Injected instructions** — `bd setup claude` writes a managed block into `CLAUDE.md`/`AGENTS.md` and `SessionStart` hooks into `.claude/settings.json`
+
+Five workflows: verify the migration is trusted (refuses otherwise), stop the daemon (pid-checked — a stale `.pid` file must not get something else killed), disarm the git hooks (both install shapes; it confirms `core.hooksPath` actually points into `.beads/` before unsetting, so a husky setup is never collateral), de-colonize the docs and Claude config, and report what is left — including machine-global leftovers (`brew uninstall beads`, the telemetry spool) which it names but never touches.
+
+Everything it does is reversible: re-arming is `git config core.hooksPath .beads/hooks`.
+
 ### `/swarm-wave [workflow] [wave-number|topic]` — Multi-agent wave orchestration
 
 Orchestrate multi-agent development sprints using the swarm wave pattern:
@@ -353,6 +371,8 @@ skills/
     SKILL.md                            Bilateral SYNERGY/UPSTREAM reconciliation
   migrate-tracker/
     SKILL.md                            Guided bd → flat-YAML tracker cutover
+  deintegrate-beads/
+    SKILL.md                            Disarm bd's machinery after migration
   swarm-wave/
     SKILL.md                            Multi-agent wave orchestration
     references/

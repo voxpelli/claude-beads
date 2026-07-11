@@ -27,6 +27,7 @@ skills/
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
   sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
   migrate-tracker/SKILL.md            # Guided bd → flat-YAML cutover (for other repos)
+  deintegrate-beads/SKILL.md          # Disarm bd's machinery post-migration (never deletes data)
   synergy-tracker/
     SKILL.md                          # Cross-project synergy tracking (sibling projects)
     references/
@@ -43,8 +44,9 @@ agents/
   sprint-review.md                    # Proactive end-of-sprint summary and retro gate
 hooks/
   hooks.json                          # Hook definitions (3 event types)
-  session-start.sh                    # Compaction recovery (source=compact) + sensitive-file warning, dormancy nudge, trend-review reminder
+  session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudge, trend-review reminder
   post-file-edit.sh                   # Auto-format hooks/*.sh and scripts/*.sh with shfmt
+  post-tasks-validate.sh              # Validate .diarie/tasks/ on edit; report errors, silent when clean
   post-bm-failure-classify.sh         # Basic Memory error classification + recovery guidance
 CLAUDE.md
 README.md
@@ -67,7 +69,7 @@ Dev tooling only: validation and linting via `npm run check`.
   `/upstream-tracker` for mutations. When Basic Memory is available, also
   checks for cross-project friction notes on project dependencies.
 
-### Skills (8)
+### Skills (9)
 
 - **migrate-tracker** — Guided, one-way cutover of a project's issue tracker off
   beads (`bd`) onto the flat-YAML tracker. Five workflows: detect-and-assess,
@@ -76,6 +78,13 @@ Dev tooling only: validation and linting via `npm run check`.
   generalized migrator. Aimed at *other* repos — vp-beads already migrated; the
   siblings (vp-knowledge, vp-git) broke on the same global beads 1.1.0 binary.
   User-invocable as `/migrate-tracker`.
+- **deintegrate-beads** — De-integrates beads *after* the migration is trusted. Five
+  workflows: verify-migration, stop-daemon, disarm-git-hooks, de-colonize
+  (CLAUDE.md/AGENTS.md blocks + Claude hooks + bd perms), report-what-is-left.
+  **Never deletes `.beads/` or any data** — it disarms machinery (bd hides five
+  git hooks behind `core.hooksPath`, so `.git/hooks/` looks clean while every
+  commit routes through `bd`) and reports the rest. User-invocable as
+  `/deintegrate-beads`.
 - **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
   investigate-topic-as-spike, create-issues-from-findings, enrich-existing-issue.
@@ -245,11 +254,13 @@ plus a small pure reader — no daemon, no vendor.
 - **Tier C — degrade-and-announce.** The component does useful non-tracker work
   too; when the tracker is absent it runs the rest and **announces** each skipped
   tracker step (never skips it silently). Components: `retrospective`, `sprint-review`.
-- **Exempt — the tracker's absence is the precondition, not a degradation.**
-  `migrate-tracker` *creates* the store; it requires `.beads/` present and
-  `.diarie/tasks/` **absent**, and stops when it finds a store already there.
-  Tiering it would invert its meaning. It is the only exemption, and it is
-  structural — do not add others to dodge a tier.
+- **Exempt — the tracker's state IS the precondition, not a degradation.** Two
+  skills, both structural, both inverses of a tier: `migrate-tracker` *creates* the
+  store (requires `.beads/` present, `.diarie/tasks/` **absent**, and stops when it
+  finds a store already there); `deintegrate-beads` runs after it (requires
+  `.diarie/tasks/` present **and committed**, plus `.beads/` present, and stops
+  otherwise). Tiering either would invert its meaning. These are the only
+  exemptions — do not add more to dodge a tier.
 
 **Canonical inline sentence (copy verbatim; change only the tier letter).** Each
 component opens its availability handling with:
