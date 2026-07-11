@@ -4,7 +4,7 @@
  * Projects a `bd export` JSONL snapshot into the flat-YAML task-schema shape,
  * applying the decided 9→4 type collapse (decision vp-beads-etm). This is
  * deliberately the read-only HALF of the full migration: it never writes into
- * `backlog/tasks/`, bd stays canonical, and the projection is meant to be
+ * `.diarie/tasks/`, bd stays canonical, and the projection is meant to be
  * regenerated (never hand-edited) and thrown away. Its purpose is to give the
  * type-model decision its first implementation feedback — dual-run its output
  * against `bd ready` before the exploration branch concludes — not to ship a
@@ -22,7 +22,7 @@
  *   bd export -o /tmp/bd-export.jsonl --readonly
  *   node scripts/migrate-from-bd.mjs /tmp/bd-export.jsonl /tmp/tasks-vp-beads.yml
  *
- * Guardrail: refuses to write under any `backlog/tasks/` directory — the
+ * Guardrail: refuses to write under any `.diarie/tasks/` directory — the
  * projection is scratch-only by construction, not an accident of discipline.
  */
 
@@ -167,9 +167,9 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
     stderr.write('usage: node scripts/migrate-from-bd.mjs <bd-export.jsonl> <output.yml>\n')
     exit(1)
   }
-  if (/(?:^|\/)backlog\/tasks(?:\/|$)/.test(resolve(outputPath))) {
-    stderr.write('refusing to write under backlog/tasks/ — this projector is scratch-only ' +
-      '(regenerate, never hand-edit; bd stays canonical until cutover)\n')
+  if (/(?:^|\/)\.diarie\/tasks(?:\/|$)/.test(resolve(outputPath))) {
+    stderr.write('refusing to write under .diarie/tasks/ — this projector is scratch-only ' +
+      '(regenerate, never hand-edit; the live store is owned by bootstrap-tasks.mjs / Edit)\n')
     exit(1)
   }
 

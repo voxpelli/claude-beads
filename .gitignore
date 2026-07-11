@@ -1,6 +1,6 @@
 .DS_Store
 
-# Ephemeral agent/sprint scratch artifacts (durable record lives in backlog/tasks/)
+# Ephemeral agent/sprint scratch artifacts (durable record lives in .diarie/tasks/)
 AGENT-*.md
 RETRO-*.md
 SWARM-*.md
@@ -21,3 +21,8 @@ node_modules/
 
 # Beads — fully local, ephemeral working state (not shared via git)
 .beads/
+
+# NOTE: the `.diarie/` tracker dir is dotted but COMMITTED, not ephemeral — it is
+# the live task store (`diarie`), deliberately git-tracked and PR-reviewed. Unlike
+# `.beads/` above it is NOT ignored; the dot marks committed project metadata (cf.
+# `.claude/`, `.github/`), not throwaway state. Do not add it here.

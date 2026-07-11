@@ -4,7 +4,7 @@
  * The unit tests (check-ready-walker / check-tasks-validator) exercise the pure
  * functions with inline data and never touch disk. This test closes that gap: it
  * spawns the real `ready-walker.mjs` and `validate-tasks.mjs` CLIs against a
- * committed fixture (test/fixtures/backlog/tasks/), via the `TASKS_ROOT` env
+ * committed fixture (test/fixtures/.diarie/tasks/), via the `TASKS_ROOT` env
  * seam, so the file-IO path (loadTasks, YAML parse, flag dispatch, exit codes)
  * actually runs in CI. Mirrors the spawn-based check-hooks.mjs pattern.
  */
@@ -17,6 +17,8 @@ import { fileURLToPath } from 'node:url'
 import {
   mkdirSync, mkdtempSync, rmSync, writeFileSync,
 } from 'node:fs'
+
+import { TRACKER_DIR } from './task-schema.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const FIXTURES = join(ROOT, 'test', 'fixtures')
@@ -121,8 +123,8 @@ console.log('validate-tasks CLI (error paths, via tmpdir)')
 {
   const dir = mkdtempSync(join(tmpdir(), 'vp-tasks-'))
   try {
-    mkdirSync(join(dir, 'backlog', 'tasks'), { recursive: true })
-    writeFileSync(join(dir, 'backlog', 'tasks', 'tasks-x.yml'), 'tasks: [ : : not yaml')
+    mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
+    writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'), 'tasks: [ : : not yaml')
     const { code, out } = run('validate-tasks.mjs', [], dir)
     assert('malformed YAML: exits 1 with a clear message', code === 1 && /invalid YAML/.test(out))
   } finally { rmSync(dir, { recursive: true, force: true }) }
@@ -130,8 +132,8 @@ console.log('validate-tasks CLI (error paths, via tmpdir)')
 {
   const dir = mkdtempSync(join(tmpdir(), 'vp-tasks-'))
   try {
-    mkdirSync(join(dir, 'backlog', 'tasks'), { recursive: true })
-    writeFileSync(join(dir, 'backlog', 'tasks', 'tasks-x.yml'), 'tasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n  - id: T-1\n    title: b\n    status: pending\n    type: task\n')
+    mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
+    writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'), 'tasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n  - id: T-1\n    title: b\n    status: pending\n    type: task\n')
     const { code, out } = run('validate-tasks.mjs', [], dir)
     assert('duplicate id: exits 1 with "duplicate id"', code === 1 && /duplicate id/.test(out))
   } finally { rmSync(dir, { recursive: true, force: true }) }

@@ -144,7 +144,7 @@ Dev tooling only: validation and linting via `npm run check`.
 ## Active migration: bd → flat-YAML (Option C)
 
 Verdict (2026-06-09, a 12-agent research round): **Option C — a lean in-repo
-flat-YAML substrate (`backlog/tasks/tasks-<slug>.yml`) read by
+flat-YAML substrate (`.diarie/tasks/tasks-<slug>.yml`) read by
 `scripts/ready-walker.mjs` (the files-native `bd ready`) + `validate-tasks.mjs`
 (the integrity gate).** **Backlog.md was evaluated and DECLINED** (its MCP server
 is another daemon/vendor; it can't reproduce `ready`) — there are **no
@@ -154,9 +154,9 @@ is another daemon/vendor; it can't reproduce `ready`) — there are **no
 `scripts/task-schema.mjs`.
 
 - **Wave 1 executed (2026-07-10):** the 24 live bd issues were migrated to
-  `backlog/tasks/tasks-migration.yml` + `tasks-backlog.yml` (the decision `etm`
-  to `backlog/decisions/`) by `scripts/bootstrap-tasks.mjs`, and the full
-  131-issue `bd export` was frozen to `backlog/_archive/bd-final-export.jsonl`
+  `.diarie/tasks/tasks-migration.yml` + `tasks-backlog.yml` (the decision `etm`
+  to `.diarie/decisions/`) by `scripts/bootstrap-tasks.mjs`, and the full
+  131-issue `bd export` was frozen to `.diarie/_archive/bd-final-export.jsonl`
   (the only git-tracked survivor — `.beads/` is gitignored). This repo now
   tracks its own work in flat-YAML (see `### Issue tracking (flat-YAML)`).
   `bd` reads still work as a frozen archive; `bd` writes are dead (1.1.0
@@ -173,11 +173,11 @@ is another daemon/vendor; it can't reproduce `ready`) — there are **no
 - **Type model (decision `vp-beads-etm`, 2026-06-10): 4 types** —
   `task` / `doc` / `decision` / `milestone`; bd's other five types are
   framings carried in `labels:`, `epic` is `task` + `parent:`. This is now the
-  live model for `backlog/tasks/`; the 9-type table below is **historical bd
+  live model for `.diarie/tasks/`; the 9-type table below is **historical bd
   vocabulary**, retained until the e42 doc sweep.
 - Feature branch `feat/tracker-design-exploration` carries this work
   (local-only per user choice — don't push without approval).
-- The superseded Backlog.md dogfood lives in `backlog/_archive/` for provenance.
+- The superseded Backlog.md dogfood lives in `.diarie/_archive/` for provenance.
 
 ## Work-tracking substrates
 
@@ -481,10 +481,10 @@ This project tracks its own work in the **flat-YAML substrate** (Option C), **no
 bd** — the data migration executed 2026-07-10 (Wave 1; see "Active migration"
 above). Find ready work with `node scripts/ready-walker.mjs` (`--format json`,
 `--stats`, `--blocked`, `--stale --days N`). Claim / complete by **editing the
-YAML directly** in `backlog/tasks/tasks-<slug>.yml` — set `status: in_progress`
+YAML directly** in `.diarie/tasks/tasks-<slug>.yml` — set `status: in_progress`
 (+ `agent:`) to claim, `status: completed` to close; there is no CRUD helper
 (substrate-not-opinion — the write side is Edit/Write). Validate every edit with
-`node validate-tasks.mjs`. Decisions live as markdown in `backlog/decisions/`.
+`node validate-tasks.mjs`. Decisions live as markdown in `.diarie/decisions/`.
 Do NOT use markdown TODOs, ad-hoc task lists, or `bd` (its 1.1.0 writes are dead
 regardless).
 
@@ -561,14 +561,14 @@ observation + `UPSTREAM-claude-code.md` at project root.
 
 ### Issue types
 
-**The live model for `backlog/tasks/` is 4 types** (`task` / `doc` / `decision` /
+**The live model for `.diarie/tasks/` is 4 types** (`task` / `doc` / `decision` /
 `milestone` + `labels:` for the framings), per decision `vp-beads-etm` and
 enforced by `scripts/task-schema.mjs` (`VALID_TYPES`). Map a bd framing to a
 label: `bug`/`feature`/`chore`/`story`/`spike` → `task` + `labels: [<framing>]`;
 `epic` → `task` + `parent:`.
 
 **The 9-type table below is historical bd vocabulary** — retained for provenance
-and for reading the frozen `backlog/_archive/bd-final-export.jsonl`, not a
+and for reading the frozen `.diarie/_archive/bd-final-export.jsonl`, not a
 description of the live substrate. It will be trimmed in the e42 doc sweep.
 
 All issue types are validated on creation with `validation.on-create=error`. Authoritative source: BM `brew/brew-beads` `### Issue Types (Core Vocabulary)`. Provenance: `engineering/agents/cli-validation-discovery-via-json-error-probing`.

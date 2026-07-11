@@ -1,5 +1,5 @@
 # Fixture for check-tasks-smoke.mjs — exercises the real file-parse path in CI.
-# NOT live substrate (lives under test/fixtures/, never under the repo's backlog/).
+# NOT live substrate (lives under test/fixtures/, never under the repo's .diarie/).
 meta:
   slug: alpha
   title: Smoke fixture — alpha

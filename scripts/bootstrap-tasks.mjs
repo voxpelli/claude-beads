@@ -5,16 +5,16 @@
  * Reads a `bd export` JSONL snapshot and evacuates the LIVE issues (everything
  * not `closed`) into the real substrate:
  *
- *   backlog/tasks/tasks-migration.yml   the migration epic (l9i) + its children
- *   backlog/tasks/tasks-backlog.yml     every other live task
- *   backlog/decisions/<id>.md           decision-type issues (prose has no YAML home)
- *   backlog/_archive/bd-final-export.jsonl   the full snapshot (ALL statuses) — the
+ *   .diarie/tasks/tasks-migration.yml   the migration epic (l9i) + its children
+ *   .diarie/tasks/tasks-backlog.yml     every other live task
+ *   .diarie/decisions/<id>.md           decision-type issues (prose has no YAML home)
+ *   .diarie/_archive/bd-final-export.jsonl   the full snapshot (ALL statuses) — the
  *                                            only git-tracked survivor of bd history,
  *                                            since `.beads/` is gitignored.
  *
  * This is a BOOTSTRAP, not an ongoing tool: it runs once, its output is then
  * hand-maintained with Edit/Write (substrate-not-opinion — no CRUD helper), and
- * the script is retired to backlog/_archive/ afterwards. It reuses the spike's
+ * the script is retired to .diarie/_archive/ afterwards. It reuses the spike's
  * maps (STATUS_MAP/TYPE_MAP/PRIORITY_MAP) as the single source of truth but
  * implements its own projection because it does MORE than the dogfood:
  *
@@ -46,7 +46,7 @@ import {
 import yaml from 'js-yaml'
 
 import { PRIORITY_MAP, STATUS_MAP, TYPE_MAP } from './migrate-from-bd.mjs'
-import { VALID_TYPES } from './task-schema.mjs'
+import { TRACKER_DIR, VALID_TYPES } from './task-schema.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -169,8 +169,8 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   const records = raw.split('\n').filter(Boolean).map(l => JSON.parse(l)).filter(r => r._type === 'issue')
 
   // Archive the FULL snapshot first — the only git-tracked survivor of bd history.
-  mkdirSync(resolve(ROOT, 'backlog/_archive'), { recursive: true })
-  copyFileSync(resolve(inputPath), resolve(ROOT, 'backlog/_archive/bd-final-export.jsonl'))
+  mkdirSync(resolve(ROOT, `${TRACKER_DIR}/_archive`), { recursive: true })
+  copyFileSync(resolve(inputPath), resolve(ROOT, `${TRACKER_DIR}/_archive/bd-final-export.jsonl`))
 
   const live = records.filter(r => r.status !== 'closed')
   const liveIds = new Set(live.map(r => r.id))
@@ -191,14 +191,14 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   }
 
   const written = [
-    write('backlog/tasks/tasks-migration.yml', dumpTasks('migration', 'Tracker migration off bd (epic vp-beads-l9i)', migration)),
-    write('backlog/tasks/tasks-backlog.yml', dumpTasks('backlog', 'Standalone backlog (non-epic live work)', backlog)),
-    ...decisions.map(({ body, task }) => write(`backlog/decisions/${task.id}.md`, dumpDecision(task, body))),
+    write(`${TRACKER_DIR}/tasks/tasks-migration.yml`, dumpTasks('migration', 'Tracker migration off bd (epic vp-beads-l9i)', migration)),
+    write(`${TRACKER_DIR}/tasks/tasks-backlog.yml`, dumpTasks('backlog', 'Standalone backlog (non-epic live work)', backlog)),
+    ...decisions.map(({ body, task }) => write(`${TRACKER_DIR}/decisions/${task.id}.md`, dumpDecision(task, body))),
   ]
 
   stdout.write(`migrated ${live.length} live issues (of ${records.length} total):\n`)
-  stdout.write(`  ${migration.length} → tasks-migration.yml · ${backlog.length} → tasks-backlog.yml · ${decisions.length} → backlog/decisions/\n`)
-  stdout.write('  archived full snapshot → backlog/_archive/bd-final-export.jsonl\n')
+  stdout.write(`  ${migration.length} → tasks-migration.yml · ${backlog.length} → tasks-backlog.yml · ${decisions.length} → ${TRACKER_DIR}/decisions/\n`)
+  stdout.write(`  archived full snapshot → ${TRACKER_DIR}/_archive/bd-final-export.jsonl\n`)
   if (droppedDeps.length) {
     stdout.write(`  dropped ${droppedDeps.length} satisfied (closed-blocker) deps:\n`)
     for (const d of droppedDeps) stdout.write(`    - ${d}\n`)

@@ -7,7 +7,7 @@
  * vocabulary; the matching `@typedef` unions carry the (advisory, JSDoc-only —
  * no tsc is wired) type-level vocabulary.
  *
- * A `backlog/tasks/tasks-<slug>.yml` file is:
+ * A `.diarie/tasks/tasks-<slug>.yml` file is:
  *
  *   tasks:                    # top-level: a list (required)
  *     - id: T-1               # unique within the file; namespaced to slug/id on load
@@ -31,7 +31,7 @@
  * prose. It deliberately REVERSES the original no-body design decision (RETRO-15
  * deflated the "missing body" criticism as by-design), so it is a change the
  * user must ratify: keep it for active-work fidelity, or strip it (the full
- * bodies remain in `backlog/_archive/bd-final-export.jsonl`). `ready-walker`
+ * bodies remain in `.diarie/_archive/bd-final-export.jsonl`). `ready-walker`
  * ignores it and `validate-tasks` tolerates it, so it is non-breaking either way.
  * If a future unknown-field warning is added to validate-tasks, it must allowlist
  * `description` or every migrated task will flag at once.
@@ -45,10 +45,10 @@
  * "closes with findings, not code" semantics travel with the `spike` label.
  *
  * `doc` and `decision` do NOT live as rows in `tasks-<slug>.yml`; their
- * content-home is frontmatter'd markdown under `backlog/decisions/<id>.md` and
- * `backlog/docs/<id>.md` (the frontmatter carries the schema fields; the body is
+ * content-home is frontmatter'd markdown under `.diarie/decisions/<id>.md` and
+ * `.diarie/docs/<id>.md` (the frontmatter carries the schema fields; the body is
  * the prose the terse row can't hold). The migration exercised this for the first
- * real `decision` — `backlog/decisions/vp-beads-etm.md`. `milestone` rows DO live
+ * real `decision` — `.diarie/decisions/vp-beads-etm.md`. `milestone` rows DO live
  * in `tasks-*.yml` (markers, no prose); there are none live yet. Because the
  * ready-walker only globs `tasks-*.yml`, decision/doc files are naturally outside
  * the ready computation — a decision "in force" is never surfaced as workable.
@@ -99,6 +99,16 @@ export const ID_RE = /^[A-Z0-9][\w.-]*$/i
 
 /** Always-required fields on every task entry. */
 export const REQUIRED_FIELDS = ['id', 'title', 'status', 'type']
+
+/**
+ * The per-repo directory that holds the flat-YAML task store, resolved relative
+ * to the project root. Dotted + product-namespaced (`.diarie/`, the `diarie`
+ * tracker) so it can't collide on the shared dotfile namespace — but committed,
+ * not ephemeral (cf. `.claude/`, `.github/`; NOT `.beads/`, which was gitignored
+ * tool state). Every tool derives the store location from here — never hardcode
+ * the segment. (Renamed from `backlog/` 2026-07-11.)
+ */
+export const TRACKER_DIR = '.diarie'
 
 /**
  * Types whose completion should carry stated acceptance criteria (the

@@ -6,7 +6,7 @@
     "check": "run-p check:*",
     "check:hooks": "node scripts/check-hooks.mjs",
     "check:lint": "eslint",
-    "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern backlog/ --ignore-pattern 'RESEARCH-*.md'",
+    "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'",
     "check:plugin": "node validate-plugin.mjs",
     "check:ready-walker": "node scripts/check-ready-walker.mjs",
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",

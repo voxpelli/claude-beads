@@ -28,7 +28,7 @@ import {
 import yaml from 'js-yaml'
 
 import {
-  ID_RE, isNil, RATCHET_TYPES, REQUIRED_FIELDS, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
+  ID_RE, isNil, RATCHET_TYPES, REQUIRED_FIELDS, TRACKER_DIR, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
 } from './scripts/task-schema.mjs'
 
 /**
@@ -214,13 +214,13 @@ function findCycles (deps) {
 /** CLI entry. */
 async function main () {
   // TASKS_ROOT lets the smoke test point the CLI at test/fixtures/ without
-  // touching the repo's real backlog/. Unset in normal `npm run check`.
+  // touching the repo's real tracker dir. Unset in normal `npm run check`.
   const root = env.TASKS_ROOT ?? new URL('.', import.meta.url).pathname.replace(/\/$/, '')
-  const tasksDir = join(root, 'backlog', 'tasks')
+  const tasksDir = join(root, TRACKER_DIR, 'tasks')
   const json = argv.includes('--json')
 
   if (!existsSync(tasksDir)) {
-    if (!json) console.log('No backlog/tasks/ directory found — skipping task validation.')
+    if (!json) console.log(`No ${TRACKER_DIR}/tasks/ directory found — skipping task validation.`)
     else stdout.write(JSON.stringify({ clean: true, skipped: true, errors: [], warnings: [] }) + '\n')
     return
   }
@@ -230,10 +230,10 @@ async function main () {
   // substrate — surface it rather than skip silently ("silent-skip is a bug").
   const ignored = entries.filter(f => !f.startsWith('.') && !/^tasks-.+\.ya?ml$/.test(f))
   if (ignored.length && !names.length && !json) {
-    console.warn(`Warning: backlog/tasks/ has ${ignored.length} file(s) not matching tasks-*.yml (ignored): ${ignored.join(', ')}\n  Rename to tasks-<slug>.yml to include them in validation.\n`)
+    console.warn(`Warning: ${TRACKER_DIR}/tasks/ has ${ignored.length} file(s) not matching tasks-*.yml (ignored): ${ignored.join(', ')}\n  Rename to tasks-<slug>.yml to include them in validation.\n`)
   }
   if (!names.length) {
-    if (!json) console.log('No backlog/tasks/tasks-*.yml found — skipping task validation.')
+    if (!json) console.log(`No ${TRACKER_DIR}/tasks/tasks-*.yml found — skipping task validation.`)
     else stdout.write(JSON.stringify({ clean: true, skipped: true, errors: [], warnings: [] }) + '\n')
     return
   }

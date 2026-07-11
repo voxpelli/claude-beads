@@ -2,7 +2,7 @@
  * ready-walker.mjs — the files-native replacement for `bd ready`.
  *
  * Computes ready / blocked work and summary stats over the flat-YAML task
- * substrate (`backlog/tasks/tasks-<slug>.yml`). The YAML files are canonical;
+ * substrate (`.diarie/tasks/tasks-<slug>.yml`). The YAML files are canonical;
  * this is a pure derived read — no index, no daemon, no vendor. The pure
  * functions (`computeReady`, `computeStats`) are exported for unit tests; the
  * CLI wraps them with file IO.
@@ -36,7 +36,7 @@ import {
 import yaml from 'js-yaml'
 
 import {
-  isNil, PRIORITY_RANK, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
+  isNil, PRIORITY_RANK, TRACKER_DIR, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
 } from './task-schema.mjs'
 
 /**
@@ -191,14 +191,14 @@ export function computeStats (tasks, staleDays = 30, now = new Date()) {
 }
 
 /**
- * Load and globalize tasks from every `tasks-<slug>.yml` under a backlog dir.
+ * Load and globalize tasks from every `tasks-<slug>.yml` under the tracker dir.
  * Bare dep/parent ids are namespaced to their slug; `slug/id` deps pass through.
  *
- * @param {string} backlogDir
+ * @param {string} trackerDir
  * @returns {Promise<LoadedTask[]>}
  */
-export async function loadTasks (backlogDir) {
-  const tasksDir = join(backlogDir, 'tasks')
+export async function loadTasks (trackerDir) {
+  const tasksDir = join(trackerDir, 'tasks')
   if (!existsSync(tasksDir)) return []
   const names = await readdir(tasksDir)
   const files = names.filter(f => /^tasks-.+\.ya?ml$/.test(f))
@@ -273,9 +273,9 @@ async function main () {
   }
   const json = opt('--format', '') === 'json'
   const root = env.TASKS_ROOT ?? new URL('..', import.meta.url).pathname.replace(/\/$/, '')
-  const backlogDir = join(root, 'backlog')
-  if (!existsSync(backlogDir)) stderr.write(`ready-walker: no backlog/ under ${root} — is this the project root? (set TASKS_ROOT to override)\n`)
-  const tasks = await loadTasks(backlogDir)
+  const trackerDir = join(root, TRACKER_DIR)
+  if (!existsSync(trackerDir)) stderr.write(`ready-walker: no ${TRACKER_DIR}/ under ${root} — is this the project root? (set TASKS_ROOT to override)\n`)
+  const tasks = await loadTasks(trackerDir)
 
   if (has('--stats')) {
     const stats = computeStats(tasks, numOpt('--days', 30))
