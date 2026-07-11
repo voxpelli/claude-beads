@@ -239,12 +239,46 @@ mis-projection.
    Sweep the target's `CLAUDE.md`, `AGENTS.md`, `README.md` and `.claude/` for
    `\bbd\b` (the `Grep` tool, or `grep -rni`). The sweep is the authority on
    scope, not your initial guess at it.
-3. Retarget what the grep found — editing those files, or **creating** a
+
+   **Then sweep again for the behavioural residue the first sweep cannot see**, because
+   it contains no `bd`:
+
+   ```bash
+   grep -rniE 'markdown TODO|ad-hoc task list|do not use .*task list|TodoWrite' \
+     <target>/CLAUDE.md <target>/AGENTS.md <target>/.claude/
+   ```
+
+   A bd-era project very often carries a **blanket ban on the agent's own task list**.
+   Retargeting the *commands* and leaving that ban in place is how a cutover renews the
+   habit it was supposed to end — **and it is exactly what vp-beads' own cutover commit
+   did**, which is why the second grep exists at all. See step 3.
+3. Retarget what BOTH greps found — editing those files, or **creating** a
    `CLAUDE.md` if the project has none: how to find ready work (`diarie ready`), how to
    claim (`status: in_progress` + `agent:`), how to close (`status: completed`), how to
    validate (`diarie validate`) — spelled with whichever rung from step 1 actually resolves
    in that repo. Writes are **plain `Edit`/`Write` on the YAML** —
    there is no CRUD helper, and that is deliberate (substrate-not-opinion).
+
+   **Only document flags that exist.** Run each command you are about to write into the
+   target's `CLAUDE.md` — `diarie ready --blocked`, `diarie stats --stale --days 30`, and
+   so on — and confirm it does not error. vp-beads' own `CLAUDE.md` told agents to run
+   `diarie ready --stats` and `diarie ready --stale` for weeks; **neither flag exists**
+   (they belong to `stats`). Prose is not checked by anything, so an invented flag survives
+   indefinitely and fails silently in someone else's session.
+
+   **If the second grep found a task-list ban, surface it and offer the seam — do not
+   impose it.** The ban is usually a category error: Claude Code's built-in tracker is
+   *ephemeral* (it dies with the session, by design) while the tracker is *durable*, so
+   they complement rather than compete. But it is the target project's call. Show the
+   matched lines, and propose the rule that actually prevents the failure the ban was
+   groping at:
+
+   > An ephemeral todo may never be the ONLY home of a commitment. If it must outlive the
+   > session, it is a task row. The todo list is one claimed row's execution made visible —
+   > never a second backlog.
+
+   Rationale and the rejected alternatives are recorded in this plugin's decision
+   `vp-beads-tdo`.
 4. Leave `<target>/.beads/` on disk as a frozen read-only archive. Do not delete
    it — `bd` reads still work, and the memory store may be recoverable later via a
    bd downgrade.

@@ -422,6 +422,44 @@ tasks:
       an extraction. This epic exists partly to dogfood the container model that
       `vp-beads-epc` just fixed: it is the first row that is deliberately NOT workable.
     updated: '2026-07-11'
+  - id: vp-beads-sea
+    title: Give diarie the template's seam — parse / act / render, so a command is testable without spawning
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dia
+    labels:
+      - refactor
+    acceptance_criteria:
+      - "each command splits into a PURE parse (argv → an input object), an act (the I/O), and a render (result → string) — `run()` only wires them and writes"
+      - "a command's flag parsing and its output rendering can be asserted IN-PROCESS, with no spawn and no stdout capture"
+      - "the `--blocked` text rendering (`← contains N open:` vs `← blocked by`) is tested as a pure function on a result object"
+      - "the spawn tests that remain are the ones that genuinely need a process: exit codes, ENOSTORE-on-stdout, the CLAUDE_PLUGIN_ROOT guard"
+      - "no behaviour change: all 161 assertions still pass, and the two pinned JSON shapes (`ready --json` OBJECT, `ready --filter` ARRAY) are unchanged"
+      - "type-level tests (tstyche `typetests/*.tst.ts`) over the public `exports` map — the template's answer for a contract that ships"
+    description: >-
+      `voxpelli/node-cli-template` splits `lib/command.js` (pure parse) → `lib/action.js` (do) →
+      `lib/format.js` (print), which is why its whole test suite is `command(['example'])` — a
+      pure call, no spawn, nothing to capture. **diarie has no such seam**: every `run()` parses,
+      loads, computes and prints in one function, writing straight to stdout via `jsonOut`.
+
+
+      So diarie's tests spawn — not by choice, but because there is no other door in. That cost
+      is now measured: the ONE test that tried to drive `cli()` in-process had to monkey-patch
+      `process.stdout.write`, which under `node --test` swallows the runner's own TAP stream — it
+      silently dropped 40 of cli.spec.js's 54 results while still printing "pass". The workaround
+      is a subprocess; the fix is the seam.
+
+
+      The same shape exists across the other peowly-commands consumers (compare-eslint-configs,
+      eslint-formatter-summary, list-dependents-cli, @voxpelli/mcp-client) — read one before
+      designing this, rather than inventing a fourth arrangement.
+
+
+      Do this AFTER vp-beads-tst (done), never with it: moving 161 assertions in the same commit
+      that changes what they assert is how a regression gets waved through. That is the task's own
+      rule and it applies to its successor.
+    updated: '2026-07-11'
   - id: vp-beads-asg
     title: diarie must self-host its ast-grep config — the guards do not survive extraction
     status: pending

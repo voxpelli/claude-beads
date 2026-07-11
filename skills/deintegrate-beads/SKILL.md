@@ -214,6 +214,37 @@ rides the confirmation taken in workflow 1 (Probe, verify, and confirm the whole
    to use bd; **do not mass-rewrite it.** The grep is the authority on scope; an assumed
    edit list is not.
 
+6. **Then grep for the BEHAVIOURAL residue, which the sweep above structurally cannot
+   find.** bd's deepest mark on a project is not the string `bd`; it is a *habit* written
+   in prose that never names the tool. The canonical one is a **blanket ban on the agent's
+   own task list**:
+
+   ```bash
+   grep -rniE 'markdown TODO|ad-hoc task list|do not use .*task list|TodoWrite' \
+     <target>/CLAUDE.md <target>/AGENTS.md <target>/.claude/
+   ```
+
+   **A `\bbd\b` sweep returns nothing for it** — the sentence contains no `bd` — so a
+   de-integration that greps only the command name reports the docs clean while the ban
+   keeps steering every future session toward a tracker that is gone. This is the same
+   blindness CLAUDE.md's own `### Doc-grep the VOCABULARY, not just the command name`
+   describes, one level up: from data vocabulary to *behavioural* vocabulary.
+
+   **Report it; offer the seam; do not impose it.** The ban is usually wrong (Claude
+   Code's built-in tracker is *ephemeral* — it complements a durable file-backed tracker
+   rather than competing with it; see decision `vp-beads-tdo` in this plugin's own
+   `.diarie/decisions/`), but it is the target project's call, and a skill that silently
+   rewrites a user's operating instructions is doing the very thing it was invoked to undo.
+   Show the matched lines and the one-line replacement rule:
+
+   > An ephemeral todo may never be the ONLY home of a commitment. If it must outlive the
+   > session, it belongs in the tracker.
+
+   **We shipped this bug ourselves**, which is why it is written down: vp-beads' own
+   cutover commit — the one whose stated job was retargeting the operating instructions
+   *off* bd — carried the ban forward and **broadened** it. Nobody had to colonize us; the
+   convention was absorbed and then renewed by the very commit meant to remove it.
+
 ### 5. Report what is left (touch nothing)
 
 - **What `rm -rf .beads/` would actually do** — use `residue.trackedCount` from the

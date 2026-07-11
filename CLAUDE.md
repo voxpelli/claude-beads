@@ -553,16 +553,28 @@ rm -rf directory        # NOT: rm -r directory
 working *on vp-beads*, not a claim about projects that *use* vp-beads — the
 plugin supports multiple substrates (see `## Work-tracking substrates`).
 
-This project tracks its own work in the **flat-YAML substrate** (Option C), **not
-bd** — the data migration executed 2026-07-10 (Wave 1; see "Active migration"
-above). Find ready work with `diarie ready` (`--json`,
-`--stats`, `--blocked`, `--stale --days N`). Claim / complete by **editing the
-YAML directly** in `.diarie/tasks/tasks-<slug>.yml` — set `status: in_progress`
-(+ `agent:`) to claim, `status: completed` to close; there is no CRUD helper
-(substrate-not-opinion — the write side is Edit/Write). Validate every edit with
-`diarie validate`. Decisions live as markdown in `.diarie/decisions/`.
-Do NOT use markdown TODOs, ad-hoc task lists, or `bd` (its 1.1.0 writes are dead
-regardless).
+This project tracks its own work in the **flat-YAML substrate**, **not bd** (see
+`## The tracker migration` above; do not use `bd` — its 1.1.0 writes are dead).
+
+```bash
+diarie ready      # what to work on   [--json] [--blocked] [--filter <status>] [--strict]
+diarie stats      # counts + stale claims   [--json] [--stale] [--days <n>]
+diarie validate   # the integrity gate — run after EVERY edit   [--json]
+```
+
+Claim / complete by **editing the YAML directly** in `.diarie/tasks/tasks-<slug>.yml` —
+`status: in_progress` (+ `agent:`) to claim, `status: completed` to close. There is no CRUD
+helper, deliberately (substrate-not-opinion — the write side is Edit/Write). Decisions live
+as markdown in `.diarie/decisions/`.
+
+**Use Claude Code's built-in task tracker too — for the session's steps.** It and `diarie`
+are different time horizons, not rivals (decision `vp-beads-tdo`):
+
+> **An ephemeral todo may never be the ONLY home of a commitment.** If it must outlive the
+> session, it is a `diarie` row.
+
+So: `diarie ready` → claim a row → expand it into built-in todos → work → close the row. The
+todo list is one claimed row's execution made visible; it is **never a second backlog**.
 
 ### Sub-agent permissions in Task-tool launches
 
