@@ -392,7 +392,9 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
       `\n!!! the migrated task store is GITIGNORED in ${root} — it will not commit:\n` +
       storeIgnored.map(f => `      ${f}\n`).join('') +
       `    ${TRACKER_DIR}/ is dotted but MUST be tracked — it IS the backlog. A negation\n` +
-      `    line works: !${TRACKER_DIR}/\n`
+      // `!<dir>/` does NOT work: git will not descend into an excluded directory, so a
+      // negation on the dir alone can never re-include the files under it. `/**` can.
+      `    line works: !${TRACKER_DIR}/**\n`
     )
     exit(1)
   }
@@ -411,7 +413,7 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
     stderr.write(
       `\nwarning: this project tracks \`.beads/\` in git, but ${archive} is gitignored —\n` +
       '  so the bd history you have been versioning would stop being versioned here.\n' +
-      `  Add !${archive} (or !${TRACKER_DIR}/) to keep it.\n`
+      `  Add !${archive} (or !${TRACKER_DIR}/**) to keep it.\n`
     )
   } else if (archiveIgnored) {
     stderr.write(

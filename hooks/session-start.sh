@@ -121,9 +121,9 @@ fi
 # Warn only if .beads/.beads-credential-key is committed to git. It is a
 # per-machine encryption key (federation peer auth) and must never be pushed.
 #
-# .beads/interactions.jsonl is NOT flagged: this repo intentionally tracks it
-# as the agent audit trail (see README "beads and Dolt configuration"). It
-# holds bd field_change events, not conversation logs or credentials.
+# .beads/interactions.jsonl is NOT flagged: it holds bd field_change events,
+# not conversation logs or credentials. (bd is retired; this check remains because
+# the credential key is still on disk in repos that have not run /deintegrate-beads.)
 #
 # stdout is redirected too — `git ls-files --error-unmatch` prints the matched
 # path on success, which would otherwise pollute the JSON emitted below.

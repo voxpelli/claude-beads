@@ -5,8 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What This Is
 
 A Claude Code plugin (`vp-beads`) providing sprint workflow automation for projects
-using [beads](https://github.com/steveyegge/beads) and
-[Basic Memory](https://github.com/basicmachines-co/basic-memory). These skills
+using the **`diarie` flat-YAML tracker** (`.diarie/`) and
+[Basic Memory](https://github.com/basicmachines-co/basic-memory). It migrated off
+[beads](https://github.com/steveyegge/beads) — see `## The tracker migration`. These skills
 promote project-local sprint workflow patterns into a shareable, installable plugin.
 
 ## Plugin Layout
@@ -88,7 +89,7 @@ Dev tooling only: validation and linting via `npm run check`.
   clean while every commit routes through `bd`) and reports the rest. All detection
   lives in the tested `scripts/beads-probe.mjs`, not in prose. User-invocable as
   `/deintegrate-beads`.
-- **backlog-groomer** — Triage, prioritize, and research work in the beads backlog.
+- **backlog-groomer** — Triage, prioritize, and research work in the flat-YAML backlog.
   Six workflows: review-and-triage, reprioritize, suggest-closures,
   investigate-topic-as-spike, create-issues-from-findings, enrich-existing-issue.
   Cross-references Basic Memory for known friction and uses Tavily/DeepWiki for
@@ -129,8 +130,8 @@ Dev tooling only: validation and linting via `npm run check`.
   (Sync sibling SYNERGY) and 3 (Sync sibling UPSTREAM) end with a
   per-sibling two-tier action menu (single `AskUserQuestion` call,
   `header: "Synergy"` + `header: "Upstream"`) that delegates writes to
-  `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or `bd create`
-  via the `Skill` tool — replacing the previous copy-paste hint workflow.
+  `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or a task row appended
+  to `.diarie/tasks/` via the `Skill` tool — replacing the previous copy-paste hint workflow.
   Distinct from `/vendor-sync` (upstream → project drift, subtree pulls)
   and `/synergy-tracker` (logging entries here on this side); sibling-sync
   compares both sides without writing on this side. User-invocable as
@@ -186,14 +187,16 @@ DECLINED** — its MCP server is another daemon/vendor, and it cannot reproduce
 ## Work-tracking substrates
 
 vp-beads supports three work-tracking substrates and **forces none of them**.
-How each component degrades when beads is absent is defined once by the
-`### Beads-availability convention` below (tiers A/B/C) — this section describes
+How each component degrades when the tracker is absent is defined once by the
+`### Files-availability convention` below (tiers A/B/C) — this section describes
 the substrates themselves, not the per-skill behavior (no per-skill tier table
 lives here or in the README; it would duplicate and rot).
 
-- **beads** (`bd`) — the default and richest substrate (typed issues,
-  dependencies, priorities, health checks). Detected by the canonical predicate
-  (`.beads/` exists **and** `command -v bd`).
+- **The flat-YAML tracker** (`.diarie/tasks/tasks-<slug>.yml`) — the default and
+  richest substrate (typed items, dependencies, priorities, an integrity gate).
+  Detected by the canonical predicate in `### Files-availability convention`.
+  **beads is no longer a substrate** — it was replaced, not demoted (its 1.1.0
+  writes are dead).
 - **`ROADMAP.md`** — a work plan **in whatever structure the project already
   uses**. swarm-wave reads it in its own idiom and **never prescribes a format
   or rewrites the file** (the `substrate-not-opinion` principle); it declines
@@ -202,8 +205,8 @@ lives here or in the README; it would duplicate and rot).
 - **`VISION.md`** — direction and voice, **not** a backlog. Never a work source.
 
 A manually supplied work list is the fourth, file-less option swarm-wave
-accepts. Issue creation and `bd` claim/close are beads-only; a beadless wave
-uses the `SWARM-NN.md` Item Status table as run-state.
+accepts. Creating and claiming/closing items requires the flat-YAML store; a
+trackerless wave uses the `SWARM-NN.md` Item Status table as run-state.
 
 ## Conventions
 
@@ -233,7 +236,7 @@ tracker files exist) is recovery plumbing, not a user-facing workflow step.
 **Detection predicate (canonical).** The flat-YAML tracker is available for a
 project iff a `.diarie/tasks/tasks-*.yml` file exists **and** the tracker reader is
 runnable (`node scripts/ready-walker.mjs` in this repo; the `diarie` CLI once it
-ships — see `## Active migration`). Both conditions, checked every time — neither
+ships — see `## The tracker migration: bd → flat-YAML (done)`). Both conditions, checked every time — neither
 alone. Unlike the old `.beads/` + `bd` binary, these are ordinary committed files
 plus a small pure reader — no daemon, no vendor.
 
@@ -276,7 +279,7 @@ the per-skill tables this section deliberately omits).
 
 - Named `RETRO-NN.md` in the project root
 - Sprint number increments by 1 from the highest existing number
-- Every 4th sprint triggers a full trend review (UPSTREAM files, beads health,
+- Every 4th sprint triggers a full trend review (UPSTREAM files, tracker hygiene,
   Basic Memory graph health)
 
 ### Vendor registry convention
@@ -349,7 +352,7 @@ the per-skill tables this section deliberately omits).
   `PRIVATE-SYNERGY-*.md` + `.claude/*.local.json` and never a per-name line
   (the validator flags a literal one); `bm-entity` is omitted; BM promotion and
   reciprocation are skipped for `PRIVATE-SYNERGY-*`-filed siblings (structural);
-  the action menu suppresses `bd create` for private-sibling findings; and
+  the action menu suppresses task creation for private-sibling findings; and
   follow-up logging redirects to the gitignored `PRIVATE-SYNERGY-<name>.md`.
   `/sibling-sync` **may read** a private sibling's `PRIVATE-SYNERGY-<name>.md`
   for read-only diff (it is a registry `file` value), but never writes the name
@@ -407,10 +410,10 @@ or move them.
 ### Sprint workflow cycle
 
 The agent and skills form a lightweight cycle. The diagram below shows the
-**beads-backed** path (this repository's own setup); on a beadless substrate the
-same cycle runs with the per-tier degradations from `### Beads-availability
+**tracker-backed** path (this repository's own setup); without the flat-YAML store
+the same cycle runs with the per-tier degradations from `### Files-availability
 convention` (swarm-wave sources from a `ROADMAP.md` or a manual list,
-`/backlog-groomer` redirects, `/retrospective` announces skipped bd steps).
+`/backlog-groomer` redirects, `/retrospective` announces skipped tracker steps).
 
 ```
 (sprint start)
@@ -418,7 +421,7 @@ backlog-groomer (skill)   → triage backlog, research new work, create issues
   ↓ then
 swarm-wave (skill)        → plan waves, execute with parallel agents   [optional]
   ↓ or                        (workflow 1 (Plan) plans, workflows 2 (Execute) + 3 (Gate) loop per wave)
-bd ready                  → normal development cycle
+node scripts/ready-walker.mjs → normal development cycle
 
 (sprint end)
 sprint-review (agent)     → proactive summary + backlog health signal
@@ -634,15 +637,15 @@ up the new version (`/plugin install vp-beads@vp-plugins`).
 npm run check
 ```
 
-Runs **13 checks in parallel** via `run-p check:*` (`npm-run-all2`) — the
+Runs **14 checks in parallel** via `run-p check:*` (`npm-run-all2`) — the
 authoritative list is the `check:*` keys in `package.json`, not this paragraph.
 They fall into four groups: **plugin** (`check:plugin` = validate-plugin.mjs,
 `check:validator` = its unit tests), **prose/style** (`check:md` = remark,
 `check:lint` = eslint, `check:sh` = shellcheck + shfmt, `check:ast-grep` +
 `check:ast-grep-test` = the structural-lint suite), **tracker** (`check:tasks` =
 validate-tasks.mjs, plus `check:ready-walker`, `check:tasks-validator`,
-`check:tasks-smoke`, `check:bootstrap` = the bd→YAML migrator), and **hooks**
-(`check:hooks`).
+`check:tasks-smoke`, `check:bootstrap` = the bd→YAML migrator, `check:beads-probe` =
+the de-integration probe), and **hooks** (`check:hooks`).
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
 Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`); `ast-grep`
 comes from the pinned `@ast-grep/cli` devDep.

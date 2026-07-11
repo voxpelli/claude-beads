@@ -250,7 +250,9 @@ One thing to *decide* rather than default: `.diarie/_archive/bd-final-export.jso
 commits looking perfectly clean. That may be exactly what you want: closed issues record
 what was **done**, which your git history, CHANGELOG and retros usually already tell you,
 while the backlog is for what comes **next**. The migrator warns and proceeds rather than
-deciding for you. If you do want that history queryable, add `!.diarie/`.
+deciding for you. If you do want that history queryable, add `!.diarie/**` — note the
+`/**`: a negation on the directory alone (`!.diarie/`) does **not** work, because git will
+not descend into an excluded directory to re-include what is inside it.
 
 ## Installation
 
@@ -367,7 +369,7 @@ skills/
     SKILL.md                            Cross-project synergy tracking workflow
     references/
       synergy-entry-format.md           Entry templates, naming, registry schema
-      synergy-bm-format.md              BM section templates for workflow 5
+      synergy-bm-format.md              BM section templates for workflow 5 (Promote to Basic Memory)
       project-name-derivation.md        Four-tier project-name derivation algorithm
   sibling-sync/
     SKILL.md                            Bilateral SYNERGY/UPSTREAM reconciliation
@@ -385,8 +387,9 @@ skills/
       command-patterns.md               Research agent selection, agent prompts
 hooks/
   hooks.json                            Hook definitions (3 event types)
-  session-start.sh                      Compaction recovery (source=compact) + sensitive-file warning, dormancy nudges, trend-review
+  session-start.sh                      Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudges, trend-review
   post-file-edit.sh                     Auto-format hooks/*.sh and scripts/*.sh with shfmt
+  post-tasks-validate.sh                Validate .diarie/tasks/ on edit; silent when clean
   post-bm-failure-classify.sh           BM error classification + recovery guidance
 ```
 
@@ -449,7 +452,7 @@ Concrete integration points:
 | vp-beads feature                                                     | vp-knowledge dependency                             |
 | -------------------------------------------------------------------- | --------------------------------------------------- |
 | Retrospective step 6                                                 | Chains into `/knowledge-gaps`                       |
-| All BM writes (upstream-tracker W6, vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema   |
+| All BM writes (upstream-tracker workflow 6 (Promote to Basic Memory), vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema   |
 | Sprint learnings                                                     | Written to the same BM graph vp-knowledge maintains |
 
 **Do not duplicate vp-knowledge hooks in vp-beads.** Both plugins are installed together; duplicating hooks causes double-fire (benign but wasteful) and creates a maintenance burden.

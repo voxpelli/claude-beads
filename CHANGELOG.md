@@ -26,18 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   any data** — that is what makes it safe to run. Skills: 8 → 9.
 - **`DESIGN-diarie-vs-beads.md`** — an evidence-first contrast (every claim cites an incident
   we actually hit), including a candid "where beads is still ahead" section.
-
-### Fixed
-
-- **`### Session completion` ordered dead writes.** It told every session to run `bd close`
-  and `bd dolt push`, both of which have been impossible since bd 1.1.0. Retargeted to the
-  YAML store.
-- **`### Do not run bd setup claude` kept a right conclusion on false reasoning** — it claimed
-  this plugin's hook "already injects equivalent workflow context plus all persistent
-  memories". Neither half was true. Rewritten.
-- The 9-type table, the 60 s write-throttle quirk, and the "Wave 2 pending" section are
-  history, not instructions; removed (`vp-beads-e42`).
-
 - **`/migrate-tracker` skill** — a guided, one-way cutover of *another* project's
   tracker off beads onto the flat-YAML store. beads 1.1.0's write-gate broke every
   repo using the global binary at once, so this is a path the siblings need, not a
@@ -57,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "retire the migrator after one run" decision, because a tool other repos run —
   whose failure mode is *silent data loss* — earns kept tests.
 - **ast-grep structural lint** (`sgconfig.yml` + `.ast-grep/rules/` +
-  `.ast-grep/rule-tests/`, two new `npm run check` stages — 10 → 12). Adopted
+  `.ast-grep/rule-tests/`). Adopted
   from vp-knowledge; see `SYNERGY-vp-knowledge.md`. Seeded with one rule,
   **`no-hardcoded-tracker-dir`**, which enforces that the tracker path segment
   lives only in `TRACKER_DIR` (`scripts/task-schema.mjs`) and every other tool
@@ -83,6 +71,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bd`** onto the tracker. The 9 bd issue types collapsed to **4**
   (`task`/`doc`/`decision`/`milestone`); bug/feature/chore/story/spike ride in
   `labels:`; epic = `task` + `parent:`.
+
+### Fixed
+
+- **`validate-tasks --json` emitted no JSON at all on an unparseable store.** The
+  YAML-parse `catch` wrote to stderr and exited, bypassing the `--json` branch — so every
+  consumer that reads stdout (both hooks) saw empty output and concluded there was nothing
+  to report, on the single commonest hand-edit mistake. `--json` now always emits JSON.
+- **The migrator destroyed decision bodies.** Normalization of bd's literal-backslash-n
+  artifact lived inside the task path; the decision path got the raw body. A decision is
+  *entirely* prose, so its whole payload rendered as one line of gibberish. vp-beads never
+  saw it — only a sibling repo would have.
+- **`!.diarie/` does not work as a gitignore negation** (git will not descend into an
+  excluded directory to re-include what is inside it). Corrected to `!.diarie/**` in the
+  README, `/migrate-tracker`, and the migrator's own error message.
+- **`scripts/beads-probe.mjs` carried the vacuous gate it was built to kill.** `git
+  ls-files` reads the index, so a staged-but-never-committed store reported as committed;
+  and counting `- id:` by regex counted *prose* (bd bodies are preserved as block scalars)
+  as tasks. Both now answer from `git ls-tree HEAD` and a real YAML parse. Daemon ownership
+  is proven from the process CWD rather than a port coincidence.
+- **`## Work-tracking substrates` still named beads "the default and richest substrate".**
+  It is dead and is no longer a substrate at all.
+- The SessionStart prime announced `Tracker: 0 ready` in repos with **no tracker** — it
+  gated on the reader alone rather than on the canonical store-plus-reader predicate. Not a
+  silent skip but a confident false report.
+- **`### Session completion` ordered dead writes.** It told every session to run `bd close`
+  and `bd dolt push`, both of which have been impossible since bd 1.1.0. Retargeted to the
+  YAML store.
+- **`### Do not run bd setup claude` kept a right conclusion on false reasoning** — it claimed
+  this plugin's hook "already injects equivalent workflow context plus all persistent
+  memories". Neither half was true. Rewritten.
+- The 9-type table, the 60 s write-throttle quirk, and the "Wave 2 pending" section are
+  history, not instructions; removed (`vp-beads-e42`).
 
 ### Removed
 

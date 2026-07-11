@@ -249,7 +249,9 @@ mis-projection.
      next to the ephemeral `.beads/` — the instinct to pattern-match is strong and
      wrong. The migrator already refuses to finish if any file it wrote is ignored
      (it asks `git check-ignore`, not the layout); if it stopped, add a negation
-     (`!.diarie/`) or narrow the offending rule. Watch for innocuous pre-existing
+     (`!.diarie/**` — the `/**` matters; `!.diarie/` alone does NOT work, since git will
+     not descend into an excluded directory) or narrow the offending rule. Watch for
+     innocuous pre-existing
      lines like `*.jsonl` or `_archive/` — either one silently swallows the bd
      archive, and `git add -A` will not say a word.
    - **The plugin's ephemeral and private artifacts must BE ignored** — if the
