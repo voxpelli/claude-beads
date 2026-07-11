@@ -476,3 +476,76 @@ tasks:
       installs the plugin's package.json. That is disk, not runtime — and it is the most
       concrete argument for extraction there is.
     updated: '2026-07-11'
+  - id: vp-beads-vcb
+    title: 'check:prose-commands — verify every command the plugin tells agents to run actually exists'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - feature
+    acceptance_criteria:
+      - "extracts every `diarie <sub> [--flags]` and `node <path>` invocation from hooks/, skills/, agents/, CLAUDE.md and README.md"
+      - "resolves each against the real CLI: unknown subcommand, unknown flag, or a flag on the wrong subcommand FAILS the check"
+      - "a named file path that does not exist FAILS the check"
+      - "added to `npm run check`, and it goes RED against the three fossils this sprint shipped: the session prime's dead `ready-walker.mjs`, `ready --stale`, and the bd numeric priority in /retrospective's template"
+    description: >-
+      Sprint 16 shipped a dead command into EVERY session — `hooks/session-start.sh` told each
+      one to "Find work with `node scripts/ready-walker.mjs`", a file deleted two commits
+      earlier. The commit that swept 11 instruction files named the exact root cause —
+      "nothing verifies that the commands this plugin tells agents to run actually exist" —
+      and then proved it by missing the highest-traffic surface in the repo.
+
+
+      `npm run check` was green through all of it. It checks that the CODE works; nothing
+      checks that the PROSE tells the truth about the code. That is the gap: this plugin is
+      mostly prose, and its prose is executable instructions.
+
+
+      Related fossils the same check would have caught: `diarie ready --stale` (a `stats`
+      flag — exits 1 on `ready`), and `/retrospective`'s task template emitting `priority: 2`
+      + a string `acceptance_criteria`, both HARD ERRORS in the gate the next line tells you
+      to run.
+    updated: '2026-07-11'
+  - id: vp-beads-arc
+    title: Mark UPSTREAM-brew--beads.md as an archive of a RETIRED dependency
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - the file states at the top that bd is retired here and the entries are historical, not actionable
+      - /deintegrate-beads still resolves its citations (the 15 entries describe the machinery it disarms)
+      - a future trend review does not re-triage entries nobody will ever act on
+    description: >-
+      15 entries, 0 resolved, and the dependency is gone — the Sprint 16 trend review had to
+      decide what to do with the largest UPSTREAM surface in the repo when the tool it tracks
+      is no longer used.
+
+
+      It is not stale and must not be deleted: it is load-bearing for /deintegrate-beads,
+      whose entire job is disarming the machinery those entries describe. It is *historical*,
+      and should say so, or every fourth sprint re-litigates it.
+    updated: '2026-07-11'
+  - id: vp-beads-syn
+    title: Trend-review SYNERGY-vp-knowledge.md (33 entries, two cycles overdue)
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - chore
+    acceptance_criteria:
+      - entries predating the bd migration are re-checked (several may reference a substrate that no longer exists)
+      - the NDJSON extraction is logged as an Extraction Candidate with its outcome (acted on — @voxpelli/ndjson)
+      - the ast-grep rule adoption is logged as a Shared Pattern, INCLUDING the deliberate decline of bash-require-set-euo-pipefail
+    description: >-
+      The largest synergy surface in the repo and it has not had a trend pass in two cycles.
+      Flagged by the Sprint 16 trend review.
+
+
+      The declined rule is the interesting entry, not the adopted ones: a shared pattern with a
+      documented, principled divergence is healthier than silent partial adoption. vp-claude's
+      `bash-require-set-euo-pipefail` is correct THERE and actively harmful HERE — a Claude Code
+      hook that aborts on any failing command blocks the tool call, and these hooks are required
+      to degrade quietly.
+    updated: '2026-07-11'

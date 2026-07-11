@@ -92,7 +92,14 @@ export function lintTasks (files) {
       if (!isObject(t)) { err(name, `task at index ${i} is not a mapping`); continue }
       const label = t['id'] ?? `index ${i}`
       if (!isNil(t['deps']) && !isUnknownArray(t['deps'])) err(name, `task ${label}: "deps" must be a list (got ${typeof t['deps']})`)
-      if (!isNil(t['acceptance_criteria']) && !isUnknownArray(t['acceptance_criteria'])) err(name, `task ${label}: "acceptance_criteria" must be a list (got ${typeof t['acceptance_criteria']})`)
+      if (!isNil(t['acceptance_criteria'])) {
+        if (!isUnknownArray(t['acceptance_criteria'])) err(name, `task ${label}: "acceptance_criteria" must be a list (got ${typeof t['acceptance_criteria']})`)
+        // The ELEMENTS, not just the container. `labels` was checked this way and
+        // `acceptance_criteria` was not — and the gap bit immediately: an unquoted `priority: 2`
+        // inside a criterion made YAML parse that element as a MAP, the list stayed an Array,
+        // and validate waved it through. Only the loader's reject-warn caught it, on stderr.
+        else if (!isStringArray(t['acceptance_criteria'])) err(name, `task ${label}: "acceptance_criteria" entries must all be strings (an unquoted \`key: value\` becomes a map — quote it)`)
+      }
       if (!isNil(t['labels'])) {
         if (!isUnknownArray(t['labels'])) err(name, `task ${label}: "labels" must be a list (got ${typeof t['labels']})`)
         else if (!isStringArray(t['labels'])) err(name, `task ${label}: "labels" entries must all be strings`)
