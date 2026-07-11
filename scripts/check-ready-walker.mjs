@@ -5,7 +5,7 @@
  * scripts/check-validator.mjs idiom (assert + pass/fail counters).
  */
 
-import { computeReady, computeStats, nsId } from './ready-walker.mjs'
+import { computeReady, computeStats, nsId } from 'diarie'
 
 let passed = 0
 let failed = 0

@@ -15,8 +15,9 @@
  * reporting success, which is the worst failure mode a cleanup tool can have:
  *
  *   - the "is the migration trusted" gate passed for a store that did not exist
- *     (validate-tasks returns clean+exit 0 when it finds nothing) AND for a store that
- *     existed but was EMPTY (`tasks: []`). Hence `taskCount`, not `clean`.
+ *     (validate-tasks used to return clean+exit 0 when it found nothing — that is now
+ *     ENOSTORE) AND for a store that existed but was EMPTY (`tasks: []` — still clean,
+ *     still exit 0, and rightly so). Hence `taskCount`, not `clean`.
  *   - `core.hooksPath` is stored ABSOLUTE, and may be set at global scope where a
  *     `--local --unset` silently cannot clear it. Hence `origin` + `scope`.
  *   - unsetting hooksPath RE-ENABLES `.git/hooks/`, which may hold bd's own dormant
@@ -44,7 +45,7 @@ import {
 
 import yaml from 'js-yaml'
 
-import { TRACKER_DIR } from './task-schema.mjs'
+import { TRACKER_DIR } from 'diarie/schema'
 
 /** Hook names bd installs. */
 const BD_HOOKS = new Set(['pre-commit', 'post-merge', 'pre-push', 'post-checkout', 'prepare-commit-msg'])
@@ -67,10 +68,11 @@ function run (cmd, args) {
 /**
  * Is the flat-YAML migration trustworthy enough to disarm bd?
  *
- * `clean` is NOT sufficient and neither is exit 0: validate-tasks returns
- * `{clean:true, skipped:true}` when there is no store at all, and a plain
- * `{clean:true}` for a store holding `tasks: []`. Only a non-zero task count proves
- * work actually migrated.
+ * `clean` is NOT sufficient and neither is exit 0. An ABSENT store is now an
+ * error (ENOSTORE) rather than a cheerful `{clean:true, skipped:true}` — but an
+ * EMPTY store still validates clean at exit 0, exactly as it should. So a green
+ * validate still proves nothing about whether work was migrated. Only a non-zero
+ * task count does, which is why this parses the YAML itself.
  *
  * @param {string} root
  * @returns {any}

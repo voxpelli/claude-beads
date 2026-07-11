@@ -6,7 +6,7 @@
  * scripts/check-validator.mjs.
  */
 
-import { lintTasks } from '../validate-tasks.mjs'
+import { lintTasks } from 'diarie'
 
 let passed = 0
 let failed = 0

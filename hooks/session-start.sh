@@ -23,6 +23,36 @@
 
 set -euo pipefail
 
+# --- Resolve the `diarie` tracker CLI. ---
+#
+# Four rungs. The last is the only one a real consumer ever reaches: this is the
+# PLUGIN's hook, so it runs inside someone else's project, where `diarie` is not on
+# PATH and there is no `diarie/` in their tree. session-start gets no plugin-root
+# argument, so derive it from $0 (which IS ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh).
+#
+# Callers MUST pass --root "$PWD". `.diarie/` is COMMITTED, so a plugin release ships
+# vp-beads' own backlog inside the marketplace cache; a diarie invoked from the plugin
+# that fell back to walking up from cwd would report OUR tasks as the user's. The CLI
+# now errors (ENOSTORE) rather than inventing an empty backlog, but the right root is
+# still ours to supply.
+_hook_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+_plugin_root=$(dirname -- "$_hook_dir")
+
+# Emits the full `ready` invocation prefix, not just a binary name: the installed CLI
+# takes `ready` as a SUBCOMMAND, while the in-repo entry (diarie/lib/ready.js) IS ready.
+# Returning a bare name would make callers append `ready` to the wrong form.
+diarie_ready_cmd() {
+	if command -v diarie >/dev/null 2>&1; then
+		echo "diarie ready"
+	elif [ -x "$PWD/node_modules/.bin/diarie" ]; then
+		echo "$PWD/node_modules/.bin/diarie ready"
+	elif [ -f "$PWD/diarie/lib/ready.js" ]; then
+		echo "node $PWD/diarie/lib/ready.js"
+	elif [ -f "$_plugin_root/diarie/lib/ready.js" ]; then
+		echo "node $_plugin_root/diarie/lib/ready.js"
+	fi
+}
+
 # SessionStart delivers a JSON event on stdin carrying `source`
 # (startup|resume|clear|compact). Read it defensively — empty/absent stdin or
 # parse failure falls through to the startup branch. The `cat` is a blocking
@@ -79,10 +109,10 @@ if [ "$source" = "compact" ]; then
 	# `diarie` CLI when installed; else the in-repo reader. Both emit a JSON
 	# array of task rows for `--filter in_progress`. ---
 	in_progress_json=""
-	if command -v diarie >/dev/null 2>&1; then
-		in_progress_json=$(diarie ready --filter in_progress --format json 2>/dev/null || echo "")
-	elif [ -f scripts/ready-walker.mjs ]; then
-		in_progress_json=$(node scripts/ready-walker.mjs --filter in_progress --format json 2>/dev/null || echo "")
+	_ready=$(diarie_ready_cmd)
+	if [ -n "$_ready" ]; then
+		# shellcheck disable=SC2086
+		in_progress_json=$($_ready --filter in_progress --json --root "$PWD" 2>/dev/null || echo "")
 	fi
 	if [ -n "$in_progress_json" ] && [ "$in_progress_json" != "[]" ]; then
 		summary=$(printf '%s' "$in_progress_json" | jq -r '.[0:5][] | "  \(.id) \(.title)"' 2>/dev/null || echo "")
@@ -167,17 +197,15 @@ fi
 # skip, it is a confident false report, which is worse.
 tracker_cmd=""
 if compgen -G ".diarie/tasks/tasks-*.yml" >/dev/null 2>&1; then
-	if command -v diarie >/dev/null 2>&1; then
-		tracker_cmd="diarie ready"
-	elif [ -f scripts/ready-walker.mjs ]; then
-		tracker_cmd="node scripts/ready-walker.mjs"
-	fi
+	tracker_cmd=$(diarie_ready_cmd)
 fi
 
 if [ -n "$tracker_cmd" ]; then
-	queue_json=$($tracker_cmd --format json 2>/dev/null || echo "")
+	# shellcheck disable=SC2086
+	queue_json=$($tracker_cmd --json --root "$PWD" 2>/dev/null || echo "")
 	if [ -n "$queue_json" ]; then
-		claims_json=$($tracker_cmd --filter in_progress --format json 2>/dev/null || echo "[]")
+		# shellcheck disable=SC2086
+		claims_json=$($tracker_cmd --filter in_progress --json --root "$PWD" 2>/dev/null || echo "[]")
 		[ -n "$claims_json" ] || claims_json="[]"
 
 		n_ready=$(printf '%s' "$queue_json" | jq -r '.ready | length' 2>/dev/null || echo "")

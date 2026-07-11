@@ -14,22 +14,33 @@
  * Honest scope: this catches dep-graph rot at check time — the same guarantee
  * `bd graph check` gave (a snapshot, not a structural invariant). It cannot
  * make an agent write its plan-updates back; it makes the rot visible within
- * one `npm run check`. Substrate-optional: exits 0 when no tasks files exist.
+ * one `npm run check`.
+ *
+ * NOT substrate-optional any more. It used to exit 0 with `{clean:true,
+ * skipped:true}` when no store existed — which made an ABSENT store and a CLEAN
+ * one indistinguishable, and forced `beads-probe` to test `skipped === false` just
+ * to know whether the gate had been real. A missing store is now ENOSTORE and a
+ * non-zero exit; the `skipped` flag is gone with the defect it papered over. An
+ * EMPTY store is still perfectly clean — see store.js.
+ *
+ * TEMPORARY: the `main()` at the bottom keeps `node diarie/lib/validate.js`
+ * runnable so `npm run check` stays green across the move. Stage 2 replaces it
+ * with `diarie validate` and deletes it.
  */
 
-import { existsSync } from 'node:fs'
-import { readdir, readFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  argv, env, exit, stdout,
+  argv, exit, stderr, stdout,
 } from 'node:process'
 
 import yaml from 'js-yaml'
 
 import {
-  ID_RE, isNil, RATCHET_TYPES, REQUIRED_FIELDS, TRACKER_DIR, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
-} from './scripts/task-schema.mjs'
+  ID_RE, isNil, RATCHET_TYPES, REQUIRED_FIELDS, VALID_PRIORITIES, VALID_STATUSES, VALID_TYPES,
+} from './schema.js'
+import { listTaskFiles, NoStoreError, resolveRoot, slugOf } from './store.js'
 
 /**
  * Globalize a bare id to its file's slug namespace (`slug/id`); pass through
@@ -211,38 +222,46 @@ function findCycles (deps) {
   return cycles
 }
 
-/** CLI entry. */
+/**
+ * TEMPORARY CLI entry — replaced by `diarie validate` in Stage 2. See the header.
+ */
 async function main () {
-  // TASKS_ROOT lets the smoke test point the CLI at test/fixtures/ without
-  // touching the repo's real tracker dir. Unset in normal `npm run check`.
-  const root = env.TASKS_ROOT ?? new URL('.', import.meta.url).pathname.replace(/\/$/, '')
-  const tasksDir = join(root, TRACKER_DIR, 'tasks')
-  const json = argv.includes('--json')
+  const args = argv.slice(2)
+  const json = args.includes('--json')
+  const rootIdx = args.indexOf('--root')
+  const rootArg = rootIdx !== -1 ? args[rootIdx + 1] : undefined
 
-  if (!existsSync(tasksDir)) {
-    if (!json) console.log(`No ${TRACKER_DIR}/tasks/ directory found — skipping task validation.`)
-    else stdout.write(JSON.stringify({ clean: true, skipped: true, errors: [], warnings: [] }) + '\n')
-    return
+  /** @type {string} */
+  let root
+  try {
+    root = resolveRoot({ root: rootArg })
+  } catch (err) {
+    // A missing store is an ERROR, not a clean one. This replaces the old
+    // `{clean:true, skipped:true}` exit-0, which made "no store" and "no problems"
+    // indistinguishable to every consumer.
+    if (err instanceof NoStoreError) {
+      if (json) stdout.write(JSON.stringify({ error: err.message, code: err.code }, undefined, 2) + '\n')
+      else stderr.write(`diarie: ${err.message}\n`)
+      exit(1)
+    }
+    throw err
   }
-  const entries = await readdir(tasksDir)
-  const names = entries.filter(f => /^tasks-.+\.ya?ml$/.test(f))
+
+  const { ignored, names, tasksDir } = await listTaskFiles(root)
+
   // Phantom-files guard: a dir of non-matching files is not the same as an empty
   // substrate — surface it rather than skip silently ("silent-skip is a bug").
-  const ignored = entries.filter(f => !f.startsWith('.') && !/^tasks-.+\.ya?ml$/.test(f))
   if (ignored.length && !names.length && !json) {
-    console.warn(`Warning: ${TRACKER_DIR}/tasks/ has ${ignored.length} file(s) not matching tasks-*.yml (ignored): ${ignored.join(', ')}\n  Rename to tasks-<slug>.yml to include them in validation.\n`)
-  }
-  if (!names.length) {
-    if (!json) console.log(`No ${TRACKER_DIR}/tasks/tasks-*.yml found — skipping task validation.`)
-    else stdout.write(JSON.stringify({ clean: true, skipped: true, errors: [], warnings: [] }) + '\n')
-    return
+    console.warn(`Warning: tasks/ has ${ignored.length} file(s) not matching tasks-*.yml (ignored): ${ignored.join(', ')}\n  Rename to tasks-<slug>.yml to include them in validation.\n`)
   }
 
+  // An EMPTY store is a legitimately clean store — it is an ABSENT one that is an
+  // error, and that was caught above. No `skipped` flag: there is nothing to skip.
   const files = []
   /** @type {string[]} */
   const parseErrors = []
   for (const name of names) {
-    const slug = name.replace(/^tasks-/, '').replace(/\.ya?ml$/, '')
+    const slug = slugOf(name)
     let doc
     try {
       doc = /** @type {any} */ (yaml.load(await readFile(join(tasksDir, name), 'utf8')))
@@ -282,5 +301,5 @@ async function main () {
 }
 
 if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
-  main().catch(err => { console.error(err); exit(1) })
+  main().catch(err => { stderr.write(String(err?.stack ?? err) + '\n'); exit(1) })
 }

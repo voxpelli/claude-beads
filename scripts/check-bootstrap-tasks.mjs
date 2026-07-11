@@ -21,7 +21,7 @@ import {
   existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync,
 } from 'node:fs'
 
-import { groupTasks, normalizeBody, projectLive, splitBody } from './bootstrap-tasks.mjs'
+import { groupTasks, normalizeBody, projectLive, splitBody } from '../diarie/lib/migrate/bootstrap.js'
 
 let passed = 0
 let failed = 0
@@ -183,7 +183,7 @@ const epicSlugs = new Map([['e-1', 'migration']])
 
 console.log('\nCLI guards (the two data-loss stops)')
 
-const SCRIPT = fileURLToPath(new URL('bootstrap-tasks.mjs', import.meta.url))
+const SCRIPT = fileURLToPath(new URL('../diarie/lib/migrate/bootstrap.js', import.meta.url))
 const EXPORT = fileURLToPath(new URL('../.diarie/_archive/bd-final-export.jsonl', import.meta.url))
 
 /**

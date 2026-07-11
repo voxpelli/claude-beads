@@ -16,7 +16,7 @@ export default [
   ...voxpelli({
     noMocha: true,
     semi: false,
-    cliFiles: ['scripts/**/*.mjs', 'validate-plugin.mjs', 'validate-tasks.mjs'],
+    cliFiles: ['scripts/**/*.mjs', 'diarie/**/*.js', 'validate-plugin.mjs'],
   }),
   {
     name: 'vp-beads/repo-style',

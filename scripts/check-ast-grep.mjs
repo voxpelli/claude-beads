@@ -16,7 +16,7 @@ const formatArgs = inCi ? ['--format', 'github'] : []
 
 const result = spawnSync(
   'ast-grep',
-  ['scan', ...formatArgs, 'scripts/', 'validate-tasks.mjs', 'validate-plugin.mjs'],
+  ['scan', ...formatArgs, 'scripts/', 'diarie/lib/', 'validate-plugin.mjs'],
   { stdio: 'inherit' }
 )
 

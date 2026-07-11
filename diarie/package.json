@@ -1,0 +1,29 @@
+{
+  "name": "diarie",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A flat-YAML task tracker that is just files. No daemon, no database, no git hooks.",
+  "author": "Pelle Wessman <pelle@kodfabrik.se> (https://kodfabrik.se/)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
+  "bin": {
+    "diarie": "cli.js"
+  },
+  "exports": {
+    ".": "./lib/index.js",
+    "./schema": "./lib/schema.js"
+  },
+  "files": [
+    "cli.js",
+    "lib/**/*.js"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

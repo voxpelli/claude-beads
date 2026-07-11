@@ -32,16 +32,26 @@ esac
 PROJECT_ROOT="${FILE_PATH%/.diarie/tasks/*}"
 [ -n "$PROJECT_ROOT" ] && [ -d "$PROJECT_ROOT/.diarie/tasks" ] || exit 0
 
-# Resolve a validator, preferring the project's own. Silent if none is runnable —
-# e.g. a marketplace plugin cache has no node_modules, so the plugin copy cannot
-# import js-yaml. A hook that cannot validate must say nothing, not spam.
+# Resolve a validator. Four rungs, and the LAST one is the only one a real consumer
+# ever reaches: these are the plugin's hooks, so they run inside someone else's
+# project, where `diarie` is not on PATH and there is no `diarie/` in their tree.
+#
+# Every rung passes --root "$PROJECT_ROOT" explicitly. That is not belt-and-braces:
+# `.diarie/` is COMMITTED, so a plugin release ships vp-beads' OWN backlog inside the
+# marketplace cache. A diarie invoked from the plugin that fell back to walking up
+# from cwd would find the plugin's store and cheerfully validate *our* tasks while
+# reporting on *theirs*. Explicit root, always.
+#
+# Silent if none is runnable — a hook that cannot validate must say nothing, not spam.
 result=""
 if command -v diarie >/dev/null 2>&1; then
-	result=$(cd "$PROJECT_ROOT" && diarie validate --json 2>/dev/null || true)
-elif [ -f "$PROJECT_ROOT/validate-tasks.mjs" ]; then
-	result=$(cd "$PROJECT_ROOT" && node validate-tasks.mjs --json 2>/dev/null || true)
-elif [ -n "$PLUGIN_ROOT" ] && [ -f "$PLUGIN_ROOT/validate-tasks.mjs" ]; then
-	result=$(TASKS_ROOT="$PROJECT_ROOT" node "$PLUGIN_ROOT/validate-tasks.mjs" --json 2>/dev/null || true)
+	result=$(diarie validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
+elif [ -x "$PROJECT_ROOT/node_modules/.bin/diarie" ]; then
+	result=$("$PROJECT_ROOT/node_modules/.bin/diarie" validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
+elif [ -f "$PROJECT_ROOT/diarie/lib/validate.js" ]; then
+	result=$(node "$PROJECT_ROOT/diarie/lib/validate.js" --json --root "$PROJECT_ROOT" 2>/dev/null || true)
+elif [ -n "$PLUGIN_ROOT" ] && [ -f "$PLUGIN_ROOT/diarie/lib/validate.js" ]; then
+	result=$(node "$PLUGIN_ROOT/diarie/lib/validate.js" --json --root "$PROJECT_ROOT" 2>/dev/null || true)
 fi
 [ -n "$result" ] || exit 0
 

@@ -14,11 +14,11 @@
     "check:plugin": "node validate-plugin.mjs",
     "check:ready-walker": "node scripts/check-ready-walker.mjs",
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
-    "check:tasks": "node validate-tasks.mjs",
+    "check:tasks": "node diarie/lib/validate.js",
     "check:tasks-smoke": "node scripts/check-tasks-smoke.mjs",
     "check:tasks-validator": "node scripts/check-tasks-validator.mjs",
     "check:validator": "node scripts/check-validator.mjs",
-    "fix:ast-grep": "ast-grep scan --update-all scripts/ validate-tasks.mjs validate-plugin.mjs"
+    "fix:ast-grep": "ast-grep scan --update-all scripts/ diarie/lib/ validate-plugin.mjs"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.1",
@@ -50,7 +50,13 @@
       "remark-preset-lint-consistent",
       "remark-preset-lint-recommended",
       "remark-validate-links",
-      ["remark-lint-unordered-list-marker-style", "-"]
+      [
+        "remark-lint-unordered-list-marker-style",
+        "-"
+      ]
     ]
-  }
+  },
+  "workspaces": [
+    "diarie"
+  ]
 }

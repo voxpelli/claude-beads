@@ -35,7 +35,7 @@ import {
 
 import yaml from 'js-yaml'
 
-import { TRACKER_DIR, VALID_TYPES } from './task-schema.mjs'
+import { TRACKER_DIR, VALID_TYPES } from '../schema.js'
 
 /**
  * bd status → task-schema status. `deferred` has no exact analog — see loss

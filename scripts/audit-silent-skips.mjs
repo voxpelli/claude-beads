@@ -19,7 +19,7 @@
  * testable in isolation (see `scripts/check-validator.mjs`).
  */
 
-import { TRACKER_DIR } from './task-schema.mjs'
+import { TRACKER_DIR } from 'diarie/schema'
 
 // Module-scope line helpers — pure, so they are not re-created per call.
 const blank = (/** @type {string} */ slice) => slice.replaceAll(/[^\n]/g, ' ')

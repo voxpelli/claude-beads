@@ -67,8 +67,8 @@ import {
 
 import yaml from 'js-yaml'
 
-import { PRIORITY_MAP, STATUS_MAP, TYPE_MAP } from './migrate-from-bd.mjs'
-import { TRACKER_DIR, VALID_STATUSES, VALID_TYPES } from './task-schema.mjs'
+import { PRIORITY_MAP, STATUS_MAP, TYPE_MAP } from './bd-map.js'
+import { TRACKER_DIR, VALID_STATUSES, VALID_TYPES } from '../schema.js'
 
 /** A slug becomes a `tasks-<slug>.yml` filename — keep it filesystem-plain. */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/

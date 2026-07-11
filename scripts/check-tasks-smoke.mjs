@@ -3,10 +3,16 @@
  *
  * The unit tests (check-ready-walker / check-tasks-validator) exercise the pure
  * functions with inline data and never touch disk. This test closes that gap: it
- * spawns the real `ready-walker.mjs` and `validate-tasks.mjs` CLIs against a
- * committed fixture (test/fixtures/.diarie/tasks/), via the `TASKS_ROOT` env
- * seam, so the file-IO path (loadTasks, YAML parse, flag dispatch, exit codes)
- * actually runs in CI. Mirrors the spawn-based check-hooks.mjs pattern.
+ * spawns the real `diarie/lib/ready.js` and `diarie/lib/validate.js` entries
+ * against a committed fixture (diarie/test/fixtures/.diarie/tasks/), via the
+ * `TASKS_ROOT` env seam, so the file-IO path (resolveRoot, loadTasks, YAML parse,
+ * flag dispatch, exit codes) actually runs in CI.
+ *
+ * `run()` keeps stdout and stderr SEPARATE, deliberately. The tracker's
+ * absent-store defect survived for so long precisely because its only complaint
+ * went to stderr while stdout carried a well-formed, fictional empty backlog — and
+ * ten call sites pipe stderr to /dev/null. A test that concatenates the two streams
+ * cannot tell the difference, and so cannot catch a regression of that bug.
  */
 
 import { spawnSync } from 'node:child_process'
@@ -18,10 +24,14 @@ import {
   mkdirSync, mkdtempSync, rmSync, writeFileSync,
 } from 'node:fs'
 
-import { TRACKER_DIR } from './task-schema.mjs'
+import { TRACKER_DIR } from 'diarie/schema'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-const FIXTURES = join(ROOT, 'test', 'fixtures')
+const FIXTURES = join(ROOT, 'diarie', 'test', 'fixtures')
+
+/** The two substrate entries, at their post-move paths. */
+const READY = 'diarie/lib/ready.js'
+const VALIDATE = 'diarie/lib/validate.js'
 
 let passed = 0
 let failed = 0
@@ -35,12 +45,16 @@ function assert (name, cond) {
 }
 
 /**
- * Run a substrate CLI with a given TASKS_ROOT; return { code, out }.
+ * Run a substrate entry with a given TASKS_ROOT.
  *
- * @param {string} script   path relative to repo root (e.g. 'scripts/ready-walker.mjs')
+ * `out` is stdout ONLY and `err` is stderr ONLY — never merge them (see header).
+ * `both` is offered for the assertions that genuinely don't care which stream a
+ * human-readable message landed on.
+ *
+ * @param {string} script   path relative to repo root (e.g. 'diarie/lib/ready.js')
  * @param {string[]} args
  * @param {string} tasksRoot
- * @returns {{ code: number, out: string }}
+ * @returns {{ code: number, out: string, err: string, both: string }}
  */
 function run (script, args, tasksRoot) {
   const r = spawnSync('node', [join(ROOT, script), ...args], {
@@ -48,30 +62,32 @@ function run (script, args, tasksRoot) {
     env: { ...env, TASKS_ROOT: tasksRoot },
     encoding: 'utf8',
   })
-  return { code: r.status ?? 1, out: (r.stdout ?? '') + (r.stderr ?? '') }
+  const out = r.stdout ?? ''
+  const err = r.stderr ?? ''
+  return { code: r.status ?? 1, out, err, both: out + err }
 }
 
 console.log('ready-walker CLI (against test/fixtures)')
 
 {
-  const { code, out } = run('scripts/ready-walker.mjs', [], FIXTURES)
+  const { both: out, code } = run(READY, [], FIXTURES)
   assert('default: exit 0', code === 0)
   assert('default: shows the ready cross-file/no-dep tasks', /beta\/T-2/.test(out) && /beta\/T-1/.test(out) && /alpha\/T-2/.test(out))
   assert('default: omits the blocked task (alpha/T-3)', !/alpha\/T-3 /.test(out))
 }
 {
-  const { code, out } = run('scripts/ready-walker.mjs', ['--format', 'json'], FIXTURES)
+  const { both: out, code } = run(READY, ['--format', 'json'], FIXTURES)
   const data = JSON.parse(out)
   assert('--format json: exit 0 + parses', code === 0 && Array.isArray(data.ready))
   assert('--format json: ready includes beta/T-2', data.ready.some((/** @type {any} */ t) => t.id === 'beta/T-2'))
   assert('--format json: provenance fields stripped', !out.includes('_slug') && !out.includes('_file'))
 }
 {
-  const { code, out } = run('scripts/ready-walker.mjs', ['--stats'], FIXTURES)
+  const { both: out, code } = run(READY, ['--stats'], FIXTURES)
   assert('--stats: exit 0 + counts all 9 tasks (6 task + doc/decision/milestone)', code === 0 && /total 9/.test(out))
 }
 {
-  const { code, out } = run('scripts/ready-walker.mjs', ['--format', 'json'], FIXTURES)
+  const { both: out, code } = run(READY, ['--format', 'json'], FIXTURES)
   const data = JSON.parse(out)
   assert(
     'default ready set never includes the doc/decision/milestone fixtures (type gate, decision vp-beads-etm)',
@@ -79,7 +95,7 @@ console.log('ready-walker CLI (against test/fixtures)')
   )
 }
 {
-  const { code, out } = run('scripts/ready-walker.mjs', ['--blocked'], FIXTURES)
+  const { both: out, code } = run(READY, ['--blocked'], FIXTURES)
   assert('--blocked: exit 0 + shows the genuinely blocked task', code === 0 && /alpha\/T-3/.test(out))
   assert(
     '--blocked: never includes the doc/decision/milestone fixtures either (type gate applies to all three buckets)',
@@ -87,45 +103,83 @@ console.log('ready-walker CLI (against test/fixtures)')
   )
 }
 {
-  const { code, out } = run('scripts/ready-walker.mjs', ['--stale', '--days', '30'], FIXTURES)
+  const { both: out, code } = run(READY, ['--stale', '--days', '30'], FIXTURES)
   assert('--stale: flags the old in_progress task', code === 0 && /alpha\/T-4/.test(out))
 }
 {
-  const { code, out } = run('scripts/ready-walker.mjs', ['--filter', 'in_progress'], FIXTURES)
+  const { both: out, code } = run(READY, ['--filter', 'in_progress'], FIXTURES)
   assert('--filter in_progress: shows alpha/T-4', code === 0 && /alpha\/T-4/.test(out))
 }
 {
-  const { code } = run('scripts/ready-walker.mjs', ['--filter', 'bogus'], FIXTURES)
+  const { code } = run(READY, ['--filter', 'bogus'], FIXTURES)
   assert('--filter <invalid>: exits 1', code === 1)
 }
 {
-  const { code } = run('scripts/ready-walker.mjs', ['--stats', '--days', 'abc'], FIXTURES)
+  const { code } = run(READY, ['--stats', '--days', 'abc'], FIXTURES)
   assert('--days <non-numeric>: exits 1', code === 1)
 }
 
 console.log('validate-tasks CLI (against test/fixtures)')
 
 {
-  const { code, out } = run('validate-tasks.mjs', [], FIXTURES)
+  const { both: out, code } = run(VALIDATE, [], FIXTURES)
   assert('clean fixtures: exit 0 + "passed (2 file(s))"', code === 0 && /passed \(2 file\(s\)\)/.test(out))
 }
 {
-  const { code, out } = run('validate-tasks.mjs', ['--json'], FIXTURES)
+  const { both: out, code } = run(VALIDATE, ['--json'], FIXTURES)
   assert('--json clean: exit 0 + {clean:true}', code === 0 && JSON.parse(out).clean === true)
 }
+console.log('\nthe absent-vs-empty distinction (the defect this contract exists to kill)')
+
+// An ABSENT store is an ERROR. This assertion used to read `exit 0 + skips` — it
+// PINNED the bug. If it ever goes red again, do NOT "repair" it by restoring
+// exit-0-on-absent-store: that reinstates a tracker which, when it cannot find its
+// store, prints an empty backlog to stdout and its only complaint to a stderr that
+// ten call sites discard.
 {
-  const { code, out } = run('validate-tasks.mjs', [], join(tmpdir(), 'vp-beads-nonexistent-xyz'))
-  assert('no substrate: exit 0 + skips', code === 0 && /skipping/.test(out))
+  const nowhere = join(tmpdir(), 'vp-beads-nonexistent-xyz')
+  const { code, err, out } = run(READY, ['--json'], nowhere)
+  let parsed
+  try { parsed = JSON.parse(out) } catch { /* stays undefined */ }
+  assert('ready, absent store: exits NON-ZERO', code !== 0)
+  assert('ready, absent store: ENOSTORE on STDOUT (never stderr — that stream is discarded)',
+    parsed?.code === 'ENOSTORE' && !err.includes('ENOSTORE'))
+  assert('ready, absent store: does NOT emit a fictional empty backlog', parsed?.ready === undefined)
+}
+{
+  const nowhere = join(tmpdir(), 'vp-beads-nonexistent-xyz')
+  const { code, out } = run(VALIDATE, ['--json'], nowhere)
+  let parsed
+  try { parsed = JSON.parse(out) } catch { /* stays undefined */ }
+  assert('validate, absent store: exits NON-ZERO with ENOSTORE', code !== 0 && parsed?.code === 'ENOSTORE')
+  assert('validate, absent store: never claims to be clean', parsed?.clean !== true)
+  assert('validate: the `skipped` flag is GONE (it only existed to paper over exit-0-on-absent)',
+    parsed?.skipped === undefined)
 }
 
-console.log('validate-tasks CLI (error paths, via tmpdir)')
+// ...and the CONVERSE. An EMPTY store is a perfectly legitimate, clean, exit-0
+// answer. Absent and empty must never look alike again — in EITHER direction.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'vp-empty-'))
+  try {
+    mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
+    const ready = run(READY, ['--json'], dir)
+    const valid = run(VALIDATE, ['--json'], dir)
+    assert('ready, EMPTY-but-present store: exit 0 + an empty backlog',
+      ready.code === 0 && JSON.parse(ready.out).ready.length === 0)
+    assert('validate, EMPTY-but-present store: exit 0 + clean',
+      valid.code === 0 && JSON.parse(valid.out).clean === true)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
+console.log('\nvalidate-tasks CLI (error paths, via tmpdir)')
 
 {
   const dir = mkdtempSync(join(tmpdir(), 'vp-tasks-'))
   try {
     mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
     writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'), 'tasks: [ : : not yaml')
-    const { code, out } = run('validate-tasks.mjs', [], dir)
+    const { both: out, code } = run(VALIDATE, [], dir)
     assert('malformed YAML: exits 1 with a clear message', code === 1 && /invalid YAML/.test(out))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
@@ -138,7 +192,7 @@ console.log('validate-tasks CLI (error paths, via tmpdir)')
   try {
     mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
     writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'), 'tasks:\n  - id: T-1\n    title: "unclosed\n')
-    const { code, out } = run('validate-tasks.mjs', ['--json'], dir)
+    const { both: out, code } = run(VALIDATE, ['--json'], dir)
     let parsed
     try { parsed = JSON.parse(out) } catch { /* stays undefined */ }
     assert('--json on UNPARSEABLE yaml still emits JSON (the contract) with the error',
@@ -150,7 +204,7 @@ console.log('validate-tasks CLI (error paths, via tmpdir)')
   try {
     mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
     writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'), 'tasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n  - id: T-1\n    title: b\n    status: pending\n    type: task\n')
-    const { code, out } = run('validate-tasks.mjs', [], dir)
+    const { both: out, code } = run(VALIDATE, [], dir)
     assert('duplicate id: exits 1 with "duplicate id"', code === 1 && /duplicate id/.test(out))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
