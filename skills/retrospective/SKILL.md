@@ -39,8 +39,8 @@ sprint's worth of work.
 ### Tracker availability
 
 The flat-YAML tracker is available iff a `.diarie/tasks/tasks-*.yml` file exists
-**and** the tracker reader (`node scripts/ready-walker.mjs`, or the `diarie` CLI)
-is runnable; this component is **Tier C** per CLAUDE.md
+**and** the `diarie` CLI is runnable; a missing store is an **error** (`ENOSTORE`,
+non-zero exit), never an empty backlog. This component is **Tier C** per CLAUDE.md
 `### Files-availability convention`. Steps 1–3 and the UPSTREAM / SYNERGY /
 Basic Memory parts of the trend review are tracker-independent and run unchanged.
 When the tracker is **unavailable**, the three tracker-dependent steps **degrade

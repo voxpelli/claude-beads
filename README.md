@@ -169,7 +169,7 @@ Writes are plain `Edit`/`Write` on the YAML afterwards — there is no CRUD help
 - **A `dolt sql-server` daemon per repo**, which outlives the session and orphans itself
 - **Injected instructions** — `bd setup claude` writes a managed block into `CLAUDE.md`/`AGENTS.md` and `SessionStart` hooks into `.claude/settings.json`
 
-Five workflows: verify the migration is trusted (the gate is stricter than it looks — `validate-tasks` returns `clean: true` **and exit 0** for a store that doesn't exist, so the skill requires `skipped: false` and a committed, non-empty store); disarm the git hooks (both install shapes; it confirms `core.hooksPath` really resolves into `.beads/` before unsetting, so a husky setup is never collateral); stop the daemon (pid-checked, SIGTERM only — the daemon holds the Dolt store open and a `kill -9` could corrupt the very archive this skill refuses to delete); de-colonize the docs and Claude config; and report what is left — including machine-global leftovers, which it names but never touches.
+Five workflows: verify the migration is trusted (the gate is stricter than it looks — `diarie validate` now errors on a store that doesn't exist, but a store that exists and holds `tasks: []` is still perfectly `clean` at exit 0, so "clean" proves the store is well-formed, never that it holds anything. The probe therefore gates on a *counted* task total, a parsed store, and committed files — not on `clean`); disarm the git hooks (both install shapes; it confirms `core.hooksPath` really resolves into `.beads/` before unsetting, so a husky setup is never collateral); stop the daemon (pid-checked, SIGTERM only — the daemon holds the Dolt store open and a `kill -9` could corrupt the very archive this skill refuses to delete); de-colonize the docs and Claude config; and report what is left — including machine-global leftovers, which it names but never touches.
 
 Hooks are disarmed **before** the daemon is stopped, because the armed `pre-commit` shim calls `bd`, and any `bd` command re-spawns the daemon — stop it first and the next commit simply brings it back.
 
@@ -207,7 +207,7 @@ vp-beads does not force a tracker on you. It works against whatever substrate a 
 How each skill behaves without the tracker is defined once by the `### Files-availability convention` in [`CLAUDE.md`](CLAUDE.md):
 
 - **Tier A** — require-or-fallback (`/swarm-wave`): the tracker, else a `ROADMAP.md`, else a manual list; it only stops when no work source can be obtained.
-- **Tier B** — tracker-specific, **no stop** (`/backlog-groomer`): it operates on `.diarie/` directly, and an absent or empty store is simply an empty backlog, not an error. It redirects to `/swarm-wave` / `ROADMAP.md` only when the project tracks its work somewhere else.
+- **Tier B** — tracker-specific (`/backlog-groomer`): it operates on `.diarie/` directly. An **empty** store is an empty backlog — a real answer. An **absent** store is an error (`ENOSTORE`), and means the project tracks its work somewhere else, so it redirects to `/swarm-wave` / `ROADMAP.md` rather than reporting that you have nothing to do.
 - **Tier C** — degrade-and-announce (`/retrospective`, the sprint-review agent): the rest of the workflow runs and every skipped tracker step is announced.
 
 Silently skipping a tracker step is treated as a bug.

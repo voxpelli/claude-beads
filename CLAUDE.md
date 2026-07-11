@@ -234,11 +234,27 @@ omitting the in-progress claim from its compaction-recovery snapshot when no
 tracker files exist) is recovery plumbing, not a user-facing workflow step.
 
 **Detection predicate (canonical).** The flat-YAML tracker is available for a
-project iff a `.diarie/tasks/tasks-*.yml` file exists **and** the tracker reader is
-runnable (`node scripts/ready-walker.mjs` in this repo; the `diarie` CLI once it
-ships — see `## The tracker migration: bd → flat-YAML (done)`). Both conditions, checked every time — neither
-alone. Unlike the old `.beads/` + `bd` binary, these are ordinary committed files
-plus a small pure reader — no daemon, no vendor.
+project iff a `.diarie/tasks/tasks-*.yml` file exists **and** the `diarie` CLI is
+runnable. Both conditions, checked every time — neither alone. Unlike the old
+`.beads/` + `bd` binary, these are ordinary committed files plus a small pure reader
+— no daemon, no vendor.
+
+**A missing store is an ERROR, not an empty backlog (`ENOSTORE`).** Pointed at a
+project with no `.diarie/`, `diarie` exits non-zero and emits
+`{"error": "...", "code": "ENOSTORE"}` on **stdout**. It does *not* print an empty
+result. This is what makes the predicate above enforceable rather than decorative: a
+component can now tell "this project tracks its work elsewhere" apart from "this
+project has no work left", which are opposite situations that used to look identical.
+An **empty but present** store is a legitimate answer and exits 0.
+
+Two consequences, and they bind every component below:
+
+- **Ask for `--json`, and never discard stderr.** Without `--json` the error goes to
+  stderr; a `2>/dev/null` therefore turns ENOSTORE back into silence and re-opens the
+  exact defect. With `--json` it lands on stdout with a machine-readable `code`.
+- **Handle ENOSTORE explicitly.** Reporting an absent tracker as an empty backlog is
+  the original bug wearing a skill's clothes, and nothing fails when you get it wrong
+  — which is precisely why it must be written down.
 
 **Tiers.**
 
@@ -247,11 +263,18 @@ plus a small pure reader — no daemon, no vendor.
   back to another source (`ROADMAP.md`, or a manual list) and only stop when no
   source can be obtained. Components: `swarm-wave` (workflow 1 (Plan a swarm sprint)).
 - **Tier B — tracker-specific.** The component operates directly on the flat-YAML
-  store. Because the store is ordinary in-repo files (not a daemon that can be
-  absent), there is no "unavailable" stop to guard — it reads via ready-walker and
-  writes with Edit/Write on `.diarie/tasks/`, and an absent-or-empty store is simply
-  an empty backlog. When a project tracks work elsewhere, redirect to the right tool
-  (`backlog-groomer` → `/swarm-wave` / `ROADMAP.md`). Component: `backlog-groomer`.
+  store: it reads via `diarie` and writes with Edit/Write on `.diarie/tasks/`. Two
+  outcomes, and **they are not the same thing**:
+  - **Store present but empty** → an empty backlog. A real, ordinary answer; carry on.
+  - **Store absent (`ENOSTORE`)** → **redirect, do not proceed.** This project tracks
+    its work somewhere else, so point at the right tool (`backlog-groomer` →
+    `/swarm-wave` / `ROADMAP.md`). Do **not** report it as an empty backlog.
+
+  This entry used to read *"an absent-or-empty store is simply an empty backlog"* — the
+  conflation `ENOSTORE` exists to delete. Tier B has no *stop* in the old beads sense
+  (the store is ordinary files, not a daemon that can be down), but it does have a
+  branch, and taking the wrong one tells a user with a healthy `ROADMAP.md` that their
+  backlog is empty. Component: `backlog-groomer`.
 - **Tier C — degrade-and-announce.** The component does useful non-tracker work
   too; when the tracker is absent it runs the rest and **announces** each skipped
   tracker step (never skips it silently). Components: `retrospective`, `sprint-review`.
@@ -267,9 +290,9 @@ plus a small pure reader — no daemon, no vendor.
 component opens its availability handling with:
 
 > The flat-YAML tracker is available iff a `.diarie/tasks/tasks-*.yml` file exists
-> **and** the tracker reader (`node scripts/ready-walker.mjs`, or the `diarie` CLI)
-> is runnable; this component is **Tier `X`** per CLAUDE.md
-> `### Files-availability convention`.
+> **and** the `diarie` CLI is runnable; a missing store is an **error**
+> (`ENOSTORE`, non-zero exit), never an empty backlog. This component is **Tier `X`**
+> per CLAUDE.md `### Files-availability convention`.
 
 The tier→component mapping lives **only here**. Components cite their tier letter
 and link back — they do not restate this table (it would duplicate and rot, like

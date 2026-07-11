@@ -119,14 +119,21 @@ retrospective will also require a trend review and tracker health audit.
 If the flat-YAML tracker is available:
 
 ```bash
-node scripts/ready-walker.mjs --stats 2>/dev/null
+diarie stats --json
 ```
 
-(The `diarie` CLI replaces `node scripts/ready-walker.mjs` once published; use the
-script path until then.) If the tracker is unavailable, **announce** it (per the
-Edge Cases "Tracker unavailable" entry) and skip only the `--stats` line — do not
-silently omit it. Still report the sprint number and date range from the git/RETRO
-data above.
+Read `total`, `ready`, `blocked`, and `stale[]` from the JSON object.
+
+**Never pipe this to `2>/dev/null`.** If the store cannot be found, `diarie` exits
+non-zero and prints `{"error": "...", "code": "ENOSTORE"}` **on stdout** — that is the
+signal that tells you to announce a skip. Discarding stderr *and* dropping `--json`
+would leave you with empty output and no way to tell "this project has no tracker"
+apart from "this project has no work", which is the whole reason the CLI errors
+instead of printing an empty backlog.
+
+So: on `code: "ENOSTORE"`, **announce** it (per the Edge Cases "Tracker unavailable"
+entry) and skip only the stats line — do not silently omit it, and do not report zero
+work. Still report the sprint number and date range from the git/RETRO data above.
 
 Report: current sprint number, date range covered, whether a trend-review sprint
 is upcoming.
@@ -157,16 +164,20 @@ landed, note that explicitly — this may not be a full sprint.
 If the flat-YAML tracker is available:
 
 ```bash
-node scripts/ready-walker.mjs --filter in_progress 2>/dev/null
-node scripts/ready-walker.mjs 2>/dev/null | head -40   # ready work
-node scripts/ready-walker.mjs --blocked 2>/dev/null
-node scripts/ready-walker.mjs --stale --days 60 2>/dev/null
+diarie ready --filter in_progress --json    # a flat ARRAY of claimed tasks
+diarie ready --json                         # an OBJECT: {ready, blocked, needsAttention}
+diarie stats --stale --days 60 --json
 ```
 
-If the tracker is unavailable, **announce** the skip (per the Edge Cases "Tracker
-unavailable" entry) — do not silently omit this section — and report the
-backlog-health signals below as "n/a (tracker not active)". If a `ROADMAP.md`
-exists, point to it as the likely work record (do not parse or rank it).
+Two different shapes, deliberately: `--filter` answers a *status* question and returns a
+plain array; a bare `ready` answers a *readiness* question and returns the partition.
+
+As in Step 1, **do not discard stderr and do not drop `--json`** — an absent store must
+reach you as `{"code": "ENOSTORE"}` on stdout, not as silence. On ENOSTORE, **announce**
+the skip (per the Edge Cases "Tracker unavailable" entry), report the backlog-health
+signals below as "n/a (tracker not active)", and — if a `ROADMAP.md` exists — point to it
+as the likely work record (do not parse or rank it). An empty `ready` array is a real
+answer and means something else entirely: the backlog exists and is clear.
 
 Flag any `in_progress` tasks that were not completed this sprint (potential
 carry-overs). Count total open tasks and note the count explicitly.
@@ -175,10 +186,14 @@ carry-overs). Count total open tasks and note the count explicitly.
 
 - **Volume**: total open count above 20 is elevated; above 30 is a grooming
   signal. Report the exact count.
-- **Staleness**: count tasks from `--stale`. Flag if any exist.
-- **Blocked chains**: if `--blocked` returns tasks, check whether any
-  blockers were resolved this sprint. If so, flag as "unblocked but not
-  actioned" — grooming candidates.
+- **Staleness**: count the ids in `stale[]`. Flag if any exist.
+- **Blocked chains**: read `blocked[]`, and **split it by why**. An entry with a
+  non-empty `blockers` array is waiting on *dependencies* — check whether any were
+  resolved this sprint, and if so flag it "unblocked but not actioned" (a grooming
+  candidate). An entry with a `children` array is an **epic**: a container blocked by
+  its own open children. That is the normal, healthy state of an epic in flight — it is
+  **not** a grooming signal, and it is never actionable itself. Report epics separately,
+  by their open-child count, or you will report a working sprint as a stalled one.
 - **In-progress pile-up**: 3+ `in_progress` issues not touched this sprint
   indicates work claimed but not closed.
 
@@ -305,12 +320,14 @@ to mutate the project. The boundary is enforced both by the frontmatter
 ## Edge Cases
 
 - **Tracker unavailable** (Tier C) — the flat-YAML tracker is available iff a
-  `.diarie/tasks/tasks-*.yml` file exists **and** the tracker reader
-  (`node scripts/ready-walker.mjs`, or the `diarie` CLI) is runnable; this
-  component is **Tier C** per CLAUDE.md `### Files-availability convention`. When
+  `.diarie/tasks/tasks-*.yml` file exists **and** the `diarie` CLI is runnable; a
+  missing store is an **error** (`ENOSTORE`, non-zero exit), never an empty backlog.
+  This component is **Tier C** per CLAUDE.md `### Files-availability convention`. When
   unavailable, **announce** it (e.g. "Tracker not active here — skipping the
   open-task assessment in Step 3") and run the rest of the review; do **not**
-  skip the tracker steps silently. If a `ROADMAP.md` exists, point the user to it as the likely work
+  skip the tracker steps silently. You can only *make* that announcement if you asked
+  for `--json` and kept stderr — see Steps 1 and 3. An empty `ready` array means the
+  opposite thing (a real, clear backlog) and must not be reported as an absent tracker. If a `ROADMAP.md` exists, point the user to it as the likely work
   record — but do **not** parse or rank it (it may not be a parallelizable work
   list; this pointer is best-effort and non-authoritative).
 - **No `UPSTREAM-*.md` files** — if SYNERGY files exist, the user has chosen

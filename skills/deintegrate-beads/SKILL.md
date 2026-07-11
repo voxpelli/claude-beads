@@ -89,10 +89,16 @@ user approves in this one.
    reports a cleanup that never happened.
 3. **`migration.trusted` must be `true`, or STOP** and point at `/migrate-tracker`.
    It requires all three of: the store exists, it holds **at least one task**, and it
-   is **committed**. Each is a gate that has silently passed before — `validate-tasks`
-   alone returns `clean: true` with exit 0 both for a store that does not exist *and*
-   for one holding `tasks: []`. Disarming bd against either leaves the project with
-   **neither** tracker.
+   is **committed**. Disarming bd against a store that fails any of these leaves the
+   project with **neither** tracker.
+
+   **`diarie validate` cannot substitute for this gate, even now.** A missing store is
+   an error today (`ENOSTORE`, non-zero exit) — that half is fixed. But a store that
+   exists and holds `tasks: []` is *legitimately* `clean` at exit 0, and rightly so: an
+   empty backlog is a valid state. So `clean` proves the store is **well-formed**, never
+   that the migration actually moved anything into it. Hence the probe counts tasks
+   rather than trusting `clean` — see `scripts/beads-probe.mjs`, where this reasoning is
+   pinned in the code.
 4. **Show the full destructive plan and confirm once** (a single `AskUserQuestion`,
    `header: "Cleanup"`). The user consented to "de-integrate beads", not to a
    particular set of edits in a repo they may not even have open. Show:

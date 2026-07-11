@@ -91,10 +91,10 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
 
 1. **Determine the work source (Tier A — require-or-fallback).** The flat-YAML
    tracker is available iff a `.diarie/tasks/tasks-*.yml` file exists **and** the
-   tracker reader (`node scripts/ready-walker.mjs`, or the `diarie` CLI) is
-   runnable; this component is **Tier A** per CLAUDE.md `### Files-availability
-   convention`. Select the wave source by precedence — **the tracker wins when
-   both the tracker and a `ROADMAP.md` exist**:
+   `diarie` CLI is runnable; a missing store is an **error** (`ENOSTORE`, non-zero
+   exit), never an empty backlog. This component is **Tier A** per CLAUDE.md
+   `### Files-availability convention`. Select the wave source by precedence — **the
+   tracker wins when both the tracker and a `ROADMAP.md` exist**:
 
    - **Tracker available** — run `node scripts/ready-walker.mjs` and read
      `.diarie/tasks/*.yml` to load the candidate task set. (The `diarie` CLI

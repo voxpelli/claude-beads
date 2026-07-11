@@ -309,18 +309,25 @@ work can begin.
 - **Validate every edit.** Run `node validate-tasks.mjs` after any change to a
   `.diarie/tasks/*.yml` file (or a `.diarie/decisions/*.md` / `.diarie/docs/*.md`
   write) — it is the integrity gate, replacing bd's on-create validation.
-- **Tracker available (Tier B — no stop).** The flat-YAML tracker is available
-  iff a `.diarie/tasks/tasks-*.yml` file exists **and** the tracker reader
-  (`node scripts/ready-walker.mjs`, or the `diarie` CLI) is runnable; this
-  component is **Tier B** per CLAUDE.md `### Files-availability convention`.
-  Unlike the old beads gate, Tier B no longer stops when the store is absent:
-  the store is ordinary in-repo files, so an absent-or-empty `.diarie/tasks/` is
-  simply an empty backlog — operate on it directly. Only redirect when the
-  project tracks its work **elsewhere**: for the planning / sprint triggers in
-  this skill's description ("plan the sprint", "what should we work on", "break
-  down into issues") against a `ROADMAP.md` or manual list, use `/swarm-wave` —
-  it plans waves from a `ROADMAP.md` or a manual list. Do not attempt to groom a
-  `ROADMAP.md` here.
+- **Tracker available (Tier B).** The flat-YAML tracker is available iff a
+  `.diarie/tasks/tasks-*.yml` file exists **and** the `diarie` CLI is runnable; a
+  missing store is an **error** (`ENOSTORE`, non-zero exit), never an empty backlog.
+  This component is **Tier B** per CLAUDE.md `### Files-availability convention`.
+
+  **Empty and absent are different, and you must branch on which one you got:**
+
+  - **Store present, no open work** — `diarie ready --json` exits 0 with
+    `{"ready": [], ...}`. That is a real answer: the backlog exists and is clear.
+    Groom normally (there may still be `blocked`, `needsAttention`, or closed rows).
+  - **Store absent** — `diarie` exits non-zero with `{"code": "ENOSTORE"}` on stdout.
+    **Do not report this as an empty backlog.** This project keeps its work somewhere
+    else. Redirect: for the planning / sprint triggers in this skill's description
+    ("plan the sprint", "what should we work on", "break down into issues") against a
+    `ROADMAP.md` or manual list, use `/swarm-wave` — it plans waves from either. Do
+    not attempt to groom a `ROADMAP.md` here.
+
+  Always pass `--json` and never pipe stderr to `/dev/null`, or ENOSTORE becomes
+  indistinguishable from silence and the branch above cannot be taken.
 - **Basic Memory is opportunistic.** Check for BM tool availability and skip
   silently if unavailable. BM enriches grooming with cross-project context but
   is not required for the core workflows.
