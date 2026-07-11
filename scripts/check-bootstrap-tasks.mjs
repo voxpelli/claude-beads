@@ -14,7 +14,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -129,6 +129,13 @@ console.log('\nprojectLive (type / status / priority mapping)')
   try { projectLive(issue({ issue_type: 'nonsense' }), liveIds, []) } catch { threw = true }
   assert('an unknown issue_type throws loudly (never a silently wrong type)', threw)
 }
+{
+  // bd has statuses beyond STATUS_MAP's four (`reopened`, …). Unmapped → undefined →
+  // js-yaml DROPS the key → a task row with no status. Silent corruption; must throw.
+  let threw = false
+  try { projectLive(issue({ status: 'reopened' }), liveIds, []) } catch { threw = true }
+  assert('an unmapped bd status (reopened) throws, never emits a status-less row', threw)
+}
 
 console.log('\ngroupTasks (slug routing)')
 
@@ -185,6 +192,18 @@ const run = (args, wd) => {
       again.code === 1 && /refusing to overwrite/.test(again.out) && again.out.includes('tasks-backlog.yml'))
 
     assert('--force overrides the refusal (the deliberate redo path)', run(['--root', dir, '--force']).code === 0)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // Both readers accept tasks-*.yaml too, so the guard must match that extension —
+  // otherwise a .yaml store is invisible to it and gets clobbered.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-boot-'))
+  try {
+    mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
+    writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-x.yaml'), 'tasks: []\n')
+    const { code, out } = run(['--root', dir])
+    assert('a tasks-*.yaml store also trips the overwrite guard (not just .yml)',
+      code === 1 && /refusing to overwrite/.test(out))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {

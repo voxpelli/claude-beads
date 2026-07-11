@@ -67,7 +67,7 @@ import {
 import yaml from 'js-yaml'
 
 import { PRIORITY_MAP, STATUS_MAP, TYPE_MAP } from './migrate-from-bd.mjs'
-import { TRACKER_DIR, VALID_TYPES } from './task-schema.mjs'
+import { TRACKER_DIR, VALID_STATUSES, VALID_TYPES } from './task-schema.mjs'
 
 /** A slug becomes a `tasks-<slug>.yml` filename — keep it filesystem-plain. */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/
@@ -117,7 +117,15 @@ export function splitBody (body) {
  * @returns {any} the task record
  */
 export function projectLive (r, liveIds, droppedEdges) {
+  // Throw, never fall through: an unmapped status yields `undefined`, js-yaml then
+  // DROPS the key, and the result is a task row with no status at all — a silent
+  // corruption, and the exact failure mode this migrator exists to avoid. bd has
+  // statuses beyond the four in STATUS_MAP (`reopened`, …); vp-beads' own export
+  // happened to carry none, so this could only ever have bitten someone else.
   const status = r.status === 'deferred' ? 'deferred' : STATUS_MAP[r.status]
+  if (!status || !VALID_STATUSES.has(status)) {
+    throw new Error(`unmapped bd status for ${r.id}: "${r.status}" — add it to STATUS_MAP in migrate-from-bd.mjs`)
+  }
   const mapped = TYPE_MAP[r.issue_type]
   if (!mapped || !VALID_TYPES.has(mapped.type)) {
     throw new Error(`bad type map for ${r.id}: ${r.issue_type}`)
@@ -275,7 +283,9 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   // Edit/Write. Re-running would silently overwrite that work with the export's
   // (stale) state, so an existing store is a hard stop rather than a doc warning.
   const tasksDir = resolve(root, `${TRACKER_DIR}/tasks`)
-  const existing = existsSync(tasksDir) ? readdirSync(tasksDir).filter(f => /^tasks-.*\.yml$/.test(f)) : []
+  // `.ya?ml` — both readers accept either extension, so matching only `.yml` here
+  // would let a `tasks-*.yaml` store slip past the guard and be silently clobbered.
+  const existing = existsSync(tasksDir) ? readdirSync(tasksDir).filter(f => /^tasks-.+\.ya?ml$/.test(f)) : []
   if (existing.length && !values.force) {
     stderr.write(
       `refusing to overwrite an existing task store: ${tasksDir} already holds ${existing.join(', ')}\n` +

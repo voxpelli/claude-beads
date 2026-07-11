@@ -637,14 +637,15 @@ up the new version (`/plugin install vp-beads@vp-plugins`).
 npm run check
 ```
 
-Runs **12 checks in parallel** via `run-p check:*` (`npm-run-all2`) — the
+Runs **13 checks in parallel** via `run-p check:*` (`npm-run-all2`) — the
 authoritative list is the `check:*` keys in `package.json`, not this paragraph.
 They fall into four groups: **plugin** (`check:plugin` = validate-plugin.mjs,
 `check:validator` = its unit tests), **prose/style** (`check:md` = remark,
 `check:lint` = eslint, `check:sh` = shellcheck + shfmt, `check:ast-grep` +
 `check:ast-grep-test` = the structural-lint suite), **tracker** (`check:tasks` =
 validate-tasks.mjs, plus `check:ready-walker`, `check:tasks-validator`,
-`check:tasks-smoke`), and **hooks** (`check:hooks`).
+`check:tasks-smoke`, `check:bootstrap` = the bd→YAML migrator), and **hooks**
+(`check:hooks`).
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
 Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`); `ast-grep`
 comes from the pinned `@ast-grep/cli` devDep.
