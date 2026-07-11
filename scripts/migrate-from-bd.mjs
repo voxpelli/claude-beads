@@ -168,10 +168,10 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
     exit(1)
   }
   // Segment-wise rather than a regex: the tracker dir is TRACKER_DIR-derived, and
-  // splitting on `sep` needs no escaping of its leading dot.
+  // splitting on `sep` needs no escaping of its leading dot. `some` (not indexOf)
+  // so a repeated segment — /a/.diarie/b/.diarie/tasks — still trips the guard.
   const segments = resolve(outputPath).split(sep)
-  const trackerAt = segments.indexOf(TRACKER_DIR)
-  if (trackerAt !== -1 && segments[trackerAt + 1] === 'tasks') {
+  if (segments.some((s, i) => s === TRACKER_DIR && segments[i + 1] === 'tasks')) {
     stderr.write(`refusing to write under ${TRACKER_DIR}/tasks/ — this projector is scratch-only ` +
       '(regenerate, never hand-edit; the live store is owned by bootstrap-tasks.mjs / Edit)\n')
     exit(1)
