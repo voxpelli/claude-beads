@@ -200,6 +200,38 @@ history are committed and reviewed in PRs like any other project metadata (`.cla
 arrangement: with the tracker as plain text in the repo, the backlog travels with the
 clone, diffs in review, and has no export to go stale.
 
+### What to gitignore (and what you must not)
+
+These skills create files in your repo, and they fall into two groups that must not be
+confused. Add this to your `.gitignore`:
+
+```gitignore
+# vp-beads — ephemeral scratch (the durable record lives in .diarie/)
+AGENT-*.md
+RETRO-*.md
+SWARM-*.md
+SPIKE-*.md
+
+# vp-beads — machine-local overrides and private overlays. NOT optional:
+# PRIVATE-SYNERGY-*.md is the ONLY thing keeping a proprietary sibling's name
+# out of your public repo. Omit this line and the first private entry leaks.
+.claude/*.local.*
+PRIVATE-SYNERGY-*.md
+```
+
+**Do NOT gitignore `.diarie/`.** It sits next to `.beads/` — which *is* ephemeral and
+*is* ignored — so the instinct to pattern-match is strong and wrong. `.diarie/` is the
+task store itself; ignoring it throws away the backlog. `/migrate-tracker` refuses to
+finish if it detects this (it asks `git check-ignore`, not the layout).
+
+One thing to *decide* rather than default: `.diarie/_archive/bd-final-export.jsonl`, which
+`/migrate-tracker` writes with bd's **closed** issues. A pre-existing `*.jsonl` or
+`_archive/` line will silently swallow it — `git add -A` says nothing, and the task store
+commits looking perfectly clean. That may be exactly what you want: closed issues record
+what was **done**, which your git history, CHANGELOG and retros usually already tell you,
+while the backlog is for what comes **next**. The migrator warns and proceeds rather than
+deciding for you. If you do want that history queryable, add `!.diarie/`.
+
 ## Installation
 
 ### Via slash commands

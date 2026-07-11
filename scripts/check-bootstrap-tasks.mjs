@@ -195,6 +195,53 @@ const run = (args, wd) => {
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
+  // An ignored ARCHIVE is a judgment call — closed issues record what was DONE, which
+  // git log/CHANGELOG usually already cover. Say something; do not refuse. Asserted on
+  // BEHAVIOUR (migrated + spoke about the archive), not on the exact prose — an earlier
+  // version of this test pinned a sentence and broke when the wording improved.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-boot-'))
+  try {
+    spawnSync('git', ['-C', dir, 'init', '-q'])
+    writeFileSync(join(dir, '.gitignore'), '*.jsonl\n')
+    const { code, out } = run(['--root', dir])
+    assert('a gitignored ARCHIVE still migrates and is mentioned (policy is the user\'s, not ours)',
+      code === 0 &&
+      existsSync(join(dir, '.diarie', 'tasks', 'tasks-backlog.yml')) &&
+      /gitignored/.test(out) && /bd-final-export\.jsonl/.test(out))
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // Revealed preference: a project that never tracked `.beads/` already decided bd
+  // history is not worth versioning. Committing a JSONL of it now would quietly
+  // reverse that — so when the archive WOULD commit, say so as a new choice.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-boot-'))
+  try {
+    spawnSync('git', ['-C', dir, 'init', '-q'])
+    const { code, out } = run(['--root', dir])
+    assert('archive not ignored + bd history never tracked → flagged as a NEW choice',
+      code === 0 && /first time/.test(out))
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // An ignored STORE is not a judgment call — the migration produced nothing durable.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-boot-'))
+  try {
+    spawnSync('git', ['-C', dir, 'init', '-q'])
+    writeFileSync(join(dir, '.gitignore'), '.diarie/\n')
+    const { code, out } = run(['--root', dir])
+    assert('a gitignored STORE is a hard stop (the backlog itself would not commit)',
+      code === 1 && /GITIGNORED/.test(out))
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // …but a plain non-git directory must not false-positive.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-boot-'))
+  try {
+    assert('a non-git target still migrates (check-ignore absence is not a failure)',
+      run(['--root', dir]).code === 0)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
   // Both readers accept tasks-*.yaml too, so the guard must match that extension —
   // otherwise a .yaml store is invisible to it and gets clobbered.
   const dir = mkdtempSync(join(tmpdir(), 'vp-boot-'))

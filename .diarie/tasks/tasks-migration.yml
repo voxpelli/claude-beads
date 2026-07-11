@@ -214,15 +214,24 @@ tasks:
     updated: '2026-06-09'
   - id: vp-beads-uzu
     title: 'PostToolUse hook: run validate-tasks on tasks-*.yml edits (immediate feedback)'
-    status: pending
+    status: completed
     type: task
     priority: low
     labels:
       - chore
     parent: vp-beads-l9i
+    acceptance_criteria:
+      - hooks/post-tasks-validate.sh fires only for .diarie/tasks/tasks-*.yml edits
+      - emits validate-tasks errors as additionalContext; silent when the store is clean
+      - hooks.json entry added; check-hooks.mjs covers report/silent/no-validator paths
     description: >-
       Deferred from vp-beads-40a/8pk (Phase 0). The check:tasks CI stage already gives the integrity
       guarantee at npm run check time; this hook adds immediate feedback when an agent edits a
-      backlog/tasks/tasks-*.yml mid-session (emits validate-tasks --json as additionalContext).
-      Needs a hooks.json entry + check-hooks.mjs coverage. Optional polish, not load-bearing.
-    updated: '2026-06-09'
+      .diarie/tasks/tasks-*.yml mid-session (emits validate-tasks --json as additionalContext).
+
+
+      Done 2026-07-11. Project root is derived from the edited file's absolute path, not from cwd
+      (PostToolUse cwd is not guaranteed). Found a real footgun while building it: `jq '.clean //
+      empty'` treats FALSE as absent, so the hook went silent on exactly the invalid-store case it
+      exists to catch — it only spoke when there was nothing to say. Pinned by a regression test.
+    updated: '2026-07-11'

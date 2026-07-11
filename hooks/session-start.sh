@@ -145,6 +145,69 @@ if git ls-files --error-unmatch .claude/synergy-registry.local.json >/dev/null 2
 fi
 # --- end sensitive-file check ---
 
+# --- Tracker prime ---
+# The orientation the external beads plugin's `bd prime` used to inject at
+# SessionStart, minus its ~1.5k-token bloat: what is ready, what is blocked, what
+# is still claimed. Without this the startup branch emits no tracker state at all,
+# so every session begins blind to the backlog.
+#
+# Hooks are exempt from the silent-skip rule (this is orientation plumbing, not a
+# user-facing workflow step) — silent when there is no tracker. Prefer the `diarie`
+# CLI when installed; else the in-repo reader.
+#
+# Two reads, ~0.2s total against a 5s timeout: the queue (counts AND titles) and
+# the in-progress claims. `--stats` is not enough — it returns counts without
+# titles. Ids come back namespaced as `<slug>/<id>`; strip the slug for display.
+tracker_cmd=""
+if command -v diarie >/dev/null 2>&1; then
+	tracker_cmd="diarie ready"
+elif [ -f scripts/ready-walker.mjs ]; then
+	tracker_cmd="node scripts/ready-walker.mjs"
+fi
+
+if [ -n "$tracker_cmd" ]; then
+	queue_json=$($tracker_cmd --format json 2>/dev/null || echo "")
+	if [ -n "$queue_json" ]; then
+		claims_json=$($tracker_cmd --filter in_progress --format json 2>/dev/null || echo "[]")
+		[ -n "$claims_json" ] || claims_json="[]"
+
+		n_ready=$(printf '%s' "$queue_json" | jq -r '.ready | length' 2>/dev/null || echo "")
+		n_blocked=$(printf '%s' "$queue_json" | jq -r '.blocked | length' 2>/dev/null || echo "0")
+		n_attn=$(printf '%s' "$queue_json" | jq -r '.needsAttention | length' 2>/dev/null || echo "0")
+		n_claimed=$(printf '%s' "$claims_json" | jq -r 'length' 2>/dev/null || echo "0")
+
+		# A non-numeric n_ready means the reader failed or emitted something
+		# unexpected — stay silent rather than print a broken line.
+		if [ -n "$n_ready" ] && [ "$n_ready" -eq "$n_ready" ] 2>/dev/null; then
+			tracker_summary="Tracker: ${n_ready} ready · ${n_blocked} blocked · ${n_claimed} in progress"
+			if [ "$n_attn" -gt 0 ] 2>/dev/null; then
+				tracker_summary="${tracker_summary} · ${n_attn} needs attention (deps in a non-completed state)"
+			fi
+
+			# ready-walker already sorts by priority, so the first rows are the ones worth naming.
+			next_ready=$(printf '%s' "$queue_json" | jq -r '[.ready[0:3][] | "\(.id | sub("^.*/"; "")) (\(.priority))"] | join(" · ")' 2>/dev/null || echo "")
+			if [ -n "$next_ready" ] && [ "$next_ready" != "null" ]; then
+				tracker_summary="${tracker_summary}
+  next ready: ${next_ready}"
+			fi
+
+			claims=$(printf '%s' "$claims_json" | jq -r '.[0:3][] | "    \(.id | sub("^.*/"; "")) \(.title)"' 2>/dev/null || echo "")
+			if [ -n "$claims" ]; then
+				tracker_summary="${tracker_summary}
+  in progress:
+${claims}"
+			fi
+
+			# shellcheck disable=SC2016
+			tracker_summary="${tracker_summary}
+
+Find work with \`node scripts/ready-walker.mjs\`; claim by setting \`status: in_progress\` in \`.diarie/tasks/\`."
+			parts+=("$tracker_summary")
+		fi
+	fi
+fi
+# --- end tracker prime ---
+
 # --- Dormancy nudge ---
 # Surface unreviewed UPSTREAM/SYNERGY entries in low-activity repos.
 # Runs before the retro-count section so repos with no RETRO files still get nudged.

@@ -54,6 +54,7 @@
  * Dry-run: point `--root` at a scratch dir and diff before writing for real.
  */
 
+import { spawnSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -352,4 +353,63 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
     for (const d of droppedEdges) stdout.write(`    - ${d}\n`)
   }
   stdout.write(`written:\n${written.map(w => `  ${w}`).join('\n')}\n`)
+
+  // `git add -A` skips an ignored file WITHOUT A WORD, and `*.jsonl` / `_archive/`
+  // are unremarkable .gitignore lines — so ask git what it would actually commit
+  // rather than trusting the layout. The two halves carry very different stakes.
+  const archive = `${TRACKER_DIR}/_archive/bd-final-export.jsonl`
+  const check = spawnSync('git', ['-C', root, 'check-ignore', '--stdin'], {
+    input: [...written, archive].join('\n'),
+    encoding: 'utf8',
+  })
+  // exit 0 = something matched an ignore rule; 1 = nothing ignored; 128 = not a repo.
+  const ignored = check.status === 0 ? check.stdout.split('\n').filter(Boolean) : []
+  const storeIgnored = ignored.filter(f => !f.includes('_archive'))
+  const archiveIgnored = ignored.some(f => f.includes('_archive'))
+
+  // The live store being ignored is not a policy question — it means the migration
+  // produced nothing durable. Hard stop.
+  if (storeIgnored.length) {
+    stderr.write(
+      `\n!!! the migrated task store is GITIGNORED in ${root} — it will not commit:\n` +
+      storeIgnored.map(f => `      ${f}\n`).join('') +
+      `    ${TRACKER_DIR}/ is dotted but MUST be tracked — it IS the backlog. A negation\n` +
+      `    line works: !${TRACKER_DIR}/\n`
+    )
+    exit(1)
+  }
+
+  // The ARCHIVE is a judgment call, and git already knows the answer. Whether the
+  // project ever TRACKED `.beads/` is its revealed preference on versioning bd history:
+  // a gitignored `.beads/` means it chose not to, years ago. Committing a JSONL of the
+  // closed issues now would quietly reverse that. So speak only when the migration
+  // would CHANGE the status quo — never to push a default. (The file is written to disk
+  // regardless: it costs nothing and bd's Dolt DB may not stay readable.)
+  const beadsTracked = spawnSync('git', ['-C', root, 'ls-files', '.beads'], { encoding: 'utf8' })
+  const historyWasVersioned = Boolean(beadsTracked.stdout?.trim())
+
+  if (archiveIgnored && historyWasVersioned) {
+    // A real regression: they DID version bd history, and now it would stop.
+    stderr.write(
+      `\nwarning: this project tracks \`.beads/\` in git, but ${archive} is gitignored —\n` +
+      '  so the bd history you have been versioning would stop being versioned here.\n' +
+      `  Add !${archive} (or !${TRACKER_DIR}/) to keep it.\n`
+    )
+  } else if (archiveIgnored) {
+    stderr.write(
+      `\nnote: ${archive} is gitignored — consistent with \`.beads/\`, which this project\n` +
+      '  never tracked either. Nothing to do: closed issues record what was DONE (your git\n' +
+      '  log and CHANGELOG already tell you that); the backlog is for what comes NEXT, and\n' +
+      '  it commits normally. The archive still exists on disk if you ever want it.\n'
+    )
+  } else if (!historyWasVersioned) {
+    // Not ignored, so it WOULD commit — but they never versioned bd history before.
+    // Flag it as a new choice rather than letting it slip in.
+    stderr.write(
+      `\nnote: ${archive} is NOT gitignored, so committing will put bd's ${records.length - live.length}\n` +
+      '  closed issues into git for the first time — this project never tracked `.beads/`.\n' +
+      '  Fine if you want that history queryable; if not, drop the file or ignore it. Your call —\n' +
+      '  git log and CHANGELOG usually already record what was done.\n'
+    )
+  }
 }

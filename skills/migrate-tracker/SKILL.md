@@ -243,7 +243,21 @@ mis-projection.
 4. Leave `<target>/.beads/` on disk as a frozen read-only archive. Do not delete
    it — `bd` reads still work, and the memory store may be recoverable later via a
    bd downgrade.
-5. Commit the new `.diarie/` store **and** the archive JSONL together.
+5. **Fix the target's `.gitignore` before committing.** Two directions, both easy to
+   get wrong:
+   - **`.diarie/` must NOT be ignored.** It is dotted but tracked, and it sits right
+     next to the ephemeral `.beads/` — the instinct to pattern-match is strong and
+     wrong. The migrator already refuses to finish if any file it wrote is ignored
+     (it asks `git check-ignore`, not the layout); if it stopped, add a negation
+     (`!.diarie/`) or narrow the offending rule. Watch for innocuous pre-existing
+     lines like `*.jsonl` or `_archive/` — either one silently swallows the bd
+     archive, and `git add -A` will not say a word.
+   - **The plugin's ephemeral and private artifacts must BE ignored** — if the
+     project will use vp-beads' other skills, add the stanza from the README's
+     "What to gitignore" section. `PRIVATE-SYNERGY-*.md` is the load-bearing line:
+     it is the only thing keeping a private sibling's name out of a public repo,
+     and vp-beads' validator that enforces it does not run in the target.
+6. Commit the new `.diarie/` store **and** the archive JSONL together.
 
 ## Error handling
 

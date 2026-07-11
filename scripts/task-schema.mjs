@@ -22,19 +22,22 @@
  *         - ...
  *       agent: loop-1         # optional; set when claimed (status in_progress)
  *       updated: "2026-06-10" # optional; ISO date — staleness is computed from it
- *       description: |        # optional; migration-introduced (see note below) — PENDING RATIFICATION
+ *       description: |        # optional; the free-text body (see note below)
  *         free-text body
  *
- * `description` is a recognized OPTIONAL field but it is UNDER REVIEW. It was
- * added by the bd→YAML migration (bootstrap-tasks.mjs, Wave 1) to preserve each
- * bd issue's body losslessly, since the terse schema otherwise has no home for
- * prose. It deliberately REVERSES the original no-body design decision (RETRO-15
- * deflated the "missing body" criticism as by-design), so it is a change the
- * user must ratify: keep it for active-work fidelity, or strip it (the full
- * bodies remain in `.diarie/_archive/bd-final-export.jsonl`). `ready-walker`
- * ignores it and `validate-tasks` tolerates it, so it is non-breaking either way.
- * If a future unknown-field warning is added to validate-tasks, it must allowlist
- * `description` or every migrated task will flag at once.
+ * `description` is a RATIFIED optional field (2026-07-11). It was introduced by
+ * the bd→YAML migration to preserve each issue's body losslessly, which reversed
+ * the original no-body design (RETRO-15 had deflated "missing body" as by-design)
+ * — so it was held for the user's decision, and the decision is KEEP. The evidence:
+ * all 23 migrated tasks carry one, and they hold the *why* a title cannot (the
+ * provenance — "deferred recommendation from the v0.17.0 post-review" — and the
+ * scoping data — "~95 bare fences vs 37 tagged"). Dropping them would have moved
+ * that context to an archive nobody reads while working.
+ *
+ * It stays OPTIONAL and free-text: a terse row is still a legitimate row, and the
+ * ready-walk ignores this field entirely (it is prose for humans, never a
+ * computation input). If a future unknown-field warning is added to validate-tasks,
+ * it must allowlist `description` or every migrated task will flag at once.
  *
  * Type model (decision vp-beads-etm, 2026-06-10): 4 exclusive kinds — `task`
  * (work), `doc` (reference), `decision` (record), `milestone` (marker). bd's

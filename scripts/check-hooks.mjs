@@ -168,18 +168,32 @@ function makeGhStubDir (stdout, exitCode = 0) {
 }
 
 /**
- * Create a temp dir containing a stub `diarie` (the tracker CLI the hook
- * prefers) that prints the given JSON and exits with the given status (mirrors
- * makeGhStubDir). Used to exercise the compact branch's in-progress recovery
- * section deterministically, without needing a real `.diarie/` store.
+ * Create a temp dir containing a stub `diarie` (the tracker CLI the hooks
+ * prefer), without needing a real `.diarie/` store.
  *
- * @param {string} jsonOutput - JSON the stub prints (e.g. '[{"id":"x-1","title":"..."}]')
+ * The stub DISPATCHES ON ARGS, because the two hook branches call the reader
+ * differently and expect different shapes: `--filter in_progress` returns a flat
+ * ARRAY of claims (what the compact branch recovers), while a bare `--format
+ * json` returns the `{ready, blocked, needsAttention}` OBJECT (what the startup
+ * prime reads). A stub that echoed one payload for every invocation would make
+ * the prime's tests pass against data the real reader never emits.
+ *
+ * @param {string} inProgressJson - printed for `--filter in_progress` (e.g. '[]')
  * @param {number} [exitCode]
+ * @param {string} [queueJson] - printed otherwise; omit to leave the queue read empty
  * @returns {string} Temp directory path containing the stub
  */
-function makeTrackerStubDir (jsonOutput, exitCode = 0) {
+function makeTrackerStubDir (inProgressJson, exitCode = 0, queueJson = '') {
   const dir = mkdtempSync(join(tmpdir(), 'vp-beads-tracker-stub-'))
-  const script = `#!/bin/bash\nprintf '%s\\n' ${JSON.stringify(jsonOutput)}\nexit ${exitCode}\n`
+  const script = [
+    '#!/bin/bash',
+    'case "$*" in',
+    `  *"--filter in_progress"*) printf '%s\\n' ${JSON.stringify(inProgressJson)} ;;`,
+    `  *) printf '%s' ${JSON.stringify(queueJson)} ;;`,
+    'esac',
+    `exit ${exitCode}`,
+    '',
+  ].join('\n')
   const cliPath = join(dir, 'diarie')
   writeFileSync(cliPath, script)
   chmodSync(cliPath, 0o755)
@@ -214,6 +228,106 @@ test('silent when file is not under hooks/', () => {
   return count === 0
     ? { ok: true }
     : { ok: false, reason: `expected silent, got ${count} objects` }
+})
+
+// =============================================================
+// post-tasks-validate.sh
+// =============================================================
+
+console.log('\npost-tasks-validate.sh')
+
+test('exists and is readable', () => ({ ok: existsSync(join(HOOKS, 'post-tasks-validate.sh')) }))
+
+/**
+ * Build a temp project holding a `.diarie/tasks/` store with the given YAML.
+ *
+ * @param {string} yaml
+ * @returns {{ dir: string, file: string }}
+ */
+function makeTaskStore (yaml) {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-taskstore-'))
+  const tasksDir = join(dir, '.diarie', 'tasks')
+  mkdirSync(tasksDir, { recursive: true })
+  const file = join(tasksDir, 'tasks-x.yml')
+  writeFileSync(file, yaml)
+  return { dir, file }
+}
+
+const VALID_TASK = 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n'
+const DANGLING_DEP = 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n    deps: [T-99]\n'
+
+test('invalid store → reports the error as additionalContext', () => {
+  // The whole point of the hook. Regression here is SILENT: the agent keeps
+  // editing a store whose ready-walk is now lying about what is workable.
+  const { dir, file } = makeTaskStore(DANGLING_DEP)
+  try {
+    const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
+      args: [ROOT],
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    if (!ctx.includes('T-99')) return { ok: false, reason: `error not surfaced: ${ctx.slice(0, 200)}` }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('invalid store: `clean: false` must not be swallowed by jq\'s // operator', () => {
+  // Guards a real bug found in review: `.clean // empty` treats FALSE as absent, so
+  // the alternative fired on exactly the invalid-store case and the hook went silent
+  // precisely when it had something to say. It only spoke when there was nothing to
+  // report. Asserts the failing path produces output at all.
+  const { dir, file } = makeTaskStore(DANGLING_DEP)
+  try {
+    const { stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
+      args: [ROOT],
+    })
+    return stdout.trim().length > 0
+      ? { ok: true }
+      : { ok: false, reason: 'invalid store produced NO output — the false-is-absent bug is back' }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('valid store → silent (no noise on every task edit)', () => {
+  const { dir, file } = makeTaskStore(VALID_TASK)
+  try {
+    const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
+      args: [ROOT],
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `expected silence, got: ${stdout.slice(0, 120)}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('non-task file → silent (fires only for .diarie/tasks/)', () => {
+  const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({
+    tool_input: { file_path: '/tmp/some/README.md' },
+  }), { args: [ROOT] })
+  if (status !== 0) return { ok: false, reason: `exit ${status}` }
+  return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `unexpected output: ${stdout.slice(0, 120)}` }
+})
+
+test('no resolvable validator → silent, exit 0 (never a spam loop)', () => {
+  // A marketplace plugin cache has no node_modules, so the plugin's validate-tasks
+  // cannot import js-yaml. A hook that cannot validate must say nothing.
+  const { dir, file } = makeTaskStore(DANGLING_DEP)
+  try {
+    const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
+      args: ['/nonexistent-plugin-root'],
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `expected silence, got: ${stdout.slice(0, 120)}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 // =============================================================
@@ -387,6 +501,104 @@ test('compact source: one in-progress tracker task → recovery section with id,
     const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
     for (const needle of ['In-progress tracker task', 'x-1', 'Implement the feature', '.diarie/tasks/']) {
       if (!ctx.includes(needle)) return { ok: false, reason: `missing "${needle}": ${ctx.slice(0, 200)}` }
+    }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(stubDir, { recursive: true, force: true })
+  }
+})
+
+test('startup: tracker prime emits counts, next-ready and claims', () => {
+  // The `bd prime` replacement. Before this the startup branch emitted NO tracker
+  // state, so every session began blind to the backlog. The reader namespaces ids
+  // as `<slug>/<id>` — the prime must strip the slug, or the display is unreadable.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-startup-prime-'))
+  const queue = JSON.stringify({
+    ready: [{ id: 'backlog/p-1', title: 'First', priority: 'high' }, { id: 'backlog/p-2', title: 'Second', priority: 'low' }],
+    blocked: [{ id: 'backlog/p-3', title: 'Third' }],
+    needsAttention: [],
+  })
+  const stubDir = makeTrackerStubDir('[{"id":"backlog/p-9","title":"Claimed work"}]', 0, queue)
+  try {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), {
+      cwd: dir,
+      pathPrefix: stubDir,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    for (const needle of ['2 ready', '1 blocked', '1 in progress', 'p-1 (high)', 'Claimed work']) {
+      if (!ctx.includes(needle)) return { ok: false, reason: `missing "${needle}": ${ctx.slice(0, 300)}` }
+    }
+    // The slug prefix must be stripped — `backlog/p-1` would be noise.
+    if (ctx.includes('backlog/p-1')) return { ok: false, reason: 'namespaced id leaked into the prime (slug not stripped)' }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(stubDir, { recursive: true, force: true })
+  }
+})
+
+test('startup: no tracker → prime stays silent (never a broken line)', () => {
+  // Hooks are exempt from the silent-skip rule. With no `diarie` on PATH and no
+  // in-repo reader, the prime must emit nothing rather than a half-built line.
+  const dir = makeTempDirWithRetros(0)
+  try {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    if (ctx.includes('Tracker:')) return { ok: false, reason: `emitted a tracker line with no tracker: ${ctx.slice(0, 200)}` }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('startup: tracker prime does not break the single-object contract', () => {
+  // Claude Code reads only the FIRST JSON object and silently drops the rest, so a
+  // second object is a silent capability loss. The prime appends to `parts`, and
+  // this asserts it did not start emitting its own object.
+  const dir = makeTempDirWithRetros(3)
+  const queue = JSON.stringify({ ready: [{ id: 'backlog/p-1', title: 'T', priority: 'medium' }], blocked: [], needsAttention: [] })
+  const stubDir = makeTrackerStubDir('[]', 0, queue)
+  try {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), {
+      cwd: dir,
+      pathPrefix: stubDir,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected exactly 1 object, got ${count}` }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(stubDir, { recursive: true, force: true })
+  }
+})
+
+test('branch isolation: compact source must NOT emit the startup tracker prime', () => {
+  // The compact branch has its OWN in-progress recovery read; the prime is
+  // startup-only. If both fired, a compacted session would get the backlog twice.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-compact-noprime-'))
+  const queue = JSON.stringify({ ready: [{ id: 'backlog/p-1', title: 'T', priority: 'high' }], blocked: [], needsAttention: [] })
+  const stubDir = makeTrackerStubDir('[]', 0, queue)
+  try {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), {
+      cwd: dir,
+      pathPrefix: stubDir,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    if (ctx.includes('Tracker:') || ctx.includes('next ready:')) {
+      return { ok: false, reason: `startup prime leaked into the compact branch: ${ctx.slice(0, 200)}` }
     }
     return { ok: true }
   } finally {
