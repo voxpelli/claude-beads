@@ -630,11 +630,11 @@ tasks:
       - bug
       - upstream
     acceptance_criteria:
-      - a paste-ready GitHub issue (title, body, SQL reproduction, graph-wide evidence) is DRAFTED into UPSTREAM-basic-memory.md
-      - nothing is filed on GitHub without an explicit in-the-moment go-ahead
-      - the friction is promoted to a "## Upstream Friction" entry on the brew-basic-memory entity note in BM
-      - 'the write-up states the CORRECTED finding: the tool reports the index faithfully; the INDEX is corrupt, not the tool'
-      - the local index is repaired (bm reset --reindex) only with explicit user consent — it drops and rebuilds their graph DB
+      - DONE — a paste-ready GitHub issue is drafted into UPSTREAM-basic-memory.md
+      - DONE — the friction is promoted to a "## Upstream Friction" entry on brew-basic-memory in BM
+      - 'DONE — the write-up states the CORRECTED finding: the tool reports the index faithfully; the INDEX is corrupt'
+      - 'OPEN — file the issue upstream. Explicitly DEFERRED by the user 2026-07-11; needs a fresh, in-the-moment go-ahead'
+      - 'OPEN — repair the local index. Explicitly DECLINED by the user 2026-07-11: the corrupt state is kept as live evidence'
     description: >-
       Basic Memory's SQLite index holds every observation of some entities TWO or THREE times. The
       markdown files on disk are CLEAN. This is index corruption, not note corruption.
@@ -657,6 +657,21 @@ tasks:
       What IS reproducible, and is therefore what the issue leads with: `bm status` says "No
       changes" and `bm doctor` passes ON THIS INDEX. The health vocabulary cannot see a 19%
       duplicate rate. That detection gap is the actionable defect.
+
+
+      TWO DELIBERATE DEFERRALS (2026-07-11, user decisions — not oversights):
+
+      1. The index is NOT repaired. `bm reset --reindex` would rebuild it clean from the files,
+      but the corrupt state is being KEPT as live evidence for the upstream report. Consequence,
+      stated so nobody is surprised: any tool reading observation counts back through the index —
+      `schema_validate` above all — is reading doubled numbers for 241 entities RIGHT NOW. Recount
+      against `read_note` before acting on any frequency-derived conclusion.
+
+      2. The issue is NOT filed. It is drafted and waiting. Filing is outward-facing and needs a
+      fresh, in-the-moment go-ahead.
+
+
+      This row stays OPEN until one of those two happens.
 
 
       THE CORRECTION THAT MATTERS, and the reason this row was rewritten: the original finding
