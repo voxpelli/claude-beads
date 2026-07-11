@@ -1,4 +1,4 @@
-# Fixture for check-tasks-smoke.mjs — cross-file deps + a clean ready task.
+# Fixture for test/cli.spec.js — cross-file deps + a clean ready task.
 meta:
   slug: beta
   title: Smoke fixture — beta
