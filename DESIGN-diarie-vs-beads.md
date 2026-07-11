@@ -45,20 +45,31 @@ have prevented it, and no amount of care can prevent the next one.
 | **The data *is* the repo.** Plain YAML: committed, diffable, reviewable in a PR, editable in any editor. The entire backlog is **617 lines**. | `.beads/` is a **32 MB Dolt database**, and bd's own `.beads/.gitignore` leaves only fragments tracked. In this repo the whole directory is gitignored — so **none of the issue history was in git at all.** The migration's committed JSONL archive is the first time it ever was. | Lock-in resistance; data portability. You cannot be locked into a text file. |
 | **A point release cannot break your writes.** Writing is `Edit`. There is no write path to break. | See "The forcing function" above. | Platform proximity. |
 | **Nothing unworkable is ever offered as work.** A `decision` is a record, a `milestone` is a marker, and a container — a parent with open children — is the sum of its children, not a task. None are ever "ready". | Type-blind — lists `decision` and `milestone` issues as ready. Our own dual-run caught it on `vp-beads-etm`: `bd ready` offered a *decision* as the next thing to work on. bd got containers right, though, and for a reason we gave up: it had an `epic` *type*. | Correctness where it is cheap. We had to earn back, in logic, what bd got structurally — see `## The uncomfortable one`. |
+| **A lost tracker says so.** Pointed at a project with no store, `diarie` exits non-zero and emits `{"code":"ENOSTORE"}` on **stdout**. An absent store and an empty one are different questions and get different answers. | Not a beads failing — **ours**. Our own reader printed a well-formed, entirely fictional empty backlog to stdout, sent its only warning to a stderr that ten call sites pipe to `/dev/null`, and exited **0**. Every consumer was told "you have no work" by a tool that had no idea where it was. Found by asking why `ready` succeeded in a directory with no `.diarie/`. | The failure mode here is never a crash. It is a green check over work not done. |
 | **Uninstalling is deleting a folder.** | The tracker is dead and it still owns your git hooks, a daemon, and two git-config keys — which is why `/deintegrate-beads` had to be written at all. `bd hooks uninstall` cannot even clean its own default install shape (its `--help` admits it only touches `.git/hooks/`). | An exit ramp is a feature. |
 
 ---
 
 ## What it actually is
 
-The whole tracker is **734 lines of JavaScript** across three files:
+The whole tracker is **~2572 lines of JavaScript** in one npm workspace — `diarie/`, a
+`cli.js` plus a `lib/`. The authority is `lib/schema.js` (enums, the ready rule,
+`TRACKER_DIR`); `lib/store.js` is the only thing that knows how to find a store;
+`lib/ready.js` and `lib/validate.js` are pure functions over a loaded task list.
 
-- `scripts/task-schema.mjs` — the canonical schema. Enums, the ready rule, `TRACKER_DIR`.
-- `scripts/ready-walker.mjs` — the files-native `bd ready`. Dependency walk, priority sort.
-- `validate-tasks.mjs` — the integrity gate. Enums, dangling deps, orphan parents, cycles (Kahn).
+**Five runtime dependencies**, and this document has to say so plainly, because it used to
+say **one** (`js-yaml`) and add — with some satisfaction — that *"pretending otherwise
+would be exactly the kind of claim this document exists to avoid."* The claim outlived its
+truth by two commits, which is the more instructive failure.
 
-**One runtime dependency** (`js-yaml`). Not zero — `ready-walker` parses YAML, and pretending
-otherwise would be exactly the kind of claim this document exists to avoid.
+The five: `js-yaml` (someone has to parse the YAML), `peowly` + `peowly-commands` (arg
+parsing over `node:util.parseArgs`), `pony-cause`, and `@voxpelli/typed-utils`. That is
+**25 transitive packages, 2.9 MB**. The template this CLI follows also ships
+`markdown-or-chalk`, which was **declined**: it is 101 transitive packages and 10 MB on its
+own — 97% of the template's entire install — for syntax-highlighted code fences a task
+tracker never renders. A tracker that prints a list of tasks does not need a markdown
+renderer, and the dependency count is a thing this project is allowed to be smug about only
+if it keeps checking.
 
 There is deliberately **no CRUD helper**. Writing a task is `Edit`. That is the
 substrate-not-opinion line: the tool provides the primitives (a schema, a reader, a
@@ -73,7 +84,7 @@ Real gaps. This is also the roadmap.
 - **Duplicate detection.** `bd find-duplicates`, including `--method=ai`, and
   `bd supersede`. There is no analog; `/backlog-groomer` now compares titles and labels
   by hand. This is the biggest genuine loss.
-- **Staleness.** `bd stale` aged *open* issues. `ready-walker --stale` is
+- **Staleness.** `bd stale` aged *open* issues. `diarie stats --stale` is
   **`in_progress`-scoped only** — pending-item aging has to be read off each row's
   `updated:` field. A pending-stale mode is worth adding.
 - **Search.** bd had fuzzy/semantic search across issues. We have `grep`.
