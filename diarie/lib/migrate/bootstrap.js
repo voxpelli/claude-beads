@@ -1,7 +1,7 @@
 /**
- * bootstrap-tasks.mjs — the bd → flat-YAML migrator.
+ * bootstrap.js — the bd → flat-YAML migrator (`diarie migrate`).
  *
- * The write-half the read-only spike (`migrate-from-bd.mjs`) deliberately isn't.
+ * The write-half the read-only spike (`bd-map.js`) deliberately isn't.
  * Reads a `bd export` JSONL snapshot and evacuates the LIVE issues (everything
  * not `closed`) into the real substrate, under `--root`:
  *
@@ -45,7 +45,7 @@
  *
  * Usage:
  *   bd export -o /tmp/bd-export.jsonl
- *   node bootstrap-tasks.mjs /tmp/bd-export.jsonl --root . \
+ *   node diarie/cli.js migrate /tmp/bd-export.jsonl --root . \
  *     --epic vp-beads-l9i=migration \
  *     --title migration='Tracker migration off bd (epic vp-beads-l9i)' \
  *     --default-slug backlog \
@@ -108,7 +108,7 @@ export function splitBody (body) {
 
   let end = lines.length
   for (let i = acIdx + 1; i < lines.length; i++) {
-    if (/^##\s+/.test(lines[i])) { end = i; break }
+    if (/^##\s+/.test(lines[i] ?? '')) { end = i; break }
   }
   const acceptanceCriteria = lines
     .slice(acIdx + 1, end)
@@ -128,31 +128,42 @@ export function splitBody (body) {
  * blocker is already satisfied, and a closed parent is history. Carrying either
  * would dangle and fail `validate-tasks`.
  *
- * @param {any} r a parsed bd issue
+ * @param {import('./bd-map.js').BdIssue} r a parsed bd issue
  * @param {Set<string>} liveIds ids of every issue being migrated
  * @param {string[]} droppedEdges accumulator for dropped (non-live) edges
- * @returns {any} the task record
+ * @param {string[]} [priorityDefaulted] accumulator for coerced priorities
+ * @returns {import('../store.js').Task} the task record
  */
-export function projectLive (r, liveIds, droppedEdges) {
-  // Throw, never fall through: an unmapped status yields `undefined`, js-yaml then
-  // DROPS the key, and the result is a task row with no status at all — a silent
-  // corruption, and the exact failure mode this migrator exists to avoid. bd has
-  // statuses beyond the four in STATUS_MAP (`reopened`, …); vp-beads' own export
-  // happened to carry none, so this could only ever have bitten someone else.
-  const status = r.status === 'deferred' ? 'deferred' : STATUS_MAP[r.status]
+export function projectLive (r, liveIds, droppedEdges, priorityDefaulted = []) {
+  // Throw, never fall through: an absent value yields `undefined`, js-yaml then DROPS
+  // the key on write, and the result is a task row silently missing a required field —
+  // the exact failure mode this migrator exists to avoid. A migrator that loses data
+  // quietly is worse than one that stops.
+  //
+  // Typing `r` as BdIssue instead of `any` is what surfaced the rest of these: `id`,
+  // `issue_type` and `depends_on_id` were all dereferenced as if guaranteed. bd's own
+  // exports happen to carry them, so only a foreign export would ever have been bitten.
+  if (!r.id) throw new Error('bd record with no id — cannot become a task (the schema requires one)')
+
+  const status = r.status === 'deferred' ? 'deferred' : (r.status === undefined ? undefined : STATUS_MAP[r.status])
   if (!status || !VALID_STATUSES.has(status)) {
-    throw new Error(`unmapped bd status for ${r.id}: "${r.status}" — add it to STATUS_MAP in migrate-from-bd.mjs`)
+    throw new Error(`unmapped bd status for ${r.id}: "${r.status}" — add it to STATUS_MAP in bd-map.js`)
   }
-  const mapped = TYPE_MAP[r.issue_type]
+  const mapped = r.issue_type === undefined ? undefined : TYPE_MAP[r.issue_type]
   if (!mapped || !VALID_TYPES.has(mapped.type)) {
     throw new Error(`bad type map for ${r.id}: ${r.issue_type}`)
   }
 
   const labels = [...(Array.isArray(r.labels) ? r.labels : []), ...(mapped.label ? [mapped.label] : [])]
 
+  /** @type {string[]} */
   const deps = []
+  /** @type {string | undefined} */
   let parent
   for (const d of r.dependencies ?? []) {
+    // An edge pointing nowhere is not an edge. Report it rather than pushing `undefined`
+    // into deps, where it would serialize as a null and dangle at validation.
+    if (!d.depends_on_id) { droppedEdges.push(`${r.id} → (no target) (${d.type ?? 'unknown'}; malformed edge)`); continue }
     const live = liveIds.has(d.depends_on_id)
     if (d.type === 'blocks') {
       if (live) deps.push(d.depends_on_id)
@@ -160,12 +171,44 @@ export function projectLive (r, liveIds, droppedEdges) {
     } else if (d.type === 'parent-child') {
       if (live) parent = d.depends_on_id
       else droppedEdges.push(`${r.id} → ${d.depends_on_id} (parent; dropped: epic not live)`)
+    } else {
+      // bd has edge types beyond `blocks` and `parent-child` (`related`,
+      // `discovered-from`, …). They have no analog in the schema, so dropping them is
+      // right — dropping them SILENTLY is not. Without this branch the tool that WRITES
+      // was strictly less honest than the read-only spike that only previews, which
+      // already accumulates them as `untranslatedDepTypes`. vp-beads' own export happens
+      // to carry none; `/migrate-tracker` is aimed at repos whose exports might.
+      droppedEdges.push(`${r.id} → ${d.depends_on_id} (${d.type ?? 'unknown'}; untranslated edge type — no schema analog)`)
     }
   }
 
-  const { acceptanceCriteria, description } = splitBody(r.description)
+  const { acceptanceCriteria, description } = splitBody(r.description ?? '')
 
-  const task = { id: r.id, title: r.title, status, type: mapped.type, priority: PRIORITY_MAP[r.priority] ?? 'medium' }
+  // An unmappable priority is the ONE field here that degrades instead of halting, and
+  // that is the right call — `medium` is a defensible default and priority affects only
+  // ORDERING, never correctness. But it must still be SAID. Priority is the ready-queue's
+  // sort key, so a silent coercion quietly reorders the target repo's backlog, and the
+  // read-only spike this migrator replaced already reported it (bd-map.js's
+  // `priorityDefaultedIds`) while the shipped tool did not. Report-and-continue is the
+  // policy; reporting is not the optional half.
+  const priority = PRIORITY_MAP[String(r.priority)]
+  if (!priority) priorityDefaulted.push(`${r.id} (bd priority: ${JSON.stringify(r.priority)}) → medium`)
+
+  /** @type {import('../store.js').Task} */
+  const task = {
+    id: r.id,
+    // Spread-conditional, not `title: r.title`. The reason is tsc, not the validator:
+    // `exactOptionalPropertyTypes` forbids assigning `undefined` to an optional property.
+    // Runtime behaviour is identical either way — `isNil` rejects a missing title and an
+    // explicit `undefined` alike, and js-yaml drops undefined keys on dump. (An earlier
+    // version of this comment claimed a present-but-undefined key would "slip through the
+    // gate". It would not. Do not restore that claim: it invents a hole in the validator
+    // and would tell whoever simplifies this line that they broke a guard that never was.)
+    ...(r.title === undefined ? {} : { title: r.title }),
+    status,
+    type: mapped.type,
+    priority: priority ?? 'medium',
+  }
   if (labels.length) task.labels = labels
   if (parent) task.parent = parent
   if (deps.length) task.deps = deps
@@ -210,7 +253,9 @@ export function groupTasks (tasks, epicSlugs, defaultSlug) {
   const grouped = new Map([[defaultSlug, []], ...[...epicSlugs.values()].map(s => /** @type {[string, any[]]} */ ([s, []]))])
   for (const task of tasks) {
     const slug = slugFor(task)
-    grouped.get(slug)?.push(task)
+    const bucket = grouped.get(slug)
+    if (!bucket) throw new Error(`internal: no bucket for slug "${slug}" — refusing to drop task ${task.id}`)
+    bucket.push(task)
   }
   return grouped
 }
@@ -292,7 +337,7 @@ export async function runMigration (args) {
   const [inputPath] = positionals
   if (!inputPath) {
     stderr.write(
-      'usage: node bootstrap-tasks.mjs <bd-export.jsonl> [options]\n' +
+      'usage: node diarie/cli.js migrate <bd-export.jsonl> [options]\n' +
       '  --root <dir>            project root to write into (default: the current directory)\n' +
       '  --epic <id>=<slug>      route an epic + its descendants to tasks-<slug>.yml (repeatable)\n' +
       '  --default-slug <slug>   everything else (default: backlog)\n' +
@@ -351,6 +396,8 @@ export async function runMigration (args) {
   const liveIds = new Set(live.map(r => r.id))
   /** @type {string[]} */
   const droppedEdges = []
+  /** @type {string[]} */
+  const priorityDefaulted = []
 
   for (const epicId of epicSlugs.keys()) {
     if (!liveIds.has(epicId)) stderr.write(`warning: --epic ${epicId} is not a live issue — its slug will be empty\n`)
@@ -359,7 +406,7 @@ export async function runMigration (args) {
   const tasks = []
   const decisions = []
   for (const r of live) {
-    const task = projectLive(r, liveIds, droppedEdges)
+    const task = projectLive(r, liveIds, droppedEdges, priorityDefaulted)
     if (task.type === 'decision') decisions.push({ task, body: r.description })
     else tasks.push(task)
   }
@@ -381,6 +428,12 @@ export async function runMigration (args) {
   if (droppedEdges.length) {
     stdout.write(`  dropped ${droppedEdges.length} edge(s) to non-live issues:\n`)
     for (const d of droppedEdges) stdout.write(`    - ${d}\n`)
+  }
+  if (priorityDefaulted.length) {
+    // Priority is the ready-queue's sort key, so this is not cosmetic: it means the
+    // migrated backlog may not come out in the order bd would have given it.
+    stdout.write(`  coerced ${priorityDefaulted.length} unmappable priority/-ies to medium (affects ready ORDER):\n`)
+    for (const p of priorityDefaulted) stdout.write(`    - ${p}\n`)
   }
   stdout.write(`written:\n${written.map(w => `  ${w}`).join('\n')}\n`)
 

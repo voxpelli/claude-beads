@@ -141,10 +141,11 @@ console.log('computeReady — containers (vp-beads-epc)')
 
 // These cover the RULE. They cannot cover the bug that made the rule necessary: the
 // half-globalized `parent` in loadTasks. Inline arrays let the author write `id` and
-// `parent` in one consistent id-space by hand, which is exactly the coherence the real
-// loader was failing to provide — so all of this stayed green while every epic in the
-// live store computed as ready. The regression guard lives in check-tasks-smoke.mjs,
-// which goes through loadTasks and a real store on disk. Do not move it here.
+// `parent` in one consistent id-space by hand — exactly the coherence the real loader was
+// failing to provide. So every assertion below WOULD STAY GREEN against a tracker that
+// still hands out a raw `parent` and therefore still offers every epic as work. Verified
+// by mutation, not assumed. The regression guard lives in check-tasks-smoke.mjs, which
+// goes through loadTasks and a real store on disk. Do not move it here.
 
 assert(
   'a parent with an OPEN child is not ready — it is blocked BY that child',
@@ -224,6 +225,44 @@ assert(
       { id: 'C', status: 'pending', type: 'task', parent: 'P' },
     ]).blocked.find(t => t.id === 'P')
     return p?.blockers.includes('D') === true && p?.children?.includes('C') === true
+  })()
+)
+
+assert(
+  'a CANCELLED child does not entomb its parent in `blocked` — it needs a human, like a cancelled DEP',
+  (() => {
+    const r = computeReady([
+      { id: 'P', status: 'pending', type: 'task' },
+      { id: 'C', status: 'cancelled', type: 'task', parent: 'P' },
+    ])
+    // The bug this pins: "open child" was once `status !== 'completed'`, which swept the
+    // terminal statuses into ACTIVE and left the parent blocked forever, by a dead child,
+    // in the bucket nobody reads. A cancelled DEP had always routed to needsAttention.
+    return !r.blocked.some(t => t.id === 'P') && r.needsAttention.some(t => t.id === 'P' && /cancelled/.test(t.reason))
+  })()
+)
+
+assert(
+  'a MILESTONE child never blocks its parent (it is never worked, so it never completes)',
+  (() => {
+    const r = computeReady([
+      { id: 'P', status: 'pending', type: 'task' },
+      { id: 'M', status: 'pending', type: 'milestone', parent: 'P' },
+    ])
+    // A milestone lives in tasks-*.yml (unlike a decision), has "no effort, no assignment",
+    // and therefore never reaches `completed`. Counting it as an open child would have held
+    // its parent hostage forever.
+    return r.ready.some(t => t.id === 'P')
+  })()
+)
+
+assert(
+  'a DANGLING parent surfaces the child (the tripwire for an id-space divergence)',
+  (() => {
+    const r = computeReady([{ id: 'C', status: 'pending', type: 'task', parent: 'NOPE' }])
+    // If `id` and `parent` ever fall into different id-spaces again, EVERY parent dangles
+    // and every row lands here at once — instead of every epic silently becoming workable.
+    return !r.ready.some(t => t.id === 'C') && r.needsAttention.some(t => /parent NOPE \(missing\)/.test(t.reason))
   })()
 )
 

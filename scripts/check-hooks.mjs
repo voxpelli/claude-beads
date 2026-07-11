@@ -61,15 +61,23 @@ function parseJsonObjects (stdout) {
  *
  * @param {string} script - Filename in hooks/
  * @param {string} [stdin] - Stdin content
- * @param {{ args?: string[], cwd?: string, pathPrefix?: string }} [opts]
+ * @param {{ args?: string[], cwd?: string, pathPrefix?: string, scrubNodeBin?: boolean }} [opts]
  * @returns {{ stdout: string, stderr: string, status: number | null }}
  */
 function runHook (script, stdin, opts = {}) {
   const scriptPath = join(HOOKS, script)
   const args = opts.args ?? []
-  const path = opts.pathPrefix
-    ? `${opts.pathPrefix}:${process.env.PATH}`
+  // `npm run` prepends `node_modules/.bin` to PATH, and `diarie` is a workspace bin —
+  // so inside `npm run check`, the hooks' first rung (`command -v diarie`) RESOLVES.
+  // That is correct in production (a consumer with diarie installed should use it) but
+  // it makes "no validator is reachable" impossible to simulate. A test that cannot
+  // create its own premise is not testing anything, so `scrubNodeBin` removes those
+  // entries. Without it, this suite passes standalone and fails under `npm run check`
+  // — which is exactly how it announced itself.
+  const basePath = opts.scrubNodeBin
+    ? (process.env.PATH ?? '').split(':').filter(p => !p.includes('node_modules/.bin')).join(':')
     : process.env.PATH
+  const path = opts.pathPrefix ? `${opts.pathPrefix}:${basePath}` : basePath
   const result = spawnSync('bash', [scriptPath, ...args], {
     input: stdin ?? '',
     cwd: opts.cwd ?? ROOT,
@@ -172,11 +180,17 @@ function makeGhStubDir (stdout, exitCode = 0) {
  * prefer), without needing a real `.diarie/` store.
  *
  * The stub DISPATCHES ON ARGS, because the two hook branches call the reader
- * differently and expect different shapes: `--filter in_progress` returns a flat
- * ARRAY of claims (what the compact branch recovers), while a bare `--format
- * json` returns the `{ready, blocked, needsAttention}` OBJECT (what the startup
- * prime reads). A stub that echoed one payload for every invocation would make
- * the prime's tests pass against data the real reader never emits.
+ * differently and expect different shapes: `ready --filter in_progress --json`
+ * returns a flat ARRAY of claims (what the compact branch recovers), while a bare
+ * `ready --json` returns the `{ready, blocked, needsAttention}` OBJECT (what the
+ * startup prime reads). A stub that echoed one payload for every invocation would
+ * make the prime's tests pass against data the real reader never emits.
+ *
+ * The flag is `--json`, not `--format json`. That was the retired ready-walker's
+ * spelling, and this comment kept it long after the CLI dropped it — harmless only
+ * because the dispatch below falls through on `*)` rather than matching the flag.
+ * THE STUB IS A DE-FACTO SPEC: if it drifts from the real CLI, these tests stay green
+ * while production diverges, so its description has to be true.
  *
  * @param {string} inProgressJson - printed for `--filter in_progress` (e.g. '[]')
  * @param {number} [exitCode]
@@ -322,6 +336,7 @@ test('no resolvable validator → silent, exit 0 (never a spam loop)', () => {
   try {
     const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
       args: ['/nonexistent-plugin-root'],
+      scrubNodeBin: true,
     })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `expected silence, got: ${stdout.slice(0, 120)}` }

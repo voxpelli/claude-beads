@@ -66,7 +66,15 @@ export const validate = {
         parseErrors.push(`${name}: invalid YAML — ${/** @type {Error} */ (err).message}`)
         continue
       }
-      files.push({ name: slugOf(name), tasks: doc?.tasks ?? [] })
+      // Pass the raw value through — do NOT `?? []` it. That default silently laundered
+      // a broken file into a clean empty one: a `task:` typo, or a truncation down to
+      // just `meta:`, became `tasks: []`, and `lintTasks`' own Pass-0 guard ("top-level
+      // 'tasks' must be a list") could never fire, because it never saw the nil. The
+      // whole file's backlog disappeared while validate, ready and stats all exited 0.
+      //
+      // An empty store is a file that SAYS `tasks: []`. A file that says nothing is not
+      // empty — it is broken, and only the linter gets to decide that.
+      files.push({ name: slugOf(name), tasks: doc?.tasks })
     }
 
     const lint = lintTasks(files)

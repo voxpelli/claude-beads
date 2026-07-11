@@ -17,12 +17,15 @@
     "check:tasks": "node diarie/cli.js validate",
     "check:tasks-smoke": "node scripts/check-tasks-smoke.mjs",
     "check:tasks-validator": "node scripts/check-tasks-validator.mjs",
+    "check:tsc": "tsc -p diarie",
+    "check:type-coverage": "type-coverage -p diarie --detail --strict --at-least 88",
     "check:validator": "node scripts/check-validator.mjs",
     "fix:ast-grep": "ast-grep scan --update-all scripts/ diarie/lib/ validate-plugin.mjs"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.1",
     "@voxpelli/eslint-config": "^25.1.0",
+    "diarie": "*",
     "eslint": "^9.39.4",
     "js-yaml": "^4.1.0",
     "npm-run-all2": "^7.0.0",

@@ -5,12 +5,13 @@
  * `store.js`'s job; this file never touches the filesystem except in the
  * temporary CLI entry at the bottom.
  *
- * Ready rule: a task is READY iff `type: task`, `status: pending`, and every dep
- * is `completed`; BLOCKED if any dep is pending/in_progress; NEEDS_ATTENTION if a
- * dep is failed/cancelled/deferred/missing. Non-task types (`doc`/`decision`/
- * `milestone`) are records or markers, never work — they never appear in any
- * partition. (Only the analog of bd's `blocks` affects readiness; the graph is
- * recomputed, never enforced — see validate.js for the integrity gate.)
+ * Ready rule: a task is READY iff it is `type: task`, `status: pending`, has no open
+ * dependency, AND is not a container (no open children, no `epic` label). BLOCKED if a
+ * dep or a child is still pending/in_progress. NEEDS_ATTENTION if a dep or child is
+ * failed/cancelled/deferred/missing, if a `parent:` dangles, or if an `epic` has nothing
+ * open left inside it. Non-task types (`doc`/`decision`/`milestone`) are records or
+ * markers, never work — they never appear in any partition, and never block one.
+ * (The graph is recomputed, never enforced — see validate.js for the integrity gate.)
  */
 
 import {
@@ -20,9 +21,9 @@ import {
 /** @typedef {import('./store.js').Task} Task */
 
 /**
- * Build a zero-filled tally keyed by a set of allowed values. Uses a
- * null-prototype object so a junk key like `toString` can't reach the prototype
- * chain via the `in` operator.
+ * Build a zero-filled tally keyed by a set of allowed values. Null-prototype, so a junk
+ * key like `toString` reads back `undefined` instead of climbing to Object.prototype and
+ * returning a function — see `bump()`, which relies on exactly that.
  *
  * @param {Set<string>} keys
  * @returns {Record<string, number>}
@@ -35,27 +36,61 @@ const tally = (keys) => {
 }
 
 /**
- * Index open children by parent id.
+ * Increment a tally slot, but only one that the tally already declared.
  *
- * An OPEN child is any child whose status is not `completed` — the wording is the
- * acceptance criterion's, deliberately, rather than a re-derivation of it.
+ * The lookup IS the guard: a `tally()` object is null-prototype, so an unexpected key
+ * — `toString`, or a status the schema has never heard of — reads back `undefined`
+ * rather than climbing to `Object.prototype` and returning a function. An undeclared
+ * key is therefore left uncounted instead of being invented, which is the behaviour we
+ * want for malformed input: untallied, never misclassified.
  *
- * Only tasks in `tasks-*.yml` are candidates, because that is all `loadTasks` globs.
- * That is load-bearing: `decision` records live in `.diarie/decisions/` and stay
- * `pending` forever by design, so a decision filed under an epic (as `vp-beads-etm`
- * is) can never hold its parent hostage.
+ * @param {Record<string, number>} counts
+ * @param {string} [key]
+ * @returns {void}
+ */
+const bump = (counts, key) => {
+  if (key === undefined) return
+  const n = counts[key]
+  if (n !== undefined) counts[key] = n + 1
+}
+
+/**
+ * Index a parent's WORKABLE children by parent id, split exactly the way deps are.
+ *
+ * The child taxonomy deliberately MIRRORS the dep taxonomy below — same three buckets,
+ * same statuses — because a container and a prerequisite fail in the same ways and a
+ * reader should not have to learn two vocabularies:
+ *
+ *   pending / in_progress          -> ACTIVE   : real remaining work; the parent is blocked
+ *   completed                      -> done     : contains nothing; ignore
+ *   failed / cancelled / deferred  -> STALLED  : needs a human, not a blocker
+ *
+ * The first cut got this wrong in a way worth recording. "Open child" was defined as
+ * `status !== 'completed'` — the acceptance criterion's own words — which quietly swept
+ * the terminal statuses into ACTIVE. A parent whose only child was `cancelled` then sat
+ * in `blocked` forever, unworkable, with nothing to point at and no way out: the very
+ * "offered nothing, said nothing" failure this module exists to prevent, reintroduced by
+ * the fix for it. Deps had always got this right; the children just had to be told.
+ *
+ * Only `type: task` children count. `decision` records are safe by construction (they
+ * live in `.diarie/decisions/`, outside `loadTasks`'s glob) — but `milestone` is NOT:
+ * it lives in `tasks-*.yml`, it has "no effort, no assignment", so it is never worked and
+ * therefore never `completed`. A milestone filed under an epic would have blocked it
+ * until the heat death of the repository.
  *
  * @param {Task[]} tasks
- * @returns {Map<string, string[]>}
+ * @returns {Map<string, { active: string[], stalled: string[] }>}
  */
-function openChildrenByParent (tasks) {
-  /** @type {Map<string, string[]>} */
+function childrenByParent (tasks) {
+  /** @type {Map<string, { active: string[], stalled: string[] }>} */
   const kids = new Map()
   for (const t of tasks) {
-    if (!t.parent || t.status === 'completed') continue
-    const list = kids.get(t.parent)
-    if (list) list.push(t.id)
-    else kids.set(t.parent, [t.id])
+    if (!t.parent || t.type !== 'task') continue
+    if (t.status === 'completed') continue
+    let entry = kids.get(t.parent)
+    if (!entry) { entry = { active: [], stalled: [] }; kids.set(t.parent, entry) }
+    if (t.status === 'pending' || t.status === 'in_progress') entry.active.push(t.id)
+    else entry.stalled.push(`${t.id} (${t.status})`)
   }
   return kids
 }
@@ -83,7 +118,7 @@ function openChildrenByParent (tasks) {
  */
 export function computeReady (tasks) {
   const byId = new Map(tasks.map(t => [t.id, t]))
-  const openKids = openChildrenByParent(tasks)
+  const kids = childrenByParent(tasks)
   /** @type {Task[]} */
   const ready = []
   /** @type {Array<Task & { blockers: string[], children?: string[] }>} */
@@ -111,13 +146,25 @@ export function computeReady (tasks) {
       else stalled.push(`${depId} (${dep.status})`)
     }
 
-    const children = openKids.get(task.id) ?? []
+    // A `parent:` that resolves to nothing gets the same treatment as a dangling dep —
+    // and it is the tripwire for this module's worst bug. Ids here are globalized
+    // (`slug/id`) and `parent` is globalized by the same rule, in the same place. Should
+    // those two ever drift apart again — as they did, silently, for the tracker's whole
+    // life — then every parent stops matching every id, every epic finds zero children,
+    // and every container quietly becomes workable again. No unit test can see that (it
+    // writes both ids by hand, in one consistent space). This makes it scream instead:
+    // one typo surfaces one row, an id-space divergence surfaces EVERY row at once.
+    if (task.parent && !byId.has(task.parent)) stalled.push(`parent ${task.parent} (missing)`)
+
+    // Children fold into the SAME two buckets as deps, deliberately. An abandoned child
+    // is not a blocker — it is a question for a human, exactly as an abandoned dep is.
+    const { active: kidsActive = [], stalled: kidsStalled = [] } = kids.get(task.id) ?? {}
     const isEpic = task.labels?.includes('epic') ?? false
 
-    if (active.length || children.length) {
-      blocked.push({ ...task, blockers: active, ...(children.length ? { children } : {}) })
-    } else if (stalled.length) {
-      needsAttention.push({ ...task, reason: stalled.join(', ') })
+    if (active.length || kidsActive.length) {
+      blocked.push({ ...task, blockers: active, ...(kidsActive.length ? { children: kidsActive } : {}) })
+    } else if (stalled.length || kidsStalled.length) {
+      needsAttention.push({ ...task, reason: [...stalled, ...kidsStalled].join(', ') })
     } else if (isEpic) {
       // Labelled a container, but nothing left inside it: either the work is done and
       // the epic wants closing, or nobody ever filed its children. Both are real states
@@ -151,16 +198,12 @@ export function computeStats (tasks, staleDays = 30, now = new Date()) {
   const cutoff = now.getTime() - staleDays * 86_400_000
 
   for (const t of tasks) {
-    // `in` is safe here: tally() objects are null-prototype, so a junk value like
-    // `toString` cannot reach Object.prototype.
-    if (t.status in byStatus) byStatus[t.status]++
-    const p = t.priority ?? 'medium'
-    if (p in byPriority) byPriority[p]++
-    // No `?? 'task'` default — mirrors computeReady's deliberate non-assumption
-    // for malformed (type-less) input: `undefined in byType` is false, so a
-    // type-less item is simply untallied, not misclassified.
-    const ty = t.type
-    if (ty && ty in byType) byType[ty]++
+    bump(byStatus, t.status)
+    bump(byPriority, t.priority ?? 'medium')
+    // No `?? 'task'` default — mirrors computeReady's deliberate non-assumption for
+    // malformed (type-less) input: an untallied key is left alone, so a type-less item
+    // is simply not counted, never misclassified.
+    bump(byType, t.type)
     if (t.status === 'in_progress' && t.updated) {
       const u = Date.parse(t.updated)
       if (Number.isNaN(u)) malformedDates.push(t.id)

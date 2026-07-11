@@ -1,0 +1,14 @@
+{
+  "extends": "@voxpelli/tsconfig/node20.json",
+  "files": [
+    "cli.js"
+  ],
+  "include": [
+    "lib/**/*"
+  ],
+  "compilerOptions": {
+    "types": [
+      "node"
+    ]
+  }
+}

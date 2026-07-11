@@ -28,7 +28,13 @@ const commands = {
  */
 export async function cli (argv) {
   await peowlyCommands(commands, {
-    argv,
+    // `args`, NOT `argv`. peowly-commands takes `args`; an `argv` key is simply not in
+    // CliOptions, so it was silently ignored and the parser fell back to
+    // `process.argv`. Production looked fine — process.argv happened to say the same
+    // thing — but this function's own parameter did nothing, and driving the CLI
+    // in-process (a test, a library consumer) got whatever the real process was
+    // invoked with. Caught by tsc the day types were switched on.
+    args: argv,
     name: 'diarie',
     importMeta: import.meta,
   })

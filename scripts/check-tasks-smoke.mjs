@@ -139,11 +139,20 @@ console.log('\ncontainers: an epic is not workable (vp-beads-epc) — THROUGH lo
 {
   const { code, out } = run(READY, ['--json'], EPICS)
   const j = JSON.parse(out)
-  /** @param {string} id @returns {boolean} */
+  /**
+   * @param {string} id
+   * @returns {boolean}
+   */
   const inReady = (id) => j.ready.some((/** @type {any} */ t) => t.id === id)
-  /** @param {string} id @returns {any} */
+  /**
+   * @param {string} id
+   * @returns {any}
+   */
   const blockedRow = (id) => j.blocked.find((/** @type {any} */ t) => t.id === id)
-  /** @param {string} id @returns {any} */
+  /**
+   * @param {string} id
+   * @returns {any}
+   */
   const attnRow = (id) => j.needsAttention.find((/** @type {any} */ t) => t.id === id)
 
   assert('exit 0', code === 0)
@@ -183,13 +192,94 @@ console.log('\ncontainers: an epic is not workable (vp-beads-epc) — THROUGH lo
   // The CONVERSE — guards a fix that over-excludes every parent forever.
   assert('parent whose children are ALL completed is STILL ready', inReady('alpha/P-DONE'))
   assert('a childless task is unaffected', inReady('alpha/PLAIN'))
+}
 
-  // A tree of finished leaves is not a broken graph.
-  assert('containers in `blocked` do NOT trigger the dependency-cycle hint', j.hint === undefined)
+// The dependency-cycle hint fires on "0 ready, but things are blocked" — which now has
+// an innocent cause it never had before: a container blocked purely by its own open
+// children. Suppressing that requires the hint to count DEP-blocked rows only.
+//
+// It needs its OWN store, and the reason is the whole point. Asserting `hint === undefined`
+// against the fixtures-epics store above is GREEN NO MATTER WHAT, because that store always
+// has ready tasks — so `ambiguous` is false for an unrelated reason and the assertion never
+// exercises the filter. Mutation-tested: strip the filter and that version still passes.
+// A test can only catch this where `ready` is genuinely EMPTY.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'diarie-hint-'))
+  try {
+    mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
+    // E is a container with one open child. C is in_progress: OPEN (so it blocks E) but
+    // NOT pending (so it is not ready). Net: ready = [], blocked = [E], zero dep-blockers.
+    writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'),
+      'tasks:\n' +
+      '  - id: E\n    title: container\n    status: pending\n    type: task\n    labels: [epic]\n' +
+      '  - id: C\n    title: its open child\n    status: in_progress\n    type: task\n    parent: E\n')
+    const { out } = run(READY, ['--json'], dir)
+    const j = JSON.parse(out)
+    assert('container-only backlog: 0 ready, 1 blocked (the shape that used to imply a cycle)',
+      j.ready.length === 0 && j.blocked.length === 1)
+    assert('...and NO false cycle hint — a tree whose leaves are claimed is not a broken graph',
+      j.hint === undefined)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  const dir = mkdtempSync(join(tmpdir(), 'diarie-hint2-'))
+  try {
+    mkdirSync(join(dir, TRACKER_DIR, 'tasks'), { recursive: true })
+    // The CONVERSE, and it is what stops the filter from over-suppressing: a GENUINE
+    // dep-block with nothing ready must still warn. T-2 waits on T-1; T-1 is claimed.
+    writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-x.yml'),
+      'tasks:\n' +
+      '  - id: T-1\n    title: claimed blocker\n    status: in_progress\n    type: task\n' +
+      '  - id: T-2\n    title: waits on T-1\n    status: pending\n    type: task\n    deps: [T-1]\n')
+    const { out } = run(READY, ['--json'], dir)
+    const j = JSON.parse(out)
+    assert('a REAL dep-block with 0 ready still warns (the filter must not suppress this)',
+      j.ready.length === 0 && j.blocked.length === 1 && j.hint !== undefined)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
   const { code } = run(VALIDATE, [], EPICS)
   assert('the container fixtures are themselves a valid store', code === 0)
+}
+
+console.log('\nthe --blocked TEXT rendering (the default human output — JSON-only tests miss it)')
+
+{
+  const { code, out } = run(READY, ['--blocked'], EPICS)
+  assert('--blocked: a container names WHICH children hold it', code === 0 &&
+    /alpha\/E-OPEN.*← contains 2 open:/.test(out))
+  assert('--blocked: a container is never mislabelled "blocked by" (that phrase means DEPS)',
+    !/alpha\/E-OPEN.*← blocked by/.test(out))
+}
+
+console.log('\ndriving cli() IN-PROCESS (no spawn-based test can catch this)')
+
+// peowly-commands takes `args`, not `argv`. main.js passed `argv`, which is not in its
+// options type, so it was SILENTLY IGNORED and the parser fell back to `process.argv`.
+// Every other test spawns `node cli.js …`, where process.argv HAPPENS to equal the
+// intended args — so the whole suite stayed green against a cli() that ignored its only
+// parameter. Here process.argv is `[node, check-tasks-smoke.mjs]`, nothing like the args
+// below: if the parameter is ever ignored again, this is the only test that can tell.
+//
+// Its failure mode is an ABORT, not a red assertion: with `args` ignored, peowly parses an
+// empty argv, finds no command, prints help and calls process.exit(). The suite dies here
+// with a non-zero code — which still fails `npm run check`, correctly — so this block is
+// kept LAST-ish on purpose. Do not "fix" the abort by catching it; the exit IS the signal.
+{
+  // By path, not by package subpath: `lib/main.js` is deliberately NOT in diarie's
+  // `exports` map (only `.` and `./schema` are public). The CLI entry is internal.
+  const { cli } = await import(new URL('../diarie/lib/main.js', import.meta.url).href)
+  {
+    let captured = ''
+    const realWrite = process.stdout.write.bind(process.stdout)
+    // @ts-expect-error — deliberately monkey-patching stdout for the duration of one call
+    process.stdout.write = (chunk) => { captured += chunk; return true }
+    try { await cli(['ready', '--json', '--root', FIXTURES]) } finally { process.stdout.write = realWrite }
+    let parsed
+    try { parsed = JSON.parse(captured) } catch { /* left undefined */ }
+    assert('cli(argv) parses ITS OWN argv, not process.argv',
+      Array.isArray(parsed?.ready) && parsed.ready.some((/** @type {any} */ t) => t.id === 'beta/T-2'))
+  }
 }
 
 console.log('\nvalidate-tasks CLI (against test/fixtures)')
