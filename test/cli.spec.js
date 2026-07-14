@@ -98,6 +98,19 @@ function bigStore (t) {
 }
 
 /**
+ * A healthy file holding a live claim, beside a file that does not parse.
+ *
+ * @param {import('node:test').TestContext} t
+ * @returns {string}
+ */
+function halfBroken (t) {
+  const dir = seedStore(tmpDir(t, 'diarie-badyaml-'), 'a',
+    'tasks:\n  - id: T-2\n    title: THE LIVE CLAIM\n    status: in_progress\n    type: task\n')
+  writeFileSync(join(dir, TRACKER_DIR, 'tasks', 'tasks-b.yml'), 'tasks:\n  - id: X\n    title: "unterminated\n')
+  return dir
+}
+
+/**
  * Run the CLI with a given TASKS_ROOT.
  *
  * `out` is stdout ONLY and `err` is stderr ONLY — never merge them (see header).
@@ -938,5 +951,78 @@ describe('exit 2 must not TRUNCATE the answer — process.exit() does not flush 
     assert.equal(code, 2)
     assert.ok(out.length > 65536, `payload must exceed the 64KB pipe buffer (got ${out.length})`)
     assert.equal(JSON.parse(out).length, 400)
+  })
+})
+
+describe('THE FOURTH DOOR: one unreadable file must not delete the whole store', () => {
+  // `loadTasks` called `yaml.load` with NO try/catch. So a single stray unterminated quote in ONE
+  // tasks file threw out of the reader, landed in cli.js's "genuinely unexpected: a bug, not a user
+  // mistake" branch, and exited 1 with a stack trace — taking every OTHER file's rows with it,
+  // including live in-progress claims in files that were perfectly fine.
+  //
+  // And exit 1 is what hooks/session-start.sh reads as ENOSTORE and blanks the payload for. So the
+  // hook silently forgot a live claim, through a door the three previous fixes had not touched.
+  //
+  // CLAUDE.md's own Reader conventions: "Represent the malformed row; never delete it." One bad file
+  // was deleting the store.
+
+  it('the live claim in the HEALTHY file survives', (t) => {
+    const { out } = run(READY, ['--filter', 'in_progress', '--json'], halfBroken(t))
+    const rows = JSON.parse(out)
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0].title, 'THE LIVE CLAIM')
+  })
+
+  it('the unreadable file is REPORTED by name, and says what it cost', (t) => {
+    const { err } = run(READY, ['--json'], halfBroken(t))
+    assert.match(err, /tasks-b\.yml: invalid YAML/)
+    assert.match(err, /MISSING from every count/)
+  })
+
+  it('it is an InputError-class store problem, NOT an "unexpected error" crash', (t) => {
+    const { err } = run(READY, [], halfBroken(t))
+    assert.doesNotMatch(err, /unexpected error/)
+  })
+
+  it('`--strict` exits 2 — so the session-start hook (which reads exit 1 as ENOSTORE) is not fooled', (t) => {
+    assert.equal(run(READY, ['--filter', 'in_progress', '--strict'], halfBroken(t)).code, 2)
+  })
+
+  it('`validate` still rejects it — the reader is honest, the validator is the authority', (t) => {
+    assert.equal(run(VALIDATE, [], halfBroken(t)).code, 2)
+  })
+})
+
+describe('ONE VERDICT, BOTH SHAPES: --filter --strict must agree with the partition', () => {
+  // The first `--filter --strict` fix threw only on a dropped row, leaving the cycle, the
+  // needs-attention and the dangling-dep cases behind — so the flag went from DEAD to merely WEAKER,
+  // while the same commit taught `--help` to advertise it ("exit non-zero if any task needs
+  // attention, or the queue looks cyclic"). A promise one of its paths did not keep.
+  //
+  // Fix the instance, leave the class — in the fix for exactly that. So the verdict is now computed
+  // ONCE, in `doTheWork`, and both shapes read it.
+
+  const STORES = [
+    { what: 'a dependency cycle', yaml: 'tasks:\n  - id: A\n    title: a\n    status: pending\n    type: task\n    deps: [B]\n  - id: B\n    title: b\n    status: pending\n    type: task\n    deps: [A]\n' },
+    { what: 'an ABSENT required type', yaml: 'tasks:\n  - id: T-1\n    title: no type\n    status: pending\n' },
+    { what: 'a dangling dep', yaml: 'tasks:\n  - id: T-1\n    title: x\n    status: pending\n    type: task\n    deps: [NOPE]\n' },
+    { what: 'a dropped row (bad status)', yaml: 'tasks:\n  - id: T-9\n    title: claim\n    status: in-progress\n    type: task\n' },
+  ]
+
+  for (const { what, yaml } of STORES) {
+    it(`${what}: --filter --strict agrees with --strict`, (t) => {
+      const dir = seedStore(tmpDir(t, 'diarie-agree-'), 'a', yaml)
+      const filtered = run(READY, ['--filter', 'pending', '--strict'], dir).code
+      const partition = run(READY, ['--strict'], dir).code
+      assert.equal(filtered, partition, `--filter --strict exited ${filtered}, --strict exited ${partition}`)
+      assert.equal(filtered, 2)
+    })
+  }
+
+  it('a HEALTHY store: both shapes exit 0 — 2 must MEAN something', (t) => {
+    const dir = seedStore(tmpDir(t, 'diarie-agree-ok-'), 'a',
+      'tasks:\n  - id: T-1\n    title: fine\n    status: pending\n    type: task\n')
+    assert.equal(run(READY, ['--filter', 'pending', '--strict'], dir).code, 0)
+    assert.equal(run(READY, ['--strict'], dir).code, 0)
   })
 })
