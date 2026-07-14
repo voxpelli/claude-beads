@@ -21,9 +21,36 @@
 // `--no-index` asks the question we mean: *does .gitignore match this path, never mind that git already
 // tracks it.* Measured both ways; the default reports nothing.
 //
-// This needs no fixtures and no harness. It is a question with one right answer — the empty set — and
-// it goes red the moment that stops being true. A guard that can be proved by running it once, on the
-// real repo, is worth more than one that needs a sandbox to demonstrate it works.
+// 🚨 READ THIS BEFORE TRUSTING IT — IT IS A NO-OP IN CI. `vp-beads-tig`.
+//
+// This guard asks GIT whether a path is ignored. The tool it protects (remark) asks the `ignore`
+// npm package. They disagree, and the disagreement runs the wrong way:
+//
+//   - **Case.** git delegates to `core.ignorecase` — `true` on macOS, **`false` on ubuntu-latest**.
+//     remark's matcher is hardcoded case-insensitive on every platform. So the very bug this file was
+//     written for — `AGENT-*.md` swallowing `agent-concurrency-limits.md` — is caught on a Mac and
+//     **MISSED IN CI**, which is the only place that gates a merge. Measured: `core.ignorecase=false`
+//     → this guard exits 0 while remark still refuses to lint the file. **It was born red only because
+//     it was born on a Mac.**
+//   - **Nested `.gitignore` files.** git reads all of them (deeper wins); `remark --ignore-path
+//     .gitignore` reads ONLY the root file. A negation in a subdirectory un-ignores a file for git and
+//     not for the linter — guard green, gate blind.
+//   - **`.git/info/exclude` and `core.excludesFile`.** git honours both; remark has never heard of
+//     them. So this guard can go RED over a machine-local file the repo does not contain, and blame
+//     `.gitignore`, which is innocent.
+//
+// THE FIX is to stop asking git: match the tracked paths against the root `.gitignore` with the same
+// `ignore` package remark itself uses. Then the oracle IS the tool being protected — same file, same
+// matcher, same case semantics — instead of a third party that disagrees on three axes.
+//
+// AND IT IS THE WRONG PROPERTY ANYWAY. `check:md` also excludes tracked files with
+// `--ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'` — a CLI flag, not `.gitignore`, so this
+// guard is structurally blind to it. Measured: that hides **21 tracked, shipped files carrying 172
+// warnings**, which `--frail` makes errors. The claim worth enforcing is not *"no tracked file matches
+// .gitignore"* — it is *"no tracked file is invisible to the gates"*, and those are different sets.
+//
+// It still earns its place: it found a real bug, and it is red-by-construction rather than
+// green-by-assumption. But it is a floor, not a fence, and the comment above used to imply otherwise.
 
 import { spawnSync } from 'node:child_process'
 import process from 'node:process'

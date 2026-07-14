@@ -1397,3 +1397,45 @@ tasks:
       and `diarie/lib/` is full of `.js`, so the aim check still finds files. Two reviewers and I all
       believed otherwise. Only a coverage floor catches this.
     updated: '2026-07-14'
+  - id: vp-beads-tig
+    title: 'check:tracked-ignored is a NO-OP IN CI — it asks git; the tool it protects asks the `ignore` package'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - "🚨 MEASURED: `core.ignorecase` is TRUE on macOS and FALSE on ubuntu-latest. remark's matcher is hardcoded case-insensitive on EVERY platform (`ignore` pkg default; `unified-engine/lib/ignore.js` calls `ignore()` with no options). So `AGENT-*.md` vs `agent-concurrency-limits.md`: guard RED locally, GREEN in CI, while remark stays blind BOTH times. The guard was born red only because it was born on a Mac"
+      - "MEASURED: `git -c core.ignorecase=false` -> `node scripts/check-tracked-ignored.mjs` exits 0, while remark still refuses to lint the file"
+      - "FIX: stop asking git. Match tracked paths against the ROOT .gitignore using the same `ignore` npm package remark uses — then the oracle IS the tool being protected (same file, same matcher, same case semantics). Requires adding `ignore` to devDependencies (ASK FIRST)"
+      - "This also fixes two other oracle mismatches: (a) git reads NESTED .gitignore files, remark reads only the root one — a nested negation un-ignores for git and not for the linter, guard green + gate blind; (b) git honours `.git/info/exclude` + `core.excludesFile`, so the guard can go RED over a machine-local file the repo does not contain, and blame an innocent .gitignore"
+      - "ALSO: add a floor assertion (`tracked > 0`). `git ls-files -c` in a dir with no tracked files exits 0 with empty output -> `0 tracked files, none matched` -> GREEN over nothing. Its sibling check-ast-grep.mjs has such a guard; this one does not"
+      - "ALSO: `process.exitCode = 1`, not `process.exit(1)` — a piped stderr truncates the offender list at exactly 65536 bytes. This repo has already shipped that bug once (62807aa)"
+      - "ALSO: `maxBuffer: Infinity` + an explicit `if (result.error)` branch. NOT a false green (ENOBUFS gives status=null, which the `!== 0` predicate catches) but any repo with ~23k+ tracked files is permanently, inexplicably red with an empty error message"
+    description: >-
+      Found by the evasion reviewer the guard's OWN commit mandated (review-gate-protocol.md: "returning
+      zero findings is a FAILED review"), run on the guard AFTER it shipped — which is itself the
+      session's pattern taking one more lap.
+
+
+      The guard is not worthless: it found a real bug, and it is red-by-construction rather than
+      green-by-assumption. But it is a FLOOR, not a fence, and its header claimed otherwise until this
+      row was filed.
+    updated: '2026-07-15'
+  - id: vp-beads-imd
+    title: 'check:md is GREEN over 21 tracked, shipped files carrying 172 warnings — excluded by --ignore-pattern, not .gitignore'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - "MEASURED 2026-07-15: `git ls-files '.diarie/**/*.md' 'RESEARCH-*.md'` -> 21 TRACKED files. `npx remark` on them with `--frail` -> exit 1, **172 warnings**. `npm run check:md` -> exit 0"
+      - "`check:md` is `remark . --quiet --frail --ignore-path .gitignore --ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'`. The two `--ignore-pattern` flags are the hole — and they are a CLI flag, so `check:tracked-ignored` (which only knows about .gitignore) is STRUCTURALLY BLIND to them"
+      - "DECIDE, do not drift: either lint them (fix 172 warnings — mostly table-cell-padding in the .diarie decision docs) or keep the exclusion DELIBERATELY and say why in the script. What is not acceptable is a gate that reports success over 21 files nobody chose to exclude"
+      - "The general property worth enforcing is NOT 'no tracked file matches .gitignore' (vp-beads-tig) but 'no tracked file is invisible to the gates'. Those are different sets, and the second one is the one that keeps biting"
+    description: >-
+      The same bug class as the `AGENT-*.md` hole fixed in d2f57d4, at 21x the scale, through a
+      different door — and the guard written for that hole cannot see this one. A gate, running,
+      reporting success, inspecting nothing.
+    updated: '2026-07-15'
