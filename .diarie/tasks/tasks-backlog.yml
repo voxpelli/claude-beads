@@ -1154,7 +1154,8 @@ tasks:
     labels:
       - bug
     acceptance_criteria:
-      - "diarie's `check:ast-grep` asserts it actually REACHED a floor of files (e.g. `ast-grep scan --json | length >= N`, or a file count), so a shrinking scan is detectable"
+      - "ASK AST-GREP, DO NOT COUNT FINDINGS. `ast-grep scan --inspect entity` prints to STDERR: `sg: summary|file: scannedFileCount=13,skippedFileCount=0`. Assert `scannedFileCount >= FLOOR`. One line, no modelling"
+      - "🚨 THE ORIGINAL CRITERION HERE WAS WRONG and is corrected above: `ast-grep scan --json | length >= N` counts FINDINGS, not files — a HEALTHY tree has few or none, so it would go red on a clean repo and green on a blind one. Exactly backwards"
       - "PROVE it: append `lib/**` to `diarie/.gitignore` and confirm the check goes RED rather than green-and-empty"
       - "correct any remaining prose claiming the green-and-inert failure mode is `unrepresentable` in diarie — it is RELOCATED, from a path list a runner can check to a git file nobody checks"
     description: >-
@@ -1317,14 +1318,14 @@ tasks:
       - extraction
     acceptance_criteria:
       - "MEASURED: `no-jq-raw-interpolation` is `language: bash` and exists because 'the hooks build jq programs' — but `hooks/` was not in the scan bound and `scripts/` holds ZERO `.sh` files. It guarded nothing for its ENTIRE LIFE while passing `ast-grep test` 6/6 on synthetic snippets"
-      - "AIM: visible = `git ls-files -co --exclude-standard` MINUS `git check-ignore --no-index --stdin`; langFiles = visible ∩ scan-bound ∩ LANGUAGE_EXTENSIONS[language]; assert non-empty"
-      - "MEASURED: neither git command alone is correct — `ls-files -c` lists ignored-but-TRACKED files, and `check-ignore` reports NOTHING for them without `--no-index`. ast-grep SKIPS a tracked-but-ignored file"
-      - "MEASURED: ast-grep honours .gitignore ONLY inside a git repo (no .git -> the ignored file IS scanned; a bare `git init`, no commit, no add -> skipped)"
-      - "GATE: assert `severity === 'error' || id in ADVISORY`. Decide from the FIELD, never the exit code — another error-rule tripped by the same fixture satisfies an exit-code check (evasion reviewer broke it exactly so)"
-      - "LANGUAGE_EXTENSIONS has a DIRECTION: under-listing -> false RED (safe); over-listing -> false GREEN. List only extensions proven scanned. Unknown language -> HARD THROW, never a skip"
-      - "`files:`/`ignores:` prefix-existence check (~8 lines, sound, no glob modelling): assert each glob's non-glob prefix exists. Catches `no-hardcoded-tracker-dir`'s hand-maintained files: list drifting"
-      - "MUST BE GENERIC — derive rule trees from `sgconfig.yml` — so ONE byte-identical copy serves the plugin AND diarie and travels `git subtree split --prefix=diarie`, gated like the ast-grep rules are (ast-grep has no config inheritance; copies are the only option)"
-      - "KNOWN GAP, name it: cannot see a `files:` glob whose prefix EXISTS but matches nothing. Revival trigger for the sandbox+planting design: a 3rd rule grows a `files:` list, or one drifts in anger"
+      - "🚨 ASK AST-GREP. DO NOT MODEL IT. `ast-grep scan --inspect entity` prints all of it to STDERR — verified 2026-07-14: `entity|rule|<id>: finalSeverity=Error|Warning` (the RESOLVED severity) · `entity|file|<path>: language=JavaScript,appliedRuleCount=5` (the language ast-grep ASSIGNED, and how many rules survived files:/ignores: filtering) · `summary|file: scannedFileCount=13,skippedFileCount=0` · `summary|rule: effectiveRuleCount=6,skippedRuleCount=0`"
+      - "AIM: assert every rule's `language` appears among the `entity|file` lines. No file reports `language=Bash` -> every bash rule is aimed at nothing. THE ORIGIN STORY, MEASURED — with no extension table to over-list and no git-visibility set to reconstruct"
+      - "GATE: assert `finalSeverity=Error` or the id is declared in ADVISORY. Use the RESOLVED severity ast-grep reports, not the YAML `severity:` field (reading the field is itself a model of ast-grep's severity resolution). NEVER infer it from the exit code — another error-rule tripped by the same fixture satisfies that, and the evasion reviewer broke it exactly so"
+      - "FLOOR: assert `scannedFileCount >= N` — closes vp-beads-flr in the same script"
+      - "SCOPING: `appliedRuleCount` per file is ast-grep TELLING you the files:/ignores: filtering it applied (ast-grep-paths.mjs gets 5, check-rule-parity.mjs gets 4 — the `ignores: scripts/check-*.mjs` is visible in the number). Never model a glob again"
+      - "🚨 THIS SUPERSEDES the design first filed here (git ls-files MINUS git check-ignore --no-index; a LANGUAGE_EXTENSIONS table; a files:-prefix-existence check). All three were MODELS of a component I did not author — the exact failure mode the deleted script's own header forbade in writing. `--inspect entity` has zero models and is ~25 lines"
+      - "MUST BE GENERIC — derive rule trees from `git ls-files '*sgconfig.yml'` (NOT a hardcoded TREES list — the same sin as the hardcoded PACKAGES) — so ONE byte-identical copy serves the plugin AND diarie and survives `git subtree split --prefix=diarie`. With one tree it must print 'no parity to check', NEVER 'parity verified': zero comparisons reported as success is the signature bug again"
+      - "MERGE with check:rule-parity into one `check:rules` — both enumerate the same trees and parse the same 14 rule YAMLs. And RENAME: 'rule-red' was earned by planting fixtures; once it plants none, the name is a claim the code no longer makes"
     description: >-
       Written and reviewed as `scripts/check-rule-red.mjs` (373 lines, sandbox + fixture-planting), then
       DELETED unbuilt. Two reviewers found 7 defects in it, including a CRITICAL: the sandbox never ran
@@ -1336,9 +1337,13 @@ tasks:
 
       It was deleted, not fixed, for a reason that outranks the defects: it lived in the PLUGIN's
       `scripts/`, so `git subtree split --prefix=diarie` would leave diarie's rules unguarded — building
-      meta-tooling in a layout the extraction goal is about to demolish. The ~60-line analytic design
-      above is small enough to be a cross-boundary COPY, which the 450-line sandbox never could be.
-      Build it IN the extraction wave. The reviewed sandbox design is in the 2026-07-14 transcript.
+      meta-tooling in a layout the extraction goal is about to demolish.
+
+
+      Then a plan critic found the thing that makes this cheap: **ast-grep already reports every fact the
+      guard needs.** The sandbox was never the alternative to modelling — `--inspect entity` was, and it
+      was there the whole time. THE LESSON, and it is the third time this session: before building a
+      model of a tool, read what the tool already tells you.
     updated: '2026-07-14'
   - id: vp-beads-gtc
     title: 'check:gate-coverage — a script reachable from NO gate and NO CI job; build it GENERIC so it survives the split'
