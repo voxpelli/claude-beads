@@ -701,10 +701,12 @@ tasks:
     labels:
       - chore
     acceptance_criteria:
-      - "`diarie/README.md` exists (an npm package with no README is a package nobody reads)"
-      - "publish metadata: description, license, repository, keywords, author"
-      - "`private: true` is removed ONLY after the name gate closes — `diarie.dev` registered AND a placeholder npm package published"
-      - the declaration build emits .d.ts (diarie is a library-with-a-bin; vp-beads imports its pure functions)
+      - "DONE (454e9d7): `diarie/README.md` exists — written from the CLI's real --help and store format, and every factual claim RUN (it caught one: a documented `blocked` status that does not exist; blocked is COMPUTED from the dep graph)"
+      - "DONE (454e9d7): publish metadata — description, license, LICENSE file, repository, homepage, bugs, keywords, author. Version 0.1.0"
+      - "DONE (454e9d7): the declaration build emits .d.ts (declaration.tsconfig.json + prepack). `build` runs `clean` FIRST — required, not tidy: TS resolution PREFERS a .d.ts over its sibling .js, so last build's output becomes this build's INPUT (TS5055). Idempotence proved by building twice"
+      - "DONE (454e9d7): proved against the TARBALL — install it into a fresh consumer, tsc asserts computeReady/loadTasks/VALID_TYPES are NOT `any`; bin runs; publint All good; attw --profile esm-only -> node16-ESM and bundler both green"
+      - "🚧 BLOCKED ON THE USER, and only this: `private: true` is removed ONLY after the name gate closes — `diarie.dev` registered (DONE) AND a placeholder npm package published (`npm view diarie` -> 404 as of 2026-07-15). Publishing 0.1.0 SATISFIES that gate rather than breaching it"
+      - "⚠️ CONFIRM BEFORE PUBLISH: `repository` is set to github:voxpelli/diarie and `homepage` to https://diarie.dev. The standalone repo does not exist yet — both are assumptions, flagged rather than buried"
     description: >-
       BLOCKED ON A USER ACTION, not on code: the name gate. `diarie` must not be exposed
       publicly — no push, no npm publish, no released plugin naming it — until the domain and
@@ -1017,7 +1019,7 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-dvb
     title: De-vp-beads the diarie source — one runtime leak, ~39 dead ids, 17 dangling paths
-    status: pending
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dia
@@ -1059,7 +1061,7 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-prf
     title: Prove diarie is splittable — and prove it against the TARBALL, not the git tree
-    status: pending
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dia
