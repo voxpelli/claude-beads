@@ -27,7 +27,6 @@
 
 import { argv, exit, stderr } from 'node:process'
 
-import { isErrorWithCode } from '@voxpelli/typed-utils'
 import { messageWithCauses, stackWithCauses } from 'pony-cause'
 
 import { cli } from './lib/main.js'
@@ -49,9 +48,21 @@ try {
 
   if (err instanceof InputError) {
     if (wantsJson) {
-      // On stdout, WITH a code, so a machine consumer can branch without regexing
-      // a human sentence. `code` is set by requireRoot for the ENOSTORE case.
-      const code = isErrorWithCode(err) ? err.code : undefined
+      // On stdout, WITH a code, so a machine consumer can branch without regexing a human
+      // sentence: ENOSTORE (no store here), EUSAGE (you typed it wrong), EEXIST (init, refusing
+      // an existing store).
+      //
+      // `err.code` DIRECTLY — not through `isErrorWithCode`, which used to guard this line.
+      // `err` is already narrowed to InputError, whose `code` is OUR field and is correctly typed
+      // `string|undefined`. Reaching for a foreign predicate to read it was pure downside: that
+      // predicate is `value instanceof Error && 'code' in value` — a PRESENCE check whose type
+      // signature nonetheless promises `code: string` — so it narrowed nothing here (an InputError
+      // always has the key) while licensing a non-string `code` straight into the JSON contract.
+      //
+      // The same unsound guard crashed main.js on three user-error paths. This was its sibling
+      // site, and hardening only the one that had already blown up would have been fixing the
+      // instance and leaving the class.
+      const { code } = err
       process.stdout.write(JSON.stringify({ error: err.message, ...(code ? { code } : {}) }, undefined, 2) + '\n')
     } else {
       stderr.write(`diarie: ${err.message}\n`)
