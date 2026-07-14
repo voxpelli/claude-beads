@@ -83,6 +83,21 @@ function brokenRow (t) {
 }
 
 /**
+ * A store whose JSON payload comfortably exceeds the 64 KB pipe buffer, plus one dropped row.
+ *
+ * @param {import('node:test').TestContext} t
+ * @returns {string}
+ */
+function bigStore (t) {
+  const rows = Array.from({ length: 400 }, (_, i) =>
+    `  - id: T-${i}\n    title: task ${i} with a reasonably long title to bulk out the payload\n    status: pending\n    type: task\n`
+  ).join('')
+  // `in-progress` (hyphen) is rejected by the loader — the row is dropped, so --strict exits 2.
+  return seedStore(tmpDir(t, 'diarie-big-'), 'a',
+    `tasks:\n${rows}  - id: BAD\n    title: dropped\n    status: in-progress\n    type: task\n`)
+}
+
+/**
  * Run the CLI with a given TASKS_ROOT.
  *
  * `out` is stdout ONLY and `err` is stderr ONLY — never merge them (see header).
@@ -896,5 +911,32 @@ describe('THE TWO-FLAG CROSS: --strict was DEAD under --filter, and the suite co
     const dir = seedStore(tmpDir(t, 'diarie-x-stale-ok-'), 'a',
       'tasks:\n  - id: T-1\n    title: fine\n    status: pending\n    type: task\n')
     assert.equal(JSON.parse(run(STATS, ['--stale', '--json'], dir).out).warnings, undefined)
+  })
+})
+
+describe('exit 2 must not TRUNCATE the answer — process.exit() does not flush a pipe', () => {
+  // Every fixture in this suite is small, so no test could ever have caught this. Found by running
+  // the CLI against a 400-row store and watching stdout stop at exactly 65536 bytes — the kernel
+  // pipe buffer.
+  //
+  // Stdout to a pipe is ASYNCHRONOUS. `process.exit()` terminates immediately and abandons the
+  // pending write. So the answer was written, the process exited 2, and a `--json` consumer got
+  // half a JSON document. Its `jq` fails; it falls back to "no data"; and a broken store reads as
+  // an empty one — the founding defect of this tool, re-entered through the exit code that exists
+  // to report it. `process.exitCode` lets Node drain stdout and exit naturally.
+
+  it('`ready --strict --json` exits 2 AND emits complete, parseable JSON', (t) => {
+    const { code, out } = run(READY, ['--strict', '--json'], bigStore(t))
+    assert.equal(code, 2)
+    assert.ok(out.length > 65536, `payload must exceed the 64KB pipe buffer to be a real test (got ${out.length})`)
+    const parsed = JSON.parse(out)   // throws on a truncated document — that IS the assertion
+    assert.equal(parsed.ready.length, 400)
+  })
+
+  it('`ready --filter --strict --json` exits 2 AND emits complete, parseable JSON', (t) => {
+    const { code, out } = run(READY, ['--filter', 'pending', '--strict', '--json'], bigStore(t))
+    assert.equal(code, 2)
+    assert.ok(out.length > 65536, `payload must exceed the 64KB pipe buffer (got ${out.length})`)
+    assert.equal(JSON.parse(out).length, 400)
   })
 })
