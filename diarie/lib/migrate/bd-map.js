@@ -2,32 +2,39 @@
  * bd-map.js — the bd vocabulary maps + a READ-ONLY shadow-dogfood projector (spike, not the shipped migrator).
  *
  * Projects a `bd export` JSONL snapshot into the flat-YAML task-schema shape,
- * applying the decided 9→4 type collapse (decision vp-beads-etm). This is
- * deliberately the read-only HALF of the full migration: it never writes into
- * `.diarie/tasks/`, bd stays canonical, and the projection is meant to be
- * regenerated (never hand-edited) and thrown away. Its purpose is to give the
- * type-model decision its first implementation feedback — dual-run its output
- * against `bd ready` before the exploration branch concludes — not to ship a
- * production migration path. `projectRecords` is exported for reuse by
- * vp-beads-bj7's eventual test suite when that migrator is built — this
- * spike itself ships untested by design (its one-time job is done; see
- * SPIKE-etm-dogfood-findings.md and decision vp-beads-etm's `## Affects`).
+ * applying the 9→4 type collapse this schema is built on: bd's nine issue types
+ * become four exclusive kinds (`task` / `doc` / `decision` / `milestone`), with
+ * bd's other five surviving as additive LABELS on a `task` (see TYPE_MAP below,
+ * and the type model in `../schema.js`). This is deliberately the read-only HALF
+ * of the full migration: it never writes into the task store, bd stays canonical,
+ * and the projection is meant to be regenerated (never hand-edited) and thrown
+ * away. Its purpose was to give that type-model decision its first implementation
+ * feedback — dual-run the projected output against `bd ready` and compare — not to
+ * ship a production migration path. `projectRecords` was exported for reuse by the
+ * real migrator's eventual test suite; this spike itself ships untested by design,
+ * its one-time job being done.
  *
  * The FULL lossless migrator (acceptance-criteria extraction from markdown,
- * comment history, --scrub handling, writing into the real substrate) is
- * vp-beads-bj7, a future-wave deliverable. This script intentionally does
- * LESS than that and says so in its loss report.
+ * comment history, --scrub handling, writing into the real substrate) shipped
+ * separately, and IS `./bootstrap.js`. This script intentionally does LESS than
+ * that and says so in its loss report.
  *
- * Usage:
+ * Usage — DIRECT EXECUTION ONLY. The CLI entry at the bottom sits behind an
+ * `import.meta.url === argv[1]` guard, so the `migrate` subcommand does NOT reach it;
+ * that runs the real migrator. Run this file itself, with two positionals:
+ *
  *   bd export -o /tmp/bd-export.jsonl --readonly
- *   node diarie/cli.js migrate /tmp/bd-export.jsonl /tmp/tasks-vp-beads.yml
+ *   node <this-file> /tmp/bd-export.jsonl /tmp/tasks-shadow.yml
+ *
+ * (Its own usage message still names the CLI form. That message is stale, not a
+ * second entry point — there is no route to this projector but direct execution.)
  *
  * Guardrail: refuses to write under any `.diarie/tasks/` directory — the
  * projection is scratch-only by construction, not an accident of discipline.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
-import { resolve, sep } from 'node:path'
+import { basename, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   argv, exit, stderr, stdout,
@@ -37,6 +44,7 @@ import { isObject, isStringArray } from '@voxpelli/typed-utils'
 import yaml from 'js-yaml'
 
 import { isNil, TRACKER_DIR, VALID_TYPES } from '../schema.js'
+import { slugOf } from '../store.js'
 
 /**
  * One row of a `bd export` JSONL snapshot — the shape we are migrating AWAY from.
@@ -111,7 +119,7 @@ export function parseBdExport (contents) {
 
 /**
  * bd status → task-schema status. `deferred` has no exact analog — see loss
- * report. Exported so the real migrator (bootstrap.js / bj7) shares this
+ * report. Exported so the real migrator (`./bootstrap.js`) shares this
  * single source of truth for the map rather than re-deriving it.
  *
  * @type {Record<string, import('../schema.js').Status>}
@@ -128,14 +136,15 @@ export const STATUS_MAP = {
 }
 
 /**
- * bd numeric priority → task-schema priority string. Exported for bj7 reuse.
+ * bd numeric priority → task-schema priority string. Exported so the real
+ * migrator (`./bootstrap.js`) reuses it rather than re-deriving it.
  *
  * @type {Record<string, import('../schema.js').Priority>}
  */
 export const PRIORITY_MAP = { '0': 'critical', '1': 'high', '2': 'medium', '3': 'low', '4': 'backlog' }
 
 /**
- * bd's 9 issue_types → the 4-type model (decision vp-beads-etm).
+ * bd's 9 issue_types → the 4-type model this schema settled on.
  * `decision` and `milestone` pass through directly (bd already has them as
  * top-level types, not framings). The other 6 collapse to `task` + a label.
  *
@@ -163,15 +172,16 @@ export const TYPE_MAP = {
 /**
  * Project a parsed bd export into the flat-YAML task rows, with a loss report.
  *
- * `@planned` — exported for a caller that never arrived. The file header says this is "exported
- * for reuse by vp-beads-bj7's eventual test suite when that migrator is built". That migrator IS
- * built — it is `migrate/bootstrap.js` — and it does not use this. The stated reason is stale, and
- * knip is right that nothing outside this file calls it.
+ * `@planned` — exported for a caller that never arrived. The file header says this is exported
+ * for reuse by the real migrator's eventual test suite. That migrator IS built — it is
+ * `./bootstrap.js` — and it does not use this. The stated reason is stale, and knip is right
+ * that nothing outside this file calls it.
  *
  * Kept rather than deleted because deleting a knip-flagged export is a decision, not a cleanup
- * (CLAUDE.md ASK FIRST), and because the honest fix is bigger than the symptom: this whole file is
- * a read-only SPIKE whose one-time job is done, and retiring it is its own row. The tag says so out
- * loud, instead of letting a silenced warning imply somebody still needs this.
+ * (it is a public-surface change, which wants a human's yes), and because the honest fix is
+ * bigger than the symptom: this whole file is a read-only SPIKE whose one-time job is done, and
+ * retiring it is its own piece of work. The tag says so out loud, instead of letting a silenced
+ * warning imply somebody still needs this.
  *
  * @planned
  * @param {BdIssue[]} records   parsed bd export lines (regular issues only)
@@ -214,9 +224,11 @@ export function projectRecords (records) {
     // A malformed `labels` is REPORTED, not swallowed. `isStringArray` rejects the whole
     // array if ONE element is a non-string (a bd export with `labels: [{name: 'x'}]`, or a
     // bare scalar), so the good labels go too — and if one of them was `epic`, the migrated
-    // repo gets a container that is workable again. That is vp-beads-epc, re-created in
-    // someone else's repo, by the migration itself. The guard turned a type leak into a
-    // SILENT one, inside the function whose entire product is a loss report.
+    // repo gets a container that is workable again: an epic, having no dependencies of its
+    // own, offered as the next thing to work on instead of the children it contains. That
+    // was a real bug here, and losing the label re-creates it in someone else's repo, by the
+    // migration itself. The guard turned a type leak into a SILENT one, inside the function
+    // whose entire product is a loss report.
     const rawLabels = r.labels
     if (!isNil(rawLabels) && !isStringArray(rawLabels)) {
       droppedLabels.push(`${r.id}: ${JSON.stringify(rawLabels)}`)
@@ -288,9 +300,9 @@ export function projectRecords (records) {
         'so the drop is visible rather than silent. ' +
         'acceptanceCriteriaSkipped counts records with a "## Acceptance Criteria" markdown ' +
         'section that this read-only spike does not extract (that parsing belongs to the full ' +
-        'lossless migrator, vp-beads-bj7) — not a defect in this projector. ' +
+        'lossless migrator, which does it) — not a defect in this projector. ' +
         'priorityDefaultedIds lists records whose bd priority was missing or out of the 0-4 ' +
-        'range and was coerced to \'medium\'; because priority is ready-walker\'s sort key, a ' +
+        'range and was coerced to \'medium\'; because priority is the ready queue\'s sort key, a ' +
         'nonempty list means the projected ready ordering may diverge from `bd ready`.',
     },
   }
@@ -301,7 +313,10 @@ export function projectRecords (records) {
 if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   const [inputPath, outputPath] = argv.slice(2)
   if (!inputPath || !outputPath) {
-    stderr.write('usage: node diarie/cli.js migrate <bd-export.jsonl> <output.yml>\n')
+    // The path to THIS file, not to the CLI. `diarie migrate` routes to the full migrator; this
+    // projector is reachable only by executing it directly, and printing the CLI's usage here sent
+    // anyone who hit it to a command that does something else.
+    stderr.write('usage: node lib/migrate/bd-map.js <bd-export.jsonl> <output.yml>\n')
     exit(1)
   }
   // Segment-wise rather than a regex: the tracker dir is TRACKER_DIR-derived, and
@@ -317,7 +332,14 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   const records = parseBdExport(readFileSync(inputPath, 'utf8'))
   const { loss, tasks } = projectRecords(records)
 
-  writeFileSync(outputPath, yaml.dump({ meta: { slug: 'vp-beads', title: 'Shadow projection of bd (read-only spike)' }, tasks }))
+  // DERIVED from the output filename, never fixed. The store's convention is
+  // `tasks-<slug>.yml`, and the slug is what namespaces every id in the file (`<slug>/<id>`)
+  // — so a hardcoded one stamps whatever name this package happened to be developed under
+  // onto every projection anybody ever generates, and their ids come back namespaced to a
+  // project they have never heard of. It shipped that way once. Naming the output file names
+  // the slug; a filename that is not `tasks-<slug>.yml` falls back to a neutral one.
+  const slug = slugOf(basename(outputPath)) || 'shadow'
+  writeFileSync(outputPath, yaml.dump({ meta: { slug, title: 'Shadow projection of bd (read-only spike)' }, tasks }))
   stdout.write(`projected ${tasks.length} issues → ${outputPath}\n`)
   stdout.write(`loss report: ${JSON.stringify(loss, undefined, 2)}\n`)
 }

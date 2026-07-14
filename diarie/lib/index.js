@@ -1,15 +1,18 @@
 /**
  * index.js — diarie's public library surface.
  *
- * The node-cli-template is bin-only ("consumers never import the CLI as a
- * library"), but diarie is a library-with-a-bin: vp-beads' plugin tooling imports
- * the pure functions directly (validate-plugin's silent-skip auditor, the beads
- * de-integration probe, the test suites). Hence `exports` alongside `bin`.
+ * The node-cli-template this package follows is bin-only ("consumers never import
+ * the CLI as a library"), but diarie is a library-with-a-bin: a consuming project's
+ * own tooling imports these pure functions directly rather than shelling out to the
+ * binary and parsing its stdout — validators, migration probes, and test suites all
+ * want the computation, not the rendering. Hence `exports` alongside `bin`.
  *
  * `./schema` is exported as its own subpath because it is THE AUTHORITY — the
  * one definition of the enums, the ready rule's vocabulary, and TRACKER_DIR. An
  * ast-grep rule enforces that nothing hardcodes the tracker directory instead of
- * importing it from here.
+ * importing it from here — and that rule deliberately reaches CONSUMERS too, not
+ * just this package: a hardcoded `.diarie` in a consumer's guard code would not
+ * error after a rename, it would silently stop guarding.
  */
 
 export * from './schema.js'

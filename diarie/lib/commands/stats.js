@@ -1,7 +1,7 @@
 /**
  * `diarie stats` — summary counts.
  *
- * PINNED JSON SHAPE (agents/sprint-review.md parses it):
+ * PINNED JSON SHAPE (consumers parse it positionally — a sprint-review agent, for one):
  *   {total, ready, blocked, stale[], malformedDates[], byStatus, byPriority, byType}
  *
  * `--stale` reports in_progress tasks not touched in N days. It is deliberately
@@ -105,13 +105,12 @@ function formatWorkResult ({ summary, warnings }, { json, stale }) {
     // `warnings` here TOO. This early return sat four lines above the comment below explaining why
     // warnings must be appended — and skipped it. `stats --stale --json` answered `{"stale": []}`
     // with exit 0 against a store `validate` exits 2 on, which is the founding defect wearing the
-    // one flag a sprint-review agent actually passes (`agents/sprint-review.md` runs
-    // `stats --stale --days 60 --json`).
+    // one flag a sprint-review agent actually passes (`stats --stale --days 60 --json`).
     if (json) return jsonOut(warnings.length ? { stale: summary.stale, warnings } : { stale: summary.stale })
     return textOut(summary.stale.length ? summary.stale.map(id => `  ${id}`).join('\n') : '  (none)')
   }
 
-  // `warnings` APPENDED, so the pinned key order (agents/sprint-review.md parses this) is intact.
+  // `warnings` APPENDED, so the pinned key order stays intact for consumers that parse it.
   // Without it a malformed row is counted in `total` while every `byStatus` bucket reads 0 —
   // present in the sum, absent from every answer — and the only sentence saying so goes to stderr,
   // which no `--json` consumer reads.
