@@ -1269,3 +1269,41 @@ tasks:
       separately, branching three ways: 0 clean / 2 a row was dropped / 1 ENOSTORE (the JSON is an
       error OBJECT, not an array — do not slice it). Note :115 is NOT gated on store existence.
     updated: '2026-07-14'
+  - id: vp-beads-swc
+    title: 'stats --stale --json now carries `warnings` — and NOTHING reads it. The plumbing terminates in nothing'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - "`agents/sprint-review.md` must READ the `warnings` key from `stats --stale --json` and `ready --json`, and refuse to report a clean sprint over an unsound store"
+      - "MEASURED 2026-07-14: `grep -rn warnings agents/ skills/` returns ZERO hits. The CLI half shipped (62807aa/6007176); the consumer half did not"
+      - "`stats` has NO `--strict`, so the `warnings` key is the ONLY channel it has — an agent that does not look at it will keep reporting `0 stale` over a store that dropped a claimed row"
+      - "decide whether `stats` should gain `--strict` too, so the exit code carries it like `ready` does"
+      - "sweep the other agents/skills that parse `--json`: backlog-groomer, retrospective, swarm-wave, sibling-sync"
+    description: >-
+      Found by the Wave A two-reviewer gate. The commit that added `warnings` to `stats --stale --json`
+      JUSTIFIED the change by naming `agents/sprint-review.md` ("the one flag a sprint-review agent
+      actually passes") — and never touched that agent. It reads `stale[]` and nothing else.
+
+
+      So the payload now carries the truth and the named consumer still does not look at it. A guard
+      that reports into a void is not a guard. This is the CONSUMER half of the founding defect: the
+      CLI stopped lying, and the reader kept believing the old story.
+    updated: '2026-07-14'
+  - id: vp-beads-hkq
+    title: 'Two small hook lies: "claims above" when there are none, and bare $(cat) under set -e'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - bug
+    acceptance_criteria:
+      - "the compact ⚠ says `any claims listed above may be INCOMPLETE` even when the dropped row WAS the only claim and nothing is listed above it"
+      - "`INPUT=$(cat)` is a bare command substitution under `set -euo pipefail` in post-file-edit.sh:7, post-tasks-validate.sh:19, post-bm-failure-classify.sh:10. session-start.sh:62 guards its own (`cat 2>/dev/null || echo \"\"`). Effectively safe today, inconsistent, and the errexit trap is now a known biter"
+    description: >-
+      Both from the Wave A gate. The second one matters more than it looks: `set -euo pipefail` in a
+      hook already turned one fix into a hook that emitted NOTHING and exited 2 (see vp-beads-flt).
+      An unguarded command substitution in a hook is a loaded gun pointed at every session.
+    updated: '2026-07-14'
