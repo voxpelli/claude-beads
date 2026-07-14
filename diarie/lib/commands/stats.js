@@ -106,6 +106,10 @@ function formatWorkResult ({ summary, warnings }, { json, stale }) {
     return textOut(summary.stale.length ? summary.stale.map(id => `  ${id}`).join('\n') : '  (none)')
   }
 
-  if (json) jsonOut(summary)
+  // `warnings` APPENDED, so the pinned key order (agents/sprint-review.md parses this) is intact.
+  // Without it a malformed row is counted in `total` while every `byStatus` bucket reads 0 —
+  // present in the sum, absent from every answer — and the only sentence saying so goes to stderr,
+  // which no `--json` consumer reads.
+  if (json) jsonOut(warnings.length ? { ...summary, warnings } : summary)
   else textOut(formatStats(summary))
 }

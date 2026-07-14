@@ -203,12 +203,23 @@ function formatWorkResult (workResult, { blocked, json, parentName, strict }) {
   }
 
   if (json) {
-    // An OBJECT — the full partition. Pinned, key order included.
+    // An OBJECT — the full partition. Pinned, key order included; `warnings` is APPENDED, so
+    // every existing consumer's key order is untouched.
+    //
+    // WARNINGS BELONG IN THE ANSWER, not only in the asides. This CLI exists because the old
+    // readers printed `{"ready": []}` to stdout and whispered their only complaint to stderr — a
+    // stream ten call sites pipe to /dev/null — so a tracker that could not find its store looked
+    // exactly like one reporting an empty backlog. That defect was fixed for a MISSING STORE
+    // (ENOSTORE) and left standing for a MALFORMED ROW: a store `validate` calls broken answered
+    // `{"ready": [], "blocked": [], "needsAttention": []}` with exit 0, and the sentence naming the
+    // dropped field went to stderr, where no JSON consumer will ever look. Same defect, same
+    // stream, different cause.
     jsonOut({
       ready: partition.ready.map(t => strip(t)),
       blocked: partition.blocked.map(t => strip(t)),
       needsAttention: partition.needsAttention.map(t => strip(t)),
       ...(ambiguous ? { hint: `possible dependency cycle — run \`${parentName} validate\`` } : {}),
+      ...(workResult.warnings.length ? { warnings: workResult.warnings } : {}),
     })
   } else {
     const lines = blocked
@@ -220,7 +231,17 @@ function formatWorkResult (workResult, { blocked, json, parentName, strict }) {
 
   // `--strict` must see a broken row even when it is also legitimately blocked.
   const brokenButBlocked = partition.blocked.some(t => t.attention?.length)
-  if (strict && (partition.needsAttention.length || ambiguous || brokenButBlocked)) {
+
+  // AND IT MUST SEE A ROW THE LOADER DROPPED ENTIRELY. `computeReady` skips any row whose `status`
+  // is not `pending` BEFORE it reaches the type guard — so `type: bug` (a bd fossil) lands in
+  // needsAttention and trips --strict, while `status: open` is silently discarded and --strict
+  // exits 0. Two malformed REQUIRED fields, opposite behaviour, and the flag's own description
+  // promises to catch "any task that needs attention".
+  //
+  // A loader warning is the loader saying it threw something away. That is not an aside.
+  const dropped = workResult.warnings.length > 0
+
+  if (strict && (partition.needsAttention.length || ambiguous || brokenButBlocked || dropped)) {
     throw new ResultError('needs attention')
   }
 }
