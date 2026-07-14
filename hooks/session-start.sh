@@ -140,6 +140,13 @@ if [ "$source" = "compact" ]; then
 
 	# 1 = InputError (ENOSTORE/EUSAGE) — stdout holds an error OBJECT, not an array. Never slice it.
 	# This branch is NOT gated on the store existing, unlike the startup prime below, so 1 is reachable.
+	#
+	# It is also what a genuine CRASH exits with, and that used to matter: an unparseable tasks file
+	# threw out of `loadTasks`, reached cli.js's "unexpected error" branch, exited 1 — and this branch
+	# then blanked the payload, silently discarding the live claims that were in the OTHER, healthy
+	# files. `loadTasks` now warns-and-skips a bad file, so it comes back as exit 2 with a warning
+	# instead. The comment above stated an invariant the code did not have; the fix was in store.js,
+	# not here.
 	if [ "$in_progress_rc" -eq 1 ]; then
 		in_progress_json=""
 	fi
@@ -159,7 +166,7 @@ Read the task row in \`.diarie/tasks/\` to recover full context for any claim ab
 	# INCOMPLETE — say so. Silence here is how a live claim gets forgotten.
 	if [ "$in_progress_rc" -eq 2 ]; then
 		# shellcheck disable=SC2016
-		parts+=("⚠ The task store dropped at least one row (a malformed \`status\`/\`type\`/\`priority\`), so the claims above may be INCOMPLETE. Run \`diarie validate\`.")
+		parts+=("⚠ The task store is NOT SOUND — a malformed field, an unreadable file, or a dependency cycle. Any claims listed above may be INCOMPLETE. Run \`diarie validate\`.")
 	fi
 
 	# --- Capture nudge (folds the retired precompact.sh reflection prompt,
@@ -288,17 +295,20 @@ if [ -n "$tracker_cmd" ]; then
 				tracker_summary="${tracker_summary} · ${n_attn} needs attention"
 			fi
 
-			# A DROPPED ROW MAKES EVERY COUNT ABOVE A LIE. It is not "one more stat" — the row is
-			# absent from ready, blocked, needsAttention AND the claim count, so the line reads as a
-			# complete picture of a store that is missing something. Say so, loudly, on the same line
-			# the numbers are on, or the numbers are worse than useless.
+			# A LOADER COMPLAINT MAY MAKE EVERY COUNT ABOVE A LIE, so it belongs on the same line as the
+			# numbers. Note the careful wording: this counts WARNINGS, not dropped rows, and they are not
+			# the same. One row with three bad fields yields three warnings, and only a bad `status` (or
+			# an unreadable file) actually REMOVES rows from the counts — a bad `priority` is coerced to
+			# `medium` and the row still appears everywhere. Saying "N rows DROPPED" would overstate the
+			# count AND misstate the consequence. A guard that lies in the reassuring direction and a
+			# guard that cries wolf are both guards that lie.
 			if [ "$n_warn" -gt 0 ] 2>/dev/null; then
-				tracker_summary="${tracker_summary} · ⚠ ${n_warn} row(s) DROPPED (malformed — counts above are incomplete; run \`diarie validate\`)"
+				tracker_summary="${tracker_summary} · ⚠ ${n_warn} loader complaint(s) — counts above may be INCOMPLETE; run \`diarie validate\`"
 			fi
 
-			# ready-walker already sorts by priority, so the first rows are the ones worth naming.
+			# `ready` already sorts by priority, so the first rows are the ones worth naming.
 			# `priority` and `title` are OPTIONAL in the schema, so an unvalidated store would
-			# render "T-1 (null)" / "T-1 null". Default them the way ready-walker already
+			# render "T-1 (null)" / "T-1 null". Default them the way `ready` already
 			# defaults priority for sorting.
 			next_ready=$(printf '%s' "$queue_json" | jq -r '[.ready[0:3][] | "\(.id | sub("^.*/"; "")) (\(.priority // "medium"))"] | join(" · ")' 2>/dev/null || echo "")
 			if [ -n "$next_ready" ]; then
@@ -316,7 +326,7 @@ ${claims}"
 			# shellcheck disable=SC2016
 			tracker_summary="${tracker_summary}
 
-Find work with \`node scripts/ready-walker.mjs\`; claim by setting \`status: in_progress\` in \`.diarie/tasks/\`."
+Find work with \`diarie ready\`; claim by setting \`status: in_progress\` in \`.diarie/tasks/\`."
 			parts+=("$tracker_summary")
 		fi
 	fi

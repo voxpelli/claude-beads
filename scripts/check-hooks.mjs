@@ -881,8 +881,6 @@ test('sensitive-file: tracked PRIVATE-SYNERGY-*.md private overlay → warned', 
 // Summary
 // =============================================================
 
-console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
-
 // ============================================================================
 // vp-beads-hkt — THE POSITIVE TESTS. Every `Tracker:` assertion in this file used to be
 // NEGATIVE (it FAILED if the line appeared), so the suite could detect "announced a tracker that
@@ -934,7 +932,7 @@ test('startup: a DROPPED row is ANNOUNCED — the counts are incomplete and the 
     if (status !== 0) return { ok: false, reason: `exit ${status} — the hook must DEGRADE, never abort` }
     const { objects } = parseJsonObjects(stdout)
     const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
-    if (!/DROPPED/.test(ctx)) return { ok: false, reason: `a dropped row went unannounced: ${ctx.slice(0, 200)}` }
+    if (!/loader complaint/.test(ctx)) return { ok: false, reason: `a dropped row went unannounced: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
@@ -952,7 +950,7 @@ test('compact: a DROPPED row is ANNOUNCED, and the hook still EXITS 0', () => {
     if (status !== 0) return { ok: false, reason: `exit ${status} — errexit aborted the hook; it must degrade quietly` }
     const { objects } = parseJsonObjects(stdout)
     const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
-    if (!/dropped at least one row/i.test(ctx)) return { ok: false, reason: `compact did not announce the dropped row: ${ctx.slice(0, 200)}` }
+    if (!/NOT SOUND/.test(ctx)) return { ok: false, reason: `compact did not announce the unsound store: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
@@ -965,13 +963,14 @@ test('startup: a HEALTHY store is NOT accused of dropping rows', () => {
     const { stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir, scrubNodeBin: true })
     const { objects } = parseJsonObjects(stdout)
     const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
-    if (/DROPPED/.test(ctx)) return { ok: false, reason: `false alarm on a clean store: ${ctx.slice(0, 160)}` }
+    if (/loader complaint|NOT SOUND/.test(ctx)) return { ok: false, reason: `false alarm on a clean store: ${ctx.slice(0, 160)}` }
     return { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
 })
 
+console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
 if (failed > 0) {
   process.exit(1)
 }
