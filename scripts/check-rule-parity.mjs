@@ -18,10 +18,21 @@
 //      are scoped to different trees, so their scoping is SUPPOSED to differ. Everything else —
 //      `rule:`, `message:`, `severity:`, `constraints:` — must match.
 //
-// NOTE WHAT IS **NOT** ASSERTED: drift in `files:`/`ignores:` is invisible here, by construction.
-// An `ignores:` appended to one copy silently narrows it and this check will not say so. That is a
-// real hole; it is the price of allowing the scoping to differ at all, and naming it is better than
-// implying it is covered.
+//   3. Every rule in EITHER tree is genuinely TESTED — a test file exists, its `id:` FIELD names that
+//      rule, and it carries at least one `invalid:` case. `ast-grep test` checks none of this and
+//      cannot: it discovers TEST files and replays them, so a rule it cannot pair is not "failing" to
+//      it — it is INVISIBLE. Two measured ways to detach a rule from its test, both exit 0:
+//        - delete the test file      -> `ok. 7 passed; 0 failed`, and the 8th is never named
+//        - change only its `id:`     -> `Configuration not found! <id>`, printed, and still exit 0
+//      A rule with a typo'd pattern then passes every check we own: unpaired, so `ast-grep test` skips
+//      it; matching nothing, so `ast-grep scan` exits 0; and single-tree, so the parity check above
+//      never looks at it. Three green checks over a rule that guards nothing.
+//
+// NOTE WHAT IS **NOT** ASSERTED — and this is the big one. Nothing here checks that a rule can ever
+// FIRE. `files:`/`ignores:` drift is invisible by construction (the two copies are SUPPOSED to be
+// scoped differently), and so is a rule aimed at a language the scan bound contains no files of:
+// `no-jq-raw-interpolation` is `language: bash` and guarded NOTHING for its entire life, while passing
+// `ast-grep test` 6/6 on synthetic snippets. That is `vp-beads-agr`, and it is a different guard.
 //
 // The first version of this script got both halves wrong, and a reviewer proved it in minutes:
 // it iterated a HARDCODED list (so a sixth shared rule was unpoliced forever, while the checker
@@ -47,6 +58,16 @@ const SHARED = [
 
 const ROOT = '.ast-grep/rules'
 const DIARIE = 'diarie/.ast-grep/rules'
+
+/**
+ * The two trees, each as `{ rules, tests }`. `testDir` mirrors the `testConfigs` entry in the
+ * corresponding `sgconfig.yml`; ast-grep pairs a rule with `<testDir>/<id>-test.yml` by NAME, so
+ * the pairing is checkable here without asking ast-grep anything.
+ */
+const TREES = [
+  { label: 'root', rules: ROOT, tests: '.ast-grep/rule-tests' },
+  { label: 'diarie', rules: DIARIE, tests: 'diarie/.ast-grep/rule-tests' },
+]
 
 /**
  * Rule ids in a rules directory.
@@ -106,6 +127,60 @@ for (const id of inBoth.filter(id => listed.includes(id))) {
   }
 }
 
+// (3) EVERY RULE IS ACTUALLY TESTED — in BOTH trees, shared or not.
+//
+// `ast-grep test` does not fail on an untested rule. It SKIPS it, and never says so: it discovers
+// TEST files and replays them, so a rule with no test simply is not in the set. Delete one test file
+// and it prints `ok. 7 passed; 0 failed` and exits 0 — going from 8 rules to 7 without naming the one
+// it dropped.
+//
+// AND THE PAIRING KEY IS NOT THE FILENAME. ast-grep DISCOVERS the test by filename but PAIRS it to a
+// rule by the `id:` field INSIDE it. Change only that field — leave the filename alone — and the test
+// silently detaches from its rule: `Configuration not found! <id>`, printed to stdout, **exit 0**.
+// Both are measured. So all three must hold: the file exists, its `id:` names this rule, and it
+// actually carries an `invalid:` case (a test with nothing to reject proves nothing).
+for (const { label, rules, tests } of TREES) {
+  const ruleIds = idsIn(rules)
+  const testFiles = readdirSync(tests).filter(f => f.endsWith('-test.yml'))
+  const testIds = new Set(testFiles.map(f => f.replace(/-test\.yml$/, '')))
+
+  for (const id of [...ruleIds].sort()) {
+    if (!testIds.has(id)) {
+      problems.push(
+        `[${label}] \`${id}\` has NO test file (${tests}/${id}-test.yml). ` +
+        '`ast-grep test` will not fail — it will not even name it.'
+      )
+      continue
+    }
+
+    const doc = /** @type {Record<string, unknown>} */ (
+      yaml.load(readFileSync(join(tests, `${id}-test.yml`), 'utf8')) ?? {}
+    )
+
+    if (doc.id !== id) {
+      problems.push(
+        `[${label}] \`${tests}/${id}-test.yml\` declares \`id: ${String(doc.id)}\` — ast-grep pairs a ` +
+        `test to a rule by that FIELD, not by the filename, so \`${id}\` is UNTESTED. ` +
+        '`ast-grep test` prints `Configuration not found!` and exits 0.'
+      )
+    }
+
+    if (!Array.isArray(doc.invalid) || doc.invalid.length === 0) {
+      problems.push(
+        `[${label}] \`${tests}/${id}-test.yml\` has no \`invalid:\` case — nothing proves the rule can ` +
+        'match ANYTHING. A test that only lists what a rule must ignore is satisfied by a rule that ' +
+        'ignores everything.'
+      )
+    }
+  }
+
+  for (const id of [...testIds].sort()) {
+    if (!ruleIds.has(id)) {
+      problems.push(`[${label}] \`${tests}/${id}-test.yml\` tests a rule that does not exist in ${rules}/.`)
+    }
+  }
+}
+
 if (problems.length) {
   console.error(
     `check-rule-parity: ${problems.length} problem(s) between\n` +
@@ -113,9 +188,15 @@ if (problems.length) {
     problems.map(p => `  - ${p}`).join('\n') + '\n\n' +
     'Only `files:`/`ignores:` may differ between the copies (they are scoped to different trees).\n' +
     'ast-grep has no config inheritance, so the copies are unavoidable — drifting apart in SILENCE\n' +
-    'is not.'
+    'is not. And every rule needs a test file: ast-grep SKIPS a rule that has none.'
   )
   process.exit(1)
 }
 
-console.log(`check-rule-parity: ${inBoth.length} shared rules, set verified, bodies identical`)
+const tested = TREES.reduce((n, t) => n + idsIn(t.rules).size, 0)
+// Say exactly what was checked. "each with a test file" would be an UNDERclaim now — and a summary
+// line that drifts from what the code asserts is how a guard quietly stops meaning anything.
+console.log(
+  `check-rule-parity: ${inBoth.length} shared rules, set verified, bodies identical; ` +
+  `${tested} rules across both trees, each paired to a test by its \`id:\` field, each with an \`invalid:\` case`
+)
