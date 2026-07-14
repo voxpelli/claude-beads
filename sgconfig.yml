@@ -4,11 +4,19 @@
 # failure mode `no-hardcoded-tracker-dir` exists to prevent, applied to the rules themselves.
 #
 # NOTE THE ABSENCE OF A PATH LIST. `ast-grep scan` with no path arguments walks the whole project
-# from this config's directory, so there is no "outer bound" to keep in step with the rules — and
-# therefore no way for a rule to end up scoped to a directory nobody scans. The plugin's root
-# runner has to maintain such a list (it lints a subset of a bigger repo) and it has already been
-# bitten: `ast-grep scan` on a missing path prints an error and EXITS 0, so a stale entry made the
-# check pass while scanning nothing. Here the bug is not guarded against; it is unrepresentable.
+# from this config's directory, so there is no "outer bound" to keep in step with the rules, and no
+# way for a rule to end up scoped to a directory the runner forgot to list. The plugin's root runner
+# must maintain such a list (it lints a subset of a bigger repo) and it has been bitten: `ast-grep
+# scan` on a missing path prints an error and EXITS 0, so a stale entry made the check pass while
+# scanning nothing.
+#
+# ⚠️ THAT DOES NOT MAKE THE BUG UNREPRESENTABLE — an earlier draft of this comment claimed it did,
+# and a reviewer disproved it in one line. The bound has MOVED, not vanished: a bare scan is bounded
+# by `.gitignore`, so any broad ignore (`lib/generated/`, `dist/`) silently shrinks lint coverage
+# with nothing going red. The root runner at least asserts its listed paths exist; this config
+# asserts nothing about how many files its scan actually reached. `vp-beads-flr` files the floor
+# assertion that would restore detectability. Until then: every line in `.gitignore` is a lint-scope
+# decision.
 ruleDirs:
   - .ast-grep/rules
 testConfigs:

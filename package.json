@@ -26,6 +26,7 @@
     "check:ast-grep-test": "ast-grep test",
     "check:knip": "knip",
     "check:lint": "eslint",
+    "check:test": "npm test",
     "check:tsc": "tsc",
     "check:type-coverage": "type-coverage --detail --strict --at-least 98 --ignore-files 'test/*'",
     "test": "node --test"
