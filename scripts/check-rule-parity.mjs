@@ -1,25 +1,42 @@
-// The five ast-grep rules that exist in BOTH trees must not drift apart.
+// The ast-grep rules that exist in BOTH trees must not drift apart.
 //
-// ast-grep's `sgconfig.yml` has no `extends` and no `include` — the format simply offers no config
-// inheritance (only ruleDirs / utilDirs / testConfigs / customLanguages / languageGlobs /
-// languageInjections). A rule needed on both sides of the diarie boundary must therefore be a COPY.
-// The root's copy guards the plugin (`scripts/`, `validate-plugin.mjs`); diarie's guards the package
-// and travels with it on `git subtree split`.
+// ast-grep's `sgconfig.yml` has no `extends` and no `include` — the format offers no config
+// inheritance at all. A rule needed on both sides of the diarie boundary must therefore be a COPY:
+// the root's guards the plugin (`scripts/`, `hooks/`, `validate-plugin.mjs`), diarie's guards the
+// package and travels with it on `git subtree split`.
 //
-// Copies drift. Nothing noticed when they did, and `ast-grep test` structurally cannot: it replays
-// each rule against its own inline snippets, so it never compares the two files and never reads
-// `files:`/`ignores:` at all — which is exactly the axis a rule dies along. Someone appends an
-// `ignores:` to one copy, that copy quietly stops guarding, and both suites stay green.
+// Copies drift, and `ast-grep test` structurally cannot notice: it replays each rule against its own
+// inline snippets, so it never compares the two files. Someone edits one copy, that copy quietly
+// stops matching what its twin matches, and both suites stay green.
 //
-// So the parity is asserted here instead of hoped for. The RULE BODY must match byte for byte; the
-// SCOPING (`files:`, `ignores:`) is expected to differ and is excluded from the comparison — the
-// root's copy is scoped to the plugin's tree, diarie's to its own.
+// WHAT IS ASSERTED, precisely — read this before trusting it:
+//
+//   1. The SET of rules present in both trees is exactly `SHARED`. Not "contains"; EQUALS. A rule
+//      added to both trees and forgotten here is a failure, and so is a `SHARED` entry that has
+//      gone missing from a tree.
+//   2. For each, the parsed YAML is identical after deleting `files:`/`ignores:` — the two copies
+//      are scoped to different trees, so their scoping is SUPPOSED to differ. Everything else —
+//      `rule:`, `message:`, `severity:`, `constraints:` — must match.
+//
+// NOTE WHAT IS **NOT** ASSERTED: drift in `files:`/`ignores:` is invisible here, by construction.
+// An `ignores:` appended to one copy silently narrows it and this check will not say so. That is a
+// real hole; it is the price of allowing the scoping to differ at all, and naming it is better than
+// implying it is covered.
+//
+// The first version of this script got both halves wrong, and a reviewer proved it in minutes:
+// it iterated a HARDCODED list (so a sixth shared rule was unpoliced forever, while the checker
+// printed reassurance every run), and it compared the files with a LINE FILTER, which two YAML
+// folded-scalar cases walked straight past — a blank line inside a `>-` block is a paragraph break
+// that changes the parsed string, and a `#` inside one is literal text, not a comment. A script
+// written to catch silent drift, drifting silently. So: compute the set, and parse the YAML.
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 
-/** Rules that legitimately exist in both trees. Anything else in both is a mistake. */
+import yaml from 'js-yaml'
+
+/** Rules that legitimately exist in both trees. The set is ASSERTED below, not assumed. */
 const SHARED = [
   'no-commonjs-require',
   'no-hardcoded-tracker-dir',
@@ -32,54 +49,73 @@ const ROOT = '.ast-grep/rules'
 const DIARIE = 'diarie/.ast-grep/rules'
 
 /**
- * The parts that must be identical: everything except the scoping keys and comments.
+ * Rule ids in a rules directory.
  *
- * `files:`/`ignores:` are SUPPOSED to differ — that is the whole point of two copies. What must not
- * differ is what the rule actually MATCHES and what it TELLS you when it matches.
- *
- * @param {string} yaml
- * @returns {string}
+ * @param {string} dir
+ * @returns {Set<string>}
  */
-function loadBearing (yaml) {
-  const lines = yaml.split('\n')
-  /** @type {string[]} */
-  const kept = []
-  let skipping = false
+const idsIn = (dir) => new Set(
+  readdirSync(dir).filter(f => f.endsWith('.yml')).map(f => f.replace(/\.yml$/, ''))
+)
 
-  for (const line of lines) {
-    if (/^(?:files|ignores):/.test(line)) {
-      skipping = true
-      continue
-    }
-    // A new top-level key ends the skipped block.
-    if (skipping && /^\S/.test(line)) skipping = false
-    if (skipping) continue
-    if (/^\s*#/.test(line) || line.trim() === '') continue
-    kept.push(line)
+/**
+ * The parsed rule, minus the scoping that is supposed to differ.
+ *
+ * Parsed, not line-filtered. A line filter cannot see YAML: it strips a `#` that is literal text
+ * inside a folded scalar, and it strips a blank line that is a paragraph break inside one. Both
+ * change the rule's actual message while leaving the filtered text identical.
+ *
+ * @param {string} path
+ * @returns {unknown}
+ */
+function loadBearing (path) {
+  const doc = yaml.load(readFileSync(path, 'utf8'))
+  if (doc && typeof doc === 'object') {
+    const { files: _files, ignores: _ignores, ...rest } = /** @type {Record<string, unknown>} */ (doc)
+    return rest
   }
-
-  return kept.join('\n')
+  return doc
 }
 
 /** @type {string[]} */
-const drifted = []
+const problems = []
 
-for (const id of SHARED) {
-  const a = loadBearing(readFileSync(join(ROOT, `${id}.yml`), 'utf8'))
-  const b = loadBearing(readFileSync(join(DIARIE, `${id}.yml`), 'utf8'))
-  if (a !== b) drifted.push(id)
+// (1) THE SET ITSELF. The old version trusted SHARED and never looked at the directories, so a rule
+// added to both trees and omitted here was unguarded — silently, permanently, and while the check
+// reported success.
+const inBoth = [...idsIn(ROOT)].filter(id => idsIn(DIARIE).has(id)).sort()
+const listed = [...SHARED].sort()
+
+for (const id of inBoth) {
+  if (!listed.includes(id)) {
+    problems.push(`\`${id}\` exists in BOTH trees but is not in SHARED — it is unpoliced. Add it.`)
+  }
+}
+for (const id of listed) {
+  if (!inBoth.includes(id)) {
+    problems.push(`\`${id}\` is in SHARED but is not in both trees — remove it, or restore the missing copy.`)
+  }
 }
 
-if (drifted.length) {
+// (2) THE BODIES. Only for rules genuinely in both, so a set mismatch reports once, not twice.
+for (const id of inBoth.filter(id => listed.includes(id))) {
+  const a = JSON.stringify(loadBearing(join(ROOT, `${id}.yml`)))
+  const b = JSON.stringify(loadBearing(join(DIARIE, `${id}.yml`)))
+  if (a !== b) {
+    problems.push(`\`${id}\` has DRIFTED — its rule/message/severity differs between the two trees.`)
+  }
+}
+
+if (problems.length) {
   console.error(
-    `check-rule-parity: ${drifted.length} shared ast-grep rule(s) have DRIFTED between\n` +
+    `check-rule-parity: ${problems.length} problem(s) between\n` +
     `  ${ROOT}/  and  ${DIARIE}/\n\n` +
-    drifted.map(id => `  - ${id}`).join('\n') + '\n\n' +
-    'Their `rule:`/`message:`/`severity:` must stay identical; only `files:`/`ignores:` may differ\n' +
-    '(the two copies are scoped to different trees). ast-grep has no config inheritance, so the\n' +
-    'copies are unavoidable — but drifting apart in SILENCE is not.'
+    problems.map(p => `  - ${p}`).join('\n') + '\n\n' +
+    'Only `files:`/`ignores:` may differ between the copies (they are scoped to different trees).\n' +
+    'ast-grep has no config inheritance, so the copies are unavoidable — drifting apart in SILENCE\n' +
+    'is not.'
   )
   process.exit(1)
 }
 
-console.log(`check-rule-parity: ${SHARED.length} shared rules identical across both trees`)
+console.log(`check-rule-parity: ${inBoth.length} shared rules, set verified, bodies identical`)

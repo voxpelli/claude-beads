@@ -1205,3 +1205,26 @@ tasks:
       gate, alongside the discovery that ast-grep's warning-severity rules cannot fail the build either
       (vp-beads-jqs) — the same shape twice, in two different linters.
     updated: '2026-07-14'
+  - id: vp-beads-knr
+    title: 'Root knip was DEAD CONFIG — deleted rather than shipped as a gate that does not bite'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - "if root knip is ever wanted, it must be PROVEN to bite: plant an unused export in scripts/ and watch `npm run check` go red. Two attempts on 2026-07-14 failed that test"
+      - "attempt 1 (`knip` + top-level entry/project): knip runs in MONOREPO mode because package.json declares `workspaces: [\"diarie\"]`, so it IGNORES top-level entry/project keys and reached into diarie, reporting its runtime deps as `unlisted` here"
+      - "attempt 2 (`knip --workspace .`): held the boundary, but then found nothing — a planted unused export in scripts/ exited 0. Gate-shaped, not a gate"
+      - "diarie's own knip (diarie/knip.jsonc) works and DOES bite — it found `init`'s untested doTheWork and the stale `projectRecords` export. The problem is the root's monorepo semantics, not knip"
+    description: >-
+      `knip.json` sat at the repo root with entry/project globs and NO `check:knip` script and NO
+      `knip` devDependency — it had never run once in the repo's history. A reviewer flagged it
+      (2026-07-14): a file that LOOKS like a gate but runs nothing is the hazard, because the next
+      reader assumes the plugin's tooling is covered.
+
+
+      Deleted rather than half-wired. Shipping a knip config that exits 0 over a planted violation
+      would have been the third green-check-over-nothing of the session, in the commit fixing the
+      second one.
+    updated: '2026-07-14'
