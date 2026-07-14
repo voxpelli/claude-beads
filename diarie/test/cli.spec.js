@@ -831,3 +831,70 @@ describe('THE FOUNDING DEFECT, for a MALFORMED ROW: a --json consumer must never
     assert.equal(JSON.parse(out).warnings, undefined)
   })
 })
+
+describe('THE TWO-FLAG CROSS: --strict was DEAD under --filter, and the suite could not see it', () => {
+  // `grep "filter.*strict"` over this suite returned NOTHING before these tests. Every --strict and
+  // every `warnings` assertion went through the bare partition path, so when `formatWorkResult`
+  // returned from the `mode === 'filter'` branch BEFORE the strict verdict, nothing noticed.
+  //
+  // The MISTAKES table above quantifies beautifully over user mistakes — and its domain is ONE
+  // DIMENSIONAL. It never crosses two flags. A quantified suite is only as good as the domain you
+  // chose, and choosing the domain is exactly where my blind spot lives.
+  //
+  // This matters beyond tidiness: the `--filter --json` output is a PINNED ARRAY with nowhere to
+  // carry a `warnings` key, so the exit code is the ONLY channel that path has — and
+  // hooks/session-start.sh reads that path at every session start.
+
+  it('a DROPPED row makes `--filter --strict` exit 2 (it exited 0)', (t) => {
+    // `status: in-progress` (hyphen) is not in VALID_STATUSES, so the loader rejects the field and
+    // the row disappears from every partition AND from every filter. A live claim, gone.
+    const dir = seedStore(tmpDir(t, 'diarie-x-drop-'), 'a',
+      'tasks:\n  - id: T-9\n    title: THE LIVE CLAIM\n    status: in-progress\n    type: task\n')
+    assert.equal(run(READY, ['--filter', 'in_progress', '--strict'], dir).code, 2)
+  })
+
+  it('a BROKEN-TYPE row makes `--filter --strict` exit 2 — and is still SERVED in the array', (t) => {
+    // The two views disagree on purpose: the partition quarantines this row in needsAttention,
+    // while `--filter pending` answers "what has this status" and hands it over. So a consumer that
+    // reads the array and ignores the exit code gets a broken row as though it were healthy. The
+    // exit code is its only warning. Pinning BOTH halves here so neither can drift.
+    const dir = seedStore(tmpDir(t, 'diarie-x-type-'), 'a',
+      'tasks:\n  - id: T-1\n    title: broken required type\n    status: pending\n    type: bug\n')
+    const { code, out } = run(READY, ['--filter', 'pending', '--strict', '--json'], dir)
+    assert.equal(code, 2)
+    assert.equal(JSON.parse(out).length, 1)
+  })
+
+  it('`--strict` stays OPT-IN — a broken store without it still exits 0', (t) => {
+    const dir = seedStore(tmpDir(t, 'diarie-x-optin-'), 'a',
+      'tasks:\n  - id: T-1\n    title: broken\n    status: pending\n    type: bug\n')
+    assert.equal(run(READY, ['--filter', 'pending', '--json'], dir).code, 0)
+  })
+
+  it('a HEALTHY store passes `--filter --strict` — 2 must MEAN something', (t) => {
+    const dir = seedStore(tmpDir(t, 'diarie-x-ok-'), 'a',
+      'tasks:\n  - id: T-1\n    title: fine\n    status: pending\n    type: task\n')
+    assert.equal(run(READY, ['--filter', 'pending', '--strict'], dir).code, 0)
+  })
+
+  it('`--strict` is in the usage string — it was missing, and it was also dead', () => {
+    const { out } = run(READY, ['--help'], FIXTURES)
+    assert.match(out, /--strict/)
+  })
+
+  it('`stats --stale --json` carries the loader\'s complaint (it returned before the append)', (t) => {
+    // The early return sat FOUR LINES above the comment explaining why warnings must be appended.
+    // `agents/sprint-review.md` runs exactly `stats --stale --days 60 --json`.
+    const dir = seedStore(tmpDir(t, 'diarie-x-stale-'), 'a',
+      'tasks:\n  - id: T-9\n    title: dropped\n    status: in-progress\n    type: task\n')
+    const parsed = JSON.parse(run(STATS, ['--stale', '--json'], dir).out)
+    assert.ok(Array.isArray(parsed.warnings), 'no `warnings` key — a JSON consumer is blind to it')
+    assert.match(parsed.warnings[0] ?? '', /invalid status/)
+  })
+
+  it('`stats --stale --json` on a HEALTHY store carries NO warnings key', (t) => {
+    const dir = seedStore(tmpDir(t, 'diarie-x-stale-ok-'), 'a',
+      'tasks:\n  - id: T-1\n    title: fine\n    status: pending\n    type: task\n')
+    assert.equal(JSON.parse(run(STATS, ['--stale', '--json'], dir).out).warnings, undefined)
+  })
+})

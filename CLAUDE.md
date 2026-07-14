@@ -793,7 +793,7 @@ duplicated (or published as a package, or run via a second `--config` invocation
 accept it knowingly rather than discover it.
 
 Root (6): the five adopted from vp-knowledge/vp-claude — `no-jsdoc-any-type` (prefer `unknown` +
-a guard; the ratchet that keeps type-coverage from sliding back), `no-jsdoc-object-typedef`
+a guard — **advisory, not a ratchet**; see below), `no-jsdoc-object-typedef`
 (auto-fixable), `no-commonjs-require`, `no-identifier-shadow-call`, `no-jq-raw-interpolation`
 (the hooks build jq programs) — plus `no-hardcoded-tracker-dir`. Deliberately NOT adopted:
 vp-claude's `bash-require-set-euo-pipefail` — a Claude Code hook that aborts on any failing

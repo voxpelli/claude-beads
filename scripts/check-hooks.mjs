@@ -883,6 +883,95 @@ test('sensitive-file: tracked PRIVATE-SYNERGY-*.md private overlay → warned', 
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
 
+// ============================================================================
+// vp-beads-hkt — THE POSITIVE TESTS. Every `Tracker:` assertion in this file used to be
+// NEGATIVE (it FAILED if the line appeared), so the suite could detect "announced a tracker that
+// isn't there" and was structurally blind to "failed to announce a tracker that is there" — which
+// is the one that ships. These use a REAL store and the REAL `diarie` CLI (scrubNodeBin removes
+// node_modules/.bin, so the hook falls through to its $PLUGIN_ROOT rung — the rung a real consumer
+// actually reaches), so there is no stub to drift from the CLI.
+// ============================================================================
+
+/**
+ * A real store, written to a real temp dir. No stub — the hook runs the actual CLI.
+ *
+ * @param {string} yaml
+ * @returns {string} the project root
+ */
+function makeRealStore (yaml) {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-realstore-'))
+  mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
+  writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-a.yml'), yaml)
+  return dir
+}
+
+const HEALTHY_STORE = 'tasks:\n  - id: T-1\n    title: ready\n    status: pending\n    type: task\n  - id: T-2\n    title: a real live claim\n    status: in_progress\n    type: task\n'
+// `in-progress` (hyphen) is not in VALID_STATUSES. The loader REJECTS the field and the row
+// disappears from every partition, every filter, and every count. A live claim, silently gone.
+const DROPPED_STORE = 'tasks:\n  - id: T-1\n    title: ready\n    status: pending\n    type: task\n  - id: T-9\n    title: THE LIVE CLAIM\n    status: in-progress\n    type: task\n'
+
+test('startup: a HEALTHY store DOES emit a Tracker line (the assertion this suite never had)', () => {
+  const dir = makeRealStore(HEALTHY_STORE)
+  try {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir, scrubNodeBin: true })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects } = parseJsonObjects(stdout)
+    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    if (!ctx.includes('Tracker:')) return { ok: false, reason: `no Tracker line for a real store: ${ctx.slice(0, 160)}` }
+    if (!/1 in progress/.test(ctx)) return { ok: false, reason: `the live claim was not counted: ${ctx.slice(0, 160)}` }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('startup: a DROPPED row is ANNOUNCED — the counts are incomplete and the prime must say so', () => {
+  // Before: "Tracker: 1 ready · 0 blocked · 0 in progress" — a confident, complete-looking line
+  // over a store that had silently lost a live claim. The founding defect, in the session prime.
+  const dir = makeRealStore(DROPPED_STORE)
+  try {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir, scrubNodeBin: true })
+    if (status !== 0) return { ok: false, reason: `exit ${status} — the hook must DEGRADE, never abort` }
+    const { objects } = parseJsonObjects(stdout)
+    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    if (!/DROPPED/.test(ctx)) return { ok: false, reason: `a dropped row went unannounced: ${ctx.slice(0, 200)}` }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('compact: a DROPPED row is ANNOUNCED, and the hook still EXITS 0', () => {
+  // `set -euo pipefail` (session-start.sh:24) means a bare `x=$(cmd)` whose command exits non-zero
+  // ABORTS THE HOOK. `--filter --strict` exits 2 by design on a broken store — so the first draft
+  // of this fix made the hook emit NOTHING and exit 2 exactly when the store was broken: strictly
+  // worse than the silent claim-loss it replaced. Only running the hook found it. This pins it.
+  const dir = makeRealStore(DROPPED_STORE)
+  try {
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir, scrubNodeBin: true })
+    if (status !== 0) return { ok: false, reason: `exit ${status} — errexit aborted the hook; it must degrade quietly` }
+    const { objects } = parseJsonObjects(stdout)
+    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    if (!/dropped at least one row/i.test(ctx)) return { ok: false, reason: `compact did not announce the dropped row: ${ctx.slice(0, 200)}` }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('startup: a HEALTHY store is NOT accused of dropping rows', () => {
+  const dir = makeRealStore(HEALTHY_STORE)
+  try {
+    const { stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir, scrubNodeBin: true })
+    const { objects } = parseJsonObjects(stdout)
+    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    if (/DROPPED/.test(ctx)) return { ok: false, reason: `false alarm on a clean store: ${ctx.slice(0, 160)}` }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 if (failed > 0) {
   process.exit(1)
 }

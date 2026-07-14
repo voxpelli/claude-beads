@@ -30,7 +30,7 @@
 // that changes the parsed string, and a `#` inside one is literal text, not a comment. A script
 // written to catch silent drift, drifting silently. So: compute the set, and parse the YAML.
 
-import { readFileSync, readdirSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 

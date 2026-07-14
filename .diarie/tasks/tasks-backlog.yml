@@ -1034,7 +1034,7 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-hkt
     title: The hook suite can only catch a FALSE POSITIVE — add the positive tracker-prime test
-    status: pending
+    status: completed
     type: task
     priority: high
     labels:
@@ -1227,4 +1227,45 @@ tasks:
       Deleted rather than half-wired. Shipping a knip config that exits 0 over a planted violation
       would have been the third green-check-over-nothing of the session, in the commit fixing the
       second one.
+    updated: '2026-07-14'
+  - id: vp-beads-flt
+    title: 'The --filter and --stale paths still lie — the founding defect, on the path a hook runs every session'
+    status: completed
+    type: task
+    priority: high
+    parent: vp-beads-dia
+    labels:
+      - bug
+    acceptance_criteria:
+      - "A1: `--strict` is DEAD under `--filter` — formatWorkResult returns from the `mode === 'filter'` branch BEFORE the strict verdict. Hoist the verdict above the early return. Add `--strict` to ready's `usage:` string (it is not even listed)"
+      - "A2: a DROPPED row (bad `status`) vanishes from `--filter` output entirely. The pinned ARRAY shape has no `warnings` channel, so the EXIT CODE is the carrier — which is why A1 must be fixed for A2 to be reportable at all"
+      - "A3: a row with a broken REQUIRED field (`type: bug`, valid status) is SERVED UNMARKED by `--filter`, while the partition quarantines it in needsAttention. Measured: partition `needsAttention: 1, ready: 0`; `--filter pending` returns the broken row IN the list"
+      - "A4: `stats --stale --json` returns before the `warnings` append — four lines above the comment explaining why warnings must be appended. Append them; its shape is an object"
+      - "DO NOT change the `--filter --json` array shape — it is pinned and parsed as an array by hooks/session-start.sh at :115 and :208"
+      - "TESTS: a `--filter` x `--strict` cross (the suite has ZERO — `grep 'filter.*strict'` returns nothing) and a warnings assertion on `--stale --json`"
+      - "RUN THE PROGRAM: store with `status: in-progress` => `ready --filter in_progress --strict --json` must exit 2"
+    description: >-
+      Commit 43546db fixed "a broken store told --json consumers it was an empty one" — on ready's
+      PARTITION branch, and nowhere else. Both sibling output paths still lie, in two different ways.
+      Fix the instance, leave the class: the pattern that defined this session, in the fix for it.
+
+
+      THIS IS LIVE. hooks/session-start.sh runs `--filter in_progress --json` at :115 (compaction
+      recovery) and :208 (startup prime). A live in-progress claim silently vanishes from the session
+      prime — the founding defect diarie exists to abolish, on the path that runs every session start.
+
+
+      ACCEPTED RESIDUAL RISK: a `--filter --json` consumer that IGNORES the exit code still receives a
+      broken row unmarked (A3). The pinned array has nowhere to carry a marker. Our own consumer (the
+      hook) will check the code; a third party might not. That is the cost of not breaking the shape.
+
+
+      THE HOOK HALF is vp-beads-hkt (extend it, do not duplicate). Its trap, MEASURED: `$(cmd || echo
+      "[]")` does NOT overwrite on failure — it captures stdout and APPENDS the fallback, producing a
+      JSON STREAM. jq tolerates that for the array slices, so claims survive — but `jq -r 'length'` on
+      a stream yields TWO values, so `n_claimed` becomes "1\n0" and is interpolated straight into
+      `Tracker: ... ${n_claimed} in progress`, producing a malformed multi-line line. The numeric guard
+      at :225 checks n_ready ONLY. So both `||` fallbacks must go, capturing stdout and status
+      separately, branching three ways: 0 clean / 2 a row was dropped / 1 ENOSTORE (the JSON is an
+      error OBJECT, not an array — do not slice it). Note :115 is NOT gated on store existence.
     updated: '2026-07-14'

@@ -108,12 +108,42 @@ if [ "$source" = "compact" ]; then
 	# this is recovery plumbing, not a user-facing workflow step). Prefer the
 	# `diarie` CLI when installed; else the in-repo reader. Both emit a JSON
 	# array of task rows for `--filter in_progress`. ---
+	# `--strict`, and the STATUS CAPTURED SEPARATELY. Both matter.
+	#
+	# The `--filter` output is a pinned ARRAY, so it has nowhere to carry a `warnings` key — the exit
+	# code is the only channel this path has. Without `--strict` a row the loader THREW AWAY (a typo'd
+	# `status:`) simply vanishes, and a compacted session silently forgets a live claim. That is the
+	# defect this whole tool exists to abolish, on the path it runs at every session start.
+	#
+	# And the old `|| echo ""` had to go. It does NOT replace the output on failure: command
+	# substitution captures stdout and then APPENDS the fallback, yielding a JSON stream. `jq` happily
+	# slices both documents — but `jq -r 'length'` over a stream returns TWO numbers, and the startup
+	# branch interpolates that straight into its `Tracker:` line. Capture the status instead of
+	# papering over it.
+	# `|| in_progress_rc=$?` IS LOAD-BEARING — this file runs under `set -euo pipefail` (line 24).
+	#
+	# A bare `x=$(cmd)` whose command exits non-zero ABORTS THE WHOLE HOOK under errexit. And
+	# `--strict` exits 2 by design the moment the store drops a row — so the first draft of this fix
+	# turned a hook that quietly lost a claim into one that emitted NOTHING AT ALL (no recovery
+	# snapshot, no capture nudge) and exited 2, precisely when the store was broken. Strictly worse
+	# than the bug it was fixing, and invisible to every test: I only saw it by RUNNING THE HOOK.
+	#
+	# `cmd || rc=$?` keeps errexit happy (a failing command on the left of `||` is not an error) while
+	# still capturing both the stdout and the status.
 	in_progress_json=""
+	in_progress_rc=0
 	_ready=$(diarie_ready_cmd)
 	if [ -n "$_ready" ]; then
 		# shellcheck disable=SC2086
-		in_progress_json=$($_ready --filter in_progress --json --root "$PWD" 2>/dev/null || echo "")
+		in_progress_json=$($_ready --filter in_progress --strict --json --root "$PWD" 2>/dev/null) || in_progress_rc=$?
 	fi
+
+	# 1 = InputError (ENOSTORE/EUSAGE) — stdout holds an error OBJECT, not an array. Never slice it.
+	# This branch is NOT gated on the store existing, unlike the startup prime below, so 1 is reachable.
+	if [ "$in_progress_rc" -eq 1 ]; then
+		in_progress_json=""
+	fi
+
 	if [ -n "$in_progress_json" ] && [ "$in_progress_json" != "[]" ]; then
 		summary=$(printf '%s' "$in_progress_json" | jq -r '.[0:5][] | "  \(.id) \(.title)"' 2>/dev/null || echo "")
 		if [ -n "$summary" ]; then
@@ -123,6 +153,13 @@ ${summary}
 
 Read the task row in \`.diarie/tasks/\` to recover full context for any claim above.")
 		fi
+	fi
+
+	# 2 = ResultError: it ran, and the answer is no. The loader threw a row away, so the list above is
+	# INCOMPLETE — say so. Silence here is how a live claim gets forgotten.
+	if [ "$in_progress_rc" -eq 2 ]; then
+		# shellcheck disable=SC2016
+		parts+=("⚠ The task store dropped at least one row (a malformed \`status\`/\`type\`/\`priority\`), so the claims above may be INCOMPLETE. Run \`diarie validate\`.")
 	fi
 
 	# --- Capture nudge (folds the retired precompact.sh reflection prompt,
@@ -204,8 +241,16 @@ if [ -n "$tracker_cmd" ]; then
 	# shellcheck disable=SC2086
 	queue_json=$($tracker_cmd --json --root "$PWD" 2>/dev/null || echo "")
 	if [ -n "$queue_json" ]; then
+		# NO `|| echo "[]"`. It never replaced the output — command substitution captures stdout and
+		# then APPENDS the fallback, so a failing call yielded a JSON *stream* (`[…]` then `[]`). The
+		# array slices below survive that (jq reads streams), but `jq -r 'length'` returns TWO numbers,
+		# and `n_claimed` is interpolated straight into the `Tracker:` line — a malformed, multi-line
+		# report from a guard meant to prevent exactly that. Branch on the status instead.
 		# shellcheck disable=SC2086
-		claims_json=$($tracker_cmd --filter in_progress --json --root "$PWD" 2>/dev/null || echo "[]")
+		if ! claims_json=$($tracker_cmd --filter in_progress --json --root "$PWD" 2>/dev/null); then
+			# InputError (ENOSTORE/EUSAGE): stdout holds an error OBJECT, not an array. Discard it.
+			claims_json="[]"
+		fi
 		[ -n "$claims_json" ] || claims_json="[]"
 
 		# Ask whether `.ready` EXISTS — never `.ready | length` alone. An ENOSTORE payload has
@@ -218,7 +263,16 @@ if [ -n "$tracker_cmd" ]; then
 		n_blocked=$(printf '%s' "$queue_json" | jq -r '[.blocked[]? | select((.children | length) == 0)] | length' 2>/dev/null || echo "0")
 		n_epics=$(printf '%s' "$queue_json" | jq -r '[.blocked[]? | select((.children | length) > 0)] | length' 2>/dev/null || echo "0")
 		n_attn=$(printf '%s' "$queue_json" | jq -r '.needsAttention | length' 2>/dev/null || echo "0")
-		n_claimed=$(printf '%s' "$claims_json" | jq -r 'length' 2>/dev/null || echo "0")
+		# `type == "array"` for the same reason `has("ready")` guards n_ready above: `length` on an
+		# error OBJECT returns its KEY COUNT — a number, which sails through the numeric guard and
+		# prints a confident, fictional claim count.
+		n_claimed=$(printf '%s' "$claims_json" | jq -r 'if type == "array" then length else 0 end' 2>/dev/null || echo "0")
+
+		# THE ROWS THE LOADER THREW AWAY. `queue_json` is the PARTITION path, which carries `warnings`
+		# in its payload — so the prime can see a dropped row without a second invocation. It could
+		# not before: a task claimed with a typo'd `status:` vanished from every count above, and the
+		# session was told a confident, complete-looking story with a live claim missing from it.
+		n_warn=$(printf '%s' "$queue_json" | jq -r 'if type == "object" then (.warnings // [] | length) else 0 end' 2>/dev/null || echo "0")
 
 		# A non-numeric n_ready means the reader failed or emitted something
 		# unexpected — stay silent rather than print a broken line.
@@ -232,6 +286,14 @@ if [ -n "$tracker_cmd" ]; then
 			fi
 			if [ "$n_attn" -gt 0 ] 2>/dev/null; then
 				tracker_summary="${tracker_summary} · ${n_attn} needs attention"
+			fi
+
+			# A DROPPED ROW MAKES EVERY COUNT ABOVE A LIE. It is not "one more stat" — the row is
+			# absent from ready, blocked, needsAttention AND the claim count, so the line reads as a
+			# complete picture of a store that is missing something. Say so, loudly, on the same line
+			# the numbers are on, or the numbers are worse than useless.
+			if [ "$n_warn" -gt 0 ] 2>/dev/null; then
+				tracker_summary="${tracker_summary} · ⚠ ${n_warn} row(s) DROPPED (malformed — counts above are incomplete; run \`diarie validate\`)"
 			fi
 
 			# ready-walker already sorts by priority, so the first rows are the ones worth naming.
