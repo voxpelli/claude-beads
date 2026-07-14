@@ -31,7 +31,7 @@
  * nobody checks is a comment, not a guarantee — and this one was already false once.
  */
 
-import { exit } from 'node:process'
+import process from 'node:process'
 
 /**
  * Exit 2 — the operation ran and the answer is "no".
@@ -39,8 +39,20 @@ import { exit } from 'node:process'
  * Callers must have already said their piece on stdout: `validate` prints the errors it found,
  * and the errors ARE the output. There is deliberately no message here.
  *
- * @returns {never}
+ * `process.exitCode = 2`, NOT `process.exit(2)`. THIS IS THE WHOLE POINT OF THE FUNCTION.
+ *
+ * `process.exit()` terminates immediately and does NOT flush a pending write to a pipe. Stdout to a
+ * pipe is asynchronous and the kernel buffer is 64 KB — so `ready --strict --json` against a store
+ * with more than ~64 KB of rows emitted exactly 65536 bytes of TRUNCATED, unparseable JSON, and then
+ * exited 2. A `--json` consumer runs `jq`, `jq` fails, the caller falls back to "no data" — and a
+ * broken store becomes an empty one. That is the founding defect of this tool, re-entered through
+ * the very exit code that exists to report it. Measured, on a 400-row store.
+ *
+ * Setting `exitCode` lets Node drain stdout and exit naturally with the status. It is why the
+ * ast-grep rules permit `process.exitCode = 2` *here* and nowhere else.
+ *
+ * @returns {void}
  */
 export function exitResultError () {
-  exit(2)
+  process.exitCode = 2
 }

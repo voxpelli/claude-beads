@@ -25,7 +25,7 @@
  * in the exit code. Nothing important is whispered.
  */
 
-import { argv, exit, stderr } from 'node:process'
+import process, { argv, stderr } from 'node:process'
 
 import { messageWithCauses, stackWithCauses } from 'pony-cause'
 
@@ -39,14 +39,25 @@ const wantsJson = argv.includes('--json') || argv.includes('-j')
 try {
   await cli(argv.slice(2))
 } catch (err) {
-  // The command has already said its piece on stdout (validate printed the errors).
-  // Adding a second, vaguer complaint here would just be noise.
+  // AN IF/ELSE CHAIN, AND `process.exitCode` — NOT `process.exit()`. Both halves are load-bearing.
   //
-  // `exitResultError()` rather than a bare `exit(2)`: the code is reserved, and the name is what
-  // reserves it. See lib/utils/exit.js — it is the only file allowed to write the number.
-  if (err instanceof ResultError) exitResultError()
-
-  if (err instanceof InputError) {
+  // `process.exit()` does not flush a pending write to a PIPE (stdout to a pipe is async, and the
+  // kernel buffer is 64 KB). So writing the answer and then exiting truncated any payload over
+  // ~64 KB into unparseable JSON — a `--json` consumer's `jq` fails, it falls back to "no data",
+  // and a broken store reads as an empty one. The founding defect, re-entered through the exit code
+  // that reports it. Setting `exitCode` lets Node drain stdout and exit naturally.
+  //
+  // Which means these handlers no longer TERMINATE — so they must not fall through. They used to be
+  // three sequential `if`s that each ended in `exit()`; drop the exit and a ResultError would sail
+  // on into the "genuinely unexpected" branch and be answered with a stack trace.
+  if (err instanceof ResultError) {
+    // The command has already said its piece on stdout (validate printed the errors).
+    // Adding a second, vaguer complaint here would just be noise.
+    //
+    // `exitResultError()` rather than a bare `exit(2)`: the code is reserved, and the name is what
+    // reserves it. See lib/utils/exit.js — it is the only file allowed to write the number.
+    exitResultError()
+  } else if (err instanceof InputError) {
     if (wantsJson) {
       // On stdout, WITH a code, so a machine consumer can branch without regexing a human
       // sentence: ENOSTORE (no store here), EUSAGE (you typed it wrong), EEXIST (init, refusing
@@ -68,16 +79,16 @@ try {
       stderr.write(`diarie: ${err.message}\n`)
       if (err.body) stderr.write('\n' + err.body + '\n')
     }
-    exit(1)
-  }
-
-  // Genuinely unexpected: a bug, not a user mistake. Show the whole cause chain —
-  // this is the one place a stack trace is the honest answer.
-  if (err instanceof Error) {
-    stderr.write(`diarie: unexpected error: ${messageWithCauses(err)}\n\n`)
-    stderr.write(stackWithCauses(err) + '\n')
+    process.exitCode = 1
   } else {
-    stderr.write('diarie: unexpected error with no details\n')
+    // Genuinely unexpected: a bug, not a user mistake. Show the whole cause chain —
+    // this is the one place a stack trace is the honest answer.
+    if (err instanceof Error) {
+      stderr.write(`diarie: unexpected error: ${messageWithCauses(err)}\n\n`)
+      stderr.write(stackWithCauses(err) + '\n')
+    } else {
+      stderr.write('diarie: unexpected error with no details\n')
+    }
+    process.exitCode = 1
   }
-  exit(1)
 }
