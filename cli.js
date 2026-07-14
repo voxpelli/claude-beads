@@ -32,6 +32,7 @@ import { messageWithCauses, stackWithCauses } from 'pony-cause'
 
 import { cli } from './lib/main.js'
 import { InputError, ResultError } from './lib/utils/errors.js'
+import { exitResultError } from './lib/utils/exit.js'
 
 /** True if the user asked for machine-readable output. */
 const wantsJson = argv.includes('--json') || argv.includes('-j')
@@ -41,7 +42,10 @@ try {
 } catch (err) {
   // The command has already said its piece on stdout (validate printed the errors).
   // Adding a second, vaguer complaint here would just be noise.
-  if (err instanceof ResultError) exit(2)
+  //
+  // `exitResultError()` rather than a bare `exit(2)`: the code is reserved, and the name is what
+  // reserves it. See lib/utils/exit.js — it is the only file allowed to write the number.
+  if (err instanceof ResultError) exitResultError()
 
   if (err instanceof InputError) {
     if (wantsJson) {
