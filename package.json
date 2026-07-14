@@ -16,7 +16,7 @@
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
     "check:tasks": "node diarie/cli.js validate",
     "check:validator": "node scripts/check-validator.mjs",
-    "fix:ast-grep": "ast-grep scan --update-all scripts/ validate-plugin.mjs"
+    "fix:ast-grep": "node scripts/check-ast-grep.mjs --update-all"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.1",

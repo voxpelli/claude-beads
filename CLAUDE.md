@@ -819,9 +819,17 @@ diarie (8): the four generic JS rules (copied), plus **four of its own** —
 **diarie's rules carry NO `files:` glob, deliberately.** Its `check:ast-grep` is a bare
 `ast-grep scan` — no path arguments — which walks the whole package, so a rule cannot be scoped
 outside a path list the runner forgot to update. The plugin's root runner must maintain such a
-list (it lints a subset of a bigger repo), and `scripts/check-ast-grep.mjs` therefore asserts
-every path **exists** before trusting ast-grep with it: `ast-grep scan` on a missing path prints
-an error and **exits 0**, so a stale entry made the check pass while scanning nothing.
+list (it lints a subset of a bigger repo). That list lives in **`scripts/ast-grep-paths.mjs`**, and
+in **exactly one place** — `check:ast-grep` scans it and `fix:ast-grep` rewrites it, and they are now
+the same script (`node scripts/check-ast-grep.mjs --update-all`). They used to be two invocations
+with two hand-copied lists, under a comment instructing that they be "kept in step"; they **drifted
+apart in the very commit that added `hooks/`**, so the fixer silently stopped rewriting the one
+directory the newest rule was aimed at. A "keep these in step" comment is a manual invariant with no
+gate behind it.
+
+`check-ast-grep.mjs` also asserts every listed path **exists** before trusting ast-grep with it:
+`ast-grep scan` on a missing path prints an error and **exits 0**, so a stale entry made the check
+pass while scanning nothing.
 
 🚨 **The bare scan is bounded by `.gitignore`** — ast-grep respects it, as ripgrep does. So
 `diarie/.gitignore` is load-bearing for the *lint*, not only for git: without it, a standalone

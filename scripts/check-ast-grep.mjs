@@ -11,26 +11,19 @@
 
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import process from 'node:process'
 
 const inCi = Boolean(process.env.GITHUB_ACTIONS)
 const formatArgs = inCi ? ['--format', 'github'] : []
 
-// THE PLUGIN'S OWN TREE, AND NOTHING ELSE. `diarie/` is gone from this list: the workspace now
-// carries its own `sgconfig.yml` + `.ast-grep/` and runs them itself (`npm run check
-// --workspace=diarie`), so scanning it from here would lint it twice under two rule sets that can
-// drift — and would keep the extracted package's guards living in a repo it is about to leave.
-//
-// Note what diarie's config does NOT have: a path list. `ast-grep scan` with no path arguments
-// walks the whole project, so over there a rule cannot be scoped outside what is scanned. This
-// runner needs a list only because it lints a SUBSET of a larger repo — and that list is exactly
-// what the guard below exists to police.
-// `hooks/` is here because `no-jq-raw-interpolation` is `language: bash` and exists — in its own
-// words — because "the hooks build jq programs". There are ZERO `.sh` files under `scripts/`, so
-// until now the rule had never once been pointed at a bash file. It passed `ast-grep test` 6/6 the
-// whole time, on synthetic snippets: green, and guarding nothing. That is the same green-and-inert
-// bug this runner's existence-guard was added to prevent — and the guard could not see it, because
-// it checks that a listed path EXISTS, not that a rule's language has anything to read.
-const PATHS = ['scripts/', 'hooks/', 'validate-plugin.mjs']
+// `fix:ast-grep` is THIS script with `--update-all`, not a second `ast-grep scan` invocation with a
+// hand-copied path list. It used to be the latter, under a comment in this very file instructing
+// that the two be "kept in step" — and they drifted apart in the same commit that added `hooks/`, so
+// the fixer silently stopped rewriting the one directory the newest rule was aimed at. A "keep these
+// in step" comment is a manual invariant with no gate behind it. The list has one home now.
+const updateAll = process.argv.includes('--update-all')
+
+import { PATHS } from './ast-grep-paths.mjs'
 
 // THE GUARD NEEDS A GUARD. `ast-grep scan` on a path that does not exist prints
 // `ERROR: <path>: No such file or directory` to stderr — and EXITS 0. Since this script
@@ -44,11 +37,15 @@ if (missing.length) {
   console.error(
     `check-ast-grep: ${missing.length} scan path(s) do not exist: ${missing.join(', ')}\n` +
     'ast-grep exits 0 on a missing path, so this would otherwise pass while scanning nothing.\n' +
-    'Fix the path list in scripts/check-ast-grep.mjs (and keep `fix:ast-grep` in package.json in step).'
+    'Fix the path list in scripts/ast-grep-paths.mjs — it is the single home for it.'
   )
   process.exit(1)
 }
 
-const result = spawnSync('ast-grep', ['scan', ...formatArgs, ...PATHS], { stdio: 'inherit' })
+const result = spawnSync(
+  'ast-grep',
+  ['scan', ...(updateAll ? ['--update-all'] : formatArgs), ...PATHS],
+  { stdio: 'inherit' }
+)
 
 process.exit(result.status ?? 1)
