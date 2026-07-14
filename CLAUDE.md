@@ -831,8 +831,24 @@ gate behind it.
 `ast-grep scan` on a missing path prints an error and **exits 0**, so a stale entry made the check
 pass while scanning nothing.
 
-🚨 **The bare scan is bounded by `.gitignore`** — ast-grep respects it, as ripgrep does. So
-`diarie/.gitignore` is load-bearing for the *lint*, not only for git: without it, a standalone
+🚨 **`ast-grep test` does not fail on an untested rule — it SKIPS it, and the pairing key is the
+`id:` FIELD, not the filename.** Both measured. Delete a rule's test file and it prints
+`ok. 7 passed; 0 failed` and **exits 0**, going from 8 rules to 7 without ever naming the one it
+dropped. Change *only* the `id:` inside a test file — leave the filename correct — and it prints
+`Configuration not found! <id>` and **still exits 0**, while the rule silently has no test at all.
+`check:rule-parity` asserts all three (the file exists, its `id:` names the rule, it has an
+`invalid:` case), because a checker that pairs by *filename* reports success over exactly this.
+
+🚨 **The bare scan is bounded by `.gitignore` — and ast-grep only honours `.gitignore` INSIDE a git
+repository.** Measured: with no `.git`, an ignored file **is scanned**; after a bare `git init` (no
+commit, no `add`), it is skipped. Also measured: ast-grep **skips a TRACKED-but-ignored file**, so
+"what ast-grep sees" is *neither* `git ls-files -c` (which lists ignored-but-tracked files) *nor*
+`git check-ignore` (which reports **nothing** for them without `--no-index`) — it is
+`git ls-files -co --exclude-standard` **minus** `git check-ignore --no-index`. Any tool that tries to
+reproduce the scan's file set needs all of that; getting it wrong builds a sandbox that scans a tree
+the real scan never sees.
+
+So `diarie/.gitignore` is load-bearing for the *lint*, not only for git: without it, a standalone
 `ast-grep scan` walks `node_modules` and reports ~25k errors from other people's code. Inside
 this workspace that is invisible, because npm hoists dependencies to the repo root and
 `diarie/node_modules` is nearly empty — **the in-workspace green was an accident of hoisting.**

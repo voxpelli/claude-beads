@@ -31,6 +31,39 @@ Every post-wave gate launches exactly two review agents in parallel:
 | Config, tooling, CI          | Ops reviewer            | Idempotency, secret handling, failure modes           |
 | Documentation only           | Clarity reviewer        | Accuracy, completeness, example correctness           |
 | Mixed or unclear             | Second code reviewer    | Same focus as Agent 1, independent pass               |
+| **A new guard, lint rule, or quantified test suite** | **Evasion reviewer** | **Sole deliverable: N inputs the guard does NOT catch. Returning zero findings is a FAILED review, not a pass.** |
+
+### Why the evasion reviewer exists
+
+A guard is a claim about inputs it has never seen. Whoever wrote it chose the inputs it *was*
+tested on — and that choice carries the author's blind spot into the test suite, where it reads
+as coverage.
+
+The evidence is not theoretical. Across eight defects in one sprint, the author's own adversarial
+attempt never once found the author's own blind spot:
+
+- The `invalid:` fixtures for a new ast-grep rule were **confirmatory** — they proved the rule
+  caught what its author already knew to write. Two reviewers broke its exemption clause in three
+  ways within minutes (an `exit(2)` in the ELSE arm, one in a nested closure, one merely *wrapped*
+  by the sanctioned branch). All three were exempted, silently.
+- A quantified table of user mistakes covered every mistake its author could enumerate. The bug was
+  the row that was not there: it **never crossed two flags**, and `--filter` × `--strict` was the
+  defect.
+- A rule-parity checker written to catch silent drift shipped with a hardcoded list and a line-based
+  YAML comparison — **drifting silently.**
+
+So: **whenever a guard's correctness rests on an input set its author chose, someone else must choose
+the inputs.** The evasion reviewer's job is not to approve the guard. It is to defeat it, and to
+report exactly how.
+
+> **This row is enforced by compliance, not by machinery — `severity: warning`, and saying otherwise
+> would be the same lie the guards exist to catch.** What has actually worked, empirically, is a
+> human asking *"did you run the gate?"* — so the honest mitigation is to make the question easy to
+> ask, not to claim a receipt nobody checks.
+
+**Acceptance criteria for any new guard: it must be shown going RED**, on the case that motivated it.
+A green run proves nothing — it is indistinguishable from a guard inspecting nothing at all. Plant the
+violation, watch it fail, then remove it.
 
 ## Confidence Thresholds
 
