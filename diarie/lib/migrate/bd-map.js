@@ -161,6 +161,19 @@ export const TYPE_MAP = {
 }
 
 /**
+ * Project a parsed bd export into the flat-YAML task rows, with a loss report.
+ *
+ * `@planned` — exported for a caller that never arrived. The file header says this is "exported
+ * for reuse by vp-beads-bj7's eventual test suite when that migrator is built". That migrator IS
+ * built — it is `migrate/bootstrap.js` — and it does not use this. The stated reason is stale, and
+ * knip is right that nothing outside this file calls it.
+ *
+ * Kept rather than deleted because deleting a knip-flagged export is a decision, not a cleanup
+ * (CLAUDE.md ASK FIRST), and because the honest fix is bigger than the symptom: this whole file is
+ * a read-only SPIKE whose one-time job is done, and retiring it is its own row. The tag says so out
+ * loud, instead of letting a silenced warning imply somebody still needs this.
+ *
+ * @planned
  * @param {BdIssue[]} records   parsed bd export lines (regular issues only)
  * @returns {{ tasks: TaskRow[], loss: object }}
  */

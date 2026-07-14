@@ -711,14 +711,25 @@ npm run check
 
 Runs every `check:*` key in parallel via `run-p check:*` (`npm-run-all2`) — the
 authoritative list is the `check:*` keys in `package.json`, not this paragraph.
-They fall into five groups: **plugin** (`check:plugin` = validate-plugin.mjs,
-`check:validator` = its unit tests), **prose/style** (`check:md` = remark,
-`check:lint` = eslint, `check:sh` = shellcheck + shfmt, `check:ast-grep` +
-`check:ast-grep-test` = the structural-lint suite), **tracker** (`check:tasks` =
-`node diarie/cli.js validate`, `check:diarie` = the workspace's OWN suite via
-`npm test --workspace=diarie`, `check:beads-probe` = the de-integration probe),
-**types** (`check:tsc` + `check:type-coverage`, both scoped to the `diarie`
-workspace), and **hooks** (`check:hooks`).
+
+**THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES.** The root's `check:*` keys cover
+the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`,
+`check:md` (remark), `check:lint` (eslint), `check:sh` (shellcheck + shfmt),
+`check:ast-grep` + `check:ast-grep-test`, `check:hooks`, `check:beads-probe`, and
+`check:tasks` (`node diarie/cli.js validate` — validating *this repo's store*, not the
+package). **`check:diarie` = `npm run check --workspace=diarie`**, which runs the
+workspace's OWN aggregate: its lint, tsc, type-coverage, knip, ast-grep and tests.
+
+The root no longer type-checks, lints, or scans `diarie/**` — `check:tsc` and
+`check:type-coverage` moved *into* the workspace, root `eslint.config.js` ignores it, and
+`scripts/check-ast-grep.mjs` no longer lists its paths. That is not a coverage loss; it is
+what stops diarie being linted **twice, by two configs that can drift** — and it is what
+makes `git subtree split --prefix=diarie` a no-op instead of an amputation.
+
+Until Wave 2 (2026-07-14) every gate diarie had belonged to the root and reached in through
+a path or a glob, while `diarie/package.json` carried exactly **one** script (`test`). An
+extraction would have taken the source and left ESLint, tsc, type-coverage, knip and
+ast-grep behind — and the extracted package would have shipped green with no lint at all.
 
 **`diarie`'s tests live in `diarie/test/*.spec.js` (`node:test`), not in `scripts/`.**
 That is not cosmetic: tests outside the workspace do not survive a `git subtree split`,
@@ -762,25 +773,55 @@ the sweep sees; the values are what it misses.
 
 ### ast-grep structural lint
 
-`sgconfig.yml` → `.ast-grep/rules/` (rules) + `.ast-grep/rule-tests/` (snapshot
-fixtures, run by `ast-grep test`). Adopted from vp-knowledge; see
-`SYNERGY-vp-knowledge.md`. To add a rule, write both files and run
-`ast-grep test --update-all` to seed the snapshot.
+**TWO configs, on purpose.** The root's `sgconfig.yml` → `.ast-grep/` guards the **plugin**
+(`scripts/`, `validate-plugin.mjs`); `diarie/sgconfig.yml` → `diarie/.ast-grep/` guards the
+**package**, travels with it, and is run by the workspace's own `check:ast-grep`. To add a
+rule, write the rule + its rule-test and run `ast-grep test --update-all` to seed the snapshot
+— **in whichever tree the rule belongs to.**
 
-Six rules. Five are adopted from vp-knowledge/vp-claude — `no-jsdoc-any-type` (prefer
-`unknown` + a guard; this is the ratchet that keeps type-coverage from sliding back),
-`no-jsdoc-object-typedef` (auto-fixable), `no-commonjs-require`, `no-identifier-shadow-call`,
-`no-jq-raw-interpolation` (the hooks build jq programs). Deliberately NOT adopted:
+**They are copies, and there is no alternative.** `sgconfig.yml` supports only `ruleDirs`,
+`utilDirs`, `testConfigs`, `customLanguages`, `languageGlobs`, `languageInjections` — there is
+**no `extends`, no `include`, no config inheritance**. A rule needed on both sides must be
+duplicated (or published as a package, or run via a second `--config` invocation). Copies drift;
+accept it knowingly rather than discover it.
+
+Root (6): the five adopted from vp-knowledge/vp-claude — `no-jsdoc-any-type` (prefer `unknown` +
+a guard; the ratchet that keeps type-coverage from sliding back), `no-jsdoc-object-typedef`
+(auto-fixable), `no-commonjs-require`, `no-identifier-shadow-call`, `no-jq-raw-interpolation`
+(the hooks build jq programs) — plus `no-hardcoded-tracker-dir`. Deliberately NOT adopted:
 vp-claude's `bash-require-set-euo-pipefail` — a Claude Code hook that aborts on any failing
 command *blocks the tool call*, and these hooks are required to degrade quietly.
 
-The sixth, and the only one native here, is **`no-hardcoded-tracker-dir`**: the tracker path segment
-lives *only* in `TRACKER_DIR` (`diarie/lib/schema.js`), and every other tool
-must import it. Two exemptions, both deliberate — `schema.js` (it *is* the
-definition) and `scripts/check-*.mjs` (test fixtures must state the literal, or
-the assertion becomes tautological). The rule matters most in guard code: a
-hardcoded segment in `bd-map.js`'s refuse-to-write check would not
-*error* after a rename, it would silently stop guarding.
+diarie (8): the four generic JS rules (copied), plus **four of its own** —
+
+- **`no-hardcoded-tracker-dir`** — the tracker path segment lives *only* in `TRACKER_DIR`
+  (`diarie/lib/schema.js`); everything else imports it. **This rule is CROSS-BOUNDARY and lives
+  on BOTH sides**: it guards diarie's `lib/**` *and* the plugin's `scripts/*.mjs` +
+  `validate-plugin.mjs`, which import `TRACKER_DIR` from `diarie/schema` precisely because this
+  rule makes them. It could not "move". It matters most in guard code: a hardcoded segment in
+  `bd-map.js`'s refuse-to-write check would not *error* after a rename — it would silently stop
+  guarding.
+- **`no-identical-test-title`** — `node:test` runs BOTH copies of a duplicated `it()` title,
+  silently.
+- **`no-unsanctioned-exit-2`** + **`no-computed-exit-code`** — exit 2 is `ResultError` and
+  nothing else. The first bans all three forms (`exit(2)`, `process.exit(2)`,
+  `process.exitCode = 2`) outside `lib/utils/exit.js`'s `exitResultError()`; the second requires
+  every exit code to be a plain decimal literal, so `const TWO = 2`, `0x2`, `2.0` and `1 + 1`
+  cannot slip past the first's syntax match. **Neither holds alone.**
+
+**diarie's rules carry NO `files:` glob, deliberately.** Its `check:ast-grep` is a bare
+`ast-grep scan` — no path arguments — which walks the whole package, so a rule *cannot* be
+scoped outside what is scanned. The plugin's root runner must maintain a path list (it lints a
+subset of a bigger repo), and `scripts/check-ast-grep.mjs` therefore asserts every path
+**exists** before trusting ast-grep with it: `ast-grep scan` on a missing path prints an error
+and **exits 0**, so a stale entry made the check pass while scanning nothing.
+
+🚨 **The bare scan is bounded by `.gitignore`** — ast-grep respects it, as ripgrep does. That is
+why `diarie/.gitignore` is load-bearing for the *lint*, not only for git: without it, a
+standalone `ast-grep scan` walks `node_modules` and reports ~25k errors from other people's code.
+Inside this workspace that is invisible, because npm hoists dependencies to the repo root and
+`diarie/node_modules` is nearly empty — **the in-workspace green was an accident of hoisting.**
+It took building the extracted tree to see it, which is the whole argument for `vp-beads-prf`.
 
 ### Hook type constraint
 

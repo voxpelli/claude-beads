@@ -27,13 +27,13 @@ message: >-
   `const TWO = 2; exit(TWO)` cannot slip past this syntax match. Neither rule is sufficient alone.
   Delete either and the other stops holding.
 severity: error
-files:
-  - "diarie/lib/**/*.js"
-  - "diarie/cli.js"
+# No `files:` — bare `ast-grep scan` walks the whole package from sgconfig.yml, so scoping by
+# glob would only create a way for this rule to point at nothing. `ignores:` is the one real
+# exemption, and it is a single file.
 ignores:
   # The definition itself. One file, one function, one call — `git grep exitResultError` is an
   # exhaustive list of every way this process can exit 2.
-  - "diarie/lib/utils/exit.js"
+  - "lib/utils/exit.js"
 rule:
   any:
     - pattern: exit(2)

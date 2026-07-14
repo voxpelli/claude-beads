@@ -1,0 +1,14 @@
+id: no-identifier-shadow-call
+snapshots:
+  const config = config(options):
+    labels:
+    - source: const config = config(options)
+      style: primary
+      start: 0
+      end: 30
+  const isAdmin = isAdmin(request):
+    labels:
+    - source: const isAdmin = isAdmin(request)
+      style: primary
+      start: 0
+      end: 32

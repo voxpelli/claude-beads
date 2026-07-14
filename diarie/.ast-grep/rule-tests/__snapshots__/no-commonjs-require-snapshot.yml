@@ -1,0 +1,14 @@
+id: no-commonjs-require
+snapshots:
+  const fs = require('fs'):
+    labels:
+    - source: require('fs')
+      style: primary
+      start: 11
+      end: 24
+  const { readFile } = require('node:fs/promises'):
+    labels:
+    - source: require('node:fs/promises')
+      style: primary
+      start: 21
+      end: 48

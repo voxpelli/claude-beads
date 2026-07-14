@@ -12,8 +12,6 @@ message: >-
 severity: error
 files:
   - "scripts/*.mjs"
-  - "diarie/lib/**/*.js"
-  - "diarie/test/**/*.js"
   - "validate-plugin.mjs"
 ignores:
   # The definition itself — `export const TRACKER_DIR = '.diarie'`.

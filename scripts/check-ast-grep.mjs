@@ -15,15 +15,16 @@ import { existsSync } from 'node:fs'
 const inCi = Boolean(process.env.GITHUB_ACTIONS)
 const formatArgs = inCi ? ['--format', 'github'] : []
 
-// `diarie/test/` is in the outer bound because a rule scoped to a directory nobody scans
-// is a rule that is green and inert. `no-identical-test-title` lives there, and
-// `check:ast-grep-test` cannot cover for it: `ast-grep test` only replays a rule against
-// its own snapshot fixtures — it never walks the tree.
+// THE PLUGIN'S OWN TREE, AND NOTHING ELSE. `diarie/` is gone from this list: the workspace now
+// carries its own `sgconfig.yml` + `.ast-grep/` and runs them itself (`npm run check
+// --workspace=diarie`), so scanning it from here would lint it twice under two rule sets that can
+// drift — and would keep the extracted package's guards living in a repo it is about to leave.
 //
-// `diarie/cli.js` joined the bound for the same reason: `no-unsanctioned-exit-2` guards the
-// exit-code taxonomy, and its single sanctioned site lives in that file. Scoped to a path
-// outside this list, it would have enforced nothing while reporting success.
-const PATHS = ['scripts/', 'diarie/lib/', 'diarie/test/', 'diarie/cli.js', 'validate-plugin.mjs']
+// Note what diarie's config does NOT have: a path list. `ast-grep scan` with no path arguments
+// walks the whole project, so over there a rule cannot be scoped outside what is scanned. This
+// runner needs a list only because it lints a SUBSET of a larger repo — and that list is exactly
+// what the guard below exists to police.
+const PATHS = ['scripts/', 'validate-plugin.mjs']
 
 // THE GUARD NEEDS A GUARD. `ast-grep scan` on a path that does not exist prints
 // `ERROR: <path>: No such file or directory` to stderr — and EXITS 0. Since this script

@@ -15,8 +15,8 @@ message: >-
 
   Known limitation: `TITLE: kind: string` means template-literal titles are not covered.
 severity: error
-files:
-  - "diarie/test/**/*.spec.js"
+# No `files:` — the pattern is self-scoping (it only matches `it`/`test`/`describe` calls, which
+# exist nowhere but the suite), so a glob would add no precision and one more way to go inert.
 rule:
   kind: expression_statement
   has:

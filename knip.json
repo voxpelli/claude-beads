@@ -10,17 +10,6 @@
         "*.mjs",
         "scripts/*.mjs"
       ]
-    },
-    "diarie": {
-      "entry": [
-        "cli.js",
-        "lib/index.js",
-        "lib/schema.js"
-      ],
-      "project": [
-        "cli.js",
-        "lib/**/*.js"
-      ]
     }
   }
 }

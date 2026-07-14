@@ -17,9 +17,6 @@ message: >-
   The cost is small and the benefit is not only mechanical: an exit code you have to go and look
   up is an exit code nobody checks. `exit()` with no argument is untouched (it means 0).
 severity: error
-files:
-  - "diarie/lib/**/*.js"
-  - "diarie/cli.js"
 rule:
   any:
     - pattern: exit($CODE)

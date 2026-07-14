@@ -13,10 +13,24 @@ import { voxpelli } from '@voxpelli/eslint-config'
 //   - cliFiles:  there is no lib/ here — every .mjs IS a CLI tool, so
 //                process.exit(), console, and sync I/O are correct everywhere.
 export default [
+  {
+    // THE WORKSPACE OWNS ITS GATES; THE ROOT STOPS REACHING IN.
+    //
+    // This config used to lint `diarie/**/*.js` through a `cliFiles` glob — while `eslint` and
+    // `@voxpelli/eslint-config` lived only in the ROOT devDependencies. So a `git subtree split
+    // --prefix=diarie` would have taken the source and left the linter behind: an extracted
+    // package with no lint config, no lint dependency, and nothing to say so.
+    //
+    // diarie now has its own `eslint.config.js` and its own devDeps, and the root delegates via
+    // `check:diarie` → `npm run check --workspace=diarie`. Ignoring it here is not a coverage
+    // loss — it is what stops diarie being linted TWICE, by two configs that can drift.
+    name: 'vp-beads/delegate-to-workspace',
+    ignores: ['diarie/**'],
+  },
   ...voxpelli({
     noMocha: true,
     semi: false,
-    cliFiles: ['scripts/**/*.mjs', 'diarie/**/*.js', 'validate-plugin.mjs'],
+    cliFiles: ['scripts/**/*.mjs', 'validate-plugin.mjs'],
   }),
   {
     name: 'vp-beads/repo-style',

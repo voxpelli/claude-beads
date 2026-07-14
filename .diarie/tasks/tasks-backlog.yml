@@ -560,7 +560,7 @@ tasks:
     updated: '2026-07-11'
   - id: vp-beads-asg
     title: diarie owns its gates; the root stops reaching in — ALL of them die at the split, not just ast-grep
-    status: pending
+    status: completed
     type: task
     priority: high
     parent: vp-beads-dia
@@ -590,6 +590,40 @@ tasks:
       The rule's own point is the reason to care: a hardcoded path segment in guard code does not
       ERROR after a rename, it silently STOPS GUARDING. That is what would happen to the guards
       themselves, which is the joke this row exists to spoil.
+
+
+      SHIPPED 2026-07-14. diarie now has its own sgconfig.yml + .ast-grep/ (8 rules), eslint.config.js,
+      knip.jsonc, tsconfig, and a `check` aggregate of seven gates. The root delegates
+      (`check:diarie` = `npm run check --workspace=diarie`), ignores `diarie/**` in eslint, and
+      dropped check:tsc/check:type-coverage and the diarie scan paths.
+
+
+      PROVEN, not assumed: an extracted copy (git init + npm install, no root config anywhere above
+      it) passes all seven gates and 228 assertions — and every one of its five rules was proven to
+      FIRE by planting a violation. The root's rules were likewise re-proven on the plugin tree.
+      Coverage shrank on neither side.
+
+
+      THE PROOF EARNED ITSELF IMMEDIATELY. Three gates that passed in-workspace FAILED standalone:
+
+
+      1. `ast-grep scan` reported 24,894 errors — it was walking node_modules. The bare scan (no
+         path list, deliberately, so a rule cannot be scoped outside what is scanned) is bounded by
+         .gitignore, and diarie HAD NO .gitignore. In-workspace this is invisible because npm hoists
+         deps to the root and `diarie/node_modules` is nearly empty: THE IN-WORKSPACE GREEN WAS AN
+         ACCIDENT OF HOISTING.
+      2. tsc + type-coverage broke on a JSDoc block I had just added ABOVE an existing one, orphaning
+         its `@param` and making a parameter implicitly `any`.
+      3. knip's ignoreBinaries/ignoreDependencies turned out to be needed ONLY in-workspace (measured:
+         a standalone repo resolves all six without them). They are now in a knip.jsonc that says so
+         in a comment, because a workaround you cannot explain in place will rot — left in after the
+         split, knip could never again report a genuinely unused dependency.
+
+
+      Also fixed along the way: knip found `init`'s `doTheWork` exported and never tested — the ONE
+      command with a side effect and a refusal guard — now covered (4 tests, 228 total); and
+      `projectRecords` exported for "vp-beads-bj7's eventual test suite", a migrator that IS built
+      and does not use it. Tagged `@planned` with the reason, not deleted (ASK FIRST).
 
 
       A `git subtree split` of `diarie/` takes neither. The extracted package would ship with
@@ -1093,4 +1127,21 @@ tasks:
 
       Folds naturally into vp-beads-asg, which already rewrites this runner — but filed separately
       because it is a live defect, not a migration step.
+    updated: '2026-07-14'
+  - id: vp-beads-kni
+    title: 'Remove diarie''s knip ignoreBinaries/ignoreDependencies on extraction — they are a workspace artifact'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dia
+    labels:
+      - chore
+    acceptance_criteria:
+      - "delete BOTH `ignoreBinaries` and `ignoreDependencies` from `diarie/knip.jsonc` once diarie is its own repo"
+      - "MEASURED 2026-07-14: a standalone repo (git init + npm install) resolves all six binaries and passes knip with both lists REMOVED. They exist only because npm hoists `.bin` to the monorepo root, so there is no `diarie/node_modules/.bin` for knip to resolve against"
+      - "the comment in knip.jsonc already says all of this — this row exists so the deletion actually happens"
+    description: >-
+      Left in place after the split, these lists would permanently blind knip to a genuinely unused
+      dev dependency. That is the exact shape of silencing that rots: correct today, a lie tomorrow,
+      and nothing goes red in between.
     updated: '2026-07-14'
