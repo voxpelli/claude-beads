@@ -1,10 +1,20 @@
 .DS_Store
 
 # Ephemeral agent/sprint scratch artifacts (durable record lives in .diarie/tasks/)
-AGENT-*.md
-RETRO-*.md
-SWARM-*.md
-SPIKE-*.md
+#
+# ANCHORED with a leading `/` — these are ROOT-level scratch files (`AGENT-03.md`, `RETRO-17.md`), and
+# an unanchored pattern matches at ANY DEPTH. `AGENT-*.md` was silently swallowing the tracked, shipped
+# `skills/swarm-wave/references/agent-concurrency-limits.md` (matching is case-insensitive — macOS sets
+# `core.ignorecase=true`), which made it invisible to `check:md`: remark runs with
+# `--ignore-path .gitignore` and `--frail`, so a file with warnings was never linted and the gate was
+# green over it for as long as it existed. `check:tracked-ignored` now forbids that state outright.
+#
+# Do NOT anchor `PRIVATE-SYNERGY-*.md` below — for that one, matching at every depth IS the privacy
+# invariant.
+/AGENT-*.md
+/RETRO-*.md
+/SWARM-*.md
+/SPIKE-*.md
 
 # Local plugin/registry overrides
 .claude/*.local.*

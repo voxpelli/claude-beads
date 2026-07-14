@@ -5,21 +5,21 @@ Reference material for swarm-wave workflow 2 (Execute a wave) and workflow 5
 
 ## Memory Pressure Levels
 
-| Level | Indicator | Action |
-|---|---|---|
-| LOW | >40% RAM free | Launch planned agent count |
-| MEDIUM | 20-40% RAM free | Reduce agent count by 1 |
-| HIGH | 10-20% RAM free | Reduce agent count by 2; consider sequential |
-| CRITICAL | <10% RAM free | Do not launch. Stop and report to user. |
+| Level    | Indicator       | Action                                       |
+| -------- | --------------- | -------------------------------------------- |
+| LOW      | >40% RAM free   | Launch planned agent count                   |
+| MEDIUM   | 20-40% RAM free | Reduce agent count by 1                      |
+| HIGH     | 10-20% RAM free | Reduce agent count by 2; consider sequential |
+| CRITICAL | <10% RAM free   | Do not launch. Stop and report to user.      |
 
 ## Agent Count Ceilings
 
-| RAM | Code Agents | Research (Read-Only) | BM Write Agents |
-|---|---|---|---|
-| 8 GB | 3 | 5 | 3 |
-| 16 GB | 5 | 10 | 8 |
-| 32 GB | 6 | 20 | 12 |
-| 64 GB+ | 6 | 37 | 15 |
+| RAM    | Code Agents | Research (Read-Only) | BM Write Agents |
+| ------ | ----------- | -------------------- | --------------- |
+| 8 GB   | 3           | 5                    | 3               |
+| 16 GB  | 5           | 10                   | 8               |
+| 32 GB  | 6           | 20                   | 12              |
+| 64 GB+ | 6           | 37                   | 15              |
 
 Code agent ceiling is 6 regardless of RAM. The constraint is coordination
 overhead (file contention, merge complexity), not memory.
