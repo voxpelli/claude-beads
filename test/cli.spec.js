@@ -72,6 +72,17 @@ function seedStore (dir, slug, body) {
 }
 
 /**
+ * A store whose one row has a malformed REQUIRED field. `validate` calls this broken.
+ *
+ * @param {import('node:test').TestContext} t
+ * @returns {string}
+ */
+function brokenRow (t) {
+  return seedStore(tmpDir(t, 'diarie-warn-'), 'a',
+    'tasks:\n  - id: T-1\n    title: malformed required status\n    status: open\n    type: task\n')
+}
+
+/**
  * Run the CLI with a given TASKS_ROOT.
  *
  * `out` is stdout ONLY and `err` is stderr ONLY — never merge them (see header).
@@ -638,7 +649,7 @@ describe('`--help` is a REQUEST, not a mistake (the oracle check:prose-commands 
 
   for (const sub of ['ready', 'stats', 'validate', 'init', 'migrate']) {
     it(`\`${sub} --help\` exits 0 and prints the usage on stdout`, () => {
-      const { code, out, err } = run([sub], ['--help'], FIXTURES)
+      const { code, err, out } = run([sub], ['--help'], FIXTURES)
       assert.equal(code, 0)
       assert.ok(out.length > 0, `${sub} --help wrote nothing to stdout`)
       assert.equal(err, '')
@@ -773,3 +784,50 @@ function walkJs (dir) {
     return e.name.endsWith('.js') ? [p] : []
   })
 }
+
+describe('THE FOUNDING DEFECT, for a MALFORMED ROW: a --json consumer must never be told a broken store is empty', () => {
+  // This CLI exists because the old readers printed `{"ready": []}` to stdout and whispered their
+  // only complaint to stderr — a stream ten call sites pipe to /dev/null — so a tracker that could
+  // not find its store was indistinguishable from one reporting an empty backlog.
+  //
+  // That was fixed for a MISSING store (ENOSTORE) and left standing for a MALFORMED ROW. A store
+  // `validate` calls broken answered `{"ready": [], "blocked": [], "needsAttention": []}` with
+  // exit 0, and the sentence naming the dropped field went to stderr. Same defect, same stream,
+  // different cause — and it survived the commit that fixed the other half.
+
+  it('validate calls the store broken — establishing that it IS broken', (t) => {
+    assert.equal(run(VALIDATE, [], brokenRow(t)).code, 2)
+  })
+
+  it('`ready --json` puts the loader\'s complaint IN THE ANSWER, not only on stderr', (t) => {
+    const { code, out } = run(READY, ['--json'], brokenRow(t))
+    assert.equal(code, 0)
+    const parsed = JSON.parse(out)
+    assert.ok(Array.isArray(parsed.warnings), 'no `warnings` key — a JSON consumer is blind to it')
+    assert.match(parsed.warnings[0] ?? '', /invalid status "open"/)
+  })
+
+  it('`ready --strict` exits 2 for a DROPPED row, exactly as it does for a broken type', (t) => {
+    // The asymmetry this fixes: `computeReady` skips any row whose status is not `pending` BEFORE
+    // it reaches the type guard. So `type: bug` landed in needsAttention and tripped --strict,
+    // while `status: open` was silently discarded and --strict exited 0. Two malformed REQUIRED
+    // fields, opposite behaviour — and CLAUDE.md says a malformed required field makes the row
+    // BROKEN, not merely non-workable.
+    assert.equal(run(READY, ['--strict'], brokenRow(t)).code, 2)
+  })
+
+  it('`stats --json` carries it too — "present in the sum, absent from every answer"', (t) => {
+    const { out } = run(STATS, ['--json'], brokenRow(t))
+    const parsed = JSON.parse(out)
+    assert.equal(parsed.total, 1)
+    assert.ok(Array.isArray(parsed.warnings))
+  })
+
+  it('a HEALTHY store carries NO warnings key and --strict exits 0 — 2 must MEAN something', (t) => {
+    const dir = seedStore(tmpDir(t, 'diarie-clean-'), 'a',
+      'tasks:\n  - id: T-1\n    title: fine\n    status: pending\n    type: task\n')
+    const { code, out } = run(READY, ['--strict', '--json'], dir)
+    assert.equal(code, 0)
+    assert.equal(JSON.parse(out).warnings, undefined)
+  })
+})
