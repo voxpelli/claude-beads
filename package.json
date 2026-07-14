@@ -17,7 +17,7 @@
     "check:tsc": "tsc -p diarie",
     "check:type-coverage": "type-coverage -p diarie --detail --strict --at-least 98 --ignore-files 'diarie/test/*'",
     "check:validator": "node scripts/check-validator.mjs",
-    "fix:ast-grep": "ast-grep scan --update-all scripts/ diarie/lib/ diarie/test/ validate-plugin.mjs"
+    "fix:ast-grep": "ast-grep scan --update-all scripts/ diarie/lib/ diarie/test/ diarie/cli.js validate-plugin.mjs"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.1",

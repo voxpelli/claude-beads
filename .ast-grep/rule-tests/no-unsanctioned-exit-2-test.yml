@@ -1,0 +1,42 @@
+id: no-unsanctioned-exit-2
+valid:
+  # THE one sanctioned site — cli.js's ResultError branch. This is what exit 2 means.
+  - |
+    if (err instanceof ResultError) exit(2)
+  # The same, in block form.
+  - |
+    if (err instanceof ResultError) {
+      exit(2)
+    }
+  # Every other exit code is unconstrained; only 2 carries a reserved meaning.
+  - |
+    exit(1)
+    exit(0)
+    process.exit(1)
+  # An InputError is the correct answer to anything the user got wrong — never exit 2.
+  - |
+    if (err instanceof InputError) {
+      exit(1)
+    }
+invalid:
+  # A bare exit(2) — a second meaning for the one code that must keep only one.
+  - |
+    function bad () {
+      exit(2)
+    }
+  # The `process.` form is the same collision wearing a namespace.
+  - |
+    function alsoBad () {
+      process.exit(2)
+    }
+  # Guarded by SOMETHING — but not by ResultError. This is the peowly shape that started it:
+  # "incorrect usage" reaching for the code that already means "your backlog is broken".
+  - |
+    if (!argv.length) {
+      exit(2)
+    }
+  # An InputError branch must exit 1. Exiting 2 here is precisely the conflation.
+  - |
+    if (err instanceof InputError) {
+      exit(2)
+    }

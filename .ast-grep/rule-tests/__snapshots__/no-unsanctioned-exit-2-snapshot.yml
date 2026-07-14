@@ -1,0 +1,38 @@
+id: no-unsanctioned-exit-2
+snapshots:
+  ? |
+    function alsoBad () {
+      process.exit(2)
+    }
+  : labels:
+    - source: process.exit(2)
+      style: primary
+      start: 24
+      end: 39
+  ? |
+    function bad () {
+      exit(2)
+    }
+  : labels:
+    - source: exit(2)
+      style: primary
+      start: 20
+      end: 27
+  ? |
+    if (!argv.length) {
+      exit(2)
+    }
+  : labels:
+    - source: exit(2)
+      style: primary
+      start: 22
+      end: 29
+  ? |
+    if (err instanceof InputError) {
+      exit(2)
+    }
+  : labels:
+    - source: exit(2)
+      style: primary
+      start: 35
+      end: 42

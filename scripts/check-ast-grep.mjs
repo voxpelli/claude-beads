@@ -10,6 +10,7 @@
 // are the outer bound, not the filter.
 
 import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 
 const inCi = Boolean(process.env.GITHUB_ACTIONS)
 const formatArgs = inCi ? ['--format', 'github'] : []
@@ -18,10 +19,29 @@ const formatArgs = inCi ? ['--format', 'github'] : []
 // is a rule that is green and inert. `no-identical-test-title` lives there, and
 // `check:ast-grep-test` cannot cover for it: `ast-grep test` only replays a rule against
 // its own snapshot fixtures — it never walks the tree.
-const result = spawnSync(
-  'ast-grep',
-  ['scan', ...formatArgs, 'scripts/', 'diarie/lib/', 'diarie/test/', 'validate-plugin.mjs'],
-  { stdio: 'inherit' }
-)
+//
+// `diarie/cli.js` joined the bound for the same reason: `no-unsanctioned-exit-2` guards the
+// exit-code taxonomy, and its single sanctioned site lives in that file. Scoped to a path
+// outside this list, it would have enforced nothing while reporting success.
+const PATHS = ['scripts/', 'diarie/lib/', 'diarie/test/', 'diarie/cli.js', 'validate-plugin.mjs']
+
+// THE GUARD NEEDS A GUARD. `ast-grep scan` on a path that does not exist prints
+// `ERROR: <path>: No such file or directory` to stderr — and EXITS 0. Since this script
+// forwards ast-grep's status, a renamed or moved directory would silently shrink the scan to
+// nothing and the check would stay green: a green check over work not done, in the very tool
+// that exists to prevent it. So the paths are verified here, before ast-grep is trusted with
+// them. Do not remove this: the failure it prevents leaves no trace.
+const missing = PATHS.filter(p => !existsSync(p))
+
+if (missing.length) {
+  console.error(
+    `check-ast-grep: ${missing.length} scan path(s) do not exist: ${missing.join(', ')}\n` +
+    'ast-grep exits 0 on a missing path, so this would otherwise pass while scanning nothing.\n' +
+    'Fix the path list in scripts/check-ast-grep.mjs (and keep `fix:ast-grep` in package.json in step).'
+  )
+  process.exit(1)
+}
+
+const result = spawnSync('ast-grep', ['scan', ...formatArgs, ...PATHS], { stdio: 'inherit' })
 
 process.exit(result.status ?? 1)

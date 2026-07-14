@@ -559,7 +559,7 @@ tasks:
       invalid. `format.js` defines stderr as asides, so this is within contract.
     updated: '2026-07-11'
   - id: vp-beads-asg
-    title: diarie must self-host its ast-grep config — the guards do not survive extraction
+    title: diarie owns its gates; the root stops reaching in — ALL of them die at the split, not just ast-grep
     status: pending
     type: task
     priority: high
@@ -567,18 +567,29 @@ tasks:
     labels:
       - chore
     acceptance_criteria:
-      - "`diarie/sgconfig.yml` + `diarie/.ast-grep/{rules,rule-tests}/` exist and are runnable from inside the workspace alone"
-      - "the diarie-owned rules move there: `no-hardcoded-tracker-dir` (guards `diarie/lib/`) and `no-identical-test-title` (guards `diarie/test/`)"
-      - "the generic JS rules diarie also needs (`no-jsdoc-any-type`, `no-jsdoc-object-typedef`, `no-commonjs-require`, `no-identifier-shadow-call`) are available to the workspace — copied or shared, decide which"
-      - "plugin-only rules STAY at the root (`no-jq-raw-interpolation` guards `hooks/*.sh`)"
-      - "the root `npm run check` still scans everything — the split must not shrink coverage on either side"
-      - "PROVE it: plant a violation of each moved rule and confirm the workspace's own check goes red with no root config present"
+      - "THE PRINCIPLE: the workspace owns its gates and the root DELEGATES (`npm run check --workspace=diarie`) instead of reaching in. Today the root reaches into diarie with every gate it has (`tsc -p diarie`, `type-coverage -p diarie`, an eslint cliFiles glob, an ast-grep scan path, a knip workspace block) — which is exactly why none of them survive"
+      - "diarie gets its OWN check aggregate: check:lint (own eslint.config.js + the eslint / @voxpelli/eslint-config devDeps, both root-only today), check:tsc, check:type-coverage, check:knip, check:ast-grep, check:ast-grep-test, plus @ast-grep/cli. Today `diarie/package.json` has exactly ONE script: `test`"
+      - "root stops linting/typechecking/scanning `diarie/**`: eslint.config.js ignores it, knip.json drops the workspace block, check:tsc + check:type-coverage move out, check-ast-grep.mjs drops `diarie/lib/` + `diarie/test/`"
+      - "COPY, DON'T MOVE. `no-hardcoded-tracker-dir` is CROSS-BOUNDARY — it guards diarie/lib/** AND scripts/audit-silent-skips.mjs, scripts/beads-probe.mjs, validate-plugin.mjs. It must exist on BOTH sides, each scoped to its own tree. (The original AC said `move`; that was wrong.)"
+      - "the four generic JS rules are COPIED into diarie. ast-grep has NO config inheritance — sgconfig.yml supports only ruleDirs/utilDirs/testConfigs/customLanguages/languageGlobs/languageInjections, no extends/include. `share` was never an option. Accept the drift risk; log it"
+      - "DELETE `no-identical-test-title` at the ROOT (rule + rule-test + snapshot). Once the root stops scanning diarie/test/, no *.spec.js exists outside diarie and the rule guards NOTHING — a green, inert rule, the precise sin this row exists to abolish. It lives in diarie now"
+      - "FIX THE GUARD-OF-THE-GUARD: check-ast-grep.mjs must assert every scan path EXISTS and exit non-zero otherwise. MEASURED 2026-07-14: `ast-grep scan no-such-dir/` prints ERROR to stderr and EXITS 0, so `process.exit(result.status ?? 1)` goes GREEN while scanning nothing. Also de-duplicate the path list — `fix:ast-grep` hardcodes the same four paths a second time and can drift"
+      - "RE-MEASURE the type-coverage ignore glob: `--ignore-files 'diarie/test/*'` was already measured a NO-OP once this sprint. After the move it becomes `test/*` — prove it matches and that the 98% ratchet still holds"
+      - "update CLAUDE.md `## Validation` — it describes the check:* groups this row rewrites"
+      - "PROVE it: plant a violation of each rule now living in diarie; diarie's OWN check must go red with NO root config present. A passing `ast-grep test` proves nothing — it takes no path argument, replays inline snapshots, and never walks the tree"
     description: >-
-      The ast-grep suite lives at the repo ROOT (`sgconfig.yml` → `.ast-grep/rules/`), but two
-      of its rules exist solely to guard diarie: `no-hardcoded-tracker-dir` (the `TRACKER_DIR`
-      constant, whose whole point is that a hardcoded segment in guard code stops guarding
-      SILENTLY after a rename) and `no-identical-test-title` (added 2026-07-11 with the test
-      relocation; duplicate `it()` titles run twice under node:test with no warning).
+      Rewritten 2026-07-14 after three explorer agents. The original framing (`diarie must
+      self-host its ast-grep config`) was a SUBSET of the real problem and got two premises wrong.
+
+
+      What actually dies at the split is the whole quality-gate stack — ESLint (config AND deps),
+      tsc, type-coverage's 98% ratchet, knip, CI — not only ast-grep. And `no-hardcoded-tracker-dir`
+      cannot MOVE, because it guards both sides of the boundary.
+
+
+      The rule's own point is the reason to care: a hardcoded path segment in guard code does not
+      ERROR after a rename, it silently STOPS GUARDING. That is what would happen to the guards
+      themselves, which is the joke this row exists to spoil.
 
 
       A `git subtree split` of `diarie/` takes neither. The extracted package would ship with
@@ -699,10 +710,14 @@ tasks:
     labels:
       - feature
     acceptance_criteria:
-      - "extracts every `diarie <sub> [--flags]` and `node <path>` invocation from hooks/, skills/, agents/, CLAUDE.md and README.md"
+      - "extracts every `diarie <sub> [--flags]` and `node <path>` invocation from hooks/, skills/, agents/, CLAUDE.md and README.md — the measured corpus is 64 distinct invocations"
       - "resolves each against the real CLI: unknown subcommand, unknown flag, or a flag on the wrong subcommand FAILS the check"
       - "a named file path that does not exist FAILS the check"
-      - "added to `npm run check`, and it goes RED against the three fossils this sprint shipped: the session prime's dead `ready-walker.mjs`, `ready --stale`, and the bd numeric priority in /retrospective's template"
+      - "THE ORACLE IS THE REAL BINARY: spawn `diarie <sub> --help` and parse the flag table it prints. peowly GENERATES that help text from the same `flags` object it parses with, so the two cannot drift. Do NOT hardcode a flag table — a second model of the CLI is this project's signature failure installed inside the check meant to prevent it. DEPENDS ON vp-beads-cli: today `migrate --help` exits 1, so the oracle is not yet uniform"
+      - "EXCEPT `migrate`, whose USAGE string is HAND-WRITTEN and CAN drift from the parseArgs config inside runMigration (it does not use peowly). Add a diarie-side test asserting USAGE lists exactly the flags runMigration accepts"
+      - "MUST distinguish an IMPERATIVE from a MENTION. `node scripts/ready-walker.mjs` in a session-start heredoc is a command to run (BUG). `git grep ready-walker` in CLAUDE.md's own doc-grep lesson, and the /ready-walker/ regex in audit-silent-skips.mjs that DETECTS the retired token, are deliberate historical references (NOT bugs). A naive grep flags CLAUDE.md's lesson about the fossil as the fossil"
+      - "scans PROSE PAYLOADS inside hooks (heredocs), not only executable command lines — the ready-walker fossil lives in a heredoc and a command-line-only extractor misses the highest-traffic surface in the repo"
+      - "added to `npm run check`, and it goes RED against the live fossils BEFORE they are fixed: README.md:69 (`diarie ready --stats` — that flag does not exist), hooks/session-start.sh:257 (`node scripts/ready-walker.mjs` — file deleted), skills/retrospective/SKILL.md:279,281 (`ready-walker --stale` / `--blocked`). A check that has never been red has never been tested"
     description: >-
       Sprint 16 shipped a dead command into EVERY session — `hooks/session-start.sh` told each
       one to "Find work with `node scripts/ready-walker.mjs`", a file deleted two commits
@@ -922,3 +937,113 @@ tasks:
       Filed, verified, and killed inside one session. The lesson is the one the sprint kept
       teaching: a review finding is a hypothesis, not a fact. Reading the schema took 30 seconds.
     updated: '2026-07-11'
+  - id: vp-beads-cli
+    title: The CLI tells the truth — exit-code taxonomy, and `migrate --help` is not an error
+    status: completed
+    type: task
+    priority: high
+    parent: vp-beads-dia
+    labels:
+      - bug
+    acceptance_criteria:
+      - "`migrate --help` / `-h` prints USAGE to STDOUT and exits 0 (today: InputError, exit 1 — it conflates `you asked for help` with `you forgot the file`)"
+      - "`migrate` stays NON-peowly — this is three lines in run(), NOT a four-part conversion (see decision vp-beads-sea)"
+      - "bare `diarie` exits 1, not 2 — exit 2 is reserved for ResultError (`it ran, and the answer is no`)"
+      - "unknown subcommand and unknown flag raise InputError (exit 1) and HONOUR --json — today both emit a raw ERR_PARSE_ARGS_UNKNOWN_OPTION / PeowlyCommandMissingError stack labelled `unexpected`, with EMPTY stdout, violating the JSON error contract cli.js documents in its own header"
+      - "tests for all four (today: zero tests for unknown flag, unknown subcommand, or bare invocation)"
+      - "after this, `<sub> --help` exits 0 for ALL FIVE subcommands — that uniformity is what gives vp-beads-vcb a sound oracle"
+    description: >-
+      Measured 2026-07-14 BEFORE touching anything: nothing in the repo branches on diarie's exit
+      codes (the hooks use `|| true` and test for EMPTY OUTPUT, never a status), so the taxonomy
+      could be corrected without breaking a caller. Changing an exit code is a contract change;
+      the grep is what made it safe.
+
+
+      SHIPPED. `--help` now exits 0 for all five subcommands (that uniformity is vp-beads-vcb's
+      oracle); bare `diarie` is 1; unknown command and unknown flag are InputErrors carrying the
+      new `EUSAGE` code on stdout under --json, instead of a `node:internal/util/parse_args` stack
+      trace labelled "unexpected" with an EMPTY stdout. 194 assertions (+12). Each of the three
+      guards was mutation-proven able to go red (1, 3 and 1 failures respectively).
+
+
+      THE COLLISION, for the record: peowly's `showHelp()` defaults to `process.exit(2)` ON
+      PURPOSE — "Default to code 2 for incorrect usage" (peowly#47) — and 2 was already taken here
+      by ResultError. Two meanings, one code: a CI job branching on 2 could not tell a dependency
+      cycle from a typo. `main.js` now intercepts the bare invocation before peowly-commands can
+      exit.
+
+
+      BEYOND THE ACs: the invariant is now STRUCTURAL, not advisory. The new ast-grep rule
+      `no-unsanctioned-exit-2` forbids `exit(2)` / `process.exit(2)` anywhere in `diarie/lib/**` or
+      `cli.js` except inside the one `if (err instanceof ResultError)` branch — proven by planting a
+      violation, not by a passing snapshot. `diarie/cli.js` had to JOIN check-ast-grep.mjs's scan
+      bound for the rule to fire at all; scoped outside that list it would have enforced nothing
+      while reporting success. And `check-ast-grep.mjs` now asserts its scan paths EXIST, because
+      `ast-grep scan` on a missing path exits 0 — the guard needed a guard.
+    updated: '2026-07-14'
+  - id: vp-beads-dvb
+    title: De-vp-beads the diarie source — one runtime leak, ~39 dead ids, 17 dangling paths
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dia
+    labels:
+      - chore
+    acceptance_criteria:
+      - "THE RUNTIME LEAK: lib/migrate/bd-map.js:307 hardcodes `slug: 'vp-beads'` into generated YAML. It sits behind a direct-execution guard, so it ships in the tarball but is NOT reachable via `diarie migrate` — fix it anyway; it ships"
+      - "~39 `vp-beads-<id>` citations rewritten to KEEP THE REASONING and DROP THE DEAD POINTER (user's call, 2026-07-14) — `that was vp-beads-epc` becomes `that was the bug where an epic container, having no deps of its own, was offered as ready work`"
+      - "17 dangling paths (CLAUDE.md, hooks/session-start.sh, scripts/ready-walker.mjs, SPIKE-*.md, agents/sprint-review.md) — same treatment"
+      - "lib/store.js's CLAUDE_PLUGIN_ROOT guard: KEEP it, generalize it, and EXPAND it beyond Claude Code (user's call). The hazard is `a tool that vendors diarie ships its own .diarie/`; Claude Code is one instance of that, not the definition"
+    description: >-
+      The dense why-comments are diarie's best feature and its biggest extraction liability: in a
+      standalone repo every citation points at a tracker that is not there.
+    updated: '2026-07-14'
+  - id: vp-beads-hkt
+    title: The hook suite can only catch a FALSE POSITIVE — add the positive tracker-prime test
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - "a test asserting the POSITIVE: real store + real reader => the `Tracker:` line IS emitted"
+      - "it exercises a REAL `node diarie/cli.js` rung, not only the PATH stub (makeTrackerStubDir tests rung 1 — the rung no consumer ever reaches)"
+      - "prove it can go red: break the prime, watch the new test fail"
+    description: >-
+      Found by an adversarial agent, 2026-07-14, and confirmed by reading the source. ALL FOUR
+      `Tracker:` assertions in scripts/check-hooks.mjs (:578, :597, :644) are NEGATIVE — they FAIL
+      if the line appears. The one test that sets up a real store (:604) asserts only `count === 1`
+      and never checks the tracker line is in it. So the suite can detect "announced a tracker that
+      isn't there" and is STRUCTURALLY BLIND to "failed to announce a tracker that is there" —
+      which is the one that ships. A green check over work not done, in the check itself.
+
+
+      NOTE the same agent's headline claim — that the prime is already dead for every marketplace
+      consumer because Claude Code does not npm install plugins — is REFUTED. It does: the cache at
+      ~/.claude/plugins/cache/vp-plugins/vp-beads/0.18.0/node_modules carries 479 packages
+      including js-yaml. Verify premises before acting on review findings.
+    updated: '2026-07-14'
+  - id: vp-beads-prf
+    title: Prove diarie is splittable — and prove it against the TARBALL, not the git tree
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dia
+    deps:
+      - vp-beads-asg
+      - vp-beads-pub
+    labels:
+      - task
+    acceptance_criteria:
+      - "`git subtree split --prefix=diarie` into a THROWAWAY dir; `npm install`; diarie's OWN `npm run check` is green with NO root config present"
+      - "plant a violation of each rule now living in diarie — the extracted repo's check must go RED (a passing `ast-grep test` proves nothing: it replays inline snapshots and never walks the tree)"
+      - "THE POINT: `npm pack` => install the TARBALL into a fresh consumer fixture => typecheck `import { computeReady } from 'diarie'` and assert the result is NOT `any`. Add publint + @arethetypeswrong/cli"
+      - "state the accepted limit out loud: the extracted repo has NO LOCKFILE (npm workspaces keep the lock at the root, so diarie/ cannot carry its own while it is a workspace). Do not pretend to solve it"
+      - "NOTHING is published and NOTHING is pushed — the split is only ever a dry-run"
+    description: >-
+      The split test and the tarball test look interchangeable and are not. A dry-run split
+      installs from the GIT TREE, where any built .d.ts sit on disk — green. `npm pack` applies the
+      `files` allowlist, which excludes them. So the split test proves the one thing that is not at
+      risk, and only the tarball proves the thing that is. Measured 2026-07-14: `npm pack
+      --dry-run` today ships 22 files with ZERO .d.ts, ZERO README, ZERO LICENSE.
+    updated: '2026-07-14'

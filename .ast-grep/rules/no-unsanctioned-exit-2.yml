@@ -1,0 +1,33 @@
+id: no-unsanctioned-exit-2
+language: javascript
+message: >-
+  Exit code 2 is SPOKEN FOR: it means `ResultError` — "it ran, and the answer is no"
+  (an invalid store, a cyclic backlog, `--strict`). It is the one exit code this tool
+  exists to make trustworthy, and a second meaning destroys it: a CI job branching on 2
+  could no longer tell a dependency cycle from a typo.
+
+  The single sanctioned site is `cli.js`'s `if (err instanceof ResultError) exit(2)`.
+  Everything else a user can get wrong is an `InputError` — exit 1, with a machine-readable
+  `code` (`ENOSTORE` when the store is missing, `EUSAGE` when the command was typed wrong).
+
+  This rule exists because the collision is EASY and SILENT. `peowly`'s `showHelp()` defaults
+  to `process.exit(2)` on purpose — "Default to code 2 for incorrect usage" (peowly#47) — so a
+  bare `diarie` exited 2 for months, meaning "you forgot the subcommand" in a code reserved for
+  "your backlog is broken". `main.js` now intercepts that before peowly can exit. Nothing else
+  may reintroduce it. If you need a new failure mode, give it an `InputError` code, not exit 2.
+severity: error
+files:
+  - "diarie/lib/**/*.js"
+  - "diarie/cli.js"
+rule:
+  all:
+    - any:
+        - pattern: exit(2)
+        - pattern: process.exit(2)
+    - not:
+        inside:
+          kind: if_statement
+          stopBy: end
+          has:
+            pattern: err instanceof ResultError
+            stopBy: end
