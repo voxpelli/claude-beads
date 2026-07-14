@@ -20,6 +20,22 @@ import { voxpelli } from '@voxpelli/eslint-config'
 //                bin and in the migrator. Preserved verbatim from the root's treatment of
 //                `diarie/**/*.js`, so switching owners changes no rule.
 export default [
+  {
+    name: 'diarie/generated-declarations',
+    // The `.d.ts` that `npm run build` emits next to their sources (declaration.tsconfig.json), for
+    // `prepack` to put in the tarball. They are TypeScript output — semicolons, double quotes — and
+    // eslint fails them on sight, so a developer who builds and then checks gets a red gate over
+    // generated files they did not write.
+    //
+    // Ignoring them is the fix, NOT a `clean` step before the check: `check` is `run-p check:*`, and a
+    // cleaner racing six parallel gates is a bug waiting to be blamed on something else. tsc and knip
+    // are both content with the files present (measured) — only eslint objects, so only eslint is told.
+    //
+    // `*-types.d.ts` is deliberately NOT ignored: that is the escape hatch for a HAND-WRITTEN ambient
+    // declaration, which must stay linted and committed. It is the same convention the clean scripts in
+    // @voxpelli/typed-utils use, and it is why the ignore is not a bare `*.d.ts`.
+    ignores: ['lib/**/*.d.ts', 'lib/**/*.d.ts.map', '!lib/**/*-types.d.ts'],
+  },
   ...voxpelli({
     noMocha: true,
     semi: false,

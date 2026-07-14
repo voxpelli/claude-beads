@@ -1,9 +1,27 @@
 {
   "name": "diarie",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "A flat-YAML task tracker that is just files. No daemon, no database, no git hooks.",
   "author": "Pelle Wessman <pelle@kodfabrik.se> (https://kodfabrik.se/)",
+  "homepage": "https://diarie.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/voxpelli/diarie.git"
+  },
+  "bugs": {
+    "url": "https://github.com/voxpelli/diarie/issues"
+  },
+  "keywords": [
+    "task-tracker",
+    "issue-tracker",
+    "backlog",
+    "yaml",
+    "flat-file",
+    "cli",
+    "agents",
+    "plain-text"
+  ],
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -13,14 +31,23 @@
     "diarie": "cli.js"
   },
   "exports": {
-    ".": "./lib/index.js",
-    "./schema": "./lib/schema.js"
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./schema": {
+      "types": "./lib/schema.d.ts",
+      "default": "./lib/schema.js"
+    }
   },
   "files": [
     "cli.js",
-    "lib/**/*.js"
+    "lib/**/*.js",
+    "lib/**/*.d.ts",
+    "lib/**/*.d.ts.map"
   ],
   "scripts": {
+    "build": "npm run clean && tsc -p declaration.tsconfig.json",
     "check": "run-p check:*",
     "check:ast-grep": "ast-grep scan",
     "check:ast-grep-test": "ast-grep test",
@@ -29,6 +56,8 @@
     "check:test": "npm test",
     "check:tsc": "tsc",
     "check:type-coverage": "type-coverage --detail --strict --at-least 98 --ignore-files 'test/*'",
+    "clean": "find lib -type f \\( -name '*.d.ts' -o -name '*.d.ts.map' \\) ! -name '*-types.d.ts' -delete",
+    "prepack": "npm run build",
     "test": "node --test"
   },
   "dependencies": {

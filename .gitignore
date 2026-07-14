@@ -24,10 +24,16 @@ node_modules/
 .impeccable/
 .cache/
 
-# NOTE — no `*.d.ts` entry, deliberately. An earlier draft ignored them, with a comment claiming
-# "`prepack` builds them; they are published, never committed." Every clause of that was false:
-# there is no `prepack` script, the inherited tsconfig sets `noEmit: true` so `tsc` cannot emit one,
-# and `files: ["cli.js", "lib/**/*.js"]` would not pack a `.d.ts` even if one existed. The package
-# currently publishes ZERO type declarations for a fully JSDoc-typed codebase — that is `vp-beads-pub`'s
-# job, and the ignore line will come back WITH the build that justifies it. A wildcard would also
-# have silently untracked a hand-written ambient `lib/types.d.ts` if anyone added one.
+# Generated type declarations. THE BUILD THAT JUSTIFIES THIS LINE NOW EXISTS, which is the condition
+# an earlier version of this comment set for adding it: `npm run build` (declaration.tsconfig.json)
+# emits them, `prepack` runs that build, `files:` packs them, and `exports` points its `types`
+# conditions at them. Before that, the package published ZERO type declarations for a fully
+# JSDoc-typed codebase — every consumer's `import { computeReady } from 'diarie'` resolved to `any`.
+#
+# NOT a bare `*.d.ts`, and the negation is the reason: a wildcard would silently untrack a
+# HAND-WRITTEN ambient declaration if anyone added one. `*-types.d.ts` is the escape hatch for that —
+# the same convention @voxpelli/typed-utils' clean scripts use, and the same one diarie's eslint
+# config carves out.
+lib/**/*.d.ts
+lib/**/*.d.ts.map
+!lib/**/*-types.d.ts
