@@ -1145,3 +1145,63 @@ tasks:
       dev dependency. That is the exact shape of silencing that rots: correct today, a lie tomorrow,
       and nothing goes red in between.
     updated: '2026-07-14'
+  - id: vp-beads-flr
+    title: 'diarie''s bare ast-grep scan can go blind via one .gitignore line — assert a coverage floor'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dia
+    labels:
+      - bug
+    acceptance_criteria:
+      - "diarie's `check:ast-grep` asserts it actually REACHED a floor of files (e.g. `ast-grep scan --json | length >= N`, or a file count), so a shrinking scan is detectable"
+      - "PROVE it: append `lib/**` to `diarie/.gitignore` and confirm the check goes RED rather than green-and-empty"
+      - "correct any remaining prose claiming the green-and-inert failure mode is `unrepresentable` in diarie — it is RELOCATED, from a path list a runner can check to a git file nobody checks"
+    description: >-
+      diarie's check is a bare `ast-grep scan` (no path list) precisely so a rule cannot be scoped
+      outside what the runner remembered to list. But a bare scan is bounded by `.gitignore` — ast-grep
+      respects it as ripgrep does — so any broad ignore silently shrinks lint coverage with nothing
+      going red. A reviewer proved it by appending one line and watching the scan go blind
+      (2026-07-14).
+
+
+      The root runner at least asserts its listed paths EXIST. diarie asserts nothing about how many
+      files its scan reached. Same bug class, one layer over.
+    updated: '2026-07-14'
+  - id: vp-beads-jqs
+    title: 'no-jq-raw-interpolation guarded NOTHING for its whole life — and at severity:warning it still cannot fail the build'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - bug
+    acceptance_criteria:
+      - "DONE (2026-07-14): `hooks/` added to `scripts/check-ast-grep.mjs`'s scan bound. The rule is `language: bash` and exists because `the hooks build jq programs` — and `scripts/` contains ZERO .sh files, so it had never once been pointed at a bash file"
+      - "OPEN: decide the severity. `ast-grep scan` exits 0 on warnings-only, so at `severity: warning` the rule can SEE but cannot BITE. There are currently zero violations, so promoting it to `error` is free"
+      - "the catch: it is an ADOPTED rule (verbatim from vp-knowledge/vp-claude). Promoting it here is a deliberate DIVERGENCE and belongs in SYNERGY-vp-knowledge.md, not a silent edit"
+      - "same question, separately, for `no-jsdoc-any-type` and `no-jsdoc-object-typedef` — both advisory. MEMORY.md calls no-jsdoc-any-type `the ratchet that keeps type-coverage from sliding back`; it is not. `check:type-coverage` is the ratchet, and it genuinely bites"
+    description: >-
+      It passed `ast-grep test` 6/6 for its entire existence, on synthetic snippets. `ast-grep test`
+      replays inline fixtures — it never learns whether a rule's LANGUAGE has anything to read in the
+      tree. A rule can be perfect, fully tested, and pointed at nothing.
+
+
+      This is a third distinct face of the green-and-inert bug: (1) a rule scoped to a directory
+      nobody scans, (2) a scan path that does not exist (ast-grep exits 0), and now (3) a rule whose
+      language has no files in the bound at all. The existence-guard added for (2) cannot see (3).
+    updated: '2026-07-14'
+  - id: vp-beads-wrn
+    title: 'eslint has no --max-warnings 0, so warnings survive a green check'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - "decide whether `check:lint` (root and diarie) should carry `--max-warnings 0`"
+      - "there are live warnings today (2 x @stylistic/object-curly-newline in diarie/lib/store.js, plus the no-jsdoc-any-type ast-grep warnings), so this is not free — it is a small cleanup plus a ratchet"
+    description: >-
+      A warning that never fails is a warning nobody fixes. Surfaced during vp-beads-asg's post-wave
+      gate, alongside the discovery that ast-grep's warning-severity rules cannot fail the build either
+      (vp-beads-jqs) — the same shape twice, in two different linters.
+    updated: '2026-07-14'

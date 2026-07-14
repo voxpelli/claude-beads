@@ -24,7 +24,13 @@ const formatArgs = inCi ? ['--format', 'github'] : []
 // walks the whole project, so over there a rule cannot be scoped outside what is scanned. This
 // runner needs a list only because it lints a SUBSET of a larger repo — and that list is exactly
 // what the guard below exists to police.
-const PATHS = ['scripts/', 'validate-plugin.mjs']
+// `hooks/` is here because `no-jq-raw-interpolation` is `language: bash` and exists — in its own
+// words — because "the hooks build jq programs". There are ZERO `.sh` files under `scripts/`, so
+// until now the rule had never once been pointed at a bash file. It passed `ast-grep test` 6/6 the
+// whole time, on synthetic snippets: green, and guarding nothing. That is the same green-and-inert
+// bug this runner's existence-guard was added to prevent — and the guard could not see it, because
+// it checks that a listed path EXISTS, not that a rule's language has anything to read.
+const PATHS = ['scripts/', 'hooks/', 'validate-plugin.mjs']
 
 // THE GUARD NEEDS A GUARD. `ast-grep scan` on a path that does not exist prints
 // `ERROR: <path>: No such file or directory` to stderr — and EXITS 0. Since this script

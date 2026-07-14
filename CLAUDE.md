@@ -720,6 +720,13 @@ the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`
 package). **`check:diarie` = `npm run check --workspace=diarie`**, which runs the
 workspace's OWN aggregate: its lint, tsc, type-coverage, knip, ast-grep and tests.
 
+🚨 **`run-p check:*` does NOT match a `test` key.** diarie's suite is reachable from the
+aggregate only because it has a **`check:test`** script. When this delegation first shipped it
+did not, and the entire 228-assertion suite ran **nowhere** — not locally, not in CI (which
+runs only `npm run check`, and the root has no `test` script at all). Every gate was green over
+a suite nobody executed. If you add a workspace, give it a `check:`-prefixed key for its tests,
+and prove it by planting a failing test and watching the ROOT go red.
+
 The root no longer type-checks, lints, or scans `diarie/**` — `check:tsc` and
 `check:type-coverage` moved *into* the workspace, root `eslint.config.js` ignores it, and
 `scripts/check-ast-grep.mjs` no longer lists its paths. That is not a coverage loss; it is
@@ -810,18 +817,33 @@ diarie (8): the four generic JS rules (copied), plus **four of its own** —
   cannot slip past the first's syntax match. **Neither holds alone.**
 
 **diarie's rules carry NO `files:` glob, deliberately.** Its `check:ast-grep` is a bare
-`ast-grep scan` — no path arguments — which walks the whole package, so a rule *cannot* be
-scoped outside what is scanned. The plugin's root runner must maintain a path list (it lints a
-subset of a bigger repo), and `scripts/check-ast-grep.mjs` therefore asserts every path
-**exists** before trusting ast-grep with it: `ast-grep scan` on a missing path prints an error
-and **exits 0**, so a stale entry made the check pass while scanning nothing.
+`ast-grep scan` — no path arguments — which walks the whole package, so a rule cannot be scoped
+outside a path list the runner forgot to update. The plugin's root runner must maintain such a
+list (it lints a subset of a bigger repo), and `scripts/check-ast-grep.mjs` therefore asserts
+every path **exists** before trusting ast-grep with it: `ast-grep scan` on a missing path prints
+an error and **exits 0**, so a stale entry made the check pass while scanning nothing.
 
-🚨 **The bare scan is bounded by `.gitignore`** — ast-grep respects it, as ripgrep does. That is
-why `diarie/.gitignore` is load-bearing for the *lint*, not only for git: without it, a
-standalone `ast-grep scan` walks `node_modules` and reports ~25k errors from other people's code.
-Inside this workspace that is invisible, because npm hoists dependencies to the repo root and
+🚨 **The bare scan is bounded by `.gitignore`** — ast-grep respects it, as ripgrep does. So
+`diarie/.gitignore` is load-bearing for the *lint*, not only for git: without it, a standalone
+`ast-grep scan` walks `node_modules` and reports ~25k errors from other people's code. Inside
+this workspace that is invisible, because npm hoists dependencies to the repo root and
 `diarie/node_modules` is nearly empty — **the in-workspace green was an accident of hoisting.**
 It took building the extracted tree to see it, which is the whole argument for `vp-beads-prf`.
+
+**The bound is MOVED, not removed** — a bare scan can still go blind, it just goes blind via a
+git file instead of a path list. One broad `.gitignore` entry (`lib/generated/`, `dist/`) shrinks
+lint coverage silently. `vp-beads-flr` files the floor assertion that would make that detectable.
+
+**A rule at `severity: warning` cannot fail the build** — `ast-grep scan` exits 0 on
+warnings-only. `no-jsdoc-any-type`, `no-jsdoc-object-typedef` and `no-jq-raw-interpolation` are
+all advisory. The real type ratchet is `check:type-coverage` (98%, and it genuinely bites);
+`no-jsdoc-any-type` is a nudge, not the gate MEMORY.md once called it.
+
+🚨 **`no-jq-raw-interpolation` guarded NOTHING until 2026-07-14.** It is `language: bash`, it
+exists *because "the hooks build jq programs"* — and `hooks/` was not in the scan bound, while
+`scripts/` contains zero `.sh` files. It passed `ast-grep test` 6/6 the entire time, on synthetic
+snippets. **`ast-grep test` cannot see this**: it replays inline fixtures and never learns whether
+a rule's language has anything to read. A rule can be perfect, tested, and pointed at nothing.
 
 ### Hook type constraint
 

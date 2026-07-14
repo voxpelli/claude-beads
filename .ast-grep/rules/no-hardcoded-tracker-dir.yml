@@ -10,25 +10,19 @@ message: >-
   `backlog/` segment (renamed to `.diarie/` 2026-07-11) is flagged too; the bare
   `backlog` PRIORITY value is not a path and is left alone.
 severity: error
+# THE PLUGIN'S HALF of a cross-boundary rule. Its twin lives in `diarie/.ast-grep/rules/` and
+# guards diarie's own `lib/**`. This copy guards the plugin's tooling — which imports `TRACKER_DIR`
+# from `diarie/schema` precisely BECAUSE this rule makes it. The rule could not "move" with diarie;
+# had it, the plugin's own tooling would have been free to re-fork the constant the day diarie left.
 files:
   - "scripts/*.mjs"
   - "validate-plugin.mjs"
 ignores:
-  # The definition itself — `export const TRACKER_DIR = '.diarie'`.
-  - "diarie/lib/schema.js"
-  # Test fixtures must state the literal: check-validator.mjs feeds planted
-  # prose to auditSilentSkips (which now matches via TRACKER_DIR), and
-  # check-hooks.mjs asserts on the path session-start.sh prints. Building
-  # either from the constant would make the assertion tautological.
+  # Test fixtures must state the literal: check-validator.mjs feeds planted prose to
+  # auditSilentSkips (which matches via TRACKER_DIR), and check-hooks.mjs asserts on the path
+  # session-start.sh prints. Building either from the constant would make the assertion
+  # tautological — it would prove only that the constant equals itself.
   - "scripts/check-*.mjs"
-  # Same reason, for the same tests after they moved into the workspace: migrate.spec.js
-  # asserts the migrator WROTE `.diarie/tasks/tasks-backlog.yml`, and an assertion that
-  # builds that path from TRACKER_DIR proves only that the constant equals itself.
-  #
-  # This entry is deliberate, not decorative. `diarie/test/**` is in `files` ABOVE purely
-  # so it can be ignored HERE — leave it out of both and the exemption still happens, but
-  # by accident, invisibly, and nobody can tell an intended exemption from an oversight.
-  - "diarie/test/**/*.js"
 rule:
   any:
     - kind: string
