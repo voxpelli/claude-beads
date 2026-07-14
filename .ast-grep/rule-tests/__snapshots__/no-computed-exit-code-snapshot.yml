@@ -9,6 +9,14 @@ snapshots:
       start: 14
       end: 23
   ? |
+    const TWO = 2
+    process.exitCode = TWO
+  : labels:
+    - source: process.exitCode = TWO
+      style: primary
+      start: 14
+      end: 36
+  ? |
     exit(code)
   : labels:
     - source: exit(code)
@@ -22,6 +30,20 @@ snapshots:
       style: primary
       start: 0
       end: 16
+  ? |
+    process.exit(0x2)
+  : labels:
+    - source: process.exit(0x2)
+      style: primary
+      start: 0
+      end: 17
+  ? |
+    process.exit(2.0)
+  : labels:
+    - source: process.exit(2.0)
+      style: primary
+      start: 0
+      end: 17
   ? |
     process.exit(Number(x))
   : labels:

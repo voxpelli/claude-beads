@@ -663,6 +663,11 @@ describe('THE INVARIANT: a user mistake is never a crash, and never exit 2', () 
 
   const MISTAKES = [
     { what: 'no command at all', argv: [] },
+    // THE LIST IS THE TEST. This row was missing from the first cut, and its absence — not any
+    // weak assertion — is what let `diarie ""` keep exiting 2 with 589 bytes of help prose on
+    // stdout, through TWO rounds of review. `diarie "$CMD"` with an unset variable is how a
+    // wrapper script writes it. When a quantified suite misses a bug, suspect the domain first.
+    { what: 'an empty first argument', argv: [''] },
     { what: 'a flag where a command belongs', argv: ['--json'] },
     { what: 'a short flag where a command belongs', argv: ['-j'] },
     { what: 'a bare -h (peowly does NOT treat this as help)', argv: ['-h'] },
@@ -745,9 +750,13 @@ describe('THE COMPLEMENT: exit 2 must remain REACHABLE, or the taxonomy lies the
       const body = readFileSync(file, 'utf8')
         .replaceAll(/\/\*[\s\S]*?\*\//g, '')   // strip block comments
         .replaceAll(/\/\/.*$/gm, '')           // strip line comments
-      if (/\bexit\(\s*2\s*\)/.test(body)) offenders.push(file)
+      // ALL THREE FORMS. Checking only `exit(2)` would have let `process.exitCode = 2` through —
+      // which is exactly how it got past the ast-grep rule, and it genuinely exits 2
+      // (`node -e 'process.exitCode = 2'; echo $?` → 2). A test that enforces two thirds of a
+      // claim is a test that makes the remaining third look enforced.
+      if (/\bexit\(\s*2\s*\)|\bexitCode\s*=\s*2\b/.test(body)) offenders.push(file)
     }
-    assert.deepEqual(offenders, [], `exit(2) written outside lib/utils/exit.js: ${offenders.join(', ')}`)
+    assert.deepEqual(offenders, [], `exit 2 written outside lib/utils/exit.js: ${offenders.join(', ')}`)
   })
 })
 

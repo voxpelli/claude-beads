@@ -38,3 +38,8 @@ rule:
   any:
     - pattern: exit(2)
     - pattern: process.exit(2)
+    # `process.exitCode = 2` is the idiomatic MODERN way to set a status — you reach for it
+    # precisely to avoid `process.exit()` truncating a pending stdout write. So it is what a
+    # careful contributor writes, and it evaded both rules until a reviewer planted it. It really
+    # does exit 2 (`node -e 'process.exitCode = 2'; echo $?` → 2).
+    - pattern: process.exitCode = 2

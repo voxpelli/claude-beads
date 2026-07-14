@@ -49,8 +49,18 @@ export async function cli (argv) {
   //
   // `--help` and `--version` are exempt: they ARE the request, and peowly answers both with
   // exit 0. They are honoured wherever they appear, not only in first position.
+  // `!!argv[0]` is NOT redundant with the dash check, and the first cut of this fix omitted it —
+  // which left the whole bug standing behind an empty string. `''.startsWith('-')` is false, so an
+  // empty first token "named a command", the interception was skipped, and peowly-commands' own
+  // gate (`if (commandOrAliasName)`, a TRUTHINESS test) then declined to throw for it too. `diarie
+  // ""` sailed through both guards to showHelp() and exited 2, printing 589 bytes of human help
+  // prose to stdout — under `--json`, no less.
+  //
+  // That is not a contrived input: `diarie "$CMD"` with an unset variable is how a wrapper script,
+  // a Makefile, or a CI job writes it. peowly has TWO no-command rules — leading-dash and falsy —
+  // and matching only the first one is matching neither.
   const wantsMeta = argv.includes('--help') || argv.includes('--version')
-  const names = argv[0]?.startsWith('-') === false
+  const names = !!argv[0] && !argv[0].startsWith('-')
 
   if (!wantsMeta && !names) {
     throw new InputError('no command given', COMMAND_LIST, 'EUSAGE')

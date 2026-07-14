@@ -24,7 +24,13 @@ rule:
   any:
     - pattern: exit($CODE)
     - pattern: process.exit($CODE)
+    - pattern: process.exitCode = $CODE
 constraints:
   CODE:
     not:
-      kind: number
+      all:
+        # A PLAIN DECIMAL INTEGER, and nothing else. `kind: number` alone was not enough: tree-sitter
+        # calls `0x2` and `2.0` numbers too, and both evade the literal `2` its sibling matches while
+        # exiting 2 all the same. The regex is what makes "the number is right there" actually true.
+        - kind: number
+        - regex: '^\d+$'

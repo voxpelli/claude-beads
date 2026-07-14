@@ -32,6 +32,15 @@ snapshots:
       start: 98
       end: 105
   ? |
+    function modern () {
+      process.exitCode = 2
+    }
+  : labels:
+    - source: process.exitCode = 2
+      style: primary
+      start: 23
+      end: 43
+  ? |
     function nested (err) {
       if (err instanceof ResultError) {
         const handler = () => { process.exit(2) }

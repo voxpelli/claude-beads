@@ -56,3 +56,9 @@ invalid:
     if (!argv.length) {
       exit(2)
     }
+  # `process.exitCode = 2` — the IDIOMATIC modern form, and the one a careful contributor reaches
+  # for to avoid process.exit() truncating stdout. It evaded both rules until a reviewer planted it.
+  - |
+    function modern () {
+      process.exitCode = 2
+    }
