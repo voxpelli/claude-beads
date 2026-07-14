@@ -1,0 +1,15 @@
+# diarie's OWN structural lint. It travels with `git subtree split --prefix=diarie`; the
+# repo-root config does not, and neither did these rules before Wave 2 — the extracted package
+# would have shipped green with every one of its guards silently gone, which is precisely the
+# failure mode `no-hardcoded-tracker-dir` exists to prevent, applied to the rules themselves.
+#
+# NOTE THE ABSENCE OF A PATH LIST. `ast-grep scan` with no path arguments walks the whole project
+# from this config's directory, so there is no "outer bound" to keep in step with the rules — and
+# therefore no way for a rule to end up scoped to a directory nobody scans. The plugin's root
+# runner has to maintain such a list (it lints a subset of a bigger repo) and it has already been
+# bitten: `ast-grep scan` on a missing path prints an error and EXITS 0, so a stale entry made the
+# check pass while scanning nothing. Here the bug is not guarded against; it is unrepresentable.
+ruleDirs:
+  - .ast-grep/rules
+testConfigs:
+  - testDir: .ast-grep/rule-tests

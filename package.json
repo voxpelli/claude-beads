@@ -21,6 +21,13 @@
     "lib/**/*.js"
   ],
   "scripts": {
+    "check": "run-p check:*",
+    "check:ast-grep": "ast-grep scan",
+    "check:ast-grep-test": "ast-grep test",
+    "check:knip": "knip",
+    "check:lint": "eslint",
+    "check:tsc": "tsc",
+    "check:type-coverage": "type-coverage --detail --strict --at-least 98 --ignore-files 'test/*'",
     "test": "node --test"
   },
   "dependencies": {
@@ -31,9 +38,12 @@
     "pony-cause": "^2.1.11"
   },
   "devDependencies": {
+    "@ast-grep/cli": "^0.44.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.19.43",
+    "@voxpelli/eslint-config": "^25.1.0",
     "@voxpelli/tsconfig": "^16.2.1",
+    "eslint": "^9.39.4",
     "knip": "^5.88.1",
     "npm-run-all2": "^7.0.2",
     "type-coverage": "^2.29.7",

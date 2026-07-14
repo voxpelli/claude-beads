@@ -1,0 +1,64 @@
+id: no-unsanctioned-exit-2
+valid:
+  # The sanctioned path is a NAME, not a shape. Nothing here writes the number.
+  - |
+    if (err instanceof ResultError) exitResultError()
+  # Every other exit code is unconstrained; only 2 carries a reserved meaning.
+  - |
+    exit(1)
+    exit(0)
+    process.exit(1)
+  # An InputError is the correct answer to anything the user got wrong — exit 1, with a code.
+  - |
+    if (err instanceof InputError) {
+      exit(1)
+    }
+invalid:
+  # A bare exit(2) — a second meaning for the one code that must keep only one.
+  - |
+    function bad () {
+      exit(2)
+    }
+  # The `process.` form is the same collision wearing a namespace.
+  - |
+    function alsoBad () {
+      process.exit(2)
+    }
+  # THE THREE EVASIONS THAT KILLED THE OLD `if (err instanceof ResultError)` EXEMPTION.
+  # Each was silently exempted by it; each must now be caught. (1) The else-arm:
+  - |
+    function elseArm (err) {
+      if (err instanceof ResultError) {
+        exitResultError()
+      } else {
+        exit(2)
+      }
+    }
+  # (2) A closure nested INSIDE the sanctioned branch — `inside` walks every ancestor.
+  - |
+    function nested (err) {
+      if (err instanceof ResultError) {
+        const handler = () => { process.exit(2) }
+        handler()
+      }
+    }
+  # (3) An `if` merely WRAPPING the sanctioned branch. `has: stopBy: end` matched any ancestor
+  # whose whole subtree merely MENTIONED the condition — so this second exit(2) went free.
+  - |
+    function wrapped (err) {
+      if (wantsJson) {
+        if (err instanceof ResultError) exitResultError()
+        exit(2)
+      }
+    }
+  # The peowly shape that started all of this: "incorrect usage" reaching for the reserved code.
+  - |
+    if (!argv.length) {
+      exit(2)
+    }
+  # `process.exitCode = 2` — the IDIOMATIC modern form, and the one a careful contributor reaches
+  # for to avoid process.exit() truncating stdout. It evaded both rules until a reviewer planted it.
+  - |
+    function modern () {
+      process.exitCode = 2
+    }

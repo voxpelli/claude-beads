@@ -1,0 +1,33 @@
+id: no-identical-test-title
+language: javascript
+message: >-
+  Two sibling `it`/`test`/`describe` blocks share this title, and `node:test` will
+  silently run BOTH — no warning, no error, no dedup. The suite simply reports one more
+  passing test than it has, which is the failure this project keeps shipping: a green
+  check over work not done. Rename one. Scoping is free: `follows` only matches SIBLINGS,
+  so reusing a title inside a NESTED `describe` is legal and is not flagged.
+
+  The tool for this is `eslint-node-test` (`no-identical-title`), and it is currently
+  UNINSTALLABLE here: its peer range is `eslint >=10.4`, while `@voxpelli/eslint-config@25`
+  pins `^9.38.0` and neostandard `^9.0.0` — a disjoint intersection. Retire this rule in
+  favour of the plugin once neostandard moves to ESLint 10 (voxpelli/eslint-config#476,
+  neostandard/neostandard#387).
+
+  Known limitation: `TITLE: kind: string` means template-literal titles are not covered.
+severity: error
+# No `files:` — the pattern is self-scoping (it only matches `it`/`test`/`describe` calls, which
+# exist nowhere but the suite), so a glob would add no precision and one more way to go inert.
+rule:
+  kind: expression_statement
+  has:
+    pattern: $FN($TITLE, $$$)
+  follows:
+    kind: expression_statement
+    has:
+      pattern: $FN($TITLE, $$$)
+    stopBy: end
+constraints:
+  FN:
+    regex: "^(it|test|describe)$"
+  TITLE:
+    kind: string

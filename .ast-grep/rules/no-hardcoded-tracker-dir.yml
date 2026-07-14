@@ -1,0 +1,33 @@
+id: no-hardcoded-tracker-dir
+language: javascript
+message: >-
+  Don't hardcode the tracker directory — import `TRACKER_DIR` from
+  `diarie/schema` and build the path from it (`join(root, TRACKER_DIR,
+  'tasks')`). The whole point of the constant is that renaming the store is a
+  one-line change; a literal re-forks it. This bites hardest in *guard* code —
+  bd-map.js's refuse-to-write check is a safety net, so a literal there would
+  not error after a rename, it would silently stop guarding. The legacy
+  `backlog/` segment (renamed to `.diarie/` 2026-07-11) is flagged too; the bare
+  `backlog` PRIORITY value is not a path and is left alone.
+severity: error
+# THIS RULE IS CROSS-BOUNDARY, AND THEREFORE LIVES ON BOTH SIDES. It guards diarie's own
+# `lib/**` (here) AND the plugin's `scripts/*.mjs` + `validate-plugin.mjs` (the root copy), which
+# import `TRACKER_DIR` from `diarie/schema` precisely because this rule makes them. The task row
+# said the rule should "move"; that was wrong — moving it would have left the plugin's own tooling
+# free to re-fork the constant the moment diarie left. Copies drift; a copy is still the only
+# option, because ast-grep sgconfig has no `extends`/`include`.
+#
+# No `files:` here — this config's `ast-grep scan` walks the whole package, so a glob could only
+# create a way for the rule to point at nothing.
+ignores:
+  # The definition itself — `export const TRACKER_DIR = '.diarie'`.
+  - "lib/schema.js"
+  # A test that asserts the literal path is the POINT: migrate.spec.js asserts the migrator WROTE
+  # `.diarie/tasks/tasks-backlog.yml`, and an assertion that builds that path from TRACKER_DIR
+  # proves only that the constant equals itself.
+  - "test/**/*.js"
+rule:
+  any:
+    - kind: string
+    - kind: template_string
+  regex: '\.diarie|backlog/'

@@ -21,9 +21,10 @@ import { join } from 'node:path'
 import { after, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import {
-  mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync,
 } from 'node:fs'
 
+import { doTheWork as initWork } from '../lib/commands/init.js'
 import { doTheWork as readyWork } from '../lib/commands/ready.js'
 import { doTheWork as statsWork } from '../lib/commands/stats.js'
 import { doTheWork as validateWork } from '../lib/commands/validate.js'
@@ -167,5 +168,61 @@ describe('validate — doTheWork', () => {
     assert.equal(result.fileCount, 0)
     assert.equal(result.notices.length, 1)
     assert.match(result.notices[0] ?? '', /not matching tasks-\*\.yml/)
+  })
+})
+
+describe('init — doTheWork', () => {
+  // The ONLY command whose work has a side effect, and the only one whose `doTheWork` was
+  // exported and never tested — knip found it the day diarie started running its own gates.
+  // A four-part command that nobody drives through the seam has the seam and none of the benefit.
+
+  it('creates the store and REPORTS what it created', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'diarie-init-'))
+    scratch.push(root)
+
+    const { created, root: where } = await initWork({ root, slug: 'backlog' })
+
+    assert.equal(where, root)
+    assert.ok(created.length > 0)
+    assert.ok(existsSync(join(root, '.diarie', 'tasks', 'tasks-backlog.yml')))
+    assert.ok(existsSync(join(root, '.diarie', 'decisions')))
+  })
+
+  it('honours --slug — the first task file is named, not assumed', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'diarie-init-slug-'))
+    scratch.push(root)
+
+    await initWork({ root, slug: 'roadmap' })
+
+    assert.ok(existsSync(join(root, '.diarie', 'tasks', 'tasks-roadmap.yml')))
+  })
+
+  it('REFUSES an existing store, and the refusal carries EEXIST', async () => {
+    // Never merge, never overwrite, never "helpfully" back up. The code matters as much as the
+    // refusal: a --json consumer must be able to tell this apart from any other input error
+    // without regexing a human sentence. It shipped with no code at all.
+    const root = mkdtempSync(join(tmpdir(), 'diarie-init-twice-'))
+    scratch.push(root)
+
+    await initWork({ root, slug: 'backlog' })
+    await assert.rejects(
+      () => initWork({ root, slug: 'backlog' }),
+      (/** @type {Error & {code?: string}} */ err) => {
+        assert.equal(err.name, 'InputError')
+        assert.equal(err.code, 'EEXIST')
+        assert.match(err.message, /refusing to touch an existing store/)
+        return true
+      }
+    )
+  })
+
+  it('the store it creates is one `validate` accepts — init must not produce a broken store', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'diarie-init-valid-'))
+    scratch.push(root)
+
+    await initWork({ root, slug: 'backlog' })
+    const result = await validateWork({ root })
+
+    assert.deepEqual(result.errors, [])
   })
 })

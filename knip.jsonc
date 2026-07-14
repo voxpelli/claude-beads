@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+
+  "entry": ["lib/index.js", "lib/schema.js"],
+  "project": ["cli.js", "lib/**/*.js"],
+
+  // `@planned` marks an export that is deliberately kept without a caller. It must SAY WHY in the
+  // JSDoc — a silenced knip warning that implies somebody still needs the export is worse than no
+  // warning at all. See `projectRecords` in lib/migrate/bd-map.js.
+  "tags": ["-planned"],
+
+  // ⚠️ WORKSPACE-HOISTING WORKAROUND — DELETE BOTH LISTS ON EXTRACTION.
+  //
+  // npm hoists `.bin` to the monorepo root, so while diarie is a workspace of vp-beads there is no
+  // `diarie/node_modules/.bin`, and knip — running with diarie as its project root — cannot map
+  // these binaries back to the devDependencies that provide them. It then reports the tools as
+  // "unlisted binaries" AND their packages as "unused devDependencies", which are both false.
+  //
+  // MEASURED (2026-07-14): in a real extracted repo with its own node_modules, knip resolves all
+  // six and passes with BOTH lists removed. So these are artifacts of the workspace, not of the
+  // package — and they are the exact shape of silencing that rots: leave them in after the split
+  // and knip can never again tell you that a dev dependency has become genuinely unused.
+  "ignoreBinaries": ["run-p", "ast-grep", "knip", "eslint", "tsc", "type-coverage"],
+  "ignoreDependencies": ["@ast-grep/cli", "eslint", "npm-run-all2", "type-coverage"]
+}

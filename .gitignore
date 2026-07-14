@@ -1,0 +1,23 @@
+# diarie's own .gitignore. It had none — the repo root's covered it, and that file does not
+# travel with `git subtree split --prefix=diarie`.
+#
+# THIS IS LOAD-BEARING FOR THE LINT, not just for git. `check:ast-grep` runs `ast-grep scan` with
+# NO path arguments, deliberately: a rule cannot be scoped outside what is scanned if everything is
+# scanned. But "everything" is bounded by .gitignore — ast-grep respects it, as ripgrep does. With
+# no .gitignore, a standalone `ast-grep scan` walks node_modules and reports 24,894 errors from
+# other people's code.
+#
+# Inside the vp-beads workspace this was invisible: npm hoists dependencies to the repo root, so
+# `diarie/node_modules` holds almost nothing and the scan came back green. The bug only exists in
+# the configuration diarie is actually shipped in — which is why it took building the extracted
+# tree to see it, and why the check that proves this package splittable has to install and run it
+# for real rather than reason about it.
+node_modules/
+
+# Emitted declarations (`prepack` builds them; they are published, never committed).
+*.d.ts
+*.d.ts.map
+
+# Local tool caches.
+.impeccable/
+.cache/

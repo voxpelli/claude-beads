@@ -1,0 +1,6 @@
+id: no-commonjs-require
+language: javascript
+message: ESM-only project (CLAUDE.md MUST) — use `import`, not `require()`
+severity: error
+rule:
+  pattern: require($ARG)

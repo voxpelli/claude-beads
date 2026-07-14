@@ -1,0 +1,107 @@
+id: no-identical-test-title
+snapshots:
+  ? |
+    describe('computeReady', () => {
+      it('a', () => {})
+      it('b', () => {})
+      it('a', () => {})
+    })
+  : labels:
+    - source: it('a', () => {})
+      style: primary
+      start: 75
+      end: 92
+    - source: it('a', () => {})
+      style: secondary
+      start: 75
+      end: 92
+    - source: it('a', () => {})
+      style: secondary
+      start: 35
+      end: 52
+    - source: it('a', () => {})
+      style: secondary
+      start: 35
+      end: 52
+  ? |
+    describe('computeReady', () => {
+      it('pending with no deps is ready', () => {})
+      it('pending with no deps is ready', () => {})
+    })
+  : labels:
+    - source: it('pending with no deps is ready', () => {})
+      style: primary
+      start: 83
+      end: 128
+    - source: it('pending with no deps is ready', () => {})
+      style: secondary
+      start: 83
+      end: 128
+    - source: it('pending with no deps is ready', () => {})
+      style: secondary
+      start: 35
+      end: 80
+    - source: it('pending with no deps is ready', () => {})
+      style: secondary
+      start: 35
+      end: 80
+  ? |
+    describe('twin', () => {})
+    describe('twin', () => {})
+  : labels:
+    - source: describe('twin', () => {})
+      style: primary
+      start: 27
+      end: 53
+    - source: describe('twin', () => {})
+      style: secondary
+      start: 27
+      end: 53
+    - source: describe('twin', () => {})
+      style: secondary
+      start: 0
+      end: 26
+    - source: describe('twin', () => {})
+      style: secondary
+      start: 0
+      end: 26
+  ? |
+    it('top level', () => {})
+    it('top level', () => {})
+  : labels:
+    - source: it('top level', () => {})
+      style: primary
+      start: 26
+      end: 51
+    - source: it('top level', () => {})
+      style: secondary
+      start: 26
+      end: 51
+    - source: it('top level', () => {})
+      style: secondary
+      start: 0
+      end: 25
+    - source: it('top level', () => {})
+      style: secondary
+      start: 0
+      end: 25
+  ? |
+    test('alias', async () => {})
+    test('alias', async () => {})
+  : labels:
+    - source: test('alias', async () => {})
+      style: primary
+      start: 30
+      end: 59
+    - source: test('alias', async () => {})
+      style: secondary
+      start: 30
+      end: 59
+    - source: test('alias', async () => {})
+      style: secondary
+      start: 0
+      end: 29
+    - source: test('alias', async () => {})
+      style: secondary
+      start: 0
+      end: 29
