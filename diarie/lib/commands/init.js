@@ -117,8 +117,18 @@ export async function doTheWork ({ root, slug }) {
   const store = join(root, TRACKER_DIR)
 
   // Refuse, always. Never merge, never overwrite, never "helpfully" back up.
+  //
+  // `EEXIST` is the exact inverse of `ENOSTORE`, and it is a state, not a typo — so it gets its
+  // own code rather than EUSAGE. A caller that wanted `init` to be idempotent can now branch on
+  // it instead of regexing this sentence. (It shipped with NO code at all, which meant a --json
+  // consumer got a bare `{error: "..."}` and had no way to tell this refusal — the whole reason
+  // the guard exists — apart from any other input error.)
   if (existsSync(store)) {
-    throw new InputError(`${TRACKER_DIR}/ already exists in ${root} — refusing to touch an existing store`)
+    throw new InputError(
+      `${TRACKER_DIR}/ already exists in ${root} — refusing to touch an existing store`,
+      undefined,
+      'EEXIST'
+    )
   }
 
   await mkdir(join(store, 'tasks'), { recursive: true })

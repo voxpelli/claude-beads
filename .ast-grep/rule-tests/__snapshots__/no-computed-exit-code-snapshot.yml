@@ -1,0 +1,38 @@
+id: no-computed-exit-code
+snapshots:
+  ? |
+    const TWO = 2
+    exit(TWO)
+  : labels:
+    - source: exit(TWO)
+      style: primary
+      start: 14
+      end: 23
+  ? |
+    exit(code)
+  : labels:
+    - source: exit(code)
+      style: primary
+      start: 0
+      end: 10
+  ? |
+    exit(ok ? 0 : 1)
+  : labels:
+    - source: 'exit(ok ? 0 : 1)'
+      style: primary
+      start: 0
+      end: 16
+  ? |
+    process.exit(Number(x))
+  : labels:
+    - source: process.exit(Number(x))
+      style: primary
+      start: 0
+      end: 23
+  ? |
+    process.exit(someVar)
+  : labels:
+    - source: process.exit(someVar)
+      style: primary
+      start: 0
+      end: 21

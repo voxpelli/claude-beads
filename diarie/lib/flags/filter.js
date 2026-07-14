@@ -36,7 +36,7 @@ export function validateFilterFlags ({ filter }) {
   // outright, so this check used to cast through `any` — an `any`, at the exact
   // validation boundary the Set existed to guard. The guard narrows instead.
   if (!isStatus(filter)) {
-    throw new InputError(`--filter must be one of: ${[...VALID_STATUSES].join(', ')}`)
+    throw new InputError(`--filter must be one of: ${[...VALID_STATUSES].join(', ')}`, undefined, 'EUSAGE')
   }
 
   return { filter }

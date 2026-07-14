@@ -1047,3 +1047,50 @@ tasks:
       risk, and only the tarball proves the thing that is. Measured 2026-07-14: `npm pack
       --dry-run` today ships 22 files with ZERO .d.ts, ZERO README, ZERO LICENSE.
     updated: '2026-07-14'
+  - id: vp-beads-mig
+    title: '`migrate` lives OUTSIDE cli.js''s error boundary — every failure bypasses the --json contract'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dia
+    labels:
+      - bug
+    acceptance_criteria:
+      - "`diarie migrate /tmp/nope.jsonl` must be an InputError, not `diarie: unexpected error: ENOENT` + a stack trace. Pointing at a file that is not there is the archetypal user mistake — the exact thesis of vp-beads-cli, which fixed the flag half and left the file half"
+      - "`runMigration` calls `process.exit(1)` DIRECTLY (bootstrap.js ~362-523, six sites) with prose on stderr, bypassing cli.js's error boundary entirely. One subcommand of five is outside the contract the CLI exists to enforce"
+      - "migrate cannot accept `--json` at all (its parseArgs declares no such option), so EVERY migrate failure — missing input, existing store, gitignored store, bad slug — is unreachable in JSON mode. Decide: support --json, or document the exemption loudly"
+      - "the USAGE string in commands/migrate.js and the inline usage in bootstrap.js are TWO hand-written copies that ALREADY DIFFER (`Usage: diarie migrate …` vs `usage: node diarie/cli.js migrate …`), and neither derives from runMigration's parseArgs options"
+      - "a test asserting USAGE lists exactly the flags runMigration accepts — vp-beads-vcb's oracle will read that string, and it can drift from the parser today with nothing going red"
+    description: >-
+      Surfaced by two independent reviewers during vp-beads-cli's post-wave gate (2026-07-14).
+      `migrate` is deliberately not the four-part peowly shape (decision vp-beads-sea) and that
+      stays — but "not peowly" was silently taken to mean "not bound by the error contract" either,
+      and those are different things. It exits directly, so cli.js never sees it.
+
+
+      This is the LAST hole in the exit/JSON taxonomy. vp-beads-cli closed it for the four peowly
+      commands; migrate was left standing because its errors never reach the boundary that was
+      fixed.
+    updated: '2026-07-14'
+  - id: vp-beads-rgl
+    title: 'check-ast-grep: a rule whose `files:` glob matches NOTHING is still green and inert'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - bug
+    acceptance_criteria:
+      - "the runner asserts each rule's `files:` globs actually intersect the scan paths — a rule scoped to `diarie/nonexistent/**` currently scans nothing, reports nothing, and exits 0"
+      - "MEASURED 2026-07-14: `ast-grep scan --inline-rules '<files: [\"diarie/nonexistent/**/*.js\"]>' <valid paths>` exits 0 with no output and no warning"
+      - "this is the SAME green-and-inert bug vp-beads-cli fixed one layer up (scan paths now checked with existsSync) — the rule's own `files:` glob is the second input to whether a rule fires, and nothing checks it"
+      - "de-duplicate the scan path list: `PATHS` in scripts/check-ast-grep.mjs and `fix:ast-grep` in package.json hardcode the same five paths independently"
+    description: >-
+      Found by the silent-failure reviewer during vp-beads-cli's gate. Three of the repo's rules now
+      carry a `files:` field (`no-hardcoded-tracker-dir`, `no-unsanctioned-exit-2`,
+      `no-computed-exit-code`), so three rules are exposed. `existsSync` on the scan paths does not
+      help: those paths all exist; it is the rule's glob that points at nothing.
+
+
+      Folds naturally into vp-beads-asg, which already rewrites this runner — but filed separately
+      because it is a live defect, not a migration step.
+    updated: '2026-07-14'

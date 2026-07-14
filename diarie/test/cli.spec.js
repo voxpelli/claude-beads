@@ -158,12 +158,29 @@ describe('ready CLI (against test/fixtures)', () => {
     assert.ok(code === 0 && /alpha\/T-4/.test(out))
   })
 
-  it('--filter <invalid>: exits 1', () => {
-    assert.equal(run(READY, ['--filter', 'bogus'], FIXTURES).code, 1)
+  // THESE TWO ASSERTED ONLY `code === 1`, AND THAT IS HOW THE BUG GOT THROUGH.
+  //
+  // cli.js's "genuinely unexpected: a bug, not a user mistake" branch ALSO exits 1. So a clean
+  // InputError and an uncaught TypeError are indistinguishable by exit code alone — and when the
+  // catch block in main.js started crashing on these exact inputs, both tests stayed green while
+  // the CLI answered `Cannot read properties of undefined` and, under --json, wrote NOTHING to
+  // stdout. 194 of 194 passing, over three broken paths.
+  //
+  // An exit code says a command failed. It cannot say whether it failed for the reason you meant.
+  // Assert the SENTENCE.
+
+  it('--filter <invalid>: exits 1 AND says which values are legal', () => {
+    const { code, err } = run(READY, ['--filter', 'bogus'], FIXTURES)
+    assert.equal(code, 1)
+    assert.match(err, /--filter must be one of:/)
+    assert.doesNotMatch(err, /unexpected error/)
   })
 
-  it('--days <non-numeric>: exits 1', () => {
-    assert.equal(run(STATS, ['--days', 'abc'], FIXTURES).code, 1)
+  it('--days <non-numeric>: exits 1 AND names the constraint', () => {
+    const { code, err } = run(STATS, ['--days', 'abc'], FIXTURES)
+    assert.equal(code, 1)
+    assert.match(err, /--days must be a non-negative number/)
+    assert.doesNotMatch(err, /unexpected error/)
   })
 })
 
@@ -583,6 +600,11 @@ describe('the exit-code taxonomy — a typo is not a bug, and 2 means only one t
   it('an unknown flag is answered with a sentence, not node:internal parse_args frames', () => {
     const { code, err } = run(READY, ['--nosuchflag'], FIXTURES)
     assert.equal(code, 1)
+    // The POSITIVE assertion comes first and is the point. Three `doesNotMatch`es alone would
+    // pass just as happily against an EMPTY stderr — which is a different bug, and one this
+    // project has shipped before. An absence-only test cannot tell "said the right thing" from
+    // "said nothing at all".
+    assert.match(err, /diarie: Unknown option '--nosuchflag'/)
     assert.doesNotMatch(err, /unexpected error/)
     assert.doesNotMatch(err, /node:internal/)
   })
@@ -628,4 +650,61 @@ describe('`--help` is a REQUEST, not a mistake (the oracle check:prose-commands 
     assert.equal(code, 1)
     assert.match(err, /needs a bd export file/)
   })
+})
+
+describe('THE INVARIANT: a user mistake is never a crash, and never exit 2', () => {
+  // Two reviewers, independently, gave the first cut of this taxonomy 22/100 and 3/100 — because
+  // the fix crashed on three of the paths it was meant to protect and the suite never noticed.
+  // Both defects share one shape: every assertion was about a SINGLE input, so nothing anywhere
+  // asserted the RULE. A rule needs a test that quantifies over inputs, not a test per input.
+  //
+  // Exit 2 is ResultError, and nothing else. `unexpected error` is a bug in diarie, and nothing
+  // else. Every row below is a user mistake, so every row must satisfy both.
+
+  const MISTAKES = [
+    { what: 'no command at all', argv: [] },
+    { what: 'a flag where a command belongs', argv: ['--json'] },
+    { what: 'a short flag where a command belongs', argv: ['-j'] },
+    { what: 'a bare -h (peowly does NOT treat this as help)', argv: ['-h'] },
+    { what: 'an unknown top-level flag', argv: ['--nosuchflag'] },
+    { what: 'an unknown command', argv: ['frobnicate'] },
+    { what: 'an unknown flag on a real command', argv: ['ready', '--nosuchflag'] },
+    { what: 'an invalid enum value', argv: ['ready', '--filter', 'bogus'] },
+    { what: 'a non-numeric number', argv: ['stats', '--days', 'abc'] },
+    { what: 'a negative staleness window', argv: ['stats', '--days', '-5'] },
+  ]
+
+  for (const { argv, what } of MISTAKES) {
+    it(`${what} — exits 1, not 2, and is never called "unexpected"`, () => {
+      const { code, err, out } = run([], argv, FIXTURES)
+
+      // 2 would mean "it ran, and your backlog is broken". None of these ran.
+      assert.notEqual(code, 2, `\`diarie ${argv.join(' ')}\` exited 2 — the ResultError code`)
+      assert.equal(code, 1)
+
+      // The tell of a crash reaching the user. It is never the right answer to a typo.
+      assert.doesNotMatch(err, /unexpected error/)
+      assert.doesNotMatch(err + out, /Cannot read properties of undefined/)
+      assert.doesNotMatch(err + out, /node:internal/)
+
+      // Silence is its own failure: the user must be told SOMETHING.
+      assert.ok((err + out).trim().length > 0, 'said nothing at all')
+    })
+  }
+
+  for (const { argv, what } of MISTAKES) {
+    it(`${what} — under --json, STDOUT carries parseable JSON with a code`, () => {
+      // The defect this whole CLI exists to kill: important things whispered to stderr, a stream
+      // ten call sites pipe to /dev/null. Before the fix, `diarie --json` printed 589 bytes of
+      // HUMAN HELP PROSE to stdout under the flag that promises machine-readable output, and
+      // `ready --filter bogus --json` printed nothing at all.
+      const { code, out } = run([], [...argv, '--json'], FIXTURES)
+      assert.equal(code, 1)
+
+      const parsed = JSON.parse(out)   // throws on prose, and on emptiness
+      assert.equal(typeof parsed.error, 'string')
+      assert.ok(parsed.error.length > 0)
+      assert.equal(parsed.code, 'EUSAGE')
+    })
+  }
 })

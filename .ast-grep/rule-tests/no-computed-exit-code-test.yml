@@ -1,0 +1,32 @@
+id: no-computed-exit-code
+valid:
+  # Literals, all of them. The number is right there.
+  - |
+    exit(0)
+    exit(1)
+    process.exit(1)
+  # The one sanctioned exit 2 — a literal, so `no-unsanctioned-exit-2` can still see and judge it.
+  # That is the whole point of this rule: it keeps the sibling's field of view complete.
+  - |
+    if (err instanceof ResultError) exit(2)
+  # No argument at all means 0. Nothing is hidden, so nothing to forbid.
+  - |
+    exit()
+invalid:
+  # THE HOLE THIS RULE EXISTS FOR. `no-unsanctioned-exit-2` matches syntax, so it cannot see the
+  # 2 through the binding — the reserved code would be reintroduced in silence.
+  - |
+    const TWO = 2
+    exit(TWO)
+  # A variable exit code: the reader cannot tell what this process says to its caller.
+  - |
+    exit(code)
+  # Namespaced form, same evasion.
+  - |
+    process.exit(someVar)
+  # Computed at the call site — including the ternary, which is the tempting one.
+  - |
+    exit(ok ? 0 : 1)
+  # A coercion is still not a literal.
+  - |
+    process.exit(Number(x))

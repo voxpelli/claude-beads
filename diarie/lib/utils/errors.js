@@ -17,10 +17,12 @@ export class InputError extends Error {
   /**
    * @param {string} message
    * @param {string} [body]
-   * @param {string} [code]   machine-readable tag (e.g. ENOSTORE) for --json consumers
+   * @param {string} [code]   machine-readable tag (e.g. ENOSTORE, EUSAGE) for --json consumers
+   * @param {ErrorOptions} [options]  `{ cause }` — preserved when an upstream error is
+   *   re-thrown as one of ours, so a genuine bug wearing a user-error's clothes stays diagnosable
    */
-  constructor (message, body, code) {
-    super(message)
+  constructor (message, body, code, options) {
+    super(message, options)
 
     /** @type {string|undefined} */
     this.body = body
