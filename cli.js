@@ -9,6 +9,13 @@
  *   1  InputError — you got it wrong. Most importantly: THERE IS NO STORE HERE.
  *   2  ResultError — it ran, and the answer is "no" (invalid store, --strict)
  *
+ * NOTHING ELSE MAY USE 2. peowly's `showHelp()` defaults to `exit(2)` for "incorrect
+ * usage", which would collide head-on with ResultError and leave a CI job unable to tell
+ * a dependency cycle from a typo. `main.js` therefore intercepts the bare invocation, the
+ * unknown command, and the unknown flag, and re-throws each as an InputError carrying the
+ * code `EUSAGE` — so a machine consumer can tell "you typed it wrong" (EUSAGE) from
+ * "there is no store here" (ENOSTORE) without regexing a human sentence.
+ *
  * Under `--json`, an InputError is emitted as JSON on STDOUT, not as prose on
  * stderr. That is deliberate and it is the fix for the defect this CLI was built
  * around: the old readers printed `{"ready": []}` to stdout and their only

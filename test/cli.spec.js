@@ -552,3 +552,80 @@ describe('validate CLI (error paths, via tmpdir)', () => {
     assert.ok(code === 2 && /duplicate id/.test(out))
   })
 })
+
+describe('the exit-code taxonomy — a typo is not a bug, and 2 means only one thing', () => {
+  // Exit 2 is ResultError: "it ran, and the answer is no" (a cyclic backlog, --strict).
+  // peowly's showHelp() defaults to exit(2) for "incorrect usage", so BEFORE this suite a
+  // bare `diarie` also exited 2 — leaving a CI job branching on 2 unable to tell a
+  // dependency cycle from a forgotten subcommand. Two meanings, one code, no way back.
+
+  it('a bare `diarie` is an InputError (1), NOT the ResultError code (2)', () => {
+    const { code } = run([], [], FIXTURES)
+    assert.equal(code, 1)
+  })
+
+  it('a bare `diarie` still SHOWS the commands — exiting 1 must not mean staying silent', () => {
+    const { both } = run([], [], FIXTURES)
+    assert.match(both, /ready/)
+    assert.match(both, /migrate/)
+  })
+
+  it('an unknown command is answered with a sentence, not a stack trace', () => {
+    const { code, err } = run(['frobnicate'], [], FIXTURES)
+    assert.equal(code, 1)
+    assert.match(err, /unknown command: frobnicate/)
+    // The tell of the old behaviour: it fell through to cli.js's "genuinely unexpected"
+    // branch, which prints the cause chain. A typo is not a bug in the tool.
+    assert.doesNotMatch(err, /unexpected error/)
+    assert.doesNotMatch(err, /at .*\.js:\d+/)
+  })
+
+  it('an unknown flag is answered with a sentence, not node:internal parse_args frames', () => {
+    const { code, err } = run(READY, ['--nosuchflag'], FIXTURES)
+    assert.equal(code, 1)
+    assert.doesNotMatch(err, /unexpected error/)
+    assert.doesNotMatch(err, /node:internal/)
+  })
+
+  it('--json carries usage errors on STDOUT with a code — the whole point of this CLI', () => {
+    // The defect this tool was built around: important things whispered to a stream that
+    // ten call sites pipe to /dev/null. An unknown command used to leave stdout EMPTY and
+    // dump a stack to stderr — silently violating the contract cli.js's own header states.
+    for (const args of [['frobnicate', '--json'], ['ready', '--nosuchflag', '--json']]) {
+      const { code, out } = run([], args, FIXTURES)
+      assert.equal(code, 1)
+      const parsed = JSON.parse(out)
+      assert.equal(parsed.code, 'EUSAGE')
+      assert.ok(typeof parsed.error === 'string' && parsed.error.length > 0)
+    }
+  })
+
+  it('EUSAGE and ENOSTORE are DIFFERENT codes — "you typed it wrong" is not "there is no store"', () => {
+    const { out: typo } = run([], ['frobnicate', '--json'], FIXTURES)
+    const { out: nostore } = run(READY, ['--json', '--root', join(tmpdir(), 'diarie-nowhere-xyz')], '')
+    assert.equal(JSON.parse(typo).code, 'EUSAGE')
+    assert.equal(JSON.parse(nostore).code, 'ENOSTORE')
+  })
+})
+
+describe('`--help` is a REQUEST, not a mistake (the oracle check:prose-commands stands on)', () => {
+  // Every subcommand must answer --help on STDOUT with exit 0. `migrate` did not: it shared
+  // a branch with the no-argument case and threw InputError, so asking for help printed to
+  // STDERR and exited 1. That made --help useless as a uniform way to interrogate the CLI —
+  // which is precisely what a prose-command checker needs it for.
+
+  for (const sub of ['ready', 'stats', 'validate', 'init', 'migrate']) {
+    it(`\`${sub} --help\` exits 0 and prints the usage on stdout`, () => {
+      const { code, out, err } = run([sub], ['--help'], FIXTURES)
+      assert.equal(code, 0)
+      assert.ok(out.length > 0, `${sub} --help wrote nothing to stdout`)
+      assert.equal(err, '')
+    })
+  }
+
+  it('`migrate` with NO argument is still an error — help is not the same as forgetting the file', () => {
+    const { code, err } = run(['migrate'], [], FIXTURES)
+    assert.equal(code, 1)
+    assert.match(err, /needs a bd export file/)
+  })
+})
