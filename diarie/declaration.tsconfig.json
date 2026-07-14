@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+
+  // Declaration emit ONLY. `tsconfig.json` type-CHECKS (and checks the tests too); this one
+  // type-EMITS, and it is run by `prepack`, so the .d.ts exist in the tarball and nowhere else.
+  //
+  // diarie is a library-with-a-bin: consumers `import { computeReady } from 'diarie'`, and without
+  // these files every one of those imports silently resolves to `any`. A package can ship, install,
+  // and typecheck green in a consumer while handing it no types at all — the tarball is where that
+  // shows up, and the git tree is where it hides (a dry-run `git subtree split` installs from the
+  // TREE, where nothing enforces the `files` allowlist).
+  //
+  // `test/**` is excluded: the tests are not part of the published surface, and emitting them would
+  // put `test/*.d.ts` in the tarball's shadow.
+  //
+  // ⚠️ `npm run build` runs `clean` FIRST, and that is not tidiness — it is required. TypeScript's
+  // module resolution PREFERS a `.d.ts` over its sibling `.js`, so a previous build's output becomes
+  // this build's INPUT, and tsc refuses with `TS5055: would overwrite input file`. The build is only
+  // idempotent because the clean makes it so.
+  "extends": "./tsconfig.json",
+
+  "files": [],
+  "include": ["lib/**/*.js"],
+  "exclude": ["test/**/*"],
+
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true
+  }
+}
