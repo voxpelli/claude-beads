@@ -22,7 +22,7 @@ import { env } from 'node:process'
 import { describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import {
-  mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync,
 } from 'node:fs'
 
 import { TRACKER_DIR } from 'diarie/schema'
@@ -708,3 +708,59 @@ describe('THE INVARIANT: a user mistake is never a crash, and never exit 2', () 
     })
   }
 })
+
+describe('THE COMPLEMENT: exit 2 must remain REACHABLE, or the taxonomy lies the other way', () => {
+  // The invariant suite above proves no user mistake exits 2. On its own that is only half a
+  // rule, and the dangerous half to prove alone: a change that made exit 2 UNREACHABLE would
+  // satisfy every one of those assertions while silently telling every CI job that a cyclic
+  // backlog is fine. `validate` already pins its side (three assertions above). `--strict` did
+  // not pin its side at all — the flag whose entire purpose is to exit non-zero.
+  //
+  // Both halves, or neither is a rule.
+
+  it('`ready --strict` exits 2 when a row needs attention', (t) => {
+    // `type: bug` is a bd fossil — not one of the four valid types — so the row is BROKEN, not
+    // merely non-workable. It surfaces in needsAttention, and --strict must say so in its exit code.
+    const dir = seedStore(tmpDir(t, 'diarie-strict-'), 'x',
+      'tasks:\n  - id: T-1\n    title: fossil type\n    status: pending\n    type: bug\n')
+    assert.equal(run(READY, ['--strict'], dir).code, 2)
+  })
+
+  it('`ready --strict` exits 0 on a healthy store — 2 must MEAN something', (t) => {
+    const dir = seedStore(tmpDir(t, 'diarie-strict-ok-'), 'x',
+      'tasks:\n  - id: T-1\n    title: fine\n    status: pending\n    type: task\n')
+    assert.equal(run(READY, ['--strict'], dir).code, 0)
+  })
+
+  it('the ONLY executable exit(2) in the package is exitResultError()', () => {
+    // The module docstring in lib/utils/exit.js claims `git grep exitResultError` is an exhaustive
+    // list of every way this process can exit 2. That claim is load-bearing for the whole taxonomy,
+    // and a claim nobody checks is a comment, not a guarantee. So: check it.
+    const src = readFileSync(join(PKG, 'lib', 'utils', 'exit.js'), 'utf8')
+    assert.match(src, /export function exitResultError/)
+
+    const offenders = []
+    for (const file of [join(PKG, 'cli.js'), ...walkJs(join(PKG, 'lib'))]) {
+      if (file.endsWith(join('utils', 'exit.js'))) continue
+      const body = readFileSync(file, 'utf8')
+        .replaceAll(/\/\*[\s\S]*?\*\//g, '')   // strip block comments
+        .replaceAll(/\/\/.*$/gm, '')           // strip line comments
+      if (/\bexit\(\s*2\s*\)/.test(body)) offenders.push(file)
+    }
+    assert.deepEqual(offenders, [], `exit(2) written outside lib/utils/exit.js: ${offenders.join(', ')}`)
+  })
+})
+
+/**
+ * Every .js file under a directory, recursively.
+ *
+ * @param {string} dir
+ * @returns {string[]}
+ */
+function walkJs (dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+    const p = join(dir, e.name)
+    if (e.isDirectory()) return walkJs(p)
+    return e.name.endsWith('.js') ? [p] : []
+  })
+}
