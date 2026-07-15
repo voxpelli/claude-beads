@@ -214,10 +214,12 @@ the `.ledger/` store + optionally, later, a small reader). That makes "cross-pro
 first-class concern with its own home rather than a corner of the knowledge plugin — and a focused repo
 is exactly what cleanly *owns* the shared store and conventions that hold the operation-fractured
 cluster together (see the fracture table below). It also settles the size tension against folding into
-an already-16-skill `vp-knowledge`. Two sub-decisions follow and are deferred to the extraction:
-**(1)** the name — "ledger" is generic and near-certainly taken on npm, the same name-gate `diarie`
-dodged with a distinctive word; **(2)** skill-only vs. a small reader — a focused repo makes a reader
-natural, but YAGNI holds at ~7 files, so it starts skill-only.
+an already-16-skill `vp-knowledge`. The **build shape is a diarie-style CLI + skills combo, but
+SKILLS FIRST, CLI SECOND** (`vp-beads-lgr`) — the *inverse* of diarie's order, because diarie's value
+is a computation (`ready`) while the ledger's is workflow discipline; the CLI is extracted from proven
+skill usage, not designed against guessed queries. One sub-decision stays deferred to the extraction:
+**the name** — "ledger" is generic and near-certainly taken on npm, the same name-gate `diarie` dodged
+with a distinctive word.
 
 The consequence: **there is no residual `vp-beads` package at all** — the two residuals (`ledger`,
 `vp-swarm`) each become their own focused thing.
@@ -363,11 +365,10 @@ because it is unused.
 ## What is NOT decided — open seams and honest costs
 
 - **The `ledger` home** — ~~its own package vs fold into `vp-knowledge`~~ **DECIDED (`vp-beads-lgr`,
-  2026-07-15): its own focused repository**, a substrate peer to `diarie`. What remains open is
-  *downstream* of that: **(1) the name** — `"ledger"` is a working name only; the real repo/tool name
-  is undecided (generic + likely npm-taken, the diarie name-gate again); **(2) skill-only vs. a small
-  reader** — a focused repo makes a reader natural, but YAGNI holds at ~7 files, so it starts
-  skill-only.
+  2026-07-15): its own focused repository**, a substrate peer to `diarie`; build shape is a
+  **CLI + skills combo, skills-first**. What remains open is *downstream*: **the name** — `"ledger"`
+  is a working name only; the real repo/tool name is undecided (generic + likely npm-taken, the
+  diarie name-gate again).
 - **`vendor-sync` toward `vp-git`.** If `ledger` scatters by operation, `vendor-sync` (git-subtree
   mechanics) is a closer fit to `vp-git` than to a relationships package. Whether it moves there, or
   stays a `ledger` mode, or becomes a `vp-git` skill that `ledger` *calls*, is unlit. It also touches

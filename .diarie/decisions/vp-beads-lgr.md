@@ -50,9 +50,15 @@ with a distinctive word. Do not treat "ledger" as committed.
   no residual `vp-beads` package at all.** The constellation becomes: `diarie` (tracker + adoption),
   the ledger repo (relationships), `vp-swarm` (orchestration), `vp-knowledge` (absorbs
   `retrospective`), `vp-git`.
-- **Two deferred sub-decisions**, both downstream of the extraction: **(1) the name** (undecided —
-  see above); **(2) skill-only vs. a small reader** — a focused repo makes a reader natural, but YAGNI
-  holds at ~7 ledger files, so it starts skill-only and grows one only if it earns it.
+- **The build shape: a diarie-style CLI + skills combo, but SKILLS FIRST, CLI SECOND.** This is the
+  *inverse* of diarie's order, for a principled reason: diarie was CLI-first because its value IS a
+  computation (`ready`); the ledger's value is workflow discipline (capture/resolve/promote friction),
+  so the skill ships first and the CLI is *extracted from proven usage* (which de-risks the CLI's
+  read-side API — don't design it against guessed queries). Design hint: write the skill's
+  read-computations (`review`, staleness, `reconcile` diff) as pure functions over `.ledger/`, so they
+  lift into a later CLI's `doTheWork` (diarie's four-part shape). CLI trigger: those computations
+  stabilise, or volume outgrows inline work. Detail in `DESIGN-ledger-skill.md`.
+- **One deferred sub-decision: the name** (undecided — see above), downstream of the extraction.
 - **Timing:** downstream of the diarie extraction; recorded now to resolve the open question so nobody
   re-litigates the home or quietly folds the ledger into `vp-knowledge`.
 - Updates the resolved open-question sections in `DESIGN-constellation-repackaging.md` and

@@ -276,15 +276,27 @@ feature, not an oversight. The one place `ledger` and `diarie` touch is
 
 ## Open questions (present, don't force)
 
-1. **Skill-only, or a small reader/CLI?** `review`, `reconcile`, and staleness
-   all *compute* over the markdown (parse entries, match titles across sides,
-   age-out `aligned` rows). At **~7 ledger files** the volume is trivially
-   handled inline by the skill reading the files. **Lean skill-only to start**
-   (YAGNI); promote to a tiny reader only if the file count or the reconcile
-   diff-logic outgrows inline computation. If a reader is ever built, mirror
-   `diarie`'s four-part command shape (`run` → `setupCommand` → `doTheWork`
-   returns typed data → `formatWorkResult` is the only writer) so the work is
-   assertable in-process — but that is a *later* trigger, not a v1 requirement.
+1. **Skill-only, or a diarie-style CLI + skills combo? — DECIDED: a combo, but
+   SKILLS FIRST, CLI SECOND (`vp-beads-lgr`).** `review`, `reconcile`, and
+   staleness all *compute* over the markdown (parse entries, match titles across
+   sides, age-out `aligned` rows), so a small reader is a plausible end state —
+   like `diarie`'s. But the build order is the **inverse of diarie's**, and for a
+   principled reason: **diarie was CLI-first because its value IS a computation**
+   (the `ready` dependency-walk — a tracker with no `ready` is unusable), whereas
+   **the ledger's value is workflow discipline** (consistently capturing,
+   resolving, and promoting relationship friction), which is skill-guided
+   behaviour; its computations are secondary and, at ~7 files, trivially handled
+   inline. So the skill ships first and the CLI is extracted *from proven usage* —
+   which also de-risks the CLI (the "measure before you build" lesson as
+   sequencing: don't design the read-side API against guessed queries; let the
+   skill reveal which ones actually recur). **Design hint that makes the phasing
+   clean:** write the skill's read-computations (`review`, staleness, `reconcile`
+   diff) as conceptually **pure functions over the `.ledger/` store**, so they
+   lift straight into a later CLI's `doTheWork` — `diarie`'s four-part shape
+   (`run` → `setupCommand` → `doTheWork` returns typed data → `formatWorkResult`
+   is the only writer). The skill's logic *becomes* the CLI's core; the
+   skill-first work is not throwaway. **CLI trigger:** the recurring
+   read-computations stabilise, or the file/diff volume outgrows inline work.
 2. **Is `sync-back` a mode or a leg of `promote`?** `upstream-tracker` workflow 7
    is BM → local discovery — the inverse of promote. Folding it into `promote`
    (a `--sync-back` direction) keeps the BM bridge in one place; splitting it out
