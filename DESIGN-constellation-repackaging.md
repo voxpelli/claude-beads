@@ -32,12 +32,12 @@ one task row scopes the diarie-side skill work in detail: `vp-beads-ski` in
 Read from `../vp-claude/.claude-plugin/marketplace.json` — the `vp-plugins` marketplace lists four
 plugins:
 
-| Plugin        | Organized around                 | Shape (real, on disk)                                                                            |
-| ------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `vp-knowledge` | **substrate: Basic Memory (+ Raindrop/Readwise)** | 16 skills + 4 agents (`../vp-claude/skills/`, `../vp-claude/agents/`)                            |
-| `vp-git`       | **substrate: git**               | 3 pure SKILL.md skills (`rebase-validate`, `stack-cascade`, `tag-audit`), runtime-neutral        |
-| `vp-astgrep`   | **substrate: ast-grep**          | an LSP shim + rules                                                                              |
-| `vp-beads`     | **process: the sprint**          | 9 skills + 1 agent + 3 hook event types + the `diarie/` npm workspace                            |
+| Plugin         | Organized around                                  | Shape (real, on disk)                                                                     |
+| -------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `vp-knowledge` | **substrate: Basic Memory (+ Raindrop/Readwise)** | 16 skills + 4 agents (`../vp-claude/skills/`, `../vp-claude/agents/`)                     |
+| `vp-git`       | **substrate: git**                                | 3 pure SKILL.md skills (`rebase-validate`, `stack-cascade`, `tag-audit`), runtime-neutral |
+| `vp-astgrep`   | **substrate: ast-grep**                           | an LSP shim + rules                                                                       |
+| `vp-beads`     | **process: the sprint**                           | 9 skills + 1 agent + 3 hook event types + the `diarie/` npm workspace                     |
 
 Every sibling wraps *one substrate* and its skills never have to reach outside it: `vp-git`'s three
 skills touch nothing but git; `vp-knowledge`'s skills touch nothing but the knowledge graph and its
@@ -246,12 +246,12 @@ be substrate-pure and still too heavy to reason about.
 **And the cluster is coherent by TOPIC but fractures by OPERATION** — this is the sharpest thing
 against a clean answer:
 
-| Skill (mode)     | Topic     | Operation                                    | Substrate pull        |
-| ---------------- | --------- | -------------------------------------------- | --------------------- |
-| `upstream-tracker` | relationships | capture facts → knowledge graph          | **Basic Memory**      |
-| `synergy-tracker`  | relationships | capture facts → knowledge graph          | **Basic Memory**      |
-| `vendor-sync`      | relationships | git subtree mechanics                    | **git** (↔ `vp-git`)  |
-| `sibling-sync`     | relationships | cross-repo reconciliation                | **constellation infra** |
+| Skill (mode)       | Topic         | Operation                       | Substrate pull          |
+| ------------------ | ------------- | ------------------------------- | ----------------------- |
+| `upstream-tracker` | relationships | capture facts → knowledge graph | **Basic Memory**        |
+| `synergy-tracker`  | relationships | capture facts → knowledge graph | **Basic Memory**        |
+| `vendor-sync`      | relationships | git subtree mechanics           | **git** (↔ `vp-git`)    |
+| `sibling-sync`     | relationships | cross-repo reconciliation       | **constellation infra** |
 
 Package **by topic** and it stays one unit (favours (a), or a single folded module in (b)). Package
 **by substrate/operation** and it **scatters** — the trackers to `vp-knowledge`, `vendor-sync` toward
@@ -346,13 +346,13 @@ the boundary that keeps `diarie` clean**: cross-project state lives in the `ledg
 
 Measured from disk and git history in this repo, 2026-07-15:
 
-| Component                         | Artifact trace                                                     | Read as        |
-| --------------------------------- | ----------------------------------------------------------------- | -------------- |
-| `upstream-tracker` + `synergy-tracker` | 5 `UPSTREAM-*.md` + 2 `SYNERGY-*.md`, across **23** + **11** commits | **workhorse**  |
-| `retrospective`                   | **16** `RETRO-*.md` on disk                                        | heavily used   |
-| `swarm-wave`                      | **10** `SWARM-*.md` on disk                                        | used           |
-| `backlog-groomer`                 | no artifact trace                                                  | barely used    |
-| `sprint-review` (agent)           | no artifact trace; operator confirms **never** fired              | unused         |
+| Component                              | Artifact trace                                                       | Read as       |
+| -------------------------------------- | -------------------------------------------------------------------- | ------------- |
+| `upstream-tracker` + `synergy-tracker` | 5 `UPSTREAM-*.md` + 2 `SYNERGY-*.md`, across **23** + **11** commits | **workhorse** |
+| `retrospective`                        | **16** `RETRO-*.md` on disk                                          | heavily used  |
+| `swarm-wave`                           | **10** `SWARM-*.md` on disk                                          | used          |
+| `backlog-groomer`                      | no artifact trace                                                    | barely used   |
+| `sprint-review` (agent)                | no artifact trace; operator confirms **never** fired                 | unused        |
 
 The five `UPSTREAM-*.md` are real and specific — `basic-memory`, `brew--beads`, `claude-code`,
 `voxpelli--typed-utils`, `vp-knowledge` — and the two `SYNERGY-*.md` are `vp-git` and `vp-knowledge`.

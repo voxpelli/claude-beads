@@ -51,8 +51,7 @@ not own. Each is its own `SKILL.md`:
 These are not four domains. They are four *verbs* over two *objects*. The tell
 is how much identical prose each skill has to restate:
 
-- **The registry-with-override merge** (`read base → merge `.local.json` on the
-  stable key → fields in `.local.json` win → unmatched entries ignored`) is
+- **The registry-with-override merge** (`read base → merge .local.json on the stable key → fields in .local.json win → unmatched entries ignored`) is
   spelled out in `synergy-tracker` workflow 3 (Compare with sibling) step 1,
   `vendor-sync` "Local override file", and `sibling-sync` "Registry and path
   resolution" — three near-verbatim copies keyed on `name` / `package` / `name`.
@@ -80,7 +79,7 @@ argument for the merge — not tidiness, but killing the copy-drift.
 ## The model: impeccable's one-skill-many-modes
 
 `impeccable` (`~/.claude/plugins/cache/impeccable/impeccable/3.9.1/skills/impeccable/SKILL.md`)
-is the proof that a single skill can carry ~20 verbs without becoming a
+is the proof that a single skill can carry \~20 verbs without becoming a
 grab-bag. Its structure is the template to mirror exactly:
 
 1. **A rich `description`** naming every verb it dispatches (so Claude picks it
@@ -100,7 +99,7 @@ grab-bag. Its structure is the template to mirror exactly:
 one lean body (the shared core + the routing table) plus one
 `reference/<mode>.md` per mode.
 
-**One honest disanalogy, stated up front.** impeccable's ~20 verbs all act on
+**One honest disanalogy, stated up front.** impeccable's \~20 verbs all act on
 *one* object — a frontend surface. `ledger` has **two** objects (an upstream
 dependency, a sibling project), and not every verb applies to both. So `ledger`
 is a *sparse 2-D matrix*, where impeccable is a 1-D list. That extra dimension
@@ -111,14 +110,14 @@ is the source of every real cost below.
 Proposed mode set (a starting point — refine as build reveals seams):
 **`log · resolve · review · pull · reconcile · promote`.**
 
-|                 | **upstream dependency**                              | **sibling project**                                    |
-| --------------- | ---------------------------------------------------- | ------------------------------------------------------ |
-| **log**         | ✓ record friction (`UPSTREAM-*.md`)                  | ✓ record a pattern/divergence (`SYNERGY-*.md`)         |
-| **resolve**     | ✓ close a fixed entry                                | ~ placeholder-restore only (no formal workflow)        |
-| **review**      | ✓ status / trend / retro-support                     | ✓ status / trend / compare-with-sibling                |
-| **pull**        | ✓ subtree pull + auto-resolve on the diff            | — (no sibling subtree exists)                           |
-| **reconcile**   | ~ shared-dep drift across two sibling repos (Mode A) | ✓ bilateral SYNERGY + reciprocal-friction drift        |
-| **promote**     | ✓ `## Upstream Friction` ⇄ BM                        | ✓ `## Cross-Project Synergy` ⇄ BM                       |
+|               | **upstream dependency**                               | **sibling project**                              |
+| ------------- | ----------------------------------------------------- | ------------------------------------------------ |
+| **log**       | ✓ record friction (`UPSTREAM-*.md`)                   | ✓ record a pattern/divergence (`SYNERGY-*.md`)   |
+| **resolve**   | ✓ close a fixed entry                                 | \~ placeholder-restore only (no formal workflow) |
+| **review**    | ✓ status / trend / retro-support                      | ✓ status / trend / compare-with-sibling          |
+| **pull**      | ✓ subtree pull + auto-resolve on the diff             | — (no sibling subtree exists)                    |
+| **reconcile** | \~ shared-dep drift across two sibling repos (Mode A) | ✓ bilateral SYNERGY + reciprocal-friction drift  |
+| **promote**   | ✓ `## Upstream Friction` ⇄ BM                         | ✓ `## Cross-Project Synergy` ⇄ BM                |
 
 The matrix is deliberately **sparse**: `pull` is upstream-only (nothing to pull
 for a sibling), `resolve` is upstream-heavy (a synergy entry "resolves" only by
@@ -131,7 +130,7 @@ not pretend the grid is full; the empty cells are information.
 ### argument-hint, grouped into families (impeccable-style)
 
 ```
-argument-hint: "[log · resolve · review|trend|compare · pull · reconcile · promote|sync-back] [object]"
+argument-hint: "[log · resolve · review|trend|compare · pull · reconcile · promote|sync-back] (object)"
 ```
 
 - **Record** — `log`, `resolve`
@@ -146,43 +145,43 @@ argument-hint: "[log · resolve · review|trend|compare · pull · reconcile · 
 
 **`upstream-tracker` (7 workflows):**
 
-| Current workflow                          | → mode              | Notes                                                                 |
-| ----------------------------------------- | ------------------- | --------------------------------------------------------------------- |
-| 1. Log a new entry                        | `log` [upstream]    | incl. the eager-promotion tempo check (step 6a)                       |
-| 2. Review open items                      | `review` [upstream] |                                                                       |
-| 3. Resolve an entry                       | `resolve` [upstream]| deletes locally, annotates BM `_(Resolved …)_`                        |
-| 4. Trend review (quarterly)               | `review --trend`    | the quarterly variant                                                 |
-| 5. Sprint retrospective support           | `review` (retro)    | drafts the retro's "Upstream observations" section                    |
-| 6. Promote to Basic Memory                | `promote` [upstream]| owns `## Upstream Friction`                                           |
-| 7. Sync from Basic Memory                 | `promote --sync-back`| the inbound leg — pulls known BM friction into local files           |
+| Current workflow                | → mode                | Notes                                                      |
+| ------------------------------- | --------------------- | ---------------------------------------------------------- |
+| 1. Log a new entry              | `log` (upstream)      | incl. the eager-promotion tempo check (step 6a)            |
+| 2. Review open items            | `review` (upstream)   |                                                            |
+| 3. Resolve an entry             | `resolve` (upstream)  | deletes locally, annotates BM `_(Resolved …)_`             |
+| 4. Trend review (quarterly)     | `review --trend`      | the quarterly variant                                      |
+| 5. Sprint retrospective support | `review` (retro)      | drafts the retro's "Upstream observations" section         |
+| 6. Promote to Basic Memory      | `promote` (upstream)  | owns `## Upstream Friction`                                |
+| 7. Sync from Basic Memory       | `promote --sync-back` | the inbound leg — pulls known BM friction into local files |
 
 **`synergy-tracker` (5 workflows):**
 
-| Current workflow                | → mode                | Notes                                                             |
-| ------------------------------- | --------------------- | ---------------------------------------------------------------- |
-| 1. Log a synergy entry          | `log` [sibling]       | incl. guided registry creation (step 1b) + private-sibling path  |
-| 2. Review open synergies        | `review` [sibling]    | the one local-only read that also globs `PRIVATE-SYNERGY-*.md`   |
-| 3. Compare with sibling         | `review --compare`    | diffs this repo vs a sibling's files/code → proposes `log` entries|
-| 4. Trend review (quarterly)     | `review --trend`      | shared cadence with upstream workflow 4                           |
-| 5. Promote to Basic Memory      | `promote` [sibling]   | owns `## Cross-Project Synergy`                                   |
+| Current workflow            | → mode              | Notes                                                              |
+| --------------------------- | ------------------- | ------------------------------------------------------------------ |
+| 1. Log a synergy entry      | `log` (sibling)     | incl. guided registry creation (step 1b) + private-sibling path    |
+| 2. Review open synergies    | `review` (sibling)  | the one local-only read that also globs `PRIVATE-SYNERGY-*.md`     |
+| 3. Compare with sibling     | `review --compare`  | diffs this repo vs a sibling's files/code → proposes `log` entries |
+| 4. Trend review (quarterly) | `review --trend`    | shared cadence with upstream workflow 4                            |
+| 5. Promote to Basic Memory  | `promote` (sibling) | owns `## Cross-Project Synergy`                                    |
 
 **`vendor-sync` (bootstrap + 10-step pipeline):**
 
-| Current workflow                          | → mode                   | Notes                                                        |
-| ----------------------------------------- | ------------------------ | ----------------------------------------------------------- |
-| 0. Bootstrap registry                     | shared registry helper   | derive-and-confirm `.claude/vendor-registry.json`           |
-| 1–6. Determine scope → pull → conflicts → clean → re-link | `pull` [upstream] | the subtree-pull core                                |
-| 7–8. Cross-reference changelog + code diff → auto-resolve  | `pull` → `resolve` | auto-resolution IS `resolve` applied on the diff     |
-| 8b. Annotate BM friction entries          | `pull` (promote-adjacent)| **annotation-only** — never owns/prunes the section         |
+| Current workflow                                          | → mode                    | Notes                                               |
+| --------------------------------------------------------- | ------------------------- | --------------------------------------------------- |
+| 0. Bootstrap registry                                     | shared registry helper    | derive-and-confirm `.claude/vendor-registry.json`   |
+| 1–6. Determine scope → pull → conflicts → clean → re-link | `pull` (upstream)         | the subtree-pull core                               |
+| 7–8. Cross-reference changelog + code diff → auto-resolve | `pull` → `resolve`        | auto-resolution IS `resolve` applied on the diff    |
+| 8b. Annotate BM friction entries                          | `pull` (promote-adjacent) | **annotation-only** — never owns/prunes the section |
 
 **`sibling-sync` (4 workflows):**
 
-| Current workflow                          | → mode                        | Notes                                                          |
-| ----------------------------------------- | ----------------------------- | ------------------------------------------------------------- |
-| 1. Discover sibling(s)                    | `reconcile` (setup)           | registry + path resolution, private-sibling participation     |
-| 2. Sync sibling SYNERGY                   | `reconcile` [sibling, SYNERGY]| reciprocal gaps / stale-aligned / status drift — read-only    |
-| 3. Sync sibling UPSTREAM                  | `reconcile` [Mode A + Mode B] | shared-dep drift (A) + reciprocal sibling-friction (B)        |
-| 4. Apply reciprocation batch              | `reconcile --auto-reciprocate`| the only write path; per-entry confirmation; writes sibling side only |
+| Current workflow             | → mode                         | Notes                                                                 |
+| ---------------------------- | ------------------------------ | --------------------------------------------------------------------- |
+| 1. Discover sibling(s)       | `reconcile` (setup)            | registry + path resolution, private-sibling participation             |
+| 2. Sync sibling SYNERGY      | `reconcile` (sibling, SYNERGY) | reciprocal gaps / stale-aligned / status drift — read-only            |
+| 3. Sync sibling UPSTREAM     | `reconcile` (Mode A + Mode B)  | shared-dep drift (A) + reciprocal sibling-friction (B)                |
+| 4. Apply reciprocation batch | `reconcile --auto-reciprocate` | the only write path; per-entry confirmation; writes sibling side only |
 
 ## The shared CORE — what justifies one skill, not four in a trenchcoat
 
@@ -199,8 +198,8 @@ not restated — by the merged skill:
   private-sibling machinery (the `PRIVATE-` prefix as the single structural
   marker keeping content outside the `SYNERGY-*.md` glob).
 - **`### Basic Memory section ownership`** — the three-owner map that must
-  survive the merge unchanged: `promote` [upstream] owns `## Upstream Friction`;
-  `promote` [sibling] owns `## Cross-Project Synergy`; `/retrospective` step 7
+  survive the merge unchanged: `promote` (upstream) owns `## Upstream Friction`;
+  `promote` (sibling) owns `## Cross-Project Synergy`; `/retrospective` step 7
   owns `engineering/*`. Annotation-only writers (`pull` step 8b, `resolve`) touch
   but never own.
 - **`### Vendor registry convention`** — `.claude/vendor-registry.json`
@@ -285,7 +284,7 @@ feature, not an oversight. The one place `ledger` and `diarie` touch is
    (the `ready` dependency-walk — a tracker with no `ready` is unusable), whereas
    **the ledger's value is workflow discipline** (consistently capturing,
    resolving, and promoting relationship friction), which is skill-guided
-   behaviour; its computations are secondary and, at ~7 files, trivially handled
+   behaviour; its computations are secondary and, at \~7 files, trivially handled
    inline. So the skill ships first and the CLI is extracted *from proven usage* —
    which also de-risks the CLI (the "measure before you build" lesson as
    sequencing: don't design the read-side API against guessed queries; let the
@@ -317,7 +316,7 @@ feature, not an oversight. The one place `ledger` and `diarie` touch is
   synergy vs vendor vs sibling). One `description` covering 2 objects × 6 verbs
   is genuinely harder to tune: too broad and Claude routes every
   relationship-ish request to `ledger`; too long and it dilutes. impeccable
-  absorbs this because its ~20 verbs share *one* object — `ledger`'s two objects
+  absorbs this because its \~20 verbs share *one* object — `ledger`'s two objects
   make the surface strictly harder than impeccable's. Mitigation is the
   impeccable playbook (families in `argument-hint` + `### Routing rules`), but
   the top-level `description` remains the hardest single artifact to get right,
@@ -339,4 +338,3 @@ feature, not an oversight. The one place `ledger` and `diarie` touch is
   `git subtree` from vendor-sync *and* the BM edit tools from the promoters *and*
   `AskUserQuestion` + `Skill` from sibling-sync). A wider `allowed-tools` on one
   skill is a larger blast radius than four scoped ones — weigh it.
-```
