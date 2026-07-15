@@ -214,6 +214,15 @@ function extract (text, isMarkdown) {
     }
 
     // A line inside a command-language fence is itself a runnable command.
+    //
+    // KNOWN LIMITATION (surfaced by review, deliberately NOT fixed): a command LINE inside a
+    // NO-LANGUAGE (bare ```) fence — fenceLang === '' — is not extracted; only inline spans on it
+    // are. Bare fences are span-only ON PURPOSE, so shown/aspirational templates, tree listings and
+    // flow diagrams stay green. Revival trigger: when the count of bare-fence lines whose FIRST token
+    // is `diarie`/`node`/a retired reader exceeds ~2 (it is 1 today — a green `diarie ready → …`
+    // diagram line), the convention has shifted and the hole goes live. Fix it THEN with
+    // first-token-gated extraction of bare-fence lines, NOT COMMAND_LANGS.add('') — which would turn
+    // all ~131 bare fences into candidates and false-positive on template/output content.
     if (fenceLang !== undefined && COMMAND_LANGS.has(fenceLang) && line.trim()) {
       out.push({ candidate: line, line: lineNo })
     }
