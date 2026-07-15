@@ -1441,3 +1441,33 @@ tasks:
       different door — and the guard written for that hole cannot see this one. A gate, running,
       reporting success, inspecting nothing.
     updated: '2026-07-15'
+  - id: vp-beads-ski
+    title: 'When diarie ships (published, post-1.0), add an official agent-skill companion — scope TBD THEN, not now'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - feature
+      - extraction
+    acceptance_criteria:
+      - "BOUNDARY TEST: 'would this help a project that uses diarie but has never heard of the vp-beads sprint methodology?'"
+      - "CLEARLY DIARIE: a NEW pure USAGE skill ('drive the tracker'), distilled from CLAUDE.md ### Issue tracking + ### Files-availability convention (the ENOSTORE/exit-code contract) + ### Issue types (4-type model) + ### Reader conventions. It MUST be the SINGLE canonical teacher of the claim/close/validate/ready primitives — today those are duplicated across FOUR vp-beads skills (backlog-groomer, retrospective, swarm-wave, sprint-review); the diarie skill REPLACES those copies (they reference it), never becomes a fifth. Includes a doc-grep of the retired vocabulary across all vp-beads skills"
+      - "CLEARLY VP-BEADS (out of scope): the six cross-project skills (sibling-sync, synergy-tracker, upstream-tracker, vendor-sync, swarm-wave, retrospective) + the sprint-review agent + hooks. High BM/UPSTREAM/SYNERGY coupling; a tracker is one substrate they consume, not their subject"
+      - "KEEP TOGETHER: migrate-tracker + deintegrate-beads are ONE user journey (deintegrate's frontmatter: 'Runs AFTER /migrate-tracker'; they share the task-list-ban grep, the seam text, the vp-beads-tdo citation). Default: BOTH stay in vp-beads until a non-bd import source exists. Do NOT split one cutover across two packages, and do NOT 'generalize migrate off bd' — bd is diarie's ONLY importer, so bd IS the framing"
+      - "DO NOT touch backlog-groomer: its triage core interleaves UPSTREAM/BM cross-reference; only the bare verbs are subsumable, and the usage skill covers those by being canonical, not by carving the skill up"
+      - "OPEN FORK (a) at ship: ONE skill vs two. Default ONE (usage) until a non-bd importer or real demand justifies a second. If a second is ever added, split on the DRIVE-vs-AUTHOR axis (diarie daily-driver + diarie-schema types/validate/enum reference), NOT drive-vs-migrate. The library surface (computeReady/loadTasks/diarie/schema) is a different audience -> references/, not the daily-driver body"
+      - "OPEN FORK (b) at ship: packaging plugin vs runtime-neutral. Lean NEUTRAL (basic-memory-style .claude/skills/, NO .mcp.json — diarie has no MCP server; the agent shells out to the binary, the ast-grep model). diarie is open/published and should NOT route through voxpelli-personal vp-plugins infra. Separate repo either way (keeps skills out of the npm tarball). A public install-API choice — NOT cheaply reversible, so decide deliberately"
+      - "TRAP — trigger collision: basic-memory's memory-tasks skill already claims 'durable multi-step task tracking that survives compaction' — diarie's exact territory — and diarie already lives in a multi-substrate world (vp-beads-tdo). The usage skill's `description` must carve its niche explicitly ('a repo's committed flat-YAML backlog via the diarie CLI') or it misfires"
+      - "TRAP — frontmatter: zero fields are platform-required (only `description` recommended); the tool field is `allowed-tools` (space-delimited), NOT `tools`. skills-lock.json and .mcp.json are Vercel skills.sh / MCP artifacts, NOT Anthropic conventions — do not cargo-cult basic-memory's mirror tree. Use a `diarie-*` name prefix regardless (cheap; load-bearing if ever shipped as plain skills). Frozen-plugin hazard applies (a shipped skill loads from cache and can drift from the repo). Canonical ast-grep repo is ast-grep/claude-skill; agent-skill is a mirror"
+    description: >-
+      A full plan for this was drafted and CUT to this bead after three review agents (architecture,
+      packaging-research, adversarial) converged: it deferred BUILDING but not DECIDING, and the
+      deciding is the perishable part — locked against a private, unpublished, pre-1.0 CLI whose
+      command surface can still move. The durable value (the boundary test, the coupling result, the
+      one-journey constraint, the two open forks) is captured here; nothing is built until diarie ships.
+
+
+      The original coupling table measured the WRONG axis — it counted vp-beads-methodology coupling and
+      was blind to bd-coupling, which is why migrate-tracker looked diarie-native when it is bd-shaped
+      and paired with deintegrate-beads.
+    updated: '2026-07-15'
