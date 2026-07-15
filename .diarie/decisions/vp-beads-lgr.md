@@ -1,0 +1,59 @@
+---
+id: vp-beads-lgr
+title: The `ledger` gets its own focused repository (a substrate peer to diarie)
+status: pending
+type: decision
+priority: medium
+updated: '2026-07-15'
+---
+
+## Decision
+
+The unified **`ledger`** — the one multi-mode skill merging `upstream-tracker` + `synergy-tracker` +
+`vendor-sync` + `sibling-sync`, plus its `.ledger/` store — gets **its own focused repository**, a
+substrate peer to `diarie`. It does **not** fold into `vp-knowledge`, and it is **not** a residual
+`vp-beads` module.
+
+This resolves the one open question the repackaging left (`DESIGN-constellation-repackaging.md`,
+`DESIGN-ledger-skill.md`): the topic-vs-substrate tension is decided **in topic's favour**.
+
+**`"ledger"` is a working/concept name only.** The actual repo/tool name is an **undecided
+sub-decision** — "ledger" is generic and near-certainly npm-taken, the same name-gate `diarie` dodged
+with a distinctive word. Do not treat "ledger" as committed.
+
+## Rationale
+
+- **It mirrors `diarie` exactly.** `diarie` extracted the *tracker* substrate into a focused repo (a
+  tool + a store + a skill). `ledger` extracts the *relationships* substrate the same way (the skill +
+  the `.ledger/` store + optionally, later, a small reader). The precedent is set and clean.
+- **A focused repo is what OWNS the shared core.** The cluster is coherent by *topic* (relationships)
+  but fractures by *operation* (the trackers are capture → knowledge; `vendor-sync` is git-mechanics;
+  `sibling-sync` is cross-repo reconciliation). What holds it together is the shared store + the shared
+  conventions (file naming, the two registries, the Basic-Memory section-ownership map, staleness
+  thresholds) — and a focused repo is exactly the thing that owns those cleanly. Folding into
+  `vp-knowledge` would scatter the operations and bury a distinct concern.
+- **Size.** `vp-knowledge` is already ~16 skills + 4 agents; absorbing the ledger (even as one merged
+  skill) is a weight it does not need.
+- **First-class concern.** "Cross-project relationships" earns a home of its own rather than a corner
+  of the knowledge plugin — a peer to the tracker, the knowledge graph, and git.
+
+## Alternatives Considered
+
+- **Fold into `vp-knowledge` (substrate-purity).** `upstream-tracker` is the same *shape* as
+  `package-intel` (capture external-entity facts into the graph). Rejected: it scatters the
+  operation-fractured cluster, buries a distinct topic, and bloats an already-large plugin.
+- **Keep in `vp-beads`.** Moot — `vp-beads` dissolves; there is no residual sprint plugin.
+
+## Affects
+
+- **Completes the dissolution:** with `ledger` in its own repo and `vp-swarm` standalone, **there is
+  no residual `vp-beads` package at all.** The constellation becomes: `diarie` (tracker + adoption),
+  the ledger repo (relationships), `vp-swarm` (orchestration), `vp-knowledge` (absorbs
+  `retrospective`), `vp-git`.
+- **Two deferred sub-decisions**, both downstream of the extraction: **(1) the name** (undecided —
+  see above); **(2) skill-only vs. a small reader** — a focused repo makes a reader natural, but YAGNI
+  holds at ~7 ledger files, so it starts skill-only and grows one only if it earns it.
+- **Timing:** downstream of the diarie extraction; recorded now to resolve the open question so nobody
+  re-litigates the home or quietly folds the ledger into `vp-knowledge`.
+- Updates the resolved open-question sections in `DESIGN-constellation-repackaging.md` and
+  `DESIGN-ledger-skill.md`.

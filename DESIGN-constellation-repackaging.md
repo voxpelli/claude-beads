@@ -87,9 +87,9 @@ share a vocabulary (`UPSTREAM-*.md`, `SYNERGY-*.md`, registries in `.claude/*.js
 each other (sibling-sync's own description defers writes to `/synergy-tracker` and `/upstream-tracker`).
 They collapse into **one multi-mode `ledger` skill**.
 
-Its internal design is out of scope here — it gets its own companion doc, `DESIGN-ledger-skill.md`
-(to be written). Its **home** is the one genuinely-open decision in this repackaging; see
-*"The one open decision"* below.
+Its internal design is out of scope here — it gets its own companion doc, `DESIGN-ledger-skill.md`.
+Its **home is decided**: its own focused repository, a substrate peer to `diarie` (`vp-beads-lgr`,
+2026-07-15); see *"The `ledger` home"* below for the reasoning.
 
 ### 2. `retrospective` → merges into `vp-knowledge`'s `session-reflect`
 
@@ -189,23 +189,42 @@ Walk the table and count what is left that is *uniquely* `vp-beads`:
 
 The residue is **two things, not one: the `ledger` skill AND `vp-swarm`.** `vp-swarm` is settled — a
 standalone, substrate-agnostic package with a sharp trigger, exactly the shape the siblings already
-have. So the only genuinely-open ending is what becomes of `ledger`:
+have. And `ledger`'s ending is now settled too:
 
-- **(i)** `ledger` becomes its own package (renamed — the "beads" fossil goes regardless), leaving the
-  constellation with `vp-swarm` + `ledger` where `vp-beads` used to be, or
-- **(ii)** `ledger` folds into `vp-knowledge`, leaving `vp-swarm` as the sole standalone residual.
+- **`ledger` gets its own focused repository** (`vp-beads-lgr`, 2026-07-15) — a substrate peer to
+  `diarie`, not a fold into `vp-knowledge`. So the constellation gains a fourth substrate-repo where
+  `vp-beads` used to be. (`"ledger"` is the **working/concept name only** — the actual repo/tool name
+  is undecided, a deferred sub-decision, the same name-gate `diarie` faced.)
 
-Either way **there is no residual sprint plugin** — `vp-swarm` is an orchestration package, not a
+**There is no residual sprint plugin** — `vp-swarm` is an orchestration package, not a
 sprint-process package, and it forces nothing. The "sprint loop" that `vp-beads`'s CLAUDE.md
 diagrams (`### Sprint workflow cycle`) was a *narrative* holding unrelated substrate-work together;
 `vp-beads-dep` already calls it *"the fake coherence of vp-beads"*. Dissolution is what removing the
 narrative looks like once you stop propping it up.
 
-## The one open decision — where does `ledger` live?
+## The `ledger` home — DECIDED: its own focused repository (`vp-beads-lgr`, 2026-07-15)
 
-Present both sides honestly; this document does **not** force it.
+**Resolved in favour of (a): `ledger` gets its own focused repository** — a substrate peer to
+`diarie`, not a module inside `vp-knowledge`. The reasoning below is preserved as the rationale, not
+as an open question.
 
-**(a) Its own package (topic-coherence).** *"Relationships between projects and their upstreams"* is a
+The deciding frame: `diarie` extracted the *tracker* substrate into its own focused repo (a tool + a
+store + a skill); `ledger` extracts the *relationships* substrate the same way (the `ledger` skill +
+the `.ledger/` store + optionally, later, a small reader). That makes "cross-project relationships" a
+first-class concern with its own home rather than a corner of the knowledge plugin — and a focused repo
+is exactly what cleanly *owns* the shared store and conventions that hold the operation-fractured
+cluster together (see the fracture table below). It also settles the size tension against folding into
+an already-16-skill `vp-knowledge`. Two sub-decisions follow and are deferred to the extraction:
+**(1)** the name — "ledger" is generic and near-certainly taken on npm, the same name-gate `diarie`
+dodged with a distinctive word; **(2)** skill-only vs. a small reader — a focused repo makes a reader
+natural, but YAGNI holds at ~7 files, so it starts skill-only.
+
+The consequence: **there is no residual `vp-beads` package at all** — the two residuals (`ledger`,
+`vp-swarm`) each become their own focused thing.
+
+### The reasoning (preserved)
+
+**(a) Its own package (topic-coherence). — CHOSEN.** *"Relationships between projects and their upstreams"* is a
 distinct, nameable topic with a **sharp trigger** — the same property that makes `vp-git` and
 `vp-astgrep` clean. The four skills already form a coherent cluster by subject (`UPSTREAM-*.md` +
 `SYNERGY-*.md` + the registries), and a standalone package keeps that cluster *one unit* with one
@@ -287,6 +306,40 @@ voxpelli-personal vp-plugins infra."* The same logic applies to `ledger` if it b
 it is pure-skill, so it *can* be runtime-neutral — the choice is deliberate and **not cheaply
 reversible** (it is a public install-API commitment), which is exactly how `vp-beads-ski` frames it.
 
+## Design invariant: cross-project awareness is a substrate property
+
+Splitting the skills across focused repos makes one thing a first-class contract that was implicit
+while everything lived in one plugin: **a skill's cross-project awareness is inherited from its
+substrate, and it must behave accordingly.** The substrate axis that organizes the packages also
+tells each skill how far its reach is:
+
+- **Local substrates — per-repo.** `diarie` (the store *is* the repo) and `git` are single-project. A
+  skill operating here is aware of *this* repo only, and must not reach across repos. This is
+  deliberate: it is what keeps `diarie` a clean, publishable tracker that knows nothing about
+  siblings.
+- **Cross-project substrates — constellation-shared.** The Basic-Memory graph, Raindrop, and the
+  **`ledger`** are shared across every repo in the constellation. A skill that reads or writes here is
+  cross-project **by default**, and owes four things:
+  1. **Generalize what it writes.** No repo-local paths, table names, or project-specific detail in a
+     shared store — the Basic-Memory note-quality rule (*"notes must be generalizable engineering
+     knowledge — no project-specific file paths"*, CLAUDE.md `## Basic Memory`) is one instance of
+     this invariant, not a BM-only quirk.
+  2. **Discover siblings, don't assume one repo.** Sibling projects are declared in
+     `.claude/synergy-registry.json` / `.claude/vendor-registry.json` (+ their `.local.json`
+     overrides); a cross-project skill resolves them rather than hard-coding a single project.
+  3. **Respect the privacy boundary.** A private relationship (`PRIVATE-SYNERGY-*`, a private sibling
+     registered only in `.local.json`) must never leak into a committed or promoted shared surface.
+     Cross-project reach and privacy are the same concern seen from two sides.
+  4. **Know its writes are read elsewhere.** State promoted to the graph or the `ledger` is
+     constellation-visible; a skill must write as if a *different* project will read it next, because
+     one will.
+
+The **`ledger` is the purest embodiment** — its entire subject is the relationships *between* repos —
+which is another argument for its own focused repo (`vp-beads-lgr`): a package whose whole job is
+cross-project awareness should not be a guest inside a single-substrate plugin. And the **corollary is
+the boundary that keeps `diarie` clean**: cross-project state lives in the `ledger` and the graph,
+**never in the tracker**. The tracker stays local; the ledger and the graph carry the constellation.
+
 ## Usage evidence (grounds the retirements and marks the load-bearing skills)
 
 Measured from disk and git history in this repo, 2026-07-15:
@@ -309,9 +362,12 @@ because it is unused.
 
 ## What is NOT decided — open seams and honest costs
 
-- **The `ledger` home** (its own package vs fold into `vp-knowledge`) — *the* open decision. Depends
-  on the topic-vs-operation fracture above, and on a size judgement about `vp-knowledge`. Resolved
-  only once `DESIGN-ledger-skill.md` exists.
+- **The `ledger` home** — ~~its own package vs fold into `vp-knowledge`~~ **DECIDED (`vp-beads-lgr`,
+  2026-07-15): its own focused repository**, a substrate peer to `diarie`. What remains open is
+  *downstream* of that: **(1) the name** — `"ledger"` is a working name only; the real repo/tool name
+  is undecided (generic + likely npm-taken, the diarie name-gate again); **(2) skill-only vs. a small
+  reader** — a focused repo makes a reader natural, but YAGNI holds at ~7 files, so it starts
+  skill-only.
 - **`vendor-sync` toward `vp-git`.** If `ledger` scatters by operation, `vendor-sync` (git-subtree
   mechanics) is a closer fit to `vp-git` than to a relationships package. Whether it moves there, or
   stays a `ledger` mode, or becomes a `vp-git` skill that `ledger` *calls*, is unlit. It also touches

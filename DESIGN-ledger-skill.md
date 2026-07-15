@@ -13,7 +13,14 @@
 ## Status
 
 **Concept, not committed.** This captures a design idea from conversation and
-grounds it in the four skills as they ship today. Nothing here is built. The
+grounds it in the four skills as they ship today. Nothing here is built.
+
+**Home decided (`vp-beads-lgr`, 2026-07-15): its own focused repository** — a
+substrate peer to `diarie`, not a fold into `vp-knowledge` (see
+`DESIGN-constellation-repackaging.md`). Note `"ledger"` throughout this doc is a
+**working/concept name** for the skill and the store; the actual repo/tool name is
+an undecided sub-decision (generic + likely npm-taken — the same name-gate `diarie`
+dodged). Read every `ledger` here as "the relationship-ledger thing, name TBD". The
 companion storage-layout question (moving the top-level `UPSTREAM-*.md` /
 `SYNERGY-*.md` files into a dotted `.ledger/` store) is deliberately **out of
 scope** — that is `DESIGN-tracking-surfaces.md`'s subject (not yet written);
