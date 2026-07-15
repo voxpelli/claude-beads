@@ -740,7 +740,7 @@ tasks:
     updated: '2026-07-11'
   - id: vp-beads-vcb
     title: 'check:prose-commands — verify every command the plugin tells agents to run actually exists'
-    status: pending
+    status: completed
     type: task
     priority: high
     labels:

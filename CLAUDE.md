@@ -778,6 +778,34 @@ So on a substrate swap, grep **both**: the commands (`ready-walker`, `--format j
 values (`priority: [0-9]`, `status: closed`, every retired enum member). The commands are what
 the sweep sees; the values are what it misses.
 
+### check:prose-commands — the prose is now checked (vp-beads-vcb)
+
+This plugin is mostly prose, and its prose is executable instructions; nothing verified those
+commands exist, so Sprint 16 shipped a dead one into every session (`node
+scripts/ready-walker.mjs`, deleted two commits earlier) green the whole way.
+`scripts/check-prose-commands.mjs` (`check:prose-commands`) closes that gap: it pulls every
+`diarie <sub> [--flags]` and `node <path>` invocation out of the five prose surfaces (`hooks/`,
+`skills/`, `agents/`, `CLAUDE.md`, `README.md` — **not** `scripts/`) and resolves each against the
+**real binary** — subcommands from `diarie --help`, flags from `diarie <sub> --help`. There is no
+hardcoded flag table; a second model of the CLI is the exact failure this check exists to prevent.
+
+**Imperative vs mention** is the hard half, and three rules do it: (1) *span-atomicity* — each inline
+code span and each fenced/heredoc command line is one atomic candidate, so `` (`ready-walker`,
+`--format json`) `` is two spans, the `ready-walker` one bare; (2) *first-token executable* — in
+`git grep ready-walker` the executable is `git`, so `ready-walker` is an argument, not an invocation;
+(3) *exact-token* — `check-ready-walker` ≠ `ready-walker`. A bare executable is a noun and is skipped.
+That is what keeps the dozen descriptive `ready-walker` / `validate-tasks` mentions green.
+
+**Escape hatch:** a line carrying the marker `prose-cmd-ignore` has its candidates skipped — for a
+lesson that must quote a literal broken command (`skills/migrate-tracker/SKILL.md` does). It is the
+eslint-disable pressure valve, greppable, so a real teaching example never forces the check off.
+
+**Self-test first:** a prose-check that classifies everything as a mention would scan, find nothing,
+and pass — inert and green, this repo's signature failure. So it reproduces a frozen ground-truth of
+synthetic reds *and* greens before it is trusted on the corpus; if it cannot go red on a planted
+fossil it fails before scanning. `migrate`'s hand-written help is read like any other; `vp-beads-mig`'s
+USAGE⇔parser test is what keeps that help honest for the oracle to trust.
+
 ### ast-grep structural lint
 
 **TWO configs, on purpose.** The root's `sgconfig.yml` → `.ast-grep/` guards the **plugin**

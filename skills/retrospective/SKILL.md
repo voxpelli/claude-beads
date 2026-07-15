@@ -276,9 +276,9 @@ Render in the RETRO file as:
 ### Health audit
 
 - **Integrity (`validate-tasks`):** {N} findings — {top items, or "clean"}
-- **Lifecycle (`ready-walker --stale --days 30`):** {N} stale tasks — {top items, or "clean"}
+- **Lifecycle (`diarie stats --stale --days 30`):** {N} stale tasks — {top items, or "clean"}
 - **Stats (`diarie stats`):** {total / pending / in_progress / closed / ready / blocked counts}
-- **Blocked review (`ready-walker --blocked`):** {list blocked tasks; for each, flag any blocker whose status is currently `closed` — edit the row's `deps:` and re-run `ready-walker` to re-evaluate readiness}
+- **Blocked review (`diarie ready --blocked`):** {list blocked tasks; for each, flag any blocker whose status is currently `closed` — edit the row's `deps:` and re-run `diarie ready` to re-evaluate readiness}
 ```
 
 **Basic Memory graph health** (via Basic Memory MCP tools):

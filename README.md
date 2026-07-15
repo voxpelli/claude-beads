@@ -66,7 +66,7 @@ Reads git history, open upstream tracking files, and your current conversation t
 
 Produces `RETRO-NN.md` covering what went well, what could improve, upstream observations, and lessons learned. Appends new tasks to `.diarie/tasks/` from findings, writes generalizable learnings to Basic Memory, and suggests documentation updates.
 
-On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, tracker hygiene (`diarie ready --stats`, stale `in_progress` items, blocked tasks, `diarie validate`), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
+On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, tracker hygiene (`diarie stats`, stale `in_progress` items, blocked tasks, `diarie validate`), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
 
 ### `/backlog-groomer` — Backlog triage and research
 

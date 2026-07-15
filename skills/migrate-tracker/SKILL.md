@@ -262,7 +262,7 @@ mis-projection.
    **Only document flags that exist.** Run each command you are about to write into the
    target's `CLAUDE.md` — `diarie ready --blocked`, `diarie stats --stale --days 30`, and
    so on — and confirm it does not error. vp-beads' own `CLAUDE.md` told agents to run
-   `diarie ready --stats` and `diarie ready --stale` for weeks; **neither flag exists**
+   `diarie ready --stats` and `diarie ready --stale` for weeks; **neither flag exists** <!-- prose-cmd-ignore: this lesson quotes the retired flags on purpose -->
    (they belong to `stats`). Prose is not checked by anything, so an invented flag survives
    indefinitely and fails silently in someone else's session.
 
