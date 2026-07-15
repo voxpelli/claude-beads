@@ -227,7 +227,7 @@ drifted, check if Extraction Candidates with `Readiness: ready` have been acted
 on, and review whether `adopt-theirs` Divergences have been adopted.
 
 **Tracker health:** Run the flat-YAML tracker's health vocabulary —
-`validate-tasks` (integrity gate) plus `diarie stats` /
+`diarie validate` (integrity gate) plus `diarie stats` /
 `--stale` / `--blocked` (counts, lifecycle, and blocked review). Surface
 counts plus the top 3–5 affected items per check in the generated
 `RETRO-NN.md` under a `### Health audit` subsection.
@@ -239,7 +239,7 @@ and the Basic Memory graph health below are tracker-independent and still run.
 
 ```bash
 diarie validate                    # Integrity: schema/dep-graph/reference integrity across tasks-*.yml
-diarie stats      # Counts: total / pending / in_progress / closed / ready / blocked
+diarie stats      # Counts: total / pending / in_progress / completed / ready / blocked
 diarie stats --stale --days 30  # Lifecycle: tasks with no recent activity
 diarie ready --blocked    # Blocked review: tasks whose deps are unmet
 ```
@@ -275,10 +275,10 @@ Render in the RETRO file as:
 ```markdown
 ### Health audit
 
-- **Integrity (`validate-tasks`):** {N} findings — {top items, or "clean"}
+- **Integrity (`diarie validate`):** {N} findings — {top items, or "clean"}
 - **Lifecycle (`diarie stats --stale --days 30`):** {N} stale tasks — {top items, or "clean"}
-- **Stats (`diarie stats`):** {total / pending / in_progress / closed / ready / blocked counts}
-- **Blocked review (`diarie ready --blocked`):** {list blocked tasks; for each, flag any blocker whose status is currently `closed` — edit the row's `deps:` and re-run `diarie ready` to re-evaluate readiness}
+- **Stats (`diarie stats`):** {total / pending / in_progress / completed / ready / blocked counts}
+- **Blocked review (`diarie ready --blocked`):** {list blocked tasks; for each, flag any blocker whose status is currently `completed` — edit the row's `deps:` and re-run `diarie ready` to re-evaluate readiness}
 ```
 
 **Basic Memory graph health** (via Basic Memory MCP tools):

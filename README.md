@@ -152,7 +152,7 @@ For projects still on beads. **beads 1.1.0's schema-migration gate panics on eve
 - **Detect and assess** — confirm bd is present and readable; census live vs closed issues; warn when `.beads/` is gitignored (meaning no bd history is in git today)
 - **Export and archive** — freeze the full `bd export` snapshot to `.diarie/_archive/bd-final-export.jsonl`, the only git-tracked survivor
 - **Migrate** — dry-run into a scratch root first; collapse bd's 9 issue types to 4 (framings ride in `labels:`); extract `## Acceptance Criteria`; drop edges to closed issues rather than dangle them, and report every one
-- **Verify** — `validate-tasks` plus a **dual-run** against `bd ready`. Exactly one divergence is expected (bd's ready-walk is type-blind and lists `decision`s as workable); anything else is a migration bug
+- **Verify** — `diarie validate` plus a **dual-run** against `bd ready`. Exactly one divergence is expected (bd's ready-walk is type-blind and lists `decision`s as workable); anything else is a migration bug
 - **Cut over** — retarget the project's own `CLAUDE.md`/`AGENTS.md` off bd; leave `.beads/` on disk as a frozen archive
 
 Writes are plain `Edit`/`Write` on the YAML afterwards — there is no CRUD helper, by design.
