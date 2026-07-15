@@ -35,6 +35,13 @@ const result = spawnSync('ast-grep', ['scan', '--inspect', 'entity'], { encoding
 process.stdout.write(result.stdout ?? '')
 process.stderr.write(result.stderr ?? '')
 
+// A spawn failure (ast-grep not on PATH, etc.) leaves status=null and stderr=null — surface the cause
+// instead of a bare exit-1 with no message. The comment below already anticipated this case.
+if (result.error) {
+  process.stderr.write(`check:ast-grep floor: could not run ast-grep — ${result.error.message}\n`)
+  process.exit(1)
+}
+
 // A real lint violation (or ast-grep itself failing to run) fails regardless of the floor.
 if (result.status !== 0) {
   process.exit(1)
