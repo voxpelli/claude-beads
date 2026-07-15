@@ -1149,7 +1149,7 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-flr
     title: 'diarie''s bare ast-grep scan can go blind via one .gitignore line — assert a coverage floor'
-    status: pending
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dia

@@ -856,7 +856,10 @@ It took building the extracted tree to see it, which is the whole argument for `
 
 **The bound is MOVED, not removed** — a bare scan can still go blind, it just goes blind via a
 git file instead of a path list. One broad `.gitignore` entry (`lib/generated/`, `dist/`) shrinks
-lint coverage silently. `vp-beads-flr` files the floor assertion that would make that detectable.
+lint coverage silently. `vp-beads-flr` closed this: diarie's `check:ast-grep` is now
+`scripts/check-ast-grep-floor.js`, which reads `scannedFileCount` off `ast-grep scan --inspect
+entity` and fails below a floor (25 of ~30 files). It goes RED, not green-and-empty, when a broad
+ignore blinds the scan — proven by appending `lib/**` and watching the count drop to 9.
 
 **A rule at `severity: warning` cannot fail the build** — `ast-grep scan` exits 0 on
 warnings-only. `no-jsdoc-any-type`, `no-jsdoc-object-typedef` and `no-jq-raw-interpolation` are
