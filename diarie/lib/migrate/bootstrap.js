@@ -71,6 +71,7 @@ import {
 import { isStringArray } from '@voxpelli/typed-utils'
 import yaml from 'js-yaml'
 
+import { InputError } from '../utils/errors.js'
 import {
   isNil, TRACKER_DIR, VALID_STATUSES, VALID_TYPES,
 } from '../schema.js'
@@ -80,6 +81,59 @@ import {
 
 /** A slug becomes a `tasks-<slug>.yml` filename — keep it filesystem-plain. */
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/
+
+/**
+ * The flags `runMigration` accepts, in ONE place — the parser reads it AND the USAGE-parity
+ * test asserts against it, so the two cannot drift (a hand-copied usage string already had).
+ *
+ * `json` governs ERROR shape only: on failure, `cli.js`'s boundary emits the InputError as JSON
+ * on stdout. A SUCCESSFUL migrate always prints its human progress report — there is no
+ * machine-readable success payload, because a bootstrap's output is a report, not a queryable result.
+ *
+ * An EXPLICIT literal type, NOT the wide `ParseArgsConfig['options']`: the wide type is an index
+ * signature, which erases the per-key names (`values.root` would fail TS4111) and widens every value
+ * to `string | boolean | ... | undefined`. Spelling the keys out — with literal `'string'` and
+ * `multiple: true` — is what lets parseArgs infer `values.epic` as `string[]`, `values.root` as
+ * `string`, etc., exactly as the old inline literal did. (`@type {const}` is unsupported in this
+ * tsc, and `@satisfies` re-widens `multiple: true` to `boolean` via its contextual type.)
+ *
+ * @type {{
+ *   root: { type: 'string' },
+ *   epic: { type: 'string', multiple: true, default: string[] },
+ *   'default-slug': { type: 'string', default: string },
+ *   title: { type: 'string', multiple: true, default: string[] },
+ *   force: { type: 'boolean', default: boolean },
+ *   json: { type: 'boolean' },
+ * }}
+ */
+export const MIGRATE_OPTIONS = {
+  root: { type: 'string' },
+  epic: { type: 'string', multiple: true, 'default': [] },
+  'default-slug': { type: 'string', 'default': 'backlog' },
+  title: { type: 'string', multiple: true, 'default': [] },
+  force: { type: 'boolean', 'default': false },
+  json: { type: 'boolean' },
+}
+
+/**
+ * The one canonical usage string. Lives here, beside the parser it describes — NOT in
+ * `commands/migrate.js`, which imports it: that module already imports `runMigration` from here,
+ * so the reverse dependency would be a cycle. Every flag listed below is a key of MIGRATE_OPTIONS,
+ * enforced by a test.
+ */
+export const USAGE = `Usage: diarie migrate <bd-export.jsonl> [options]
+
+  --root <dir>            project root to write into (default: the current directory)
+  --epic <id>=<slug>      route an epic + its descendants to tasks-<slug>.yml (repeatable)
+  --default-slug <slug>   everything else (default: backlog)
+  --title <slug>=<title>  meta.title for a slug (repeatable)
+  --force                 overwrite an existing task store (destroys hand-edits)
+  --json                  emit errors as JSON on stdout (success output stays human-readable)
+
+Get the input with:  bd export -o /tmp/bd-export.jsonl
+
+This is a BOOTSTRAP, not a sync. It runs once; afterwards the store is hand-edited
+like any other file. An existing store is a hard stop unless you pass --force.`
 
 /**
  * Undo bd's create-time escaping artifact: some issue bodies store a literal
@@ -333,8 +387,7 @@ function parsePairs (pairs, flag) {
   for (const pair of pairs) {
     const at = pair.indexOf('=')
     if (at < 1 || at === pair.length - 1) {
-      stderr.write(`--${flag} expects <key>=<value>, got: ${pair}\n`)
-      exit(1)
+      throw new InputError(`--${flag} expects <key>=<value>, got: ${pair}`, USAGE, 'EUSAGE')
     }
     map.set(pair.slice(0, at), pair.slice(at + 1))
   }
@@ -355,29 +408,23 @@ function parsePairs (pairs, flag) {
  * @returns {Promise<void>}
  */
 export async function runMigration (args) {
-  const { positionals, values } = parseArgs({
-    args,
-    allowPositionals: true,
-    options: {
-      root: { type: 'string' },
-      epic: { type: 'string', multiple: true, 'default': [] },
-      'default-slug': { type: 'string', 'default': 'backlog' },
-      title: { type: 'string', multiple: true, 'default': [] },
-      force: { type: 'boolean', 'default': false },
-    },
-  })
+  // parseArgs is strict: an unknown flag throws ERR_PARSE_ARGS_UNKNOWN_OPTION. That is a user
+  // mistake, not a bug, so re-throw it as an InputError — otherwise it sails into cli.js's
+  // "genuinely unexpected" branch and is answered with a stack trace, the exact defect this row fixes.
+  let positionals, values
+  try {
+    ({ positionals, values } = parseArgs({ args, allowPositionals: true, options: MIGRATE_OPTIONS }))
+  } catch (cause) {
+    throw new InputError(
+      cause instanceof Error ? cause.message : 'bad migrate arguments',
+      USAGE, 'EUSAGE',
+      { cause: cause instanceof Error ? cause : undefined }
+    )
+  }
 
   const [inputPath] = positionals
   if (!inputPath) {
-    stderr.write(
-      'usage: node diarie/cli.js migrate <bd-export.jsonl> [options]\n' +
-      '  --root <dir>            project root to write into (default: the current directory)\n' +
-      '  --epic <id>=<slug>      route an epic + its descendants to tasks-<slug>.yml (repeatable)\n' +
-      '  --default-slug <slug>   everything else (default: backlog)\n' +
-      '  --title <slug>=<title>  meta.title for a slug (repeatable)\n' +
-      '  --force                 overwrite an existing task store (destroys hand-edits)\n'
-    )
-    exit(1)
+    throw new InputError('migrate needs a bd export file', USAGE, 'EUSAGE')
   }
 
   // Default to CWD, never to this package's own checkout: the migrator is installed
@@ -397,18 +444,17 @@ export async function runMigration (args) {
   // would let a `tasks-*.yaml` store slip past the guard and be silently clobbered.
   const existing = existsSync(tasksDir) ? readdirSync(tasksDir).filter(f => /^tasks-.+\.ya?ml$/.test(f)) : []
   if (existing.length && !values.force) {
-    stderr.write(
-      `refusing to overwrite an existing task store: ${tasksDir} already holds ${existing.join(', ')}\n` +
+    throw new InputError(
+      `refusing to overwrite an existing task store: ${tasksDir} already holds ${existing.join(', ')}`,
       'This is a one-way bootstrap, not a sync — re-running replays the bd export over any hand-edits\n' +
-      'made since. Pass --force only to redo a botched migration, or --root <dir> to target elsewhere.\n'
+      'made since. Pass --force only to redo a botched migration, or --root <dir> to target elsewhere.',
+      'EEXIST'
     )
-    exit(1)
   }
 
   for (const slug of [...epicSlugs.values(), defaultSlug]) {
     if (!SLUG_RE.test(slug)) {
-      stderr.write(`invalid slug "${slug}" — must match ${SLUG_RE} (it becomes tasks-<slug>.yml)\n`)
-      exit(1)
+      throw new InputError(`invalid slug "${slug}" — must match ${SLUG_RE} (it becomes tasks-<slug>.yml)`, USAGE, 'EUSAGE')
     }
   }
 
@@ -419,7 +465,19 @@ export async function runMigration (args) {
     return relPath
   }
 
-  const raw = readFileSync(inputPath, 'utf8')
+  // Pointing at a file that is not there is the archetypal user mistake — the whole thesis of
+  // this row. readFileSync throws a raw ENOENT, which cli.js can only answer with a stack trace;
+  // convert it to an InputError. A non-ENOENT read failure (permissions, is-a-directory) IS
+  // unexpected enough to keep its stack, so re-throw those untouched.
+  let raw
+  try {
+    raw = readFileSync(inputPath, 'utf8')
+  } catch (cause) {
+    if (cause instanceof Error && /** @type {NodeJS.ErrnoException} */ (cause).code === 'ENOENT') {
+      throw new InputError(`no such bd export file: ${inputPath}`, USAGE, 'EUSAGE', { cause })
+    }
+    throw cause
+  }
   // One checked parse boundary, shared with the spike — see parseBdExport. Before it, the
   // rows were `any`, so `BdIssue` bound to nothing and tsc checked this migrator against
   // a shape it had never actually seen.
@@ -521,15 +579,15 @@ export async function runMigration (args) {
   // The live store being ignored is not a policy question — it means the migration
   // produced nothing durable. Hard stop.
   if (storeIgnored.length) {
-    stderr.write(
-      `\n!!! the migrated task store is GITIGNORED in ${root} — it will not commit:\n` +
-      storeIgnored.map(f => `      ${f}\n`).join('') +
+    throw new InputError(
+      `the migrated task store is GITIGNORED in ${root} — it will not commit`,
+      storeIgnored.map(f => `      ${f}`).join('\n') + '\n' +
       `    ${TRACKER_DIR}/ is dotted but MUST be tracked — it IS the backlog. A negation\n` +
       // `!<dir>/` does NOT work: git will not descend into an excluded directory, so a
       // negation on the dir alone can never re-include the files under it. `/**` can.
-      `    line works: !${TRACKER_DIR}/**\n`
+      `    line works: !${TRACKER_DIR}/**`,
+      'EUSAGE'
     )
-    exit(1)
   }
 
   // The ARCHIVE is a judgment call, and git already knows the answer. Whether the
@@ -567,7 +625,18 @@ export async function runMigration (args) {
   }
 }
 
-// The file stays runnable on its own (the tests spawn it, and it predates the CLI).
+// The file stays runnable on its own (the tests spawn it, and it predates the CLI). It has no
+// cli.js boundary above it, so it needs its own: an InputError is a user mistake and gets its
+// message (never a stack), mirroring cli.js's non-JSON branch. Anything else keeps its stack —
+// that is the honest answer to a genuine bug. `--json` here is cli.js's job, not this legacy entry's.
 if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
-  runMigration(argv.slice(2)).catch(err => { stderr.write(String(err?.stack ?? err) + '\n'); exit(1) })
+  runMigration(argv.slice(2)).catch(err => {
+    if (err instanceof InputError) {
+      stderr.write(`diarie: ${err.message}\n`)
+      if (err.body) stderr.write('\n' + err.body + '\n')
+    } else {
+      stderr.write(String(err?.stack ?? err) + '\n')
+    }
+    exit(1)
+  })
 }

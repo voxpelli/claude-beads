@@ -14,22 +14,9 @@
  */
 
 import { textOut } from '../format.js'
-import { runMigration } from '../migrate/bootstrap.js'
+import { runMigration, USAGE } from '../migrate/bootstrap.js'
 import { TRACKER_DIR } from '../schema.js'
 import { InputError } from '../utils/errors.js'
-
-const USAGE = `Usage: diarie migrate <bd-export.jsonl> [options]
-
-  --root <dir>            project root to write into (default: the current directory)
-  --epic <id>=<slug>      route an epic + its descendants to tasks-<slug>.yml (repeatable)
-  --default-slug <slug>   everything else (default: backlog)
-  --title <slug>=<title>  meta.title for a slug (repeatable)
-  --force                 overwrite an existing task store (destroys hand-edits)
-
-Get the input with:  bd export -o /tmp/bd-export.jsonl
-
-This is a BOOTSTRAP, not a sync. It runs once; afterwards the store is hand-edited
-like any other file. An existing store is a hard stop unless you pass --force.`
 
 /** @type {import('peowly-commands').CliCommand} */
 export const migrate = {

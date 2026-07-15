@@ -1085,7 +1085,7 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-mig
     title: '`migrate` lives OUTSIDE cli.js''s error boundary — every failure bypasses the --json contract'
-    status: pending
+    status: completed
     type: task
     priority: high
     parent: vp-beads-dia
