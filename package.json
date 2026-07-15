@@ -49,7 +49,7 @@
   "scripts": {
     "build": "npm run clean && tsc -p declaration.tsconfig.json",
     "check": "run-p check:*",
-    "check:ast-grep": "ast-grep scan",
+    "check:ast-grep": "node scripts/check-ast-grep-floor.js",
     "check:ast-grep-test": "ast-grep test",
     "check:knip": "knip",
     "check:lint": "eslint",
