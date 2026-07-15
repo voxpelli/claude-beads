@@ -1471,3 +1471,39 @@ tasks:
       was blind to bd-coupling, which is why migrate-tracker looked diarie-native when it is bd-shaped
       and paired with deintegrate-beads.
     updated: '2026-07-15'
+  - id: vp-beads-dlf
+    title: 'retrospective SKILL.md teaches bd''s decision open/closed lifecycle — diarie has neither status'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - "`open` maps cleanly to `pending` (all six real .diarie/decisions/*.md use `status: pending`); the swap of the template's `status: open` (line ~375) is mechanical"
+      - "`closed` (= superseded/reversed, lines ~392-395) has NO clean target among diarie's six statuses — THIS is the design decision to make: add a `superseded_by:` field (keeps status semantics clean), or map superseded -> `cancelled`. Do NOT guess it in a drive-by edit"
+      - "latent today: decisions are excluded from loadTasks's glob, so `diarie validate` does not yet read decision frontmatter — nothing is broken, but the template teaches an invalid vocabulary"
+    description: >-
+      Surfaced by the code review that fixed the task-status `closed` fossils (the commit clearing
+      retrospective/README vocabulary). This is the DECISION-type sibling: the decision-frontmatter
+      template still teaches bd's open/closed scheme. Deferred rather than folded because the
+      superseded-status choice is a diarie schema-philosophy call for whoever owns the decision
+      lifecycle, not a mechanical substitution.
+    updated: '2026-07-15'
+  - id: vp-beads-vgd
+    title: 'automate a vocabulary doc-grep guard — the fossil class check-prose-commands can''t reach'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - "check:prose-commands validates COMMANDS; it cannot catch data-vocabulary fossils by construction — bare-span retired readers (a noun-mention it skips on purpose) and retired ENUM VALUES (`closed` as a status, `priority: [0-9]`) that never sit in command position"
+      - "the process reminder already exists (CLAUDE.md ### Doc-grep the VOCABULARY names `status: closed` / `priority: [0-9]`); this row is about AUTOMATING it as a gate, not documenting it"
+      - "trigger: a THIRD data-vocab fossil surfacing, OR the retrospective -> vp-knowledge session-reflect migration (build the guard into vp-knowledge, not against a dissolving vp-beads skill)"
+    description: >-
+      The review found five task-status/reader fossils that check:prose-commands structurally could
+      not see (bare-span mentions, stripped comments, data values). A guard for that class is real
+      future work but YAGNI right now — deferred with the trigger above so it rides with the next
+      tracker-vocabulary touch rather than being built speculatively against a skill slated for
+      dissolution.
+    updated: '2026-07-15'
