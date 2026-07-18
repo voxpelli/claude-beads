@@ -11,6 +11,7 @@
     "check:hooks": "node scripts/check-hooks.mjs",
     "check:lint": "eslint",
     "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'",
+    "check:md-decisions": "remark '.diarie/decisions/*.md' 'diarie/.diarie/decisions/*.md' --quiet --frail",
     "check:plugin": "node validate-plugin.mjs",
     "check:prose-commands": "node scripts/check-prose-commands.mjs",
     "check:rule-parity": "node scripts/check-rule-parity.mjs",

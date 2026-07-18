@@ -740,3 +740,77 @@ tasks:
       highlights have jobs). This row makes the running CLI honour that contract in its
       human-facing output, without ever colouring machine-facing (`--json`) content.
     updated: '2026-07-18'
+  - id: diarie-dlm
+    title: diarie should lint decision files natively (frontmatter + markdown) so the gate travels
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - feature
+    acceptance_criteria:
+      - "validate `.diarie/decisions/*.md` frontmatter against the schema (id/title/status/type/priority/updated; VALID_STATUSES/VALID_TYPES) — `diarie validate` currently reads ONLY `tasks-*.yml`, so a malformed decision file ships unchecked"
+      - "the check lives IN the CLI (extend `diarie validate` to read decisions, or a new `diarie lint`) so it TRAVELS with `git subtree split` — retiring the root `check:md-decisions` stopgap, a bolt-on remark run that does NOT travel (the vp-beads-asg extraction hazard)"
+      - "markdown-body linting is secondary; the load-bearing gap is decision FRONTMATTER validation, which nothing checks today (check:md ignores `.diarie/`; validate skips decisions)"
+      - "settle the decision-status vocabulary first (vp-beads-dlf, root store) — a decision-lint that enforces a status enum must agree on what that enum is"
+      - "breadth: cover id-uniqueness ACROSS tasks+decisions (a decision `id` can silently collide with a task-row `id`) and dep/parent RESOLUTION in decision frontmatter — a hand-edited decision can carry a dangling `deps`/`parent` or invalid `status`/`type` that validate never opens the file to see, not just enum membership"
+    description: >-
+      Decision files (`.diarie/decisions/*.md`) are validated by NOTHING today: `check:md`
+      ignores `.diarie/`, and `diarie validate` globs only `tasks-*.yml`. A root
+      `check:md-decisions` (remark over both stores' decision markdown) is the stopgap set up
+      2026-07-18; it lints the BODY but not the frontmatter schema, and being a root bolt-on it
+      does not survive extraction. Move the check into the CLI so it travels and covers frontmatter.
+    updated: '2026-07-18'
+  - id: diarie-rdr
+    title: The loader DROPS title/agent/updated/description silently — violates the reader-drops-must-report convention
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - "store.js narrows a non-string `title`/`agent`/`updated`/`description` to `undefined` with NO warning — unlike `priority`/`type`/`labels`, which call `reject()` and report. Every drop must REPORT and name the consequence, per CLAUDE.md `### Reader conventions`"
+      - "`title: 42` currently PASSES `diarie validate` (validate.js checks only nil/empty, not type) yet renders empty everywhere via the loader's silent drop — the two paths disagree and neither reports; a required-field TYPE check belongs in validate too"
+      - "an unrecognized/mistyped key (`descrption`, `titel`) is silent data loss — decide whether the loader/validator warns on unknown keys (schema.js:36-38 already anticipates the allowlist, incl. the `description` exemption)"
+      - "add fixtures with a non-string title/agent/updated and a typo'd key; prove each now warns (mutation-verified)"
+    description: >-
+      A guard that rejects a value must also report it (CLAUDE.md `### Reader conventions`).
+      store.js does this for priority/type/labels/acceptance_criteria (reject()+warn) but NOT
+      for title/agent/updated/description — they drop to undefined silently. Worst case: a
+      required `title` that is a number passes validate and renders empty, with no diagnostic.
+      Surfaced by a 2026-07-18 coverage audit (explorer fan-out).
+    updated: '2026-07-18'
+  - id: diarie-lbl
+    title: labels values are unvalidated — a typo'd `epic` re-arms the vp-beads-epc container bug
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - "`labels` SHAPE (list of strings) is checked, but VALUES are free text — nothing validates against the framing vocabulary (bug/feature/chore/story/spike) or the load-bearing literal `epic` that ready.js string-matches for container-exclusion"
+      - "a typo (`epics`, `Epic`, `epic ` with a trailing space) silently defeats the epic-exclusion rule → an epic is offered as ready work again, the EXACT bug vp-beads-epc fixed"
+      - "decide: warn on unknown label values (advisory — labels are open-vocabulary) OR hard-check/normalize the `epic` literal specifically; add a fixture with a mistyped epic label and prove it's caught"
+    description: >-
+      ready.js string-matches the literal `epic` label for container-exclusion, but the label
+      VALUE is never validated, so a near-miss silently re-arms the "epic offered as ready
+      work" bug (vp-beads-epc). Distinct from diarie-rdr — this is a validate-side value-
+      vocabulary gap, not a loader silent-drop. Surfaced by the 2026-07-18 coverage audit.
+    updated: '2026-07-18'
+  - id: diarie-typ
+    title: Type-model edges unvalidated — doc-type vestigial, milestone unconstrained, meta block dead, doc/decision rows unflagged
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - chore
+    acceptance_criteria:
+      - "`doc` type + `.diarie/docs/` is VESTIGIAL: init never creates docs/, nothing writes or reads it — decide PRUNE (drop `doc` from the model) or BUILD (init creates docs/, a reader validates it). vp-beads-etm already notes doc/milestone are fixture-only, never validated against real data"
+      - "`milestone` has no type-specific validation — the model says 'no effort, no assignment' (schema.js) yet a milestone row can carry agent/priority/acceptance_criteria with no warning; decide whether to enforce"
+      - "the `meta:` block (slug/title) is WRITTEN by the migrator and READ by nothing (store.js/validate discard `doc['meta']`) — dead data that can silently diverge from the filename slug; validate it or drop writing it"
+      - "a `type: doc`/`type: decision` ROW placed directly in tasks-*.yml is not flagged as a model violation (schema.js:50 says they must not live as rows) — silently excluded from ready with no diagnostic; decide whether validate should reject it"
+    description: >-
+      Four adjacent type-model coverage edges, all silent, surfaced by the 2026-07-18 audit:
+      doc-type vestigial, milestone unconstrained, meta block dead data, mis-placed doc/decision
+      row unflagged. Consolidated because they are all "the type model defines something the
+      tooling never enforces" — each needs a prune-or-enforce decision.
+    updated: '2026-07-18'
