@@ -25,31 +25,24 @@ set -euo pipefail
 
 # --- Resolve the `diarie` tracker CLI. ---
 #
-# Four rungs. The last is the only one a real consumer ever reaches: this is the
-# PLUGIN's hook, so it runs inside someone else's project, where `diarie` is not on
-# PATH and there is no `diarie/` in their tree. session-start gets no plugin-root
-# argument, so derive it from $0 (which IS ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh).
+# diarie is an EXTERNAL dependency now: it resolves on PATH (a global install, or npm's
+# node_modules/.bin under `npm run`) or from the consuming project's own node_modules/.bin.
+# There is no vendored in-repo / in-plugin cli.js rung anymore, so the hook needs no plugin root.
 #
 # Callers MUST pass --root "$PWD". `.diarie/` is COMMITTED, so a plugin release ships
 # vp-beads' own backlog inside the marketplace cache; a diarie invoked from the plugin
 # that fell back to walking up from cwd would report OUR tasks as the user's. The CLI
 # now errors (ENOSTORE) rather than inventing an empty backlog, but the right root is
 # still ours to supply.
-_hook_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-_plugin_root=$(dirname -- "$_hook_dir")
-
-# Emits the full `ready` invocation prefix, not just a binary name: the installed CLI
-# takes `ready` as a SUBCOMMAND, and so does the in-repo cli.js. Returning a bare
-# binary name would leave each caller to append it, which is a place to get it wrong.
+# Emits the full `ready` invocation prefix, not just a binary name: the installed CLI takes
+# `ready` as a SUBCOMMAND. Returning a bare binary name would leave each caller to append it,
+# which is a place to get it wrong. diarie is an EXTERNAL dependency now (no vendored in-repo /
+# in-plugin cli.js), so it resolves on PATH or from the project's node_modules/.bin.
 diarie_ready_cmd() {
 	if command -v diarie >/dev/null 2>&1; then
 		echo "diarie ready"
 	elif [ -x "$PWD/node_modules/.bin/diarie" ]; then
 		echo "$PWD/node_modules/.bin/diarie ready"
-	elif [ -f "$PWD/diarie/cli.js" ]; then
-		echo "node $PWD/diarie/cli.js ready"
-	elif [ -f "$_plugin_root/diarie/cli.js" ]; then
-		echo "node $_plugin_root/diarie/cli.js ready"
 	fi
 }
 

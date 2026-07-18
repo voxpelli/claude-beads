@@ -885,9 +885,11 @@ test('sensitive-file: tracked PRIVATE-SYNERGY-*.md private overlay → warned', 
 // vp-beads-hkt — THE POSITIVE TESTS. Every `Tracker:` assertion in this file used to be
 // NEGATIVE (it FAILED if the line appeared), so the suite could detect "announced a tracker that
 // isn't there" and was structurally blind to "failed to announce a tracker that is there" — which
-// is the one that ships. These use a REAL store and the REAL `diarie` CLI (scrubNodeBin removes
-// node_modules/.bin, so the hook falls through to its $PLUGIN_ROOT rung — the rung a real consumer
-// actually reaches), so there is no stub to drift from the CLI.
+// is the one that ships. These use a REAL store and the REAL `diarie` CLI resolved on PATH (under
+// `npm run check`, npm injects node_modules/.bin, where the file:../diarie dependency's `diarie` bin
+// lives), so there is no stub to drift from the CLI. (They used to scrubNodeBin to force the hook
+// down to a vendored $PLUGIN_ROOT/diarie/cli.js rung; diarie is an external dependency now, that rung
+// is gone, and the live rung IS the installed CLI.)
 // ============================================================================
 
 /**
@@ -911,7 +913,7 @@ const DROPPED_STORE = 'tasks:\n  - id: T-1\n    title: ready\n    status: pendin
 test('startup: a HEALTHY store DOES emit a Tracker line (the assertion this suite never had)', () => {
   const dir = makeRealStore(HEALTHY_STORE)
   try {
-    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir, scrubNodeBin: true })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects } = parseJsonObjects(stdout)
     const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
@@ -928,7 +930,7 @@ test('startup: a DROPPED row is ANNOUNCED — the counts are incomplete and the 
   // over a store that had silently lost a live claim. The founding defect, in the session prime.
   const dir = makeRealStore(DROPPED_STORE)
   try {
-    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir, scrubNodeBin: true })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status} — the hook must DEGRADE, never abort` }
     const { objects } = parseJsonObjects(stdout)
     const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
@@ -946,7 +948,7 @@ test('compact: a DROPPED row is ANNOUNCED, and the hook still EXITS 0', () => {
   // worse than the silent claim-loss it replaced. Only running the hook found it. This pins it.
   const dir = makeRealStore(DROPPED_STORE)
   try {
-    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir, scrubNodeBin: true })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status} — errexit aborted the hook; it must degrade quietly` }
     const { objects } = parseJsonObjects(stdout)
     const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
@@ -960,7 +962,7 @@ test('compact: a DROPPED row is ANNOUNCED, and the hook still EXITS 0', () => {
 test('startup: a HEALTHY store is NOT accused of dropping rows', () => {
   const dir = makeRealStore(HEALTHY_STORE)
   try {
-    const { stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir, scrubNodeBin: true })
+    const { stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     const { objects } = parseJsonObjects(stdout)
     const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
     if (/loader complaint|NOT SOUND/.test(ctx)) return { ok: false, reason: `false alarm on a clean store: ${ctx.slice(0, 160)}` }

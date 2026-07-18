@@ -55,10 +55,9 @@ and announce** (never skip silently):
   block in the RETRO file instead of writing a `.diarie/decisions/<id>.md`
   file (see step 5).
 
-`diarie` is resolved the same way the hooks resolve it: on `PATH` if installed, else
-`node_modules/.bin/diarie`, else `node diarie/cli.js` from the project root, else from the
-plugin's own checkout. It is not on npm yet, so in a consumer repo the last rung is the
-live one.
+`diarie` is resolved the same way the hooks resolve it: on `PATH` if installed, else the
+project's `node_modules/.bin/diarie`. It is an external dependency (its own repo, not on npm
+yet), consumed here as a `file:../diarie` dependency.
 
 ### 1. Determine sprint number
 

@@ -634,8 +634,7 @@ those explicitly. Concrete starter snippet for `.claude/settings.local.json`
 when running swarm-wave (add any `mcp__<server>__*` tools a sub-agent must call):
 
 ```json
-"Bash(node diarie/cli.js:*)", "Bash(diarie:*)",
-"Bash(npx:*)", "Bash(gh api:*)", "Bash(brew info:*)"
+"Bash(diarie:*)", "Bash(npx:*)", "Bash(gh api:*)", "Bash(brew info:*)"
 ```
 
 Full details + 5-agent validation trail: BM
@@ -739,8 +738,8 @@ authoritative list is the keys in `package.json`, not this paragraph.
 the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`,
 `check:md` (remark), `check:lint` (eslint), `check:sh` (shellcheck + shfmt),
 `check:ast-grep` + `check:ast-grep-test`, `check:hooks`, `check:beads-probe`, and
-`check:tasks` (`node diarie/cli.js validate` — validating *this repo's own store*, the
-43 `vp-beads-*` rows, not the package). **`check-workspaces` = `npm run check --workspaces
+`check:tasks` (`diarie validate` — validating *this repo's own store* via the installed
+diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces
 --if-present`** delegates to every workspace's OWN aggregate (currently diarie's: lint, tsc,
 type-coverage, knip, ast-grep, tests — and, since diarie now carries its own backlog, a
 `check:tasks` gate over its own `diarie/.diarie/`). The root NEVER validates

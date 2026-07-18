@@ -1,8 +1,0 @@
-id: no-identifier-shadow-call
-language: javascript
-message: >-
-  Local declaration shadows an identically-named call — e.g. `const isAdmin =
-  isAdmin(request)` breaks the file (CLAUDE.md NEVER rule)
-severity: error
-rule:
-  pattern: const $NAME = $NAME($$$ARGS)

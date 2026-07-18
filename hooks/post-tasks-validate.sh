@@ -14,8 +14,6 @@
 # unrelated error surfaces on any edit. That is honest, not a bug.
 set -euo pipefail
 
-PLUGIN_ROOT="${1:-}"
-
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || true)
 [ -n "$FILE_PATH" ] || exit 0
@@ -48,10 +46,6 @@ if command -v diarie >/dev/null 2>&1; then
 	result=$(diarie validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
 elif [ -x "$PROJECT_ROOT/node_modules/.bin/diarie" ]; then
 	result=$("$PROJECT_ROOT/node_modules/.bin/diarie" validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
-elif [ -f "$PROJECT_ROOT/diarie/cli.js" ]; then
-	result=$(node "$PROJECT_ROOT/diarie/cli.js" validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
-elif [ -n "$PLUGIN_ROOT" ] && [ -f "$PLUGIN_ROOT/diarie/cli.js" ]; then
-	result=$(node "$PLUGIN_ROOT/diarie/cli.js" validate --json --root "$PROJECT_ROOT" 2>/dev/null || true)
 fi
 [ -n "$result" ] || exit 0
 

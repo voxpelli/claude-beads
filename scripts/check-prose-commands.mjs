@@ -45,7 +45,11 @@ import {
 } from 'node:fs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const CLI = join(ROOT, 'diarie', 'cli.js')
+// diarie is an EXTERNAL dependency now (file:../diarie), not an in-repo workspace. Invoke it by its
+// declared BIN (node_modules/.bin/diarie) — the package's public interface — not by reaching into its
+// internal cli.js path. This is the exact binary a consumer runs, so the oracle stays honest, and it
+// survives diarie relocating cli.js internally.
+const DIARIE_BIN = join(ROOT, 'node_modules', '.bin', 'diarie')
 
 /** Deleted `.mjs` readers whose names still appear in prose. An imperative use of any is a fossil. */
 const RETIRED = new Set(['ready-walker', 'validate-tasks', 'task-schema'])
@@ -71,7 +75,7 @@ const IGNORE_MARKER = 'prose-cmd-ignore'
  * @returns {string} stdout + stderr of `node cli.js <args>`
  */
 function help (args) {
-  const r = spawnSync('node', [CLI, ...args], { encoding: 'utf8' })
+  const r = spawnSync(DIARIE_BIN, args, { encoding: 'utf8' })
   return (r.stdout ?? '') + (r.stderr ?? '')
 }
 
@@ -303,7 +307,7 @@ function selfTest (oracle) {
     ['valid ready --blocked', 'diarie ready --blocked', false],
     ['valid stats --stale --days', 'diarie stats --stale --days 30', false],
     ['valid ready --filter with value', 'diarie ready --filter pending', false],
-    ['valid node target', 'node diarie/cli.js', false],
+    ['valid node target', 'node validate-plugin.mjs', false],
     ['top-level diarie --help', 'diarie --help', false],
     ['diarie <sub> is a doc placeholder', 'diarie <sub> --help', false],
     // GREEN — mentions a naive grep would mis-flag

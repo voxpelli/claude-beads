@@ -1,0 +1,10 @@
+{
+  "name": "@vp-skills/placeholder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TEMPORARY workspace placeholder — delete when the first real plugin lands (P1.3). It exists so plugins/* resolves to at least one workspace and `npm run check --workspaces --if-present` does not error 'No workspaces found'. Its trivial check keeps the root's check-workspaces delegation live and proven.",
+  "scripts": {
+    "check": "node -e \"process.stdout.write('placeholder workspace: check ok\\n')\""
+  }
+}
