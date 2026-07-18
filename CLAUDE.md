@@ -186,7 +186,10 @@ DECLINED** — its MCP server is another daemon/vendor, and it cannot reproduce
   intentional (Integration Charter citations, and mapping explainers like "the
   files-native `bd ready`").
 - Feature branch `feat/tracker-design-exploration` carries this work (local-only per
-  user choice — don't push without approval).
+  user choice — don't push without approval). **Extracted 2026-07-18:** diarie was
+  `git subtree split --prefix=diarie --rejoin`'d to its own repo
+  [`voxpelli/diarie`](https://github.com/voxpelli/diarie) (its canonical home); the rejoined
+  `diarie/` subtree remains here until diarie publishes. Still unpublished.
 
 ## Work-tracking substrates
 
@@ -556,13 +559,18 @@ plugin supports multiple substrates (see `## Work-tracking substrates`).
 This project tracks its own work in the **flat-YAML substrate**, **not bd** (see
 `## The tracker migration` above; do not use `bd` — its 1.1.0 writes are dead).
 
-**Two stores now exist (pre-extraction).** Root `.diarie/` = this plugin's work
-(`vp-beads-*`); `diarie/.diarie/` = diarie's OWN backlog (the `dia` epic cluster moved off the
-root, plus new `diarie-*` rows), seeded so it travels on `git subtree split
---prefix=diarie`. **Nearest-wins by cwd** — a bare `diarie ready`/`stats`/`validate`
-from the repo root hits the ROOT store; from inside `diarie/` it hits the NESTED one.
-Target one explicitly with `--root <dir>` (e.g. `diarie validate --root diarie`).
-diarie's own store is validated by `npm run check` via `check-workspaces`, not the root.
+**diarie is now EXTRACTED to its own repo, [`voxpelli/diarie`](https://github.com/voxpelli/diarie)**
+(2026-07-18) — the canonical home for diarie's own development, backlog, and decisions. vp-beads
+still carries `diarie/` as a **rejoined subtree snapshot** (kept because diarie isn't published yet
+and vp-beads needs the CLI to read its own store); sync it from that repo with `git subtree pull`
+and switch to the npm dep at publish. So **edit diarie's own backlog in
+[`voxpelli/diarie`](https://github.com/voxpelli/diarie), not here** — the `diarie/.diarie/` store
+here is a snapshot. The workspace and its checks are left exactly as `--rejoin` produced them (mechanics
+deferred until publish). **Two stores are still present.** Root `.diarie/` = this plugin's work
+(`vp-beads-*`, canonical); `diarie/.diarie/` = the diarie-backlog snapshot. **Nearest-wins by
+cwd** — a bare `diarie ready`/`stats`/`validate` from the repo root hits the ROOT store; from
+inside `diarie/` it hits the snapshot. Target one explicitly with `--root <dir>` (e.g. `diarie
+validate --root diarie`).
 
 ```bash
 diarie ready      # what to work on   [--json] [--blocked] [--filter <status>] [--strict]
