@@ -11,15 +11,10 @@
 // pairing is asserted HERE, where ast-grep will not: the file exists, its `id:` names this rule, and it
 // carries a real `invalid:` case (a test with nothing to reject proves nothing).
 //
-// HISTORY — why this used to do more. Until diarie was externalized to a `file:../diarie` dependency,
-// this repo carried TWO ast-grep configs (root `.ast-grep/` guarding the plugin, and the vendored
-// `diarie/.ast-grep/` guarding the package) kept as COPIES, because ast-grep's `sgconfig.yml` has no
-// `extends`/`include` — no config inheritance at all. This script also asserted those copies had not
-// drifted apart (a drift `ast-grep test` structurally cannot notice, since it replays each rule against
-// its own inline snippets and never compares the two files). diarie now lives in its own repo and owns
-// its own rules, so there is no second in-repo tree — the cross-tree parity is gone with it, and under
-// the single shared-root-config model (decision `vp-beads-cst`, option I) no per-plugin copies replace
-// it. What remains is the half that was never about two trees: every root rule is genuinely tested.
+// (Formerly this also asserted the root and the vendored `diarie/.ast-grep/` configs had not drifted
+// apart — a drift `ast-grep test` structurally cannot notice. diarie now lives in its own repo and
+// owns its own rules, so that cross-tree half is gone; what remains is the half that was never about
+// two trees: every root rule is genuinely tested.)
 //
 // NOTE WHAT IS **NOT** ASSERTED: nothing here checks that a rule can ever FIRE — a rule aimed at a
 // language the scan bound contains no files of passes `ast-grep test` on synthetic snippets while

@@ -841,56 +841,41 @@ USAGE⇔parser test is what keeps that help honest for the oracle to trust.
 
 ### ast-grep structural lint
 
-**TWO configs, on purpose.** The root's `sgconfig.yml` → `.ast-grep/` guards the **plugin**
-(`scripts/`, `validate-plugin.mjs`); `diarie/sgconfig.yml` → `diarie/.ast-grep/` guards the
-**package**, travels with it, and is run by the workspace's own `check:ast-grep`. To add a
-rule, write the rule + its rule-test and run `ast-grep test --update-all` to seed the snapshot
-— **in whichever tree the rule belongs to.**
+**ONE config, a bare scan — standard tooling, no wrapper.** The root's `sgconfig.yml` →
+`.ast-grep/` guards the **plugin**: `check:ast-grep` is a plain **`ast-grep scan`** (in CI,
+`--format github` for inline annotations) and `fix:ast-grep` is `ast-grep scan --update-all`.
+There is **no path list and no runner script** — a bare scan walks the whole repo,
+gitignore-bounded, so a rule can never be scoped outside a list a runner forgot to update. Under
+the shared-root-config model (decision `vp-beads-cst`, option I) that one scan also covers every
+`plugins/*` workspace — no per-plugin ast-grep copies. To add a rule, write the rule + its
+rule-test and run `ast-grep test --update-all` to seed the snapshot.
 
-**They are copies, and there is no alternative.** `sgconfig.yml` supports only `ruleDirs`,
-`utilDirs`, `testConfigs`, `customLanguages`, `languageGlobs`, `languageInjections` — there is
-**no `extends`, no `include`, no config inheritance**. A rule needed on both sides must be
-duplicated (or published as a package, or run via a second `--config` invocation). Copies drift;
-accept it knowingly rather than discover it.
+*(History, 2026-07-18: the root once carried `scripts/check-ast-grep.mjs` over a
+`scripts/ast-grep-paths.mjs` path list, plus an existence-guard and a `scannedFileCount` FLOOR —
+all to exclude an in-repo `diarie/` workspace (which carried its own config) from a bare scan.
+diarie is now an external `file:../diarie` dependency, so the exclusion is moot and the whole
+apparatus was deleted for standard `ast-grep scan`. The plugin does **not** floor-guard the
+scan's file count: a broad `.gitignore` line can shrink a bare scan, but that risk is accepted
+**at parity with every other ignore-bounded gate** — `check:md` is `remark --ignore-path
+.gitignore`, equally blindable — rather than met with bespoke tooling for ast-grep alone.)*
 
-Root (6): the five adopted from vp-knowledge/vp-claude — `no-jsdoc-any-type` (prefer `unknown` +
-a guard — **advisory, not a ratchet**; see below), `no-jsdoc-object-typedef`
-(auto-fixable), `no-commonjs-require`, `no-identifier-shadow-call`, `no-jq-raw-interpolation`
-(the hooks build jq programs) — plus `no-hardcoded-tracker-dir`. Deliberately NOT adopted:
-vp-claude's `bash-require-set-euo-pipefail` — a Claude Code hook that aborts on any failing
-command *blocks the tool call*, and these hooks are required to degrade quietly.
+**diarie's own rules travelled with it** to `voxpelli/diarie` (its `sgconfig.yml` + `.ast-grep/`,
+including four rules of its own — `no-identical-test-title`, `no-unsanctioned-exit-2`,
+`no-computed-exit-code`, and its half of `no-hardcoded-tracker-dir`). `sgconfig.yml` has **no
+`extends`/`include`** — no config inheritance — so a rule needed on both sides is a knowing COPY,
+not a share.
 
-diarie (8): the four generic JS rules (copied), plus **four of its own** —
-
-- **`no-hardcoded-tracker-dir`** — the tracker path segment lives *only* in `TRACKER_DIR`
-  (`diarie/lib/schema.js`); everything else imports it. **This rule is CROSS-BOUNDARY and lives
-  on BOTH sides**: it guards diarie's `lib/**` *and* the plugin's `scripts/*.mjs` +
-  `validate-plugin.mjs`, which import `TRACKER_DIR` from `diarie/schema` precisely because this
-  rule makes them. It could not "move". It matters most in guard code: a hardcoded segment in
-  `bd-map.js`'s refuse-to-write check would not *error* after a rename — it would silently stop
-  guarding.
-- **`no-identical-test-title`** — `node:test` runs BOTH copies of a duplicated `it()` title,
-  silently.
-- **`no-unsanctioned-exit-2`** + **`no-computed-exit-code`** — exit 2 is `ResultError` and
-  nothing else. The first bans all three forms (`exit(2)`, `process.exit(2)`,
-  `process.exitCode = 2`) outside `lib/utils/exit.js`'s `exitResultError()`; the second requires
-  every exit code to be a plain decimal literal, so `const TWO = 2`, `0x2`, `2.0` and `1 + 1`
-  cannot slip past the first's syntax match. **Neither holds alone.**
-
-**diarie's rules carry NO `files:` glob, deliberately.** Its `check:ast-grep` is a bare
-`ast-grep scan` — no path arguments — which walks the whole package, so a rule cannot be scoped
-outside a path list the runner forgot to update. The plugin's root runner must maintain such a
-list (it lints a subset of a bigger repo). That list lives in **`scripts/ast-grep-paths.mjs`**, and
-in **exactly one place** — `check:ast-grep` scans it and `fix:ast-grep` rewrites it, and they are now
-the same script (`node scripts/check-ast-grep.mjs --update-all`). They used to be two invocations
-with two hand-copied lists, under a comment instructing that they be "kept in step"; they **drifted
-apart in the very commit that added `hooks/`**, so the fixer silently stopped rewriting the one
-directory the newest rule was aimed at. A "keep these in step" comment is a manual invariant with no
-gate behind it.
-
-`check-ast-grep.mjs` also asserts every listed path **exists** before trusting ast-grep with it:
-`ast-grep scan` on a missing path prints an error and **exits 0**, so a stale entry made the check
-pass while scanning nothing.
+The plugin's rules (6): `no-jsdoc-any-type` (prefer `unknown` + a guard — **advisory, not a
+ratchet**), `no-jsdoc-object-typedef` (auto-fixable), `no-commonjs-require`,
+`no-identifier-shadow-call`, `no-jq-raw-interpolation` (the hooks build jq programs — and the bare
+scan now points it at the real `hooks/*.sh`, which the old path list once forgot to include,
+`vp-beads-agr`), plus **`no-hardcoded-tracker-dir`**. The last is CROSS-BOUNDARY: the tracker path
+segment lives *only* in `TRACKER_DIR` (`diarie/schema`), and this copy guards the plugin's
+`scripts/*.mjs` + `validate-plugin.mjs`, which import it precisely because this rule makes them —
+it matters most in guard code, where a hardcoded segment would not *error* after a rename, it
+would silently stop guarding. Deliberately NOT adopted: vp-claude's `bash-require-set-euo-pipefail`
+— a hook that aborts on any failing command *blocks the tool call*, and these hooks must degrade
+quietly.
 
 🚨 **`ast-grep test` does not fail on an untested rule — it SKIPS it, and the pairing key is the
 `id:` FIELD, not the filename.** Both measured. Delete a rule's test file and it prints
@@ -902,25 +887,18 @@ dropped. Change *only* the `id:` inside a test file — leave the filename corre
 
 🚨 **The bare scan is bounded by `.gitignore` — and ast-grep only honours `.gitignore` INSIDE a git
 repository.** Measured: with no `.git`, an ignored file **is scanned**; after a bare `git init` (no
-commit, no `add`), it is skipped. Also measured: ast-grep **skips a TRACKED-but-ignored file**, so
-"what ast-grep sees" is *neither* `git ls-files -c` (which lists ignored-but-tracked files) *nor*
-`git check-ignore` (which reports **nothing** for them without `--no-index`) — it is
-`git ls-files -co --exclude-standard` **minus** `git check-ignore --no-index`. Any tool that tries to
-reproduce the scan's file set needs all of that; getting it wrong builds a sandbox that scans a tree
-the real scan never sees.
+commit, no `add`), it is skipped; and ast-grep **skips a TRACKED-but-ignored file**. So the root
+`.gitignore` is load-bearing for the *lint*, not only for git: it is what keeps the bare scan off
+`node_modules` (a scan that walked it would report ~25k errors from other people's code).
 
-So `diarie/.gitignore` is load-bearing for the *lint*, not only for git: without it, a standalone
-`ast-grep scan` walks `node_modules` and reports ~25k errors from other people's code. Inside
-this workspace that is invisible, because npm hoists dependencies to the repo root and
-`diarie/node_modules` is nearly empty — **the in-workspace green was an accident of hoisting.**
-It took building the extracted tree to see it, which is the whole argument for `vp-beads-prf`.
-
-**The bound is MOVED, not removed** — a bare scan can still go blind, it just goes blind via a
-git file instead of a path list. One broad `.gitignore` entry (`lib/generated/`, `dist/`) shrinks
-lint coverage silently. `vp-beads-flr` closed this: diarie's `check:ast-grep` is now
-`scripts/check-ast-grep-floor.js`, which reads `scannedFileCount` off `ast-grep scan --inspect
-entity` and fails below a floor (25 of ~30 files). It goes RED, not green-and-empty, when a broad
-ignore blinds the scan — proven by appending `lib/**` and watching the count drop to 9.
+**That ignore-bound is a known, accepted risk, deliberately un-guarded.** One broad ignore line
+(`dist/`, `lib/generated/`) shrinks lint coverage with nothing going red — `ast-grep scan` exits 0
+over an empty set. The plugin does **not** meet that with a `scannedFileCount` floor (an earlier
+`vp-beads-flr` floor did; diarie still floors its own scan in its own repo). A blindable
+ignore-bound is the same risk `check:md` carries as `remark --ignore-path .gitignore`, so it is
+accepted uniformly rather than singled out for bespoke tooling — see the History note above and
+`UPSTREAM-ast-grep--cli.md` for the `--min-files`/`--error-on-empty` gap this leaves in the tool
+itself.
 
 **A rule at `severity: warning` cannot fail the build** — `ast-grep scan` exits 0 on
 warnings-only. `no-jsdoc-any-type`, `no-jsdoc-object-typedef` and `no-jq-raw-interpolation` are
