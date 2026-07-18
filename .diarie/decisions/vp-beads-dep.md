@@ -4,8 +4,14 @@ title: Retire the sprint-review agent and the backlog-groomer skill
 status: pending
 type: decision
 priority: medium
-updated: '2026-07-15'
+updated: '2026-07-18'
 ---
+
+> **Execution trigger now specified by `vp-beads-cst` (2026-07-18).** These retirements execute in
+> the dissolution's **Phase 1** (approved plan `~/.claude/plans/eager-jingling-scone.md`). The two
+> dangling-edge decisions the `## Affects` flags are resolved there: research-wave (in `swarm-wave`)
+> **writes task rows directly to `.diarie/`** after `backlog-groomer` is gone; `sprint-review` refs are
+> retargeted in the Phase 1 reference sweep.
 
 ## Decision
 

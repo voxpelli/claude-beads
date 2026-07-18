@@ -12,5 +12,12 @@
     "remote": "https://github.com/voxpelli/claude-git",
     "bm-entity": "engineering/agents/vp-plugins-vp-beads-and-vp-git",
     "relationship": "sibling-plugin"
+  },
+  {
+    "name": "diarie",
+    "file": "SYNERGY-diarie.md",
+    "remote": "https://github.com/voxpelli/diarie",
+    "bm-entity": "engineering/agents/vp-beads-and-diarie",
+    "relationship": "dependency"
   }
 ]

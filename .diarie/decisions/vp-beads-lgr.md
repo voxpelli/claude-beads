@@ -4,8 +4,15 @@ title: The `ledger` gets its own focused repository (a substrate peer to diarie)
 status: pending
 type: decision
 priority: medium
-updated: '2026-07-15'
+updated: '2026-07-18'
 ---
+
+> **⚠️ SUPERSEDED IN PART by `vp-beads-cst` (2026-07-18).** The **own-repo verdict below is
+> reversed**: `ledger` is now a **plugin in the `vp-skills` workspace-monorepo**, not its own repo
+> (zero external users + solo bus-factor outweighed substrate-purity — see `vp-beads-cst`). Everything
+> else here **remains in force and governs the ledger merge**: the four-tracker composition,
+> skills-first build shape, the pure-functions-over-`.ledger/` hint, the CLI-later trigger, and the
+> working-name caveat. Read "own focused repository" as "own focused **plugin**".
 
 ## Decision
 
