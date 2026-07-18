@@ -6,7 +6,10 @@ files; when they disagree, the files win.*
 
 This is the visual and verbal identity of diarie, held to the same test as the
 code: **plain files you own, and nothing that owns you back.** The brand is a
-markdown file, two token files, and two hand-editable SVG:s. There is no
+markdown file, two token files, three hand-editable SVG:s, and two
+agent-facing projections — [`DESIGN.md`](./brand/DESIGN.md) for the system (the
+google-labs design.md format, lintable) and [`HANDOFF.md`](./brand/HANDOFF.md)
+for the built pages. There is no
 portal, no Figma you must be invited to, no webfont CDN phoning home.
 Uninstall everything and the identity is still here, in the repo, diffable.
 
