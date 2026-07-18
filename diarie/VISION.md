@@ -8,7 +8,8 @@ diarie is the refusal of that path. Your backlog is YAML in your repo; the CLI i
 own. Uninstall it and your backlog is still there.
 
 This document is the direction and the guardrails. For how to use the tool, see the [README](./README.md);
-for where it is going, see the [ROADMAP](./ROADMAP.md).
+for where it is going, see the [ROADMAP](./ROADMAP.md); for its visual and verbal identity, see the
+[BRAND](./BRAND.md).
 
 ## The invariants
 

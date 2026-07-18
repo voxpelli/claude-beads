@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+  <title>diarie</title>
+  <desc>Favicon cut of the diarie mark: the stepped halo and the two nodding bells, simplified for 16 pixels.</desc>
+  <!-- diarie favicon cut - v0.1.1
+       Simplified from diarie-mark.svg for 16-32 px: leaves and bracts
+       dropped, strokes thickened, bells enlarged. Use the full mark at
+       24 px and above; use this cut for favicons and pixel-small chrome. -->
+  <style>svg{--l1:#221940;--l2:#2E2257;--l3:#3C2D6E;--l4:#4B3A87;--p:#EFE6D2}</style>
+  <circle cx="128" cy="122" r="112" fill="var(--l1)"/>
+  <circle cx="128" cy="122" r="86"  fill="var(--l2)"/>
+  <circle cx="128" cy="122" r="62"  fill="var(--l3)"/>
+  <circle cx="128" cy="122" r="42"  fill="var(--l4)"/>
+  <g fill="none" stroke="var(--p)" stroke-linecap="round">
+    <path d="M128,210 C126,188 129,166 126,144" stroke-width="11"/>
+    <path d="M126,144 C111,126 99,114 94,100"  stroke-width="10"/>
+    <path d="M126,144 C139,122 154,106 164,88" stroke-width="10"/>
+  </g>
+  <g fill="var(--p)">
+    <path transform="translate(94,100) rotate(-18) scale(1.5)" d="M0,0 C-7,1.5 -9.5,8 -9,15 L-11.5,23 L-5.5,20 L0,25.5 L5.5,20 L11.5,23 L9,15 C9.5,8 7,1.5 0,0 Z"/>
+    <path transform="translate(164,88) rotate(20) scale(1.42)" d="M0,0 C-7,1.5 -9.5,8 -9,15 L-11.5,23 L-5.5,20 L0,25.5 L5.5,20 L11.5,23 L9,15 C9.5,8 7,1.5 0,0 Z"/>
+  </g>
+</svg>

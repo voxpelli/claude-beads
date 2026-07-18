@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+  <title>diarie</title>
+  <desc>A pressed twinflower (Linnaea borealis) in herbarium cream, backlit by a stepped violet halo — the light table behind the record.</desc>
+
+  <!-- diarie mark · v0.1.1
+       Hand-editable on purpose. Geometry is drawn on a 256 grid.
+       The bells hang and nod, as the plant's do — open mouths, three lobes,
+       and deliberate asymmetry: pressed specimens are never symmetric.
+       Colors resolve from tokens.css when inlined in a page; the fallbacks
+       below keep the file standalone. On papper (#EFE6D2) the halo reads
+       as ink and the flower keeps the innermost step as its ground.
+       Clearspace: one bell-height (26 units at this scale) on all sides. -->
+
+  <style>
+    svg {
+      --lysning-1: #221940;
+      --lysning-2: #2E2257;
+      --lysning-3: #3C2D6E;
+      --lysning-4: #4B3A87;
+      --papper:    #EFE6D2;
+    }
+  </style>
+
+  <!-- genomlysning: the stepped halo. Four steps, never a gradient —
+       this is risograph light, not lens flare. -->
+  <circle cx="128" cy="120" r="106" fill="var(--lysning-1)"/>
+  <circle cx="128" cy="120" r="82"  fill="var(--lysning-2)"/>
+  <circle cx="128" cy="120" r="60"  fill="var(--lysning-3)"/>
+  <circle cx="128" cy="120" r="41"  fill="var(--lysning-4)"/>
+
+  <!-- the specimen: one stem, one fork, two nodding bells —
+       deps in one direction, flowers in the other. -->
+  <g fill="none" stroke="var(--papper)" stroke-linecap="round">
+    <path d="M128,208 C125,190 129,168 126,150" stroke-width="5"/>
+    <path d="M126,150 C112,133 101,121 98,108" stroke-width="4"/>
+    <path d="M126,150 C138,130 153,110 163,92" stroke-width="4"/>
+  </g>
+  <g fill="var(--papper)">
+    <path transform="translate(98,108) rotate(-18)" d="M0,0 C-7,1.5 -9.5,8 -9,15 L-11.5,23 L-5.5,20 L0,25.5 L5.5,20 L11.5,23 L9,15 C9.5,8 7,1.5 0,0 Z"/>
+    <path transform="translate(163,92) rotate(20) scale(0.94)" d="M0,0 C-7,1.5 -9.5,8 -9,15 L-11.5,23 L-5.5,20 L0,25.5 L5.5,20 L11.5,23 L9,15 C9.5,8 7,1.5 0,0 Z"/>
+    <ellipse cx="120" cy="148" rx="5" ry="2.6" transform="rotate(-52 120 148)"/>
+    <ellipse cx="132" cy="146" rx="5" ry="2.6" transform="rotate(48 132 146)"/>
+    <ellipse cx="114" cy="176" rx="12" ry="7"  transform="rotate(-38 114 176)"/>
+    <ellipse cx="140" cy="176" rx="12" ry="7"  transform="rotate(38 140 176)"/>
+    <ellipse cx="106" cy="197" rx="20" ry="11" transform="rotate(-34 106 197)"/>
+    <ellipse cx="150" cy="197" rx="20" ry="11" transform="rotate(34 150 197)"/>
+  </g>
+</svg>
