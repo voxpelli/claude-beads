@@ -317,6 +317,15 @@ tasks:
     description: >-
       Plan step 1.8; the last local capstone. Enumerate every doc surface via grep — do not trust
       the plan's edit list.
+      PARTIAL 2026-07-18 (cd63bcc): the CLAUDE.md diarie-workspace-staleness portion is DONE, pulled
+      forward via a claude-md-improver audit. The externalization (85600aa) had left CLAUDE.md
+      actively misdirecting every session ("two stores", "--root diarie", rejoined subtree "remains
+      here", check:tasks-diarie, diarie/lib+test refs, deleted check-ast-grep.mjs) — worse than this
+      row's original "deferred, not check-breaking" framing, so it was fixed now. diarie INTERNALS
+      (reader guards, type schema, bd-map) repointed to voxpelli/diarie. MEMORY.md consolidation
+      handled by a background agent same session. REMAINING: README.md counts/vocabulary; package.json
+      + plugin.json name/repository/description; marketplace description still says "beads"; the
+      "9 skills, 1 agent" counts across surfaces.
     updated: '2026-07-18'
 
   # ---- Phase 2 — GitHub-facing (each step gated on an explicit per-step "yes"; [us] steps only) ----
