@@ -331,17 +331,22 @@ describe('a missing input file is an InputError, not a crash (vp-beads-mig)', ()
   // raw ENOENT and be answered with a stack trace ("unexpected error"); migrate lived outside the
   // boundary. Now readFileSync's ENOENT is converted, so it lands in the same InputError/--json
   // contract as the four peowly commands. Spawned via cli.js, the real boundary.
+  //
+  // cwd MUST be a store-less temp dir. A bare `migrate` (no --root) targets CWD, and this
+  // repository now carries diarie's OWN `.diarie/` store at its root (as the extracted repo will
+  // too) — so without isolation the EEXIST overwrite-guard fires FIRST and the missing-input case
+  // this exercises is never reached. Same isolation the CWD-default test above uses.
   const MISSING = join(tmpdir(), 'diarie-does-not-exist-xyzzy.jsonl')
 
-  it('plain: exit 1, a clear message, and NO stack trace', () => {
-    const r = spawnSync('node', [CLI, 'migrate', MISSING], { encoding: 'utf8' })
+  it('plain: exit 1, a clear message, and NO stack trace', (t) => {
+    const r = spawnSync('node', [CLI, 'migrate', MISSING], { cwd: tmpDir(t), encoding: 'utf8' })
     assert.equal(r.status, 1)
     assert.match(r.stderr, /no such bd export file/)
     assert.doesNotMatch(r.stderr, /unexpected error|^\s*at /m)
   })
 
-  it('--json: the error is on STDOUT with the machine code EUSAGE', () => {
-    const r = spawnSync('node', [CLI, 'migrate', MISSING, '--json'], { encoding: 'utf8' })
+  it('--json: the error is on STDOUT with the machine code EUSAGE', (t) => {
+    const r = spawnSync('node', [CLI, 'migrate', MISSING, '--json'], { cwd: tmpDir(t), encoding: 'utf8' })
     assert.equal(r.status, 1)
     const parsed = JSON.parse(r.stdout)
     assert.equal(parsed.code, 'EUSAGE')
