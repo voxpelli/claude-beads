@@ -50,25 +50,26 @@ nothing to acknowledge.
 **Refuse-unless-`--nested` (case 1) overrides the prior-art lean, deliberately.** A 4-round
 reference-class survey placed diarie in the DATA-store class (node_modules, DataLad, DVC), where
 nested stores are independent, nearest-wins, and benign — so the class norm is *silent nesting*
-and DataLad/node_modules never warn on an ancestor. The decision goes the other way on purpose, and the honest framing is ERGONOMIC, not
-hazard-forced: diarie's thesis is that you always know which store you are in. (`ENOSTORE` only
-distinguishes present-vs-absent; *which* of two present stores answers is already unambiguous via
-nearest-wins resolution + a `diarie where` query — so the refuse buys friction, not determinism.)
-A nested backlog silently shadowing an ancestor for a subtree is the ESLint "surprise-ancestor"
-class of failure: invisible precedence nobody asked for. Making it a deliberate `--nested` act is
-the chosen cure. **Prior art, precisely:** the refuse-ancestor-unless-`--nested` + `--force`-for-
-same-target model IS shipped — by **Fossil** (`fossil open`, which walks up via `.fslckout`) — but
-Fossil refuses because a nested checkout genuinely confuses which repo owns the working files, a
-cross-boundary hazard diarie does NOT have (no cross-store references — see the Obsidian caveat
-below). So diarie borrows Fossil's *ergonomics* without Fossil's *cause*: a deliberate
-un-surprising-store choice against its own silent data-store class norm. **jj is NOT precedent**
-(correcting an earlier draft): jj refuses only a same-target collision and, like git, silently
-nests under an ancestor (jj-vcs/jj#4173, open; `lib/src/workspace.rs`). The tightest positive
-analogue for gating an ambiguous, non-destructive state-change behind an opt-in flag is terraform
-(`-reconfigure`/`-migrate-state`) and DataLad's `-d`. The honest ALTERNATIVE to a hard refuse is
-allow + a create-time NOTICE (the ESLint fix was a create-time marker, not a block) + `diarie
-where` — the class-consistent middle; the hard refuse chosen here is the safety-first end of that
-spectrum, chosen with eyes open.
+and DataLad/node_modules never warn on an ancestor. The decision goes the other way on purpose, and the reason is CONCRETE: preventing an accidental,
+forgotten-ancestor nesting. `ENOSTORE` only distinguishes present-vs-absent, and *which* of two
+present stores answers is already unambiguous via nearest-wins + a `diarie where` query — so the
+refuse does not buy *determinism* (nearest-wins gives that). What it buys is *accident-prevention*:
+you already have a store a few directories up, don't remember it, and a bare `init` would silently
+create a SECOND one that shadows the first for this subtree. The deeper the tree, the easier the
+ancestor is to forget. Requiring `--nested` makes a second store a DELIBERATE act — you cannot
+create one by forgetting you have one — and that is the decisive reason the refuse is worth its
+friction. **Prior art, precisely:** the refuse-ancestor-unless-`--nested` + `--force`-for-
+same-target model IS shipped — by **Fossil** (`fossil open`, which walks up via `.fslckout`) —
+though Fossil refuses to protect working-file ownership, a cross-boundary hazard diarie lacks (no
+cross-store references). So diarie borrows Fossil's ergonomics for its own real reason
+(forgotten-ancestor prevention), not Fossil's cause. **jj is NOT precedent** (correcting an earlier
+draft): jj refuses only a same-target collision and, like git, silently nests under an ancestor
+(jj-vcs/jj#4173, open; `lib/src/workspace.rs`). The tightest positive analogue for gating an
+ambiguous, non-destructive state-change behind an opt-in flag is terraform
+(`-reconfigure`/`-migrate-state`) and DataLad's `-d`. The class-consistent alternative — allow + a
+create-time NOTICE + `diarie where` — was considered and DECLINED for exactly the forgotten case: a
+notice INFORMS but still CREATES, so it does not stop the accidental second store the way a refuse
+does. (`diarie where` ships regardless — the positive way to ASK which store resolves.)
 
 **`DIARIE_ROOT`, not `DIARIE_DIR`.** The value is a *project root* — the directory that CONTAINS
 `.diarie/`, not the `.diarie/` directory itself. `DIARIE_DIR` would misname the referent and
@@ -80,9 +81,11 @@ surfaces nesting — a read the user asks for, never a per-command runtime nag.
 
 ## Alternatives Considered
 
-- **Allow + inform (the data-store class norm)** — declined. Correct for node_modules (nobody
-  reasons about "which node_modules"), but diarie IS a thing the user reasons about; a silent
-  nested backlog defeats the `ENOSTORE` clarity the tool is built on.
+- **Allow + inform / create-time notice (the data-store class norm)** — declined for the
+  forgotten-ancestor case: a notice INFORMS but still CREATES the second store, so it does not
+  prevent the accident. Correct for node_modules (nobody reasons about "which node_modules");
+  diarie chooses to STOP an accidental forgotten-ancestor nesting, not merely report it after the
+  fact. `diarie where` supplies the "inform" half positively, as a query the user asks.
 - **Warn but still create** — declined. A warning that creates the store anyway is the ESLint
   cascade mistake: by the time the warning is read, the surprise already happened.
 - **`DIARIE_DIR` naming** — declined; misnames the referent (see Rationale).
