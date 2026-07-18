@@ -50,12 +50,25 @@ nothing to acknowledge.
 **Refuse-unless-`--nested` (case 1) overrides the prior-art lean, deliberately.** A 4-round
 reference-class survey placed diarie in the DATA-store class (node_modules, DataLad, DVC), where
 nested stores are independent, nearest-wins, and benign — so the class norm is *silent nesting*
-and DataLad/node_modules never warn on an ancestor. The decision goes the other way on purpose:
-diarie's thesis is that you always know exactly which store you are in — the `ENOSTORE`
-invariant exists for precisely that. A nested backlog silently shadowing an ancestor for a
-subtree is the ESLint "surprise-ancestor" failure: invisible precedence nobody asked for. Making
-it a deliberate `--nested` act is the strongest cure, and matches jj's refuse posture (jj was
-built to fix git's silent-nest regret).
+and DataLad/node_modules never warn on an ancestor. The decision goes the other way on purpose, and the honest framing is ERGONOMIC, not
+hazard-forced: diarie's thesis is that you always know which store you are in. (`ENOSTORE` only
+distinguishes present-vs-absent; *which* of two present stores answers is already unambiguous via
+nearest-wins resolution + a `diarie where` query — so the refuse buys friction, not determinism.)
+A nested backlog silently shadowing an ancestor for a subtree is the ESLint "surprise-ancestor"
+class of failure: invisible precedence nobody asked for. Making it a deliberate `--nested` act is
+the chosen cure. **Prior art, precisely:** the refuse-ancestor-unless-`--nested` + `--force`-for-
+same-target model IS shipped — by **Fossil** (`fossil open`, which walks up via `.fslckout`) — but
+Fossil refuses because a nested checkout genuinely confuses which repo owns the working files, a
+cross-boundary hazard diarie does NOT have (no cross-store references — see the Obsidian caveat
+below). So diarie borrows Fossil's *ergonomics* without Fossil's *cause*: a deliberate
+un-surprising-store choice against its own silent data-store class norm. **jj is NOT precedent**
+(correcting an earlier draft): jj refuses only a same-target collision and, like git, silently
+nests under an ancestor (jj-vcs/jj#4173, open; `lib/src/workspace.rs`). The tightest positive
+analogue for gating an ambiguous, non-destructive state-change behind an opt-in flag is terraform
+(`-reconfigure`/`-migrate-state`) and DataLad's `-d`. The honest ALTERNATIVE to a hard refuse is
+allow + a create-time NOTICE (the ESLint fix was a create-time marker, not a block) + `diarie
+where` — the class-consistent middle; the hard refuse chosen here is the safety-first end of that
+spectrum, chosen with eyes open.
 
 **`DIARIE_ROOT`, not `DIARIE_DIR`.** The value is a *project root* — the directory that CONTAINS
 `.diarie/`, not the `.diarie/` directory itself. `DIARIE_DIR` would misname the referent and
@@ -129,6 +142,20 @@ type would appear is the OPTIONAL `--nested` success confirmation. If one is add
 an `InitNotice[]` DISCRIMINATED UNION — a `{kind}`-tagged variant per notice — not a `string[]`.
 A bare string array cannot be branched on by a `--json` consumer, and the CLI's whole
 structured-output contract is that machine-facing output carries typed kinds, not prose.
+(YAGNI-watch: at ship this may have exactly one `{kind}` — still worth doing, to fix the
+extension point before a breaking change is forced, but do NOT invent a speculative second kind
+just to justify the union; add one only when a second real notice exists.)
+
+**Code-vocabulary governance.** `EANCESTOR` is the fourth string code (`ENOSTORE`, `EEXIST`,
+`EUSAGE`, now `EANCESTOR`). Minting app-specific codes on the `--json` `code` channel is
+established practice — npm does it (`ERESOLVE`, `E404`, beyond POSIX errno) — so this is not
+novel; but npm's vocabulary sprawled to dozens of ad-hoc codes with no canonical list, the
+failure mode to pre-empt. Before adding a fifth: (a) confirm a `--json` consumer actually needs to
+BRANCH on it, not merely that the message text differs — diarie has no published consumers yet, so
+this is forward-looking, cheap-and-symmetric decoration until one exists; and (b) add it to ONE
+canonical list (a table in `README.md` or `lib/utils/errors.js`), not file-by-file. The coarser
+convention some CLIs pick (gh: a small closed set of typed exit codes, no general `code` field) is
+a legitimate different tradeoff — branching precision vs. vocabulary sprawl.
 
 ## Affects
 

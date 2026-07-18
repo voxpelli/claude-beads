@@ -556,6 +556,14 @@ plugin supports multiple substrates (see `## Work-tracking substrates`).
 This project tracks its own work in the **flat-YAML substrate**, **not bd** (see
 `## The tracker migration` above; do not use `bd` — its 1.1.0 writes are dead).
 
+**Two stores now exist (pre-extraction).** Root `.diarie/` = this plugin's work
+(`vp-beads-*`); `diarie/.diarie/` = diarie's OWN backlog (the `dia` epic cluster moved off the
+root, plus new `diarie-*` rows), seeded so it travels on `git subtree split
+--prefix=diarie`. **Nearest-wins by cwd** — a bare `diarie ready`/`stats`/`validate`
+from the repo root hits the ROOT store; from inside `diarie/` it hits the NESTED one.
+Target one explicitly with `--root <dir>` (e.g. `diarie validate --root diarie`).
+diarie's own store is validated by `npm run check` via `check-workspaces`, not the root.
+
 ```bash
 diarie ready      # what to work on   [--json] [--blocked] [--filter <status>] [--strict]
 diarie stats      # counts + stale claims   [--json] [--stale] [--days <n>]
@@ -713,7 +721,11 @@ npm run check
 parallel, THEN the workspace delegation. `check-workspaces` is hyphenated ON PURPOSE — `run-p
 check:*` matches only `check:`-prefixed keys, so the hyphen keeps the delegation out of the
 parallel glob and runs it as an explicit sequential step (turning the single-segment-glob gotcha
-below into a feature). The authoritative list is the keys in `package.json`, not this paragraph.
+below into a feature). The `&&` is deliberate **fail-fast** — the cheap root `check:*` batch gates
+the expensive workspace suite ("own gates before children"). Do NOT "fix" it into
+`--continue-on-error` to see all failures at once: the gate still reddens on ANY failure and
+nothing broken ships, so that is a preference (comprehensive CI reporting), not a bug. The
+authoritative list is the keys in `package.json`, not this paragraph.
 
 **THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES.** The root's `check:*` keys cover
 the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`,
@@ -808,6 +820,11 @@ That is what keeps the dozen descriptive `ready-walker` / `validate-tasks` menti
 **Escape hatch:** a line carrying the marker `prose-cmd-ignore` has its candidates skipped — for a
 lesson that must quote a literal broken command (`skills/migrate-tracker/SKILL.md` does). It is the
 eslint-disable pressure valve, greppable, so a real teaching example never forces the check off.
+
+**Editing caveat:** a `node <path>` or `diarie <sub>` you write in prose (here, in a skill, in the
+README) is resolved against the REAL repo-root binary — a `node` path that only lives under
+`diarie/` (not the repo root), or a flag on the wrong subcommand, fails the check. Reword, use the
+real command, or mark the line `prose-cmd-ignore`.
 
 **Self-test first:** a prose-check that classifies everything as a mention would scan, find nothing,
 and pass — inert and green, this repo's signature failure. So it reproduces a frozen ground-truth of
