@@ -64,7 +64,8 @@ tasks:
 
   - id: vp-beads-gtp
     title: 'P1.2 Generalise the shared gate tooling to be path-taking (B1 blocker) + prove RED'
-    status: pending
+    status: in_progress
+    agent: claude
     type: task
     priority: high
     parent: vp-beads-dis
@@ -87,14 +88,23 @@ tasks:
     description: >-
       RECONSIDERED 2026-07-18 (see plan Status + decision vp-beads-cst option I): mostly SUBTRACTIVE,
       not "generalize wrappers". Dissolve the ast-grep path-list wrapper (ast-grep-paths.mjs + the
-      check-ast-grep existence-guard) → one shared root bare `ast-grep scan` + the floor guard; broaden
-      check:sh; LEAVE the already-native checks; convert only the genuinely-bespoke checks
+      check-ast-grep existence-guard) → standard `ast-grep scan` (no wrapper; floor DROPPED, NOT
+      ported — a blindable ignore-bound is accepted at parity with check:md, user steer 2026-07-18);
+      broaden check:sh; LEAVE the already-native checks; convert only the genuinely-bespoke checks
       (validate-plugin, prose-commands, check-hooks) from root-hardcoded to plugin-DISCOVERY (glob
       plugins/*), never enumeration. check-rule-parity STAYS bespoke (research-confirmed: ast-grep has
       no native rule-test-coverage). Already reduced rule-parity to single-tree + externalized diarie
       (85600aa), which removed the diarie-exclusion blocker for the shared bare-scan. Keeps
       `npm run check` green per atomic commit. Fold generic ready-queue hardening (agr/gtc/rgl/exf) in
       opportunistically.
+      DONE 2026-07-18 (56740fb): ast-grep wrapper + floor DISSOLVED → bare `ast-grep scan`; the bare
+      scan auto-covers hooks/*.sh so no-jq-raw-interpolation finally sees real bash (closes agr). A
+      2-reviewer round (code-simplifier + silent-failure-hunter) both said KEEP check-rule-parity;
+      premise re-verified (detach a test → `ast-grep test` 5/6 green, exit 0). ast-grep test/scan
+      exit-code gaps logged to UPSTREAM-ast-grep--cli.md (5411e23) + promoted to BM brew-ast-grep.
+      REMAINING: broaden check:sh; convert validate-plugin/prose-commands/check-hooks to plugin-
+      DISCOVERY + prove RED — deferred until the first real plugin lands (placeholder has no hooks or
+      skills to discover).
     updated: '2026-07-18'
 
   - id: vp-beads-ldg
