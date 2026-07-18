@@ -1,0 +1,432 @@
+meta:
+  slug: dissolution
+  title: vp-beads dissolution → the vp-skills workspace-monorepo constellation
+tasks:
+  - id: vp-beads-dis
+    title: vp-beads dissolution → vp-skills monorepo constellation (epic)
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - epic
+    description: >-
+      Parent epic for dissolving vp-beads — the only plugin organised by a PROCESS (the sprint)
+      rather than a SUBSTRATE — into the approved two-repo-plus-diarie constellation. Governed by
+      decision `vp-beads-cst` (supersedes `vp-beads-lgr` own-repo verdict; overrides DESIGN §4 /
+      `vp-beads-ski`; specifies `vp-beads-dep`'s execution trigger). Full staged plan:
+      `~/.claude/plans/eager-jingling-scone.md`.
+
+
+      Target topology: `voxpelli/vp-skills` (this repo `claude-beads` renamed — an npm-workspaces
+      MAINTENANCE monorepo: root owns only shared lint/tooling, each plugin a self-contained
+      workspace, zero cross-plugin refs; distribution stays decoupled, exit preserved) holding
+      plugins `ledger` (upstream+synergy+vendor+sibling merged), `swarm-wave`, `diarie-adopt`
+      (migrate+deintegrate), plus `vp-git` + `vp-astgrep` brought in; `voxpelli/vp-knowledge`
+      (`vp-claude` renamed — own repo/marketplace, absorbs `retrospective`→`session-reflect`);
+      `voxpelli/diarie` (already extracted, publishes on its own track).
+
+
+      Phase 0 is DONE (committed 62d274b): the `cst` decision, `SYNERGY-diarie.md` + registry entry,
+      the two `handoffs/*.md`, and the marketplace-mechanics BM note. This epic tracks Phase 1 (the
+      local monorepo conversion — the bulk) and Phase 2 (the GitHub-facing, per-step-gated cutover).
+      Cross-actor work owned by other repos ([vpk] vp-knowledge follow-ups, [diarie] publishing) is
+      tracked via the two handoff docs, not by rows here.
+    updated: '2026-07-18'
+
+  # ---- Phase 1 — the monorepo conversion (local, publish-independent; the BULK) ----
+
+  - id: vp-beads-wsk
+    title: 'P1.1 Stand up the npm-workspace skeleton (plugins/* + two manifests each)'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        Root package.json declares `workspaces: ["plugins/*", "diarie"]` (diarie stays a vendored
+        workspace until publish)
+      - >-
+        Layout per anthropics/claude-code: each plugin at `plugins/<name>/` with
+        `.claude-plugin/plugin.json` + root-level `skills/ agents/ hooks/`
+      - >-
+        Each plugin carries TWO manifests — package.json (workspace member; owns the `check:`
+        script the root delegates to; kept `private`/no-version) and .claude-plugin/plugin.json
+        (Claude manifest; its `version` is authoritative — never also set in the marketplace entry)
+      - '`npm run check` green; `npm run check --workspaces --if-present` delegates cleanly'
+    description: >-
+      Foundational: nothing else in Phase 1 can move until the workspace exists. Plan step 1.1;
+      generalises the existing "THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES" pattern (today one
+      diarie workspace) to N plugin-workspaces. See `~/.claude/plans/eager-jingling-scone.md` Phase 1.
+    updated: '2026-07-18'
+
+  - id: vp-beads-gtp
+    title: 'P1.2 Generalise the shared gate tooling to be path-taking (B1 blocker) + prove RED'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-wsk
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        validate-plugin.mjs, check-hooks.mjs, check:sh (`hooks/*.sh` glob), check:prose-commands
+        (the five prose surfaces), and scripts/ast-grep-paths.mjs iterate the plugin workspaces (or
+        take a plugin path) instead of hardcoding a single-plugin root
+      - >-
+        EACH shared gate proven to go RED on a planted per-plugin violation (this repo's signature
+        failure is green-over-nothing — see green_check_taxonomy)
+      - '`claude plugin validate . --strict` clean over the marketplace + per plugin'
+      - >-
+        check:portability + check:pi-load adopted as shared tooling (advisory, non-blocking) —
+        keeps the standards/lock-in-resistance goal alive without gating the dissolution
+    description: >-
+      The real bulk of the skeleton work: the plugin-side gates all assume one plugin root. Plan
+      step 1.2. Keeps `npm run check` green after each atomic commit, which requires converting the
+      gate suite alongside the skeleton, not after. Fold in the generic ready-queue hardening rows
+      (agr/gtc/rgl/exf) opportunistically here where they touch shared gate tooling.
+    updated: '2026-07-18'
+
+  - id: vp-beads-ldg
+    title: 'P1.3a Merge upstream/synergy/vendor/sibling-tracker → the `ledger` plugin (biggest transformation)'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-gtp
+    labels:
+      - feature
+    acceptance_criteria:
+      - >-
+        One `ledger` skill, skills-first + mode-routed (the wave3 / `/intel` precedent), merging
+        upstream-tracker + synergy-tracker + vendor-sync + sibling-sync
+      - >-
+        Chesterton's-Fence pass: every earned behaviour preserved verbatim — the Files-availability
+        tiers, sibling-sync Mode-A/B reciprocal-gap detection, private-sibling/overlay invariants,
+        BM section-ownership — ENUMERATED before merging
+      - 'Re-unioned `allowed-tools` across the four; description ≤1024 chars (agentskills limit) and triggers cleanly'
+      - >-
+        `.ledger/` store migration explicitly DEFERRED — ledger v1 operates on existing
+        SYNERGY-*.md / UPSTREAM-*.md markdown (do NOT drag the store rebuild into the merge)
+    description: >-
+      The single biggest unit in the plan — treat as its own scoped effort, not a bullet. A harder
+      merge than PR #8's 2-way `/intel` (four intricate skills incl. sibling-sync's bilateral logic
+      + private-sibling handling). Plan step 1.3 (ledger bullet). Store migration tracked separately
+      under Deferred (trigger: ledger v1 stable).
+    updated: '2026-07-18'
+
+  - id: vp-beads-swm
+    title: 'P1.3b Move swarm-wave into its plugin workspace + resolve dangling edges'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-gtp
+    labels:
+      - feature
+    acceptance_criteria:
+      - swarm-wave relocated to `plugins/swarm-wave/` (pure — no diarie dependency)
+      - >-
+        research-wave's post-backlog-groomer behaviour decided (recommend: write task rows directly
+        to `.diarie/`) since backlog-groomer is retiring
+      - >-
+        internal refs to `/retrospective` and the `sprint-review` agent retargeted (both leaving) —
+        `claude-only: true` retained (Task-tool fan-out needs plugin runtime)
+    description: >-
+      Plan step 1.3 (swarm-wave bullet). Resolves the S7 dangling edges left by retiring
+      backlog-groomer + sprint-review.
+    updated: '2026-07-18'
+
+  - id: vp-beads-dad
+    title: 'P1.3c Move migrate-tracker + deintegrate-beads → the `diarie-adopt` plugin (+ trace bd-map)'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-gtp
+    labels:
+      - feature
+    acceptance_criteria:
+      - migrate-tracker + deintegrate-beads relocated to `plugins/diarie-adopt/`
+      - >-
+        the bd-map coupling traced: diarie-adopt needs scripts/bootstrap-tasks.mjs (plugin side) AND
+        diarie/lib/migrate/bd-map.js (workspace side) — confirm published diarie exposes bd-map or
+        vendor a copy (see handoffs/HANDOFF-diarie-publish.md §2)
+    description: >-
+      Plan step 1.3 (diarie-adopt bullet). Overrides DESIGN §4 / `vp-beads-ski` ("ship the adoption
+      pair WITH diarie") per `vp-beads-cst` — the pair goes to vp-skills to decouple it from
+      diarie's publish timeline.
+    updated: '2026-07-18'
+
+  - id: vp-beads-vga
+    title: 'P1.3d Bring vp-git + vp-astgrep in as workspaces (workspace-ification, not file-move)'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-gtp
+    labels:
+      - feature
+    acceptance_criteria:
+      - >-
+        each fetched into `plugins/<name>/` (git subtree), its check suite reconciled into the
+        shared/delegated model, its version preserved
+      - >-
+        vp-astgrep's special shape respected — it is a runtime LSP-shim server (Node ≥20 +
+        node_modules), so its workspace keeps its own runtime deps and is `claude-only`
+      - 'archiving the source repos claude-git/claude-astgrep is NOT here — that is Phase 2'
+    description: >-
+      Plan step 1.3 (vp-git/astgrep bullet). These are the least substrate-aligned members,
+      consolidated for solo bus-factor per `vp-beads-cst`'s recorded trade (revival trigger: external
+      users, or a plugin outgrows the shared repo).
+    updated: '2026-07-18'
+
+  - id: vp-beads-rt2
+    title: 'P1.4 Retire the sprint-review agent + the backlog-groomer skill'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-wsk
+    labels:
+      - chore
+    acceptance_criteria:
+      - sprint-review (the only agent) and backlog-groomer removed per decision `vp-beads-dep`
+      - >-
+        doc-grep FIRST (global rule): the Tier-B slot in the Files-availability convention emptied;
+        sprint-review de-referenced from retrospective, swarm-wave, CLAUDE.md component list +
+        sprint-cycle diagram, and the marketplace entry
+    description: >-
+      Plan step 1.4; executes decision `vp-beads-dep` (usage evidence + operator testimony:
+      sprint-review never fired, backlog-groomer barely used). A doc-and-reference sweep, not a bare
+      delete.
+    updated: '2026-07-18'
+
+  - id: vp-beads-sss
+    title: 'P1.5 Shard session-start.sh across the owning plugins (B2 blocker)'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-wsk
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        each block routed to its owning plugin's hooks/ — tracker-prime + .beads-credential-key
+        warning → diarie-adopt; dormancy-nudge + PRIVATE-SYNERGY leak-warning → ledger;
+        shfmt/Dependabot → root dev tooling
+      - >-
+        the RETRO mod-4 counter is DROPPED here and rebuilt in vp-knowledge session-reflect (handoff
+        #1) — it cannot survive as a file-count once RETRO dissolves into BM notes
+      - 'BM-failure-classify stays vp-knowledge''s (do not duplicate vp-knowledge hooks)'
+    description: >-
+      Plan step 1.5. The mega-hook spans ≥4 destinations; name each block's destination explicitly.
+      Related but distinct from the backlog row about extracting session-start concerns into named
+      functions (that refactors within one hook; this shards across plugins).
+    updated: '2026-07-18'
+
+  - id: vp-beads-rfs
+    title: 'P1.6 Enumerated reference / vocabulary sweep (S8 — doc-grep as INPUT)'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-ldg
+      - vp-beads-swm
+      - vp-beads-rt2
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        every cross-skill ref enumerated BEFORE editing (~55 /synergy-tracker, 39 /sibling-sync, 32
+        /upstream-tracker, 22 /retrospective, 9 /backlog-groomer, 5 /vp-beads:* namespaced)
+      - >-
+        the 4-way ledger merge turns cross-skill refs into intra-ledger MODE refs;
+        validate-plugin.mjs auditWorkflowReferences updated accordingly
+      - zero dangling `/vp-beads:*` or `workflow N` refs after the sweep
+    description: >-
+      Plan step 1.6. Grep is the authority, not the plan's edit list (global doc-grep rule). Blocked
+      on the skill moves + the retirement landing first.
+    updated: '2026-07-18'
+
+  - id: vp-beads-rgy
+    title: 'P1.7 Update registries + sibling back-pointers (S9)'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-vga
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        synergy-registry.json stale `remote`s fixed post-rename; vp-git becomes a CO-LOCATED plugin
+        not a cross-repo sibling — retire/rewrite SYNERGY-vp-git.md's premise + its
+        `relationship: sibling-plugin`
+      - >-
+        sibling back-pointers (`../vp-git/SYNERGY-vp-beads.md`) noted as going stale on the
+        vp-beads→ledger rename; state that vendor-registry.json does not exist (moot)
+    description: 'Plan step 1.7. Depends on vp-git being brought in-repo (P1.3d).'
+    updated: '2026-07-18'
+
+  - id: vp-beads-dcr
+    title: 'P1.8 Doc rewrites — counts, manifests, vocabulary (N14)'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-rfs
+    labels:
+      - docs
+    acceptance_criteria:
+      - >-
+        CLAUDE.md / README.md / MEMORY.md "9 skills, 1 agent" counts corrected; package.json +
+        plugin.json name/repository/description updated; the marketplace description no longer says
+        "beads"
+      - doc-grep the VOCABULARY (not just command names) per the global rule
+    description: >-
+      Plan step 1.8; the last local capstone. Enumerate every doc surface via grep — do not trust
+      the plan's edit list.
+    updated: '2026-07-18'
+
+  # ---- Phase 2 — GitHub-facing (each step gated on an explicit per-step "yes"; [us] steps only) ----
+  # [vpk] vp-knowledge follow-ups and [diarie] publishing are tracked via handoffs/, not here.
+
+  - id: vp-beads-mpu
+    title: 'P2.1 [us] Merge the restructure branch to main + push (B4) — GATED'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-dcr
+      - vp-beads-rgy
+      - vp-beads-sss
+      - vp-beads-dad
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        explicit per-step operator "yes" obtained (branch feat/tracker-design-exploration is
+        local-only by user choice; NEVER push without approval)
+      - >-
+        the whole restructure lands in one merge (diarie extraction + dissolution + monorepo
+        conversion); default branch moves off 0.18.0 single-plugin vp-beads
+      - 'must precede any marketplace edit — the marketplace cannot cross-source ledger from a main lacking plugins/ledger'
+    description: >-
+      Plan Phase 2 step 1. First GitHub-facing step. All local Phase-1 work must be done and green.
+    updated: '2026-07-18'
+
+  - id: vp-beads-rnm
+    title: 'P2.2 [us] Rename repo claude-beads → vp-skills (gh repo rename) — GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-mpu
+    labels:
+      - chore
+    acceptance_criteria:
+      - '`gh repo rename` performed only with explicit operator approval; GitHub 301-redirects old URLs'
+      - 'after rename, `git remote` + `/plugin marketplace add` still resolve via the 301'
+    description: >-
+      Plan Phase 2 step 2 ([us] half). vp-claude→vp-knowledge is the [vpk] half, tracked in
+      handoffs/HANDOFF-vp-knowledge.md (sequenced after PR #8 merges).
+    updated: '2026-07-18'
+
+  - id: vp-beads-drt
+    title: 'P2.3 [us] Drop retrospective from vp-skills — ONLY after vp-knowledge absorbs it — GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-mpu
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        the ordering guard holds — retrospective stays (or leaves a stub pointer) in vp-skills until
+        vp-knowledge's session-reflect absorption has LANDED (handoff #1 signals back)
+      - 'removed only after the [vpk] "done" signal — dropping it before then leaves it homeless'
+    description: >-
+      Plan Phase 2 step 4. The cross-repo coordination point: vp-knowledge (handoff #1 Part 2c) owns
+      the absorption + the rebuilt trend-review cadence; this row waits on its completion.
+    updated: '2026-07-18'
+
+  - id: vp-beads-arv
+    title: 'P2.4 [us] Archive (not delete) claude-git + claude-astgrep — GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-rnm
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        ARCHIVE, never delete — archive preserves the GitHub 301 redirect; delete does not (files
+        already brought in during P1.3d)
+      - >-
+        must follow the [vpk] marketplace re-source so their marketplace entries never 404 (B3) —
+        confirm the vp-skills sources are live before archiving
+    description: 'Plan Phase 2 step 5. Ordering-gated on the [vpk] marketplace bridge landing first.'
+    updated: '2026-07-18'
+
+  - id: vp-beads-swd
+    title: 'P2.5 [us] Swap the vendored diarie/ subtree for the published npm dep — publish-GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-mpu
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        triggered only once `npm view diarie` resolves ([diarie] publishes on its own track — see
+        handoffs/HANDOFF-diarie-publish.md §4)
+      - >-
+        vp-skills drops the `diarie/` workspace, depends on `diarie: "^0.1.0"`, and its store-reading
+        skills shell out to the installed binary instead of `node diarie/cli.js`
+      - '`--root` / nearest-wins + the ENOSTORE contract remain stable across the swap'
+    description: >-
+      Plan Phase 2 step 6. The ONE genuinely publish-gated step in the whole dissolution. Everything
+      else is publish-independent.
+    updated: '2026-07-18'
+
+  - id: vp-beads-rmv
+    title: 'P2.6 [us] Re-add marketplaces / reinstall on own machines / verify end-to-end — GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-rnm
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        a real `/plugin update` migrates vp-beads → ledger with the one-time notice; the other
+        successors install from vp-skills
+      - 'the trend-review cadence fires once from session-reflect; installed plugins reflect the new versions'
+    description: >-
+      Plan Phase 2 step 7. Final verification. Depends on the [vpk] marketplace bridge (handoff #1)
+      being live for the migration notice to fire.
+    updated: '2026-07-18'
