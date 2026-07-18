@@ -382,6 +382,7 @@ tasks:
       - "the plugin's hook rung 4 (`$PLUGIN_ROOT/diarie/cli.js`) is retired in favour of the consumer's own `node_modules/.bin/diarie`"
       - "`/migrate-tracker` can finally say `npx diarie migrate` — today it must say `node <path-to-vp-beads>/diarie/cli.js migrate`"
       - "at extraction, ensure diarie's `.ast-grep/` tree carries the 5 generic meta-check artifacts (`agr`/`gtc`/`exf`/`wrn`/`rgl`) — these single-home in the vp-beads root store today, surfaced here so the dual-tree obligation travels with the split"
+      - "after extraction, rename the `vp-beads-*` id namespace to `diarie-*` (the backlog is namespaced after the plugin it escaped); ids are free-form so this is zero-blast-radius, but it has no other tracking home"
     description: >-
       The whole point of building in-repo first: extraction is a subtree split, not a rewrite.
       Gated on tests moving (tst) and the name (pub).

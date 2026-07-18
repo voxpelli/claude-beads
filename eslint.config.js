@@ -22,7 +22,7 @@ export default [
     // package with no lint config, no lint dependency, and nothing to say so.
     //
     // diarie now has its own `eslint.config.js` and its own devDeps, and the root delegates via
-    // `check:diarie` → `npm run check --workspace=diarie`. Ignoring it here is not a coverage
+    // `check-workspaces` → `npm run check --workspaces --if-present`. Ignoring it here is not a coverage
     // loss — it is what stops diarie being linted TWICE, by two configs that can drift.
     name: 'vp-beads/delegate-to-workspace',
     ignores: ['diarie/**'],

@@ -709,16 +709,24 @@ up the new version (`/plugin install vp-beads@vp-plugins`).
 npm run check
 ```
 
-Runs every `check:*` key in parallel via `run-p check:*` (`npm-run-all2`) — the
-authoritative list is the `check:*` keys in `package.json`, not this paragraph.
+`check` = **`run-p check:* && run-s check-workspaces`** (`npm-run-all2`): every `check:*` key in
+parallel, THEN the workspace delegation. `check-workspaces` is hyphenated ON PURPOSE — `run-p
+check:*` matches only `check:`-prefixed keys, so the hyphen keeps the delegation out of the
+parallel glob and runs it as an explicit sequential step (turning the single-segment-glob gotcha
+below into a feature). The authoritative list is the keys in `package.json`, not this paragraph.
 
 **THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES.** The root's `check:*` keys cover
 the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`,
 `check:md` (remark), `check:lint` (eslint), `check:sh` (shellcheck + shfmt),
 `check:ast-grep` + `check:ast-grep-test`, `check:hooks`, `check:beads-probe`, and
-`check:tasks` (`node diarie/cli.js validate` — validating *this repo's store*, not the
-package). **`check:diarie` = `npm run check --workspace=diarie`**, which runs the
-workspace's OWN aggregate: its lint, tsc, type-coverage, knip, ast-grep and tests.
+`check:tasks` (`node diarie/cli.js validate` — validating *this repo's own store*, the
+43 `vp-beads-*` rows, not the package). **`check-workspaces` = `npm run check --workspaces
+--if-present`** delegates to every workspace's OWN aggregate (currently diarie's: lint, tsc,
+type-coverage, knip, ast-grep, tests — and, since diarie now carries its own backlog, a
+`check:tasks` gate over its own `diarie/.diarie/`). The root NEVER validates
+diarie's store itself: that gate lives in the workspace so it travels the subtree split. (An
+earlier root-side `check:tasks-diarie` was exactly the reach-in this principle forbids — it
+would not have survived the split, leaving the extracted backlog ungated — and was removed.)
 
 🚨 **`run-p check:*` does NOT match a `test` key.** diarie's suite is reachable from the
 aggregate only because it has a **`check:test`** script. When this delegation first shipped it
@@ -743,8 +751,9 @@ That is not cosmetic: tests outside the workspace do not survive a `git subtree 
 and `npm test --workspace=diarie` reported `pass 0` for as long as they lived at the
 root — a package about to be published whose own test command was vacuously green. The
 four scripts that used to hold them (`check-ready-walker`, `check-tasks-validator`,
-`check-tasks-smoke`, `check-bootstrap-tasks`) collapsed into one `check:diarie` key on
-2026-07-11. What remains in `scripts/` tests the **plugin** — hooks, the validator, the
+`check-tasks-smoke`, `check-bootstrap-tasks`) collapsed into the workspace's own `check`
+aggregate (root-delegated, today via `check-workspaces`) on 2026-07-11. What remains in
+`scripts/` tests the **plugin** — hooks, the validator, the
 beads probe, the ast-grep runner — and stays there.
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
 Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`); `ast-grep`
