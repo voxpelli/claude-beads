@@ -85,10 +85,16 @@ tasks:
         check:portability + check:pi-load adopted as shared tooling (advisory, non-blocking) —
         keeps the standards/lock-in-resistance goal alive without gating the dissolution
     description: >-
-      The real bulk of the skeleton work: the plugin-side gates all assume one plugin root. Plan
-      step 1.2. Keeps `npm run check` green after each atomic commit, which requires converting the
-      gate suite alongside the skeleton, not after. Fold in the generic ready-queue hardening rows
-      (agr/gtc/rgl/exf) opportunistically here where they touch shared gate tooling.
+      RECONSIDERED 2026-07-18 (see plan Status + decision vp-beads-cst option I): mostly SUBTRACTIVE,
+      not "generalize wrappers". Dissolve the ast-grep path-list wrapper (ast-grep-paths.mjs + the
+      check-ast-grep existence-guard) → one shared root bare `ast-grep scan` + the floor guard; broaden
+      check:sh; LEAVE the already-native checks; convert only the genuinely-bespoke checks
+      (validate-plugin, prose-commands, check-hooks) from root-hardcoded to plugin-DISCOVERY (glob
+      plugins/*), never enumeration. check-rule-parity STAYS bespoke (research-confirmed: ast-grep has
+      no native rule-test-coverage). Already reduced rule-parity to single-tree + externalized diarie
+      (85600aa), which removed the diarie-exclusion blocker for the shared bare-scan. Keeps
+      `npm run check` green per atomic commit. Fold generic ready-queue hardening (agr/gtc/rgl/exf) in
+      opportunistically.
     updated: '2026-07-18'
 
   - id: vp-beads-ldg
@@ -408,8 +414,11 @@ tasks:
         skills shell out to the installed binary instead of `node diarie/cli.js`
       - '`--root` / nearest-wins + the ENOSTORE contract remain stable across the swap'
     description: >-
-      Plan Phase 2 step 6. The ONE genuinely publish-gated step in the whole dissolution. Everything
-      else is publish-independent.
+      PARTIALLY DONE 2026-07-18 (85600aa): the vendored diarie/ workspace → `file:../diarie` dependency
+      swap is already done locally (it unblocked the option-I shared bare-scan). REMAINING here is only
+      the `file:../diarie` → published `^0.x` flip once diarie publishes — that flip is the ONE
+      genuinely publish-gated step. Everything else is publish-independent. Keep --root / ENOSTORE
+      stable across the flip.
     updated: '2026-07-18'
 
   - id: vp-beads-rmv
