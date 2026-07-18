@@ -155,14 +155,14 @@ Dev tooling only: validation and linting via `npm run check`.
 
 This project **has migrated off beads.** Its work lives in a lean in-repo flat-YAML
 substrate — `.diarie/tasks/tasks-<slug>.yml`, read by `diarie ready` (the files-native
-`bd ready`) and validated by `diarie validate`. The single canonical schema is
-`diarie/lib/schema.js`.
+`bd ready`) and validated by `diarie validate`. The canonical schema lives in the external
+`diarie` package's `lib/schema.js` (the `TRACKER_DIR` authority).
 
-The tracker is a real CLI: the **`diarie` npm workspace** at `diarie/` (`cli.js` +
-`lib/`), with `ready` / `stats` / `validate` / `init` / `migrate`. It is **built but not
-published** — `private: true`, held behind the name gate (`diarie.dev` + an npm
-placeholder). Everything already calls the CLI; nothing calls a loose `.mjs` reader,
-because there are none left.
+The tracker is a real CLI, **`diarie`**, with `ready` / `stats` / `validate` / `init` /
+`migrate`. It is **built but not published** — held behind the name gate (`diarie.dev`
+bought; `npm view diarie` still 404). Here it resolves via `npx diarie` /
+`node_modules/.bin/diarie` — **bare-shell `diarie` is NOT on PATH** (only npm injects it).
+Everything calls the CLI; there are no loose `.mjs` readers left.
 
 Verdict from a 12-agent research round (2026-06-09), for provenance:
 `RESEARCH-tracker-migration-synthesis-2026-06.md`; architecture in
@@ -186,10 +186,11 @@ DECLINED** — its MCP server is another daemon/vendor, and it cannot reproduce
   intentional (Integration Charter citations, and mapping explainers like "the
   files-native `bd ready`").
 - Feature branch `feat/tracker-design-exploration` carries this work (local-only per
-  user choice — don't push without approval). **Extracted 2026-07-18:** diarie was
-  `git subtree split --prefix=diarie --rejoin`'d to its own repo
-  [`voxpelli/diarie`](https://github.com/voxpelli/diarie) (its canonical home); the rejoined
-  `diarie/` subtree remains here until diarie publishes. Still unpublished.
+  user choice — don't push without approval). **Extracted + externalized 2026-07-18:**
+  diarie was `git subtree split`'d to its own repo
+  [`voxpelli/diarie`](https://github.com/voxpelli/diarie) (its canonical home), then wired
+  here as a **`file:../diarie` dependency** (`85600aa`) — the in-repo `diarie/` workspace is
+  **gone**. Still unpublished; the last step is `file:` → the published npm dep.
 
 ## Work-tracking substrates
 
@@ -307,36 +308,14 @@ the per-skill tables this section deliberately omits).
 
 ### Reader conventions — a guard that DROPS must also REPORT
 
-Every reader of the store (`diarie/lib/store.js`'s `loadTasks` above all) narrows untrusted
-YAML through type guards. **A guard that rejects a value must also report it, naming the
-CONSEQUENCE** — not `invalid priority`, but *"invalid priority `urgent` — it will be treated
-as `medium`"*. The consequence is the part that tells the reader whether to care.
-
-This is not style. Sprint 16 hardened the loader with guards, forgot the `else` branch on
-three of them, and shipped three silent bugs that *read as diligence*:
-
-- `labels: epic` written as a scalar → the whole list is rejected → `isEpic` is false →
-  **the container is offered as ready work.** `vp-beads-epc`, re-armed by the guard added to
-  make the loader safe.
-- `type: bug` (a bd fossil — framings live in `labels:` now) → the field is dropped → the row
-  appears in **no partition and no tally** while still counting toward `total`, and its parent,
-  seeing no open child, is told to close an epic whose work has not started.
-- `priority: urgent` → silently becomes `medium` on every surface.
-
-Two corollaries:
-
-- **Represent the malformed row; never delete it.** Dropping a bad row hides it from the human
-  whose typo it is. `validate` is the authority that rejects; the reader's job is to be honest.
-- **A malformed required field makes the row BROKEN, not merely non-workable.** `computeReady`
-  excludes a `doc`/`decision`/`milestone` silently — correctly, they are well-formed things
-  that are not work. It must NOT exclude a row with a missing-or-invalid `type` the same way;
-  that row surfaces in `needsAttention`. The two exclusions look identical in code and are
-  opposite in meaning.
-
-**The validator does not save you here**: the read path and the validate path are different
-commands, and what runs on every session (the hook, the agent, the prime) calls the *reader*.
-Also check the validator's *element* checks — `Array.isArray` is not "are the elements
-strings", and an unquoted `key: value` inside a YAML list item silently becomes a nested map.
+A general lesson this repo earned, worth applying to any guard in vp-beads' own scripts: **a guard
+that rejects a value must also report it, naming the CONSEQUENCE** — not `invalid priority`, but
+*"invalid priority `urgent` — treated as `medium`"*; and **represent a malformed row, never silently
+drop it** (dropping hides the typo from the human; a missing-or-invalid *required* field makes a row
+BROKEN and surfaced for attention, not merely non-workable). The concrete
+`loadTasks`/`computeReady`/`needsAttention` implementation that earned this now lives in the external
+**[`diarie` repo](https://github.com/voxpelli/diarie)** — it is that repo's engineering guidance, not
+vp-beads'.
 
 ### Retrospective file convention
 
@@ -559,18 +538,12 @@ plugin supports multiple substrates (see `## Work-tracking substrates`).
 This project tracks its own work in the **flat-YAML substrate**, **not bd** (see
 `## The tracker migration` above; do not use `bd` — its 1.1.0 writes are dead).
 
-**diarie is now EXTRACTED to its own repo, [`voxpelli/diarie`](https://github.com/voxpelli/diarie)**
-(2026-07-18) — the canonical home for diarie's own development, backlog, and decisions. vp-beads
-still carries `diarie/` as a **rejoined subtree snapshot** (kept because diarie isn't published yet
-and vp-beads needs the CLI to read its own store); sync it from that repo with `git subtree pull`
-and switch to the npm dep at publish. So **edit diarie's own backlog in
-[`voxpelli/diarie`](https://github.com/voxpelli/diarie), not here** — the `diarie/.diarie/` store
-here is a snapshot. The workspace and its checks are left exactly as `--rejoin` produced them (mechanics
-deferred until publish). **Two stores are still present.** Root `.diarie/` = this plugin's work
-(`vp-beads-*`, canonical); `diarie/.diarie/` = the diarie-backlog snapshot. **Nearest-wins by
-cwd** — a bare `diarie ready`/`stats`/`validate` from the repo root hits the ROOT store; from
-inside `diarie/` it hits the snapshot. Target one explicitly with `--root <dir>` (e.g. `diarie
-validate --root diarie`).
+**diarie is EXTERNAL** — extracted to its own repo, [`voxpelli/diarie`](https://github.com/voxpelli/diarie)
+(the canonical home for diarie's own development, backlog, and decisions), and consumed here as a
+**`file:../diarie` dependency** (`85600aa`). The in-repo `diarie/` workspace is **gone**, so there is
+now **one store**: root `.diarie/` = this plugin's own work (`vp-beads-*`). Invoke via `npx diarie` /
+`node_modules/.bin/diarie` — bare-shell `diarie` is NOT on PATH. **Edit diarie's own backlog in
+[`voxpelli/diarie`](https://github.com/voxpelli/diarie), not here.**
 
 ```bash
 diarie ready      # what to work on   [--json] [--blocked] [--filter <status>] [--strict]
@@ -643,8 +616,8 @@ observation + `UPSTREAM-claude-code.md` at project root.
 
 ### Issue types
 
-**Four exclusive types** (decision `vp-beads-etm`), enforced by
-`diarie/lib/schema.js` (`VALID_TYPES`):
+**Four exclusive types** (decision `vp-beads-etm`), enforced by `diarie validate` (the
+`VALID_TYPES` set, defined in the external `diarie` package's schema):
 
 | Type        | Lives in                     | When to use                                                                                     |
 | ----------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -661,14 +634,14 @@ kind of thing is this", which admits exactly one answer; a label answers "how sh
 I think about it", which admits several.
 
 `decision` and `doc` carry prose, which a terse YAML row has no home for — hence the
-markdown files, with the schema fields in frontmatter. Because `ready-walker` only
+markdown files, with the schema fields in frontmatter. Because `diarie ready` only
 globs `tasks-*.yml`, they are structurally outside the ready computation: a decision
 in force is never surfaced as workable. (bd got this wrong — its ready-walk is
 type-blind and lists decisions as ready. Our own dual-run caught it on `vp-beads-etm`.)
 
 bd's 9-type vocabulary survives only in the frozen
-`.diarie/_archive/bd-final-export.jsonl`; `diarie/lib/migrate/bd-map.js` holds the
-`TYPE_MAP` that reads it.
+`.diarie/_archive/bd-final-export.jsonl`; the `TYPE_MAP` that reads it is diarie's migrate
+internals, in the external [`diarie` repo](https://github.com/voxpelli/diarie).
 
 ### Session completion
 
@@ -740,40 +713,23 @@ the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`
 `check:ast-grep` + `check:ast-grep-test`, `check:hooks`, `check:beads-probe`, and
 `check:tasks` (`diarie validate` — validating *this repo's own store* via the installed
 diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces
---if-present`** delegates to every workspace's OWN aggregate (currently diarie's: lint, tsc,
-type-coverage, knip, ast-grep, tests — and, since diarie now carries its own backlog, a
-`check:tasks` gate over its own `diarie/.diarie/`). The root NEVER validates
-diarie's store itself: that gate lives in the workspace so it travels the subtree split. (An
-earlier root-side `check:tasks-diarie` was exactly the reach-in this principle forbids — it
-would not have survived the split, leaving the extracted backlog ungated — and was removed.)
+--if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
+Today the only member is `plugins/_placeholder` (a stub whose trivial `check` keeps the delegation
+live and proven until the first real plugin lands); **diarie is NOT a workspace** — it is an external
+`file:../diarie` dependency and owns all its own gates in its own repo.
 
-🚨 **`run-p check:*` does NOT match a `test` key.** diarie's suite is reachable from the
-aggregate only because it has a **`check:test`** script. When this delegation first shipped it
-did not, and the entire 228-assertion suite ran **nowhere** — not locally, not in CI (which
-runs only `npm run check`, and the root has no `test` script at all). Every gate was green over
-a suite nobody executed. If you add a workspace, give it a `check:`-prefixed key for its tests,
-and prove it by planting a failing test and watching the ROOT go red.
+🚨 **`run-p check:*` does NOT match a `test` key.** A workspace's tests reach the aggregate ONLY if
+exposed under a **`check:`-prefixed** script (e.g. `check:test`) — `run-p check:*` never matches a
+bare `test` key, and CI runs only `npm run check` (the root has no `test` script). This once left
+diarie's entire 228-assertion suite running **nowhere** — green over a suite nobody executed. So when
+you add a `plugins/*` workspace, give its tests a `check:`-prefixed key and **prove it by planting a
+failing test and watching the ROOT go red.**
 
-The root no longer type-checks, lints, or scans `diarie/**` — `check:tsc` and
-`check:type-coverage` moved *into* the workspace, root `eslint.config.js` ignores it, and
-`scripts/check-ast-grep.mjs` no longer lists its paths. That is not a coverage loss; it is
-what stops diarie being linted **twice, by two configs that can drift** — and it is what
-makes `git subtree split --prefix=diarie` a no-op instead of an amputation.
-
-Until Wave 2 (2026-07-14) every gate diarie had belonged to the root and reached in through
-a path or a glob, while `diarie/package.json` carried exactly **one** script (`test`). An
-extraction would have taken the source and left ESLint, tsc, type-coverage, knip and
-ast-grep behind — and the extracted package would have shipped green with no lint at all.
-
-**`diarie`'s tests live in `diarie/test/*.spec.js` (`node:test`), not in `scripts/`.**
-That is not cosmetic: tests outside the workspace do not survive a `git subtree split`,
-and `npm test --workspace=diarie` reported `pass 0` for as long as they lived at the
-root — a package about to be published whose own test command was vacuously green. The
-four scripts that used to hold them (`check-ready-walker`, `check-tasks-validator`,
-`check-tasks-smoke`, `check-bootstrap-tasks`) collapsed into the workspace's own `check`
-aggregate (root-delegated, today via `check-workspaces`) on 2026-07-11. What remains in
-`scripts/` tests the **plugin** — hooks, the validator, the
-beads probe, the ast-grep runner — and stays there.
+**Own gates travel with their workspace — that is the whole point.** diarie's extraction was a no-op
+precisely because its lint/tsc/type-coverage/knip/ast-grep/tests already lived in *its* `package.json`,
+not reached in from the root through a path or glob. The same discipline holds for `plugins/*`: the
+root's `check:*` keys cover the **plugin only**; a workspace the root lints too (two configs that can
+drift) is a workspace that cannot be extracted cleanly.
 All checks must pass before committing. Remark uses `--frail` so warnings are errors.
 Requires `shellcheck` and `shfmt` (`brew install shellcheck shfmt`); `ast-grep`
 comes from the pinned `@ast-grep/cli` devDep.
