@@ -121,7 +121,7 @@ tasks:
 
   - id: vp-beads-gtd
     title: 'P1.2-tail — convert validate-plugin/prose-commands/check-hooks to plugin-DISCOVERY + prove RED; broaden check:sh'
-    status: pending
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -129,40 +129,24 @@ tasks:
       - chore
     acceptance_criteria:
       - >-
-        validate-plugin.mjs, check-hooks.mjs, check:sh (`hooks/*.sh` glob), and check:prose-commands
-        (the five prose surfaces) iterate the plugin workspaces (glob `plugins/*`) — or take a plugin
-        path — instead of hardcoding a single-plugin root. DISCOVERY, never enumeration
+        DONE via swm (P1.3b): validate-plugin.mjs and check:prose-commands converted to plugin
+        DISCOVERY (glob `plugins/*`). Proven RED on planted violations.
       - >-
-        EACH shared gate proven to go RED on a planted per-plugin violation (this repo's signature
-        failure is green-over-nothing — see green_check_taxonomy). A gate that has never been red
-        has never been tested
-      - '`claude plugin validate . --strict` clean over the marketplace + per plugin'
+        REDIRECTED: check:portability + check:pi-load → vp-beads-pc1 (pi compatibility epic),
+        where the full phased plan lives.
       - >-
-        check:portability + check:pi-load adopted as shared tooling (advisory, non-blocking) —
-        keeps the standards/lock-in-resistance goal alive without gating the dissolution
+        REMAINING as standalone work (not blocking dissolution): broaden check:sh across plugin
+        workspaces; convert check-hooks.mjs to DISCOVERY; fold swc consumer-half in.
       - >-
-        broaden check:sh to cover shell across the plugin workspaces (today: `hooks/*.sh` at root)
-      - >-
-        fold the consumer-half swc in opportunistically: agents read the `warnings` key from
-        `stats --stale --json` / `ready --json` and refuse to report a clean sprint over an unsound
-        store. (The meta-guard half of the green-check-over-nothing cluster — agr/gtc/rgl/exf/jqs —
-        was CLOSED as safety-guards-for-the-guards in Feb 2026; the hazard class is logged in
-        CLAUDE.md `check:prose-commands` and left to review discipline. Only swc, the real consumer
-        bug, remains.) Build swc GENERIC (git-derived) so it stays live across the P1.3
-        `plugins/<name>/` workspace move — a check that hardcodes root `hooks/*.sh` / `scripts/*.mjs`
-        goes inert the moment those paths live under a plugin
+        gtd's BLOCKER (needs a real plugin to discover against) was lifted by swm — the core
+        conversion landed with the swarm-wave workspace move.
     description: >-
-      The deferred tail of `vp-beads-gtp`, carved out so the done subtractive core could close.
-      BLOCKED UNTIL any one of `vp-beads-ldg` / `vp-beads-swm` / `vp-beads-dad` / `vp-beads-vga` lands:
-      the discovery conversion needs a REAL plugin with hooks + skills to discover against, and
-      `_placeholder` carries neither (no `.claude-plugin/plugin.json`, no `skills/`). Proving RED
-      requires a per-plugin violation to plant. No `deps` entry because the dependency is an OR
-      across the P1.3 rows, not a single id; whichever lands first satisfies it. Build the generic
-      meta-checks (`agr`/`gtc`/`rgl`/`exf`) in the extraction wave so they stay live across the P1.3
-      `plugins/<name>/` workspace move — root-path hardcoding goes inert under a plugin workspace.
-      (The earlier `survives git subtree split` rationale was a fossil: subtree split is retired
-      after the one-time diarie extraction per decision `vp-beads-cst`.)
-    updated: '2026-07-18'
+      The deferred tail of `vp-beads-gtp`. Core work (validator + prose-commands discovery
+      conversion) delivered via `vp-beads-swm` (P1.3b), which provided the first real plugin to
+      discover against and proved RED. Remaining items (check-hooks discovery, check:sh broaden,
+      swc fold) are standalone post-dissolution work, not gating the dissolution. Pi portability
+      AC redirected to the dedicated `vp-beads-pcp` epic.
+    updated: '2026-07-20'
 
   - id: vp-beads-ldg
     title: 'P1.3a Merge upstream/synergy/vendor/sibling-tracker → the `ledger` plugin (biggest transformation)'

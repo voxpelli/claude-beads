@@ -499,21 +499,22 @@ tasks:
     updated: '2026-07-11'
   - id: vp-beads-bsv
     title: 'basic-memory: sync duplicates observation rows — 19% of the index is duplicates, files are clean'
-    status: pending
+    status: cancelled
     type: task
     priority: high
     labels:
       - bug
       - upstream
     acceptance_criteria:
-      - DONE — a paste-ready GitHub issue is drafted into UPSTREAM-basic-memory.md
-      - DONE — the friction is promoted to a "## Upstream Friction" entry on brew-basic-memory in BM
-      - 'DONE — the write-up states the CORRECTED finding: the tool reports the index faithfully; the INDEX is corrupt'
-      - 'OPEN — file the issue upstream. Explicitly DEFERRED by the user 2026-07-11; needs a fresh, in-the-moment go-ahead'
-      - 'OPEN — repair the local index. Explicitly DECLINED by the user 2026-07-11: the corrupt state is kept as live evidence'
+      - 'CANCELLED — upstream BM bug, not vp-beads work. The three actionable items were already DONE
+        (drafted into UPSTREAM-basic-memory.md, promoted to BM friction entry, corrected finding).
+        The two OPEN items: filing upstream is DEFERRED (needs user go-ahead 2026-07-11); repairing
+        the local index was DECLINED (kept as live evidence). UPSTREAM-basic-memory.md holds the
+        paste-ready issue draft if the go-ahead ever comes.'
     description: >-
       Basic Memory's SQLite index holds every observation of some entities TWO or THREE times. The
       markdown files on disk are CLEAN. This is index corruption, not note corruption.
+      Cancelled as upstream BM work, not vp-beads territory.
 
 
       Measured, not inferred: the file `npm-markdown-or-chalk.md` has 23 observation lines, 23
