@@ -912,3 +912,86 @@ tasks:
       tracker-vocabulary touch rather than being built speculatively against a skill slated for
       dissolution.
     updated: '2026-07-15'
+
+  - id: vp-beads-pcp
+    title: 'Cross-harness (pi) compatibility (epic)'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - feature
+      - epic
+    acceptance_criteria:
+      - All three child tasks completed (pc1 + pc2 + pc3)
+      - Per vp-beads-cst, portability stays a cheap default, not a blocker — advisory/non-blocking
+    description: >-
+      Parent epic for making vp-beads work under the pi coding agent harness. Three phases:
+      advisory CI gates for claude-only patterns (Phase 1), adapting skill prose to pi-compatible
+      invocation patterns (Phase 2), shipping plugins as standalone pi extensions (Phase 3).
+    updated: '2026-07-20'
+
+  - id: vp-beads-pc1
+    title: 'Phase 1 — check:portability + check:pi-load advisory CI gates'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-pcp
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        check:portability scans skills/agents/hooks for claude-only patterns (Agent tool, Skill tool,
+        hooks.json, flattened mcp__*__* names) and warns on each. Advisory — never fails the build.
+      - >-
+        check:pi-load verifies each SKILL.md has valid Agent Skills frontmatter (required name +
+        description fields, valid characters) so pi's skill loader can discover it. Advisory.
+      - 'Proven RED on a planted violation before declaring done'
+      - 'Included in npm run check (non-blocking, warning-only exit code)'
+    description: >-
+      Advisory CI gates that flag claude-only patterns without blocking the build. Portability
+      awareness without portability enforcement — the standard stays alive, the dissolution is not
+      gated.
+    updated: '2026-07-20'
+
+  - id: vp-beads-pc2
+    title: 'Phase 2 — skill/agent/hook adaptation for pi compatibility'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-pcp
+    labels:
+      - chore
+    acceptance_criteria:
+      - 'Skill tool invocations → documented as /skill:name equivalents'
+      - 'Agent tool (Task fan-out) → subagent type equivalents documented where applicable'
+      - 'mcp__*__* flattened names → mcp proxy call documented'
+      - 'Where full adaptation is impossible (swarm-wave Task-tool fan-out), documented as
+        claude-only with a pi-workaround hint in the SKILL.md'
+      - 'hooks.json → pi session hooks equivalence documented'
+      - 'Proven by loading each adapted skill under pi via settings.json and confirming discovery'
+    description: >-
+      Walk every skill, agent markdown, and hook in vp-beads. Each Claude Code-specific invocation
+      pattern gets a pi-compatible equivalent or a documented limitation. No runtime shims — pure
+      prose adaptation.
+    updated: '2026-07-20'
+
+  - id: vp-beads-pc3
+    title: 'Phase 3 — per-plugin pi-package/ extensions'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-pcp
+    labels:
+      - feature
+    acceptance_criteria:
+      - 'Each plugin (ledger, swarm-wave, diarie-adopt) that makes sense standalone under pi has a
+        pi-package/ overlay'
+      - 'Overlay includes: build script (copies skills/agents/lib to npm layout), pi extension
+        metadata (package.json with pi extension fields), session hooks where applicable'
+      - 'Parallel to the design vp-claude produced for its pi extension'
+      - 'Each plugin ships as its own independent pi extension installable via pi install'
+    description: >-
+      Full pi extension treatment for each plugin — paralleling what vp-claude designed. Each
+      plugin becomes npm-installable under pi with session hooks, agent sync, and build packaging.
+      The last phase; depends on Phase 1 and Phase 2 establishing the patterns first.
+    updated: '2026-07-20'
