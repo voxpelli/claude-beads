@@ -466,12 +466,10 @@ tasks:
 
   - id: vp-beads-swd
     title: 'P2.5 [us] Swap the vendored diarie/ subtree for the published npm dep — publish-gate satisfied'
-    status: pending
+    status: completed
     type: task
     priority: low
     parent: vp-beads-dis
-    deps:
-      - vp-beads-mpu
     labels:
       - chore
     acceptance_criteria:
@@ -493,8 +491,13 @@ tasks:
       `file:../diarie` → published `^0.2.0` flip — is NO LONGER publish-gated (diarie is on npm); it is
       executed now on the feature branch by operator choice, ahead of the strict P2.1 (`mpu`) merge
       ordering. The one genuinely publish-gated step in the whole dissolution is therefore cleared.
-      Keep --root / ENOSTORE stable across the flip. Status moves to `completed` once the flip lands
-      and `npm run check` is green against the registry-resolved package.
+      Keep --root / ENOSTORE stable across the flip.
+      DONE 2026-07-18 (c964995): the `file:../diarie` → `^0.2.0` flip landed; `package-lock.json`
+      resolves from the registry (diarie-0.2.0.tgz, integrity set); `import('diarie/schema')`
+      resolves (`TRACKER_DIR = .diarie`); `diarie validate` and `npm run check` green against the
+      registry-resolved package (42 tests, prose-commands re-verified). The `mpu` dep was dropped:
+      the flip was executed on the feature branch ahead of the merge by operator choice, so it no
+      longer waits on `mpu`. The one genuinely publish-gated step in the dissolution is cleared.
     updated: '2026-07-18'
 
   - id: vp-beads-rmv
