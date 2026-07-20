@@ -46,8 +46,9 @@ tasks:
       - chore
     acceptance_criteria:
       - >-
-        Root package.json declares `workspaces: ["plugins/*", "diarie"]` (diarie stays a vendored
-        workspace until publish)
+        Root package.json declares `workspaces: ["plugins/*"]` (diarie was externalized to a
+        `file:../diarie` dependency in 85600aa — it is NOT a workspace; later flipped to the
+        published npm `^0.2.0` dep)
       - >-
         Layout per anthropics/claude-code: each plugin at `plugins/<name>/` with
         `.claude-plugin/plugin.json` + root-level `skills/ agents/ hooks/`
@@ -55,8 +56,15 @@ tasks:
         Each plugin carries TWO manifests — package.json (workspace member; owns the `check:`
         script the root delegates to; kept `private`/no-version) and .claude-plugin/plugin.json
         (Claude manifest; its `version` is authoritative — never also set in the marketplace entry)
+        — proven when the first real plugin lands (`_placeholder` has no `.claude-plugin/plugin.json`)
       - '`npm run check` green; `npm run check --workspaces --if-present` delegates cleanly'
     description: >-
+      SKELETON DONE: `workspaces: ["plugins/*"]` declared, `check-workspaces` delegates, and
+      `plugins/_placeholder/` keeps the glob non-empty (delete when the first real plugin lands).
+      REMAINING folds into P1.3 — the two-manifest pattern (`.claude-plugin/plugin.json` + workspace
+      `package.json`) and the `plugins/<name>/` layout are PROVEN by the first real plugin landing,
+      not by the placeholder (which carries no plugin payload). This row stays `in_progress` until
+      then.
       Foundational: nothing else in Phase 1 can move until the workspace exists. Plan step 1.1;
       generalises the existing "THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES" pattern (today one
       diarie workspace) to N plugin-workspaces. See `~/.claude/plans/eager-jingling-scone.md` Phase 1.
@@ -64,7 +72,7 @@ tasks:
 
   - id: vp-beads-gtp
     title: 'P1.2 Generalise the shared gate tooling to be path-taking (B1 blocker) + prove RED'
-    status: in_progress
+    status: completed
     agent: claude
     type: task
     priority: high
@@ -75,16 +83,19 @@ tasks:
       - chore
     acceptance_criteria:
       - >-
-        validate-plugin.mjs, check-hooks.mjs, check:sh (`hooks/*.sh` glob), check:prose-commands
-        (the five prose surfaces), and scripts/ast-grep-paths.mjs iterate the plugin workspaces (or
-        take a plugin path) instead of hardcoding a single-plugin root
+        ast-grep path-list wrapper (scripts/ast-grep-paths.mjs) + the check-ast-grep existence-guard
+        DISSOLVED → standard `ast-grep scan` (56740fb) — no wrapper; the scannedFileCount FLOOR was
+        DROPPED, not ported (a blindable ignore-bound accepted at parity with check:md)
       - >-
-        EACH shared gate proven to go RED on a planted per-plugin violation (this repo's signature
-        failure is green-over-nothing — see green_check_taxonomy)
-      - '`claude plugin validate . --strict` clean over the marketplace + per plugin'
+        the bare scan auto-covers hooks/*.sh, so no-jq-raw-interpolation finally sees real bash
+        (closes the aim half of agr)
       - >-
-        check:portability + check:pi-load adopted as shared tooling (advisory, non-blocking) —
-        keeps the standards/lock-in-resistance goal alive without gating the dissolution
+        check-rule-parity STAYS bespoke — 2-reviewer round (code-simplifier + silent-failure-hunter)
+        both said KEEP; premise re-verified (detach a test → `ast-grep test` 5/6 green, exit 0;
+        ast-grep has no native rule-test-coverage)
+      - >-
+        ast-grep test/scan exit-code gaps logged to UPSTREAM-ast-grep--cli.md (5411e23) + promoted
+        to BM brew-ast-grep
     description: >-
       RECONSIDERED 2026-07-18 (see plan Status + decision vp-beads-cst option I): mostly SUBTRACTIVE,
       not "generalize wrappers". Dissolve the ast-grep path-list wrapper (ast-grep-paths.mjs + the
@@ -105,6 +116,47 @@ tasks:
       REMAINING: broaden check:sh; convert validate-plugin/prose-commands/check-hooks to plugin-
       DISCOVERY + prove RED — deferred until the first real plugin lands (placeholder has no hooks or
       skills to discover).
+      CLOSED 2026-07-18: the subtractive core above is complete; the discovery-conversion tail carved
+      to `vp-beads-gtd` (post-first-plugin). This row tracks only the done core.
+    updated: '2026-07-18'
+
+  - id: vp-beads-gtd
+    title: 'P1.2-tail — convert validate-plugin/prose-commands/check-hooks to plugin-DISCOVERY + prove RED; broaden check:sh'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        validate-plugin.mjs, check-hooks.mjs, check:sh (`hooks/*.sh` glob), and check:prose-commands
+        (the five prose surfaces) iterate the plugin workspaces (glob `plugins/*`) — or take a plugin
+        path — instead of hardcoding a single-plugin root. DISCOVERY, never enumeration
+      - >-
+        EACH shared gate proven to go RED on a planted per-plugin violation (this repo's signature
+        failure is green-over-nothing — see green_check_taxonomy). A gate that has never been red
+        has never been tested
+      - '`claude plugin validate . --strict` clean over the marketplace + per plugin'
+      - >-
+        check:portability + check:pi-load adopted as shared tooling (advisory, non-blocking) —
+        keeps the standards/lock-in-resistance goal alive without gating the dissolution
+      - >-
+        broaden check:sh to cover shell across the plugin workspaces (today: `hooks/*.sh` at root)
+      - >-
+        fold the green-check-over-nothing cluster in opportunistically: agr (rule-aim via
+        `ast-grep scan --inspect entity`), gtc (check:gate-coverage reachability), rgl (rule `files:`
+        glob intersects scan paths), exf (per-gate coverage floor), plus the consumer-half swc
+        (agents read `warnings`) and jqs (advisory-rule severity). All built GENERIC (git-derived)
+        so a byte-identical copy travels the subtree split
+    description: >-
+      The deferred tail of `vp-beads-gtp`, carved out so the done subtractive core could close.
+      BLOCKED UNTIL any one of `vp-beads-ldg` / `vp-beads-swm` / `vp-beads-dad` / `vp-beads-vga` lands:
+      the discovery conversion needs a REAL plugin with hooks + skills to discover against, and
+      `_placeholder` carries neither (no `.claude-plugin/plugin.json`, no `skills/`). Proving RED
+      requires a per-plugin violation to plant. No `deps` entry because the dependency is an OR
+      across the P1.3 rows, not a single id; whichever lands first satisfies it. Build the generic
+      meta-checks (`agr`/`gtc`/`rgl`/`exf`) in the extraction wave so they survive `git subtree split`.
     updated: '2026-07-18'
 
   - id: vp-beads-ldg
@@ -113,8 +165,6 @@ tasks:
     type: task
     priority: high
     parent: vp-beads-dis
-    deps:
-      - vp-beads-gtp
     labels:
       - feature
     acceptance_criteria:
@@ -133,7 +183,9 @@ tasks:
       The single biggest unit in the plan — treat as its own scoped effort, not a bullet. A harder
       merge than PR #8's 2-way `/intel` (four intricate skills incl. sibling-sync's bilateral logic
       + private-sibling handling). Plan step 1.3 (ledger bullet). Store migration tracked separately
-      under Deferred (trigger: ledger v1 stable).
+      under Deferred (trigger: ledger v1 stable). Unblocked by `gtp`-core completion (the ast-grep
+      dissolution removed the diarie-exclusion blocker for the shared bare-scan); discovery hardening
+      is `gtd`, post-landing.
     updated: '2026-07-18'
 
   - id: vp-beads-swm
@@ -142,8 +194,6 @@ tasks:
     type: task
     priority: medium
     parent: vp-beads-dis
-    deps:
-      - vp-beads-gtp
     labels:
       - feature
     acceptance_criteria:
@@ -156,7 +206,8 @@ tasks:
         `claude-only: true` retained (Task-tool fan-out needs plugin runtime)
     description: >-
       Plan step 1.3 (swarm-wave bullet). Resolves the S7 dangling edges left by retiring
-      backlog-groomer + sprint-review.
+      backlog-groomer + sprint-review. Unblocked by `gtp`-core completion; discovery hardening is
+      `gtd`, post-landing.
     updated: '2026-07-18'
 
   - id: vp-beads-dad
@@ -165,8 +216,6 @@ tasks:
     type: task
     priority: medium
     parent: vp-beads-dis
-    deps:
-      - vp-beads-gtp
     labels:
       - feature
     acceptance_criteria:
@@ -178,7 +227,9 @@ tasks:
     description: >-
       Plan step 1.3 (diarie-adopt bullet). Overrides DESIGN §4 / `vp-beads-ski` ("ship the adoption
       pair WITH diarie") per `vp-beads-cst` — the pair goes to vp-skills to decouple it from
-      diarie's publish timeline.
+      diarie's publish timeline. Unblocked by `gtp`-core completion; discovery hardening is `gtd`,
+      post-landing. The bd-map export (handoff §2) is a THIS-ROW prerequisite, not a dep-flip one:
+      resolve when this lands (add `./migrate` to diarie's `exports`, or vendor a copy).
     updated: '2026-07-18'
 
   - id: vp-beads-vga
@@ -187,8 +238,6 @@ tasks:
     type: task
     priority: medium
     parent: vp-beads-dis
-    deps:
-      - vp-beads-gtp
     labels:
       - feature
     acceptance_criteria:
@@ -202,7 +251,8 @@ tasks:
     description: >-
       Plan step 1.3 (vp-git/astgrep bullet). These are the least substrate-aligned members,
       consolidated for solo bus-factor per `vp-beads-cst`'s recorded trade (revival trigger: external
-      users, or a plugin outgrows the shared repo).
+      users, or a plugin outgrows the shared repo). Unblocked by `gtp`-core completion; discovery
+      hardening is `gtd`, post-landing.
     updated: '2026-07-18'
 
   - id: vp-beads-rt2
@@ -415,7 +465,7 @@ tasks:
     updated: '2026-07-18'
 
   - id: vp-beads-swd
-    title: 'P2.5 [us] Swap the vendored diarie/ subtree for the published npm dep — publish-GATED'
+    title: 'P2.5 [us] Swap the vendored diarie/ subtree for the published npm dep — publish-gate satisfied'
     status: pending
     type: task
     priority: low
@@ -426,18 +476,24 @@ tasks:
       - chore
     acceptance_criteria:
       - >-
-        triggered only once `npm view diarie` resolves ([diarie] publishes on its own track — see
-        handoffs/HANDOFF-diarie-publish.md §4)
+        publish gate SATISFIED — `npm view diarie` resolves to 0.1.0 + 0.2.0 (latest 0.2.0, both
+        published 2026-07-18); the `file:../diarie` → published `^0.2.0` flip is executed on the
+        feature branch ahead of the `mpu` merge by operator choice (see handoff §4)
       - >-
-        vp-skills drops the `diarie/` workspace, depends on `diarie: "^0.1.0"`, and its store-reading
-        skills shell out to the installed binary instead of `node diarie/cli.js`
+        vp-skills drops the `file:../diarie` dependency, depends on `diarie: "^0.2.0"`, and its
+        store-reading skills shell out to the installed binary instead of `node diarie/cli.js`
       - '`--root` / nearest-wins + the ENOSTORE contract remain stable across the swap'
     description: >-
+      PUBLISH GATE SATISFIED 2026-07-18: `npm view diarie` → 0.1.0 + 0.2.0 (latest 0.2.0). The handoff
+      doc + an earlier draft of this row said "`npm view diarie` still 404 / built but not published"
+      — stale, written the same day just before publish.
       PARTIALLY DONE 2026-07-18 (85600aa): the vendored diarie/ workspace → `file:../diarie` dependency
-      swap is already done locally (it unblocked the option-I shared bare-scan). REMAINING here is only
-      the `file:../diarie` → published `^0.x` flip once diarie publishes — that flip is the ONE
-      genuinely publish-gated step. Everything else is publish-independent. Keep --root / ENOSTORE
-      stable across the flip.
+      swap is already done locally (it unblocked the option-I shared bare-scan). REMAINING — the
+      `file:../diarie` → published `^0.2.0` flip — is NO LONGER publish-gated (diarie is on npm); it is
+      executed now on the feature branch by operator choice, ahead of the strict P2.1 (`mpu`) merge
+      ordering. The one genuinely publish-gated step in the whole dissolution is therefore cleared.
+      Keep --root / ENOSTORE stable across the flip. Status moves to `completed` once the flip lands
+      and `npm run check` is green against the registry-resolved package.
     updated: '2026-07-18'
 
   - id: vp-beads-rmv
