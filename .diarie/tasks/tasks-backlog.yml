@@ -928,6 +928,11 @@ tasks:
       Parent epic for making vp-beads work under the pi coding agent harness. Three phases:
       advisory CI gates for claude-only patterns (Phase 1), adapting skill prose to pi-compatible
       invocation patterns (Phase 2), shipping plugins as standalone pi extensions (Phase 3).
+
+      Priority rationale: pi's skill system is simpler to test-drive with than Claude Code's plugin
+      cache (just edit SKILL.md and reload; no plugin install cycle). Going pi-first means faster
+      iterate-once cycles when adapting skill prose, making Phase 2 cheaper than it looks.
+      Advisory/non-blocking per vp-beads-cst; the dissolution is never gated on this.
     updated: '2026-07-20'
 
   - id: vp-beads-pc1
