@@ -260,6 +260,9 @@ function walk (dir, match) {
  * @returns {{ findings: Array<{ file: string, line: number, problem: string }>, examined: number, fileCount: number }}
  */
 function scanCorpus (oracle) {
+  // gtd-core: discover prose surfaces in both root and plugins/* so commands in
+  // a skill moved under plugins/<name>/ stay checked. Root reads stay so the
+  // still-root skills/agents/hooks keep scanning.
   const files = [
     join(ROOT, 'CLAUDE.md'),
     join(ROOT, 'README.md'),
@@ -267,6 +270,20 @@ function scanCorpus (oracle) {
     ...walk(join(ROOT, 'agents'), /\.md$/),
     ...walk(join(ROOT, 'hooks'), /\.sh$/),
   ]
+  // plugins/* — scan skills/, agents/, hooks/ where they exist
+  const pluginsDir = join(ROOT, 'plugins')
+  if (existsSync(pluginsDir)) {
+    for (const name of readdirSync(pluginsDir)) {
+      const pluginDir = join(pluginsDir, name)
+      if (!statSync(pluginDir).isDirectory()) continue
+      for (const sub of ['skills', 'agents']) {
+        const subDir = join(pluginDir, sub)
+        if (existsSync(subDir)) files.push(...walk(subDir, /\.md$/))
+      }
+      const hooksDir = join(pluginDir, 'hooks')
+      if (existsSync(hooksDir)) files.push(...walk(hooksDir, /\.sh$/))
+    }
+  }
   /** @type {Array<{ file: string, line: number, problem: string }>} */
   const findings = []
   let examined = 0

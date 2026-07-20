@@ -39,7 +39,7 @@ A guard is a claim about inputs it has never seen. Whoever wrote it chose the in
 tested on — and that choice carries the author's blind spot into the test suite, where it reads
 as coverage.
 
-The evidence is not theoretical. Across eight defects in one sprint, the author's own adversarial
+The evidence is not theoretical. Across multiple real defects tracked across a sprint cycle, the author's own adversarial
 attempt never once found the author's own blind spot:
 
 - The `invalid:` fixtures for a new ast-grep rule were **confirmatory** — they proved the rule

@@ -1,0 +1,9 @@
+{
+  "name": "@vp-skills/swarm-wave",
+  "private": true,
+  "type": "module",
+  "description": "Multi-agent wave orchestration plugin (Claude Code only).",
+  "scripts": {
+    "check": "remark skills/ --quiet --frail"
+  }
+}

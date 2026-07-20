@@ -623,12 +623,13 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-rgl
     title: 'check-ast-grep: a rule whose `files:` glob matches NOTHING is still green and inert'
-    status: pending
+    status: cancelled
     type: task
     priority: medium
     labels:
       - bug
     acceptance_criteria:
+      - 'CANCELLED with agr — same hazard class on a different axis (rule `files:` glob vs rule `language`), same meta-meta-guard smell. The `PATHS`/`asg` legs were already stale (PATHS was dissolved in gtp-core; the fold-target vp-beads-asg does not exist as a row). The one live leg folds into the review-time check that replaces agr.'
       - "the runner asserts each rule's `files:` globs actually intersect the scan paths — a rule scoped to `diarie/nonexistent/**` currently scans nothing, reports nothing, and exits 0"
       - "MEASURED 2026-07-14: `ast-grep scan --inline-rules '<files: [\"diarie/nonexistent/**/*.js\"]>' <valid paths>` exits 0 with no output and no warning"
       - "this is the SAME green-and-inert bug vp-beads-cli fixed one layer up (scan paths now checked with existsSync) — the rule's own `files:` glob is the second input to whether a rule fires, and nothing checks it"
@@ -645,12 +646,13 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-jqs
     title: 'no-jq-raw-interpolation guarded NOTHING for its whole life — and at severity:warning it still cannot fail the build'
-    status: pending
+    status: cancelled
     type: task
     priority: medium
     labels:
       - bug
     acceptance_criteria:
+      - 'CANCELLED — the severity/divergence sub-decision (promote to `error` and log a SYNERGY-vp-knowledge.md divergence) is not worth a permanent vp-knowledge divergence for a 0-violation advisory rule. The rule now SEES the hooks (gtp-core added `hooks/` to the scan bound, closing the aim half); leaving it advisory is the low-cost state. Re-open if jq-interpolation violations accumulate uncaught.'
       - "DONE (2026-07-14): `hooks/` added to `scripts/check-ast-grep.mjs`'s scan bound. The rule is `language: bash` and exists because `the hooks build jq programs` — and `scripts/` contains ZERO .sh files, so it had never once been pointed at a bash file"
       - "OPEN: decide the severity. `ast-grep scan` exits 0 on warnings-only, so at `severity: warning` the rule can SEE but cannot BITE. There are currently zero violations, so promoting it to `error` is free"
       - "the catch: it is an ADOPTED rule (verbatim from vp-knowledge/vp-claude). Promoting it here is a deliberate DIVERGENCE and belongs in SYNERGY-vp-knowledge.md, not a silent edit"
@@ -743,13 +745,14 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-agr
     title: 'check:rule-aim — a lint rule can be green, tested, and aimed at NOTHING; build it GENERIC so it survives the split'
-    status: pending
+    status: cancelled
     type: task
     priority: high
     labels:
       - feature
       - extraction
     acceptance_criteria:
+      - 'CANCELLED — a safety guard for the safety guard of the safety guard. The hazard class is real (no-jq-raw-interpolation guarded nothing for its whole life) but it was found, fixed by gtp-core putting hooks/ in the ast-grep scan bound, and documented in CLAUDE.md `check:prose-commands`. A permanent meta-meta-guard is heavy insurance for a 6-rule repo where a review-time check (does your rule´s `language` exist in the scan?) does the same job. Re-open if a mis-aimed rule ships green again.'
       - "MEASURED: `no-jq-raw-interpolation` is `language: bash` and exists because 'the hooks build jq programs' — but `hooks/` was not in the scan bound and `scripts/` holds ZERO `.sh` files. It guarded nothing for its ENTIRE LIFE while passing `ast-grep test` 6/6 on synthetic snippets"
       - "🚨 ASK AST-GREP. DO NOT MODEL IT. `ast-grep scan --inspect entity` prints all of it to STDERR — verified 2026-07-14: `entity|rule|<id>: finalSeverity=Error|Warning` (the RESOLVED severity) · `entity|file|<path>: language=JavaScript,appliedRuleCount=5` (the language ast-grep ASSIGNED, and how many rules survived files:/ignores: filtering) · `summary|file: scannedFileCount=13,skippedFileCount=0` · `summary|rule: effectiveRuleCount=6,skippedRuleCount=0`"
       - "AIM: assert every rule's `language` appears among the `entity|file` lines. No file reports `language=Bash` -> every bash rule is aimed at nothing. THE ORIGIN STORY, MEASURED — with no extension table to over-list and no git-visibility set to reconstruct"
@@ -757,7 +760,7 @@ tasks:
       - "FLOOR: assert `scannedFileCount >= N` — closes vp-beads-flr in the same script"
       - "SCOPING: `appliedRuleCount` per file is ast-grep TELLING you the files:/ignores: filtering it applied (ast-grep-paths.mjs gets 5, check-rule-parity.mjs gets 4 — the `ignores: scripts/check-*.mjs` is visible in the number). Never model a glob again"
       - "🚨 THIS SUPERSEDES the design first filed here (git ls-files MINUS git check-ignore --no-index; a LANGUAGE_EXTENSIONS table; a files:-prefix-existence check). All three were MODELS of a component I did not author — the exact failure mode the deleted script's own header forbade in writing. `--inspect entity` has zero models and is ~25 lines"
-      - "MUST BE GENERIC — derive rule trees from `git ls-files '*sgconfig.yml'` (NOT a hardcoded TREES list — the same sin as the hardcoded PACKAGES) — so ONE byte-identical copy serves the plugin AND diarie and survives `git subtree split --prefix=diarie`. With one tree it must print 'no parity to check', NEVER 'parity verified': zero comparisons reported as success is the signature bug again"
+      - "MUST BE GENERIC — derive rule trees from `git ls-files '*sgconfig.yml'` (NOT a hardcoded TREES list — the same sin as the hardcoded PACKAGES) — so one copy covers the plugin's AND any future `plugins/<name>/` workspace's `sgconfig.yml` (Phase-1 portability: diarie was already subtree-split out 85600aa, so the surviving rationale is the workspace move, not a split that will recur). With one tree it must print 'no parity to check', NEVER 'parity verified': zero comparisons reported as success is the signature bug again"
       - "MERGE with check:rule-parity into one `check:rules` — both enumerate the same trees and parse the same 14 rule YAMLs. And RENAME: 'rule-red' was earned by planting fixtures; once it plants none, the name is a claim the code no longer makes"
     description: >-
       Written and reviewed as `scripts/check-rule-red.mjs` (373 lines, sandbox + fixture-planting), then
@@ -770,7 +773,9 @@ tasks:
 
       It was deleted, not fixed, for a reason that outranks the defects: it lived in the PLUGIN's
       `scripts/`, so `git subtree split --prefix=diarie` would leave diarie's rules unguarded — building
-      meta-tooling in a layout the extraction goal is about to demolish.
+      meta-tooling in a layout the extraction goal was about to demolish. (Historical: the diarie split
+      since ran 85600aa and diarie travels as the published npm dep; the live reason to keep it generic
+      is P1.3 `plugins/<name>/` portability — see `gtd`.)
 
 
       Then a plan critic found the thing that makes this cheap: **ast-grep already reports every fact the
@@ -780,13 +785,14 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-gtc
     title: 'check:gate-coverage — a script reachable from NO gate and NO CI job; build it GENERIC so it survives the split'
-    status: pending
+    status: cancelled
     type: task
     priority: high
     labels:
       - feature
       - extraction
     acceptance_criteria:
+      - 'CANCELLED — same safety-guard-for-the-guard smell, non-ast-grep substrate. Its habitat is the workspace layer that does not exist yet (_placeholder carries no payload); building it now is building the discovery machinery gtd is blocked on. The `test`-key-unhooked-from-`run-p check:*` hole stays a review-discipline item until real plugins land, at which point re-open if a plugin´s `test` key silently unhooking bites.'
       - "MEASURED: `run-p check:*` matches `check:flat`, does NOT match `test`, and does NOT match `check:nested:deep` — `*` matches exactly ONE section. TWO escape hatches, not one; nobody has been bitten by the second yet"
       - "The `test` hole unhooked all 228 of diarie's assertions from the local gate AND from CI (which runs only `npm run check`) in ONE line. A deliberately failing test exited 0 at the root"
       - "MEASURED: `run-p` DOES fire npm `pre`/`post` hooks, including for colon-named scripts — so lifecycle edges are real, not invented"
@@ -794,7 +800,7 @@ tasks:
       - "NEVER traverse a `||` right-hand side: it runs only when the gate FAILS, so counting it is an INVENTED EDGE = false GREEN — the one forbidden direction. Under-count when unsure"
       - "Assert `reachable + nonGates === total`, and that every NOT_A_GATE key resolves to a real script (stale entries are invisible otherwise)"
       - "CLAIM HONESTLY: reachability, NEVER execution. See vp-beads-exf — a reachable gate can still inspect nothing"
-      - "MUST BE GENERIC (derive everything from git) so a byte-identical copy lives in diarie/ and travels the subtree split"
+      - "MUST BE GENERIC (derive everything from git) so one copy stays live across the P1.3 `plugins/<name>/` workspace move — diarie was already subtree-split out (85600aa) and travels as the published npm dep, so the live rationale is the workspace move, not a split that will recur"
     description: >-
       Written and reviewed as `scripts/check-gate-coverage.mjs` (200 lines), then DELETED unbuilt. The
       evasion reviewer found its `PACKAGES` map was a HARDCODED LIST — in the script whose own header
@@ -802,23 +808,21 @@ tasks:
       reported "2 package.json files" with three on disk.
 
 
-      Deleted rather than fixed for the same reason as vp-beads-agr: it lives in the plugin's `scripts/`
-      and does not survive `git subtree split`, so the extracted diarie would ship with its own
-      `run-p check:*` unpoliced. Build it generic, in the extraction wave.
+      Deleted rather than fixed for the same reason as vp-beads-agr: it lived in the plugin's `scripts/`
+      and would not survive `git subtree split`, so the extracted diarie would ship with its own
+      `run-p check:*` unpoliced. (Historical: diarie has since been subtree-split out 85600aa and
+      ships as the published npm dep; the live reason to build it generic now is P1.3
+      `plugins/<name>/` portability — see `gtd`.) Build it generic, in the extraction wave.
     updated: '2026-07-14'
   - id: vp-beads-exf
     title: 'The execution floor — reachability is NOT execution; a gate can run, report success, and inspect nothing'
-    status: pending
+    status: cancelled
     type: task
     priority: medium
     labels:
       - feature
     acceptance_criteria:
-      - "MEASURED: `node --test` in a directory with no test files prints `pass 0` and exits 0. `npm run check:test --workspace=diarie` therefore stays green if `test/` is renamed, moved, or gitignored"
-      - "Same shape: `eslint` over zero files is green; `ast-grep scan` over a shrunken bound is green; `remark` over zero files is green"
-      - "Needs a per-gate COVERAGE FLOOR — assert each gate actually inspected at least N inputs. Sibling of vp-beads-flr (which files the ast-grep floor specifically)"
-      - "A .gitignore shrink is caught by an AIM check (vp-beads-agr) ONLY when the ignore removes EVERY file of a rule's language from the bound. The general case — five of diarie's command files silently dropping out of the lint — needs THIS floor"
-      - "Revival/priority trigger: any gate found green over zero inputs again"
+      - 'CANCELLED with the green-over-nothing cluster (agr/rgl/jqs/gtc) — reachability-vs-execution is the conceptual sibling of gtc; same safety-guard-for-the-guard smell, same workspace-layer habitat that does not exist yet, same blocker (gtd/P1.3). The per-gate coverage floor the repo DOES carry (scannedFileCount sanity, the diarie `test`-vs-check:* awareness in CLAUDE.md) is review discipline + doc, not a fourth meta layer. Revival trigger: a gate found green over zero inputs again.'
     description: >-
       The door `check:gate-coverage` (vp-beads-gtc) does NOT watch. It proves a script is REACHABLE from
       the root aggregate; it cannot prove the script INSPECTED anything. So the 228-assertion bug can

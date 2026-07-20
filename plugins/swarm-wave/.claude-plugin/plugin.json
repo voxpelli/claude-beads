@@ -1,0 +1,12 @@
+{
+  "name": "swarm-wave",
+  "version": "0.1.0",
+  "description": "Multi-agent development sprint orchestration with wave-based parallelism, file-disjoint agent isolation, and a blocking post-wave quality gate. Claude Code only — Task-tool fan-out needs plugin runtime.",
+  "author": {
+    "name": "Pelle Wessman",
+    "url": "https://github.com/voxpelli"
+  },
+  "repository": "https://github.com/voxpelli/claude-beads",
+  "license": "MIT",
+  "keywords": ["swarm", "multi-agent", "wave", "parallel-agents", "sprint"]
+}

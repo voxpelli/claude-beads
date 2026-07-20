@@ -37,8 +37,7 @@ tasks:
 
   - id: vp-beads-wsk
     title: 'P1.1 Stand up the npm-workspace skeleton (plugins/* + two manifests each)'
-    status: in_progress
-    agent: claude
+    status: completed
     type: task
     priority: high
     parent: vp-beads-dis
@@ -144,11 +143,14 @@ tasks:
       - >-
         broaden check:sh to cover shell across the plugin workspaces (today: `hooks/*.sh` at root)
       - >-
-        fold the green-check-over-nothing cluster in opportunistically: agr (rule-aim via
-        `ast-grep scan --inspect entity`), gtc (check:gate-coverage reachability), rgl (rule `files:`
-        glob intersects scan paths), exf (per-gate coverage floor), plus the consumer-half swc
-        (agents read `warnings`) and jqs (advisory-rule severity). All built GENERIC (git-derived)
-        so a byte-identical copy travels the subtree split
+        fold the consumer-half swc in opportunistically: agents read the `warnings` key from
+        `stats --stale --json` / `ready --json` and refuse to report a clean sprint over an unsound
+        store. (The meta-guard half of the green-check-over-nothing cluster — agr/gtc/rgl/exf/jqs —
+        was CLOSED as safety-guards-for-the-guards in Feb 2026; the hazard class is logged in
+        CLAUDE.md `check:prose-commands` and left to review discipline. Only swc, the real consumer
+        bug, remains.) Build swc GENERIC (git-derived) so it stays live across the P1.3
+        `plugins/<name>/` workspace move — a check that hardcodes root `hooks/*.sh` / `scripts/*.mjs`
+        goes inert the moment those paths live under a plugin
     description: >-
       The deferred tail of `vp-beads-gtp`, carved out so the done subtractive core could close.
       BLOCKED UNTIL any one of `vp-beads-ldg` / `vp-beads-swm` / `vp-beads-dad` / `vp-beads-vga` lands:
@@ -156,7 +158,10 @@ tasks:
       `_placeholder` carries neither (no `.claude-plugin/plugin.json`, no `skills/`). Proving RED
       requires a per-plugin violation to plant. No `deps` entry because the dependency is an OR
       across the P1.3 rows, not a single id; whichever lands first satisfies it. Build the generic
-      meta-checks (`agr`/`gtc`/`rgl`/`exf`) in the extraction wave so they survive `git subtree split`.
+      meta-checks (`agr`/`gtc`/`rgl`/`exf`) in the extraction wave so they stay live across the P1.3
+      `plugins/<name>/` workspace move — root-path hardcoding goes inert under a plugin workspace.
+      (The earlier `survives git subtree split` rationale was a fossil: subtree split is retired
+      after the one-time diarie extraction per decision `vp-beads-cst`.)
     updated: '2026-07-18'
 
   - id: vp-beads-ldg
@@ -190,7 +195,7 @@ tasks:
 
   - id: vp-beads-swm
     title: 'P1.3b Move swarm-wave into its plugin workspace + resolve dangling edges'
-    status: pending
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dis

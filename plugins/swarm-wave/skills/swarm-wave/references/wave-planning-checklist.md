@@ -74,9 +74,9 @@ Six steps, all blocking — the gate must fully pass before proceeding.
 
 - **Every wave**: post-wave gate (mandatory, non-negotiable).
 - **5+ waves in a sprint**: offer a mid-sprint retrospective before context
-  is lost. Use `/retrospective` via the Skill tool.
-- **Every sprint close**: offer `/retrospective` after the final wave.
-- **Every 4th sprint**: trend-review retrospective (the `/retrospective`
+  is lost. Use `/session-reflect` via the Skill tool.
+- **Every sprint close**: offer `/session-reflect` after the final wave.
+- **Every 4th sprint**: trend-review retrospective (the `/session-reflect`
   skill detects this automatically).
 
 ## Anti-Patterns

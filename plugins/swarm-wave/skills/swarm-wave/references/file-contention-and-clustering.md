@@ -59,9 +59,9 @@ the same wave, accept the imbalance. If it means an issue spans files that
 look like they should be split for balance, do not split — keep the issue
 whole.
 
-**Precedent.** RETRO-10 (Sprint 10) recorded this lesson from
-`vp-beads-0e9.6`, an issue that spanned skill code, `CLAUDE.md`, and
-`MEMORY.md`. The whole issue went to one agent rather than being carved up
+**Precedent.** A past sprint recorded this lesson from
+an issue that spanned skill code, architecture docs, and the memory index.
+The whole issue went to one agent rather than being carved up
 to balance file load across the wave.
 
 **How this composes with the contention rules.** The contention thresholds

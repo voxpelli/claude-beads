@@ -43,6 +43,29 @@ async function readJson (filePath) {
   }
 }
 
+// --- Plugin workspaces (plugins/* carrying a .claude-plugin/plugin.json) ---
+// gtd-core: the validators discover per-plugin skills/agents/manifests alongside
+// the root reads, so a skill moved under plugins/<name>/ stays visible. A workspace
+// without a plugin manifest (e.g. _placeholder) is a workspace, not a plugin, and is
+// skipped here — it carries no skills/agents to audit.
+const PLUGINS_DIR = join(ROOT, 'plugins')
+
+/** @returns {Promise<string[]>} */
+async function pluginDirs () {
+  if (!existsSync(PLUGINS_DIR)) return []
+  const entries = await readdir(PLUGINS_DIR, { withFileTypes: true })
+  /** @type {string[]} */
+  const dirs = []
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const dir = join(PLUGINS_DIR, entry.name)
+    if (existsSync(join(dir, '.claude-plugin', 'plugin.json'))) dirs.push(dir)
+  }
+  return dirs
+}
+
+const PLUGIN_DIRS = await pluginDirs()
+
 /**
  * @param {string} content
  * @returns {Record<string, unknown> | undefined}
@@ -198,6 +221,22 @@ if (plugin !== undefined) {
   for (const field of ['name', 'version', 'description']) {
     if (!(field in p)) {
       error(pluginPath, `Missing required field: ${field}`)
+    }
+  }
+}
+
+// --- Per-plugin manifests (plugins/*/.claude-plugin/plugin.json) ---
+// Proves the wsk two-manifest pattern: each plugin carries a .claude-plugin/plugin.json
+// with the same name/version/description fields the root manifest requires.
+for (const dir of PLUGIN_DIRS) {
+  const manifestPath = join(dir, '.claude-plugin', 'plugin.json')
+  const manifest = await readJson(manifestPath)
+  if (manifest !== undefined) {
+    const p = /** @type {Record<string, unknown>} */ (manifest)
+    for (const field of ['name', 'version', 'description']) {
+      if (!(field in p)) {
+        error(manifestPath, `Missing required field: ${field}`)
+      }
     }
   }
 }
@@ -456,10 +495,24 @@ if (existsSync(vendorRegistryPath)) {
 
 // --- Skills ---
 
-const skillEntries = await readdir(join(ROOT, 'skills'), { recursive: true })
-const skillFiles = skillEntries
-  .filter((f) => f.endsWith('SKILL.md'))
-  .map((f) => join(ROOT, 'skills', f))
+// gtd-core: discover skills in both root skills/ and plugins/*/skills/ so a skill
+// moved under plugins/<name>/ stays visible to the validator.
+const rootSkillEntries = existsSync(join(ROOT, 'skills'))
+  ? await readdir(join(ROOT, 'skills'), { recursive: true })
+  : []
+/** @type {string[]} */
+const pluginSkillEntries = []
+for (const dir of PLUGIN_DIRS) {
+  const pluginSkillsDir = join(dir, 'skills')
+  if (existsSync(pluginSkillsDir)) {
+    const entries = await readdir(pluginSkillsDir, { recursive: true })
+    for (const e of entries) pluginSkillEntries.push(join(dir, 'skills', e))
+  }
+}
+const skillFiles = [
+  ...rootSkillEntries.filter((f) => f.endsWith('SKILL.md')).map((f) => join(ROOT, 'skills', f)),
+  ...pluginSkillEntries.filter((f) => f.endsWith('SKILL.md')),
+]
 
 const SKILL_REQUIRED = ['name', 'description', 'user-invocable', 'allowed-tools']
 
@@ -503,10 +556,14 @@ for (const file of skillFiles) {
 // SKILL.md. They have no SKILL.md frontmatter, so we only run the workflow-ref
 // audit, not the frontmatter / tool-reference checks.
 
-const skillTreeEntries = await readdir(join(ROOT, 'skills'), { recursive: true })
-const referenceFiles = skillTreeEntries
-  .filter((f) => f.includes('/references/') && f.endsWith('.md'))
-  .map((f) => join(ROOT, 'skills', f))
+// gtd-core: discover reference files in both root skills/ and plugins/*/skills/.
+const rootTreeEntries = existsSync(join(ROOT, 'skills'))
+  ? await readdir(join(ROOT, 'skills'), { recursive: true })
+  : []
+const referenceFiles = [
+  ...rootTreeEntries.filter((f) => f.includes('/references/') && f.endsWith('.md')).map((f) => join(ROOT, 'skills', f)),
+  ...pluginSkillEntries.filter((f) => f.includes('/references/') && f.endsWith('.md')),
+]
 
 for (const file of referenceFiles) {
   const content = await readFile(file, 'utf8')
@@ -515,73 +572,83 @@ for (const file of referenceFiles) {
 
 // --- Agents (optional) ---
 
-const agentsDir = join(ROOT, 'agents')
-if (existsSync(agentsDir)) {
-  const agentEntries = await readdir(agentsDir, { recursive: true })
-  const agentFiles = agentEntries
-    .filter((f) => f.endsWith('.md'))
-    .map((f) => join(agentsDir, f))
+// gtd-core: discover agents in both root agents/ and plugins/*/agents/.
+const agentFiles = []
+const rootAgentsDir = join(ROOT, 'agents')
+if (existsSync(rootAgentsDir)) {
+  const rootAgentEntries = await readdir(rootAgentsDir, { recursive: true })
+  for (const f of rootAgentEntries) if (f.endsWith('.md')) agentFiles.push(join(rootAgentsDir, f))
+}
+for (const dir of PLUGIN_DIRS) {
+  const pluginAgentsDir = join(dir, 'agents')
+  if (existsSync(pluginAgentsDir)) {
+    const entries = await readdir(pluginAgentsDir, { recursive: true })
+    for (const f of entries) if (f.endsWith('.md')) agentFiles.push(join(pluginAgentsDir, f))
+  }
+}
 
-  const AGENT_REQUIRED = ['name', 'description', 'model', 'color', 'tools']
+const AGENT_REQUIRED = ['name', 'description', 'model', 'color', 'tools']
 
-  for (const file of agentFiles) {
-    const content = await readFile(file, 'utf8')
-    const fm = extractFrontmatter(content)
-    if (!fm) {
-      error(file, 'Missing or invalid YAML frontmatter')
-      continue
+for (const file of agentFiles) {
+  const content = await readFile(file, 'utf8')
+  const fm = extractFrontmatter(content)
+  if (!fm) {
+    error(file, 'Missing or invalid YAML frontmatter')
+    continue
+  }
+  for (const field of AGENT_REQUIRED) {
+    if (!(field in fm)) {
+      error(file, `Missing required frontmatter field: ${field}`)
     }
-    for (const field of AGENT_REQUIRED) {
-      if (!(field in fm)) {
-        error(file, `Missing required frontmatter field: ${field}`)
+  }
+  if ('color' in fm && !VALID_AGENT_COLORS.has(fm.color)) {
+    error(file, `Invalid agent color "${String(fm.color)}", must be one of: ${[...VALID_AGENT_COLORS].join(', ')}`)
+  }
+  if ('model' in fm && !VALID_AGENT_MODELS.has(fm.model)) {
+    error(file, `Invalid agent model "${String(fm.model)}", must be one of: ${[...VALID_AGENT_MODELS].join(', ')}`)
+  }
+  if ('tools' in fm && !Array.isArray(fm.tools)) {
+    error(file, 'tools must be an array')
+  }
+  if (Array.isArray(fm.tools)) {
+    validateMcpPrefixes(file, /** @type {string[]} */ (fm.tools))
+    auditToolReferences(file, content, /** @type {string[]} */ (fm.tools), 'tools')
+  }
+  auditWorkflowReferences(file, content)
+  for (const f of auditSilentSkips(content)) {
+    warn(file, `${f.line} — un-announced silent skip of a tracker step (CLAUDE.md "### Files-availability convention" requires announce/Tier): ${f.snippet}`)
+  }
+
+  if ('effort' in fm && !VALID_EFFORT_VALUES.has(String(fm.effort))) {
+    warn(file, `effort "${String(fm.effort)}" is not a recognized value (${[...VALID_EFFORT_VALUES].join(', ')})`)
+  }
+  if ('maxTurns' in fm && (typeof fm.maxTurns !== 'number' || fm.maxTurns < 1)) {
+    error(file, 'maxTurns must be a positive integer')
+  }
+  if ('disallowedTools' in fm && !Array.isArray(fm.disallowedTools)) {
+    error(file, 'disallowedTools must be an array')
+  }
+  if ('skills' in fm && !Array.isArray(fm.skills)) {
+    error(file, 'skills must be an array')
+  }
+  if ('skills' in fm && Array.isArray(fm.skills)) {
+    for (const skillName of /** @type {string[]} */ (fm.skills)) {
+      // gtd-core: resolve phantom skill refs against root skills/ AND plugins/*/skills/.
+      const rootSkillPath = join(ROOT, 'skills', skillName, 'SKILL.md')
+      const inRoot = existsSync(rootSkillPath)
+      const inPlugin = PLUGIN_DIRS.some((dir) => existsSync(join(dir, 'skills', skillName, 'SKILL.md')))
+      if (!inRoot && !inPlugin) {
+        error(file, `Phantom skill reference: "${skillName}" — no SKILL.md at skills/${skillName}/ or plugins/*/skills/${skillName}/`)
       }
     }
-    if ('color' in fm && !VALID_AGENT_COLORS.has(fm.color)) {
-      error(file, `Invalid agent color "${String(fm.color)}", must be one of: ${[...VALID_AGENT_COLORS].join(', ')}`)
-    }
-    if ('model' in fm && !VALID_AGENT_MODELS.has(fm.model)) {
-      error(file, `Invalid agent model "${String(fm.model)}", must be one of: ${[...VALID_AGENT_MODELS].join(', ')}`)
-    }
-    if ('tools' in fm && !Array.isArray(fm.tools)) {
-      error(file, 'tools must be an array')
-    }
-    if (Array.isArray(fm.tools)) {
-      validateMcpPrefixes(file, /** @type {string[]} */ (fm.tools))
-      auditToolReferences(file, content, /** @type {string[]} */ (fm.tools), 'tools')
-    }
-    auditWorkflowReferences(file, content)
-    for (const f of auditSilentSkips(content)) {
-      warn(file, `${f.line} — un-announced silent skip of a tracker step (CLAUDE.md "### Files-availability convention" requires announce/Tier): ${f.snippet}`)
-    }
+  }
 
-    if ('effort' in fm && !VALID_EFFORT_VALUES.has(String(fm.effort))) {
-      warn(file, `effort "${String(fm.effort)}" is not a recognized value (${[...VALID_EFFORT_VALUES].join(', ')})`)
-    }
-    if ('maxTurns' in fm && (typeof fm.maxTurns !== 'number' || fm.maxTurns < 1)) {
-      error(file, 'maxTurns must be a positive integer')
-    }
-    if ('disallowedTools' in fm && !Array.isArray(fm.disallowedTools)) {
-      error(file, 'disallowedTools must be an array')
-    }
-    if ('skills' in fm && !Array.isArray(fm.skills)) {
-      error(file, 'skills must be an array')
-    }
-    if ('skills' in fm && Array.isArray(fm.skills)) {
-      for (const skillName of /** @type {string[]} */ (fm.skills)) {
-        const skillPath = join(ROOT, 'skills', skillName, 'SKILL.md')
-        if (!existsSync(skillPath)) {
-          error(file, `Phantom skill reference: "${skillName}" — no file at skills/${skillName}/SKILL.md`)
-        }
-      }
-    }
-
-    // Gardener read-only invariant
-    if (file.endsWith('knowledge-gardener.md') && Array.isArray(fm.tools)) {
-      const forbidden = ['write_note', 'edit_note', 'delete_note']
-      for (const tool of /** @type {string[]} */ (fm.tools)) {
-        if (forbidden.some((f) => tool.includes(f))) {
-          error(file, `Read-only agent must not have write tool: ${tool}`)
-        }
+  // Gardener read-only invariant
+  if (file.endsWith('knowledge-gardener.md') && Array.isArray(fm.tools)) {
+    const forbidden = ['write_note', 'edit_note', 'delete_note']
+    for (const tool of /** @type {string[]} */ (fm.tools)) {
+      if (forbidden.some((f) => tool.includes(f))) {
+        error(file, `Read-only agent must not have write tool: ${tool}`)
       }
     }
   }

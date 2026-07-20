@@ -11,10 +11,10 @@ work plan. A ROADMAP is the project's earned wisdom about its own work; the
 burden of proof is on the interpreter to show a wave is real and active, not on
 the file to conform.
 
-Grounded in a survey of four real files (see the `vp-beads-3mn.6` spike
-findings): `liggare/ROADMAP.md` (HIGH — explicit waves), `vp-wowable/ROADMAP.md`
-(MEDIUM — self-declared status vocab), `gh-audit-envs/ROADMAP.md` (feature-triage
-matrix — decline), `vp-git/TODO.md` (chore list — decline).
+Grounded in a survey of real-world files: one repo with wave-structured ROADMAP
+(HIGH — explicit `Wave N` sections), one with self-declared status vocabulary
+(MEDIUM — active wave with prose scope), one feature-triage matrix (decline →
+manual path), and one chore-list TODO (decline → manual path).
 
 ## Step 1 — Classify the shape first
 
@@ -29,7 +29,7 @@ plan is a swarm candidate.
 | Chore list             | Flat task bullets under topic headings; often titled `TODO`; may redirect "roadmap → VISION" | **Decline** → manual path                                       |
 | Unrecognized           | None of the above match cleanly                                                              | **Needs user disambiguation** — ask                             |
 
-A milestone plan may *contain* wave subsections (liggare's `### Wave N` live
+A milestone plan may *contain* wave subsections (Repo A's `### Wave N` live
 under `## v1.x — hardening`): the waves are the swarmable units, the milestone
 headings are not. Declining is a first-class, expected outcome — two of the four
 surveyed files decline. When declining, say which shape was detected and route
@@ -51,7 +51,7 @@ A wave or item that is already done must be excluded. Recognize *any* of these
 **Default rule:** a wave with a recognized *done* marker is excluded; a wave with
 a recognized *active* marker (`(NEXT)`, no done-marker) is included; a wave whose
 status string is **unrecognized** defaults to **needs user disambiguation** —
-never assume it is active. (liggare's seven waves all carry `*Concluded …*` →
+never assume it is active. (Repo A's seven waves all carry `*Concluded …*` →
 all excluded → report "no active swarmable waves" and do **not** re-propose
 shipped work.)
 
@@ -73,7 +73,7 @@ swarm-wave's safety model requires an exhaustive, disjoint file scope per agent.
 For each included wave, resolve scopes in this precedence:
 
 1. **Declared in prose** — "Touches `a.js`, `b.js`", "Entirely within `dir/`",
-   a trailing `(path/file.js)` on a bullet. Use it directly (liggare declares
+   a trailing `(path/file.js)` on a bullet. Use it directly (Repo A declares
    scopes this way).
 2. **Inferred** — run workflow 4 (Map file contention) grep/Glob over the entity
    names (functions, files, modules) named in the item text.
@@ -83,7 +83,7 @@ For each included wave, resolve scopes in this precedence:
 ## Step 5 — VISION.md is never a work source
 
 `VISION.md` carries direction and voice, not a backlog. Never extract work items
-from it (vp-git's `TODO.md` even redirects "Roadmap items live in `VISION.md`" —
+from it (Repo D's `TODO.md` even redirects "Roadmap items live in `VISION.md`" —
 that is direction, not swarmable work). Read it only for theme/voice when naming
 waves.
 
@@ -107,12 +107,12 @@ wave lives in the `SWARM-NN.md` Item Status table (see `command-patterns.md`
 
 ## Validation against the surveyed idioms
 
-- **liggare** (`ROADMAP.md`) — wave-structured; all seven `### Wave N` carry an
+- **Repo A** (`ROADMAP.md`) — wave-structured; all seven `### Wave N` carry an
   `*Concluded …*` line → all excluded → report no active swarmable waves; never
   re-propose shipped work.
-- **vp-wowable** (`ROADMAP.md`) — wave-structured; `## Wave 1 · … (NEXT)` is
+- **Repo B** (`ROADMAP.md`) — wave-structured; `## Wave 1 · … (NEXT)` is
   active; scopes partly declared, rest grep-inferred; exclude `Open decisions`,
   PARKED, DROPPED; propose Wave 1 with provenance.
-- **gh-audit-envs** (`ROADMAP.md`) — feature-triage matrix → decline → manual
+- **Repo C** (`ROADMAP.md`) — feature-triage matrix → decline → manual
   path.
-- **vp-git** (`TODO.md`) — chore list → decline → manual path.
+- **Repo D** (`TODO.md`) — chore list → decline → manual path.

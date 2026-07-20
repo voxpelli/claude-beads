@@ -80,14 +80,9 @@ completion-edit line in this mode (see below).
 When workflow 5 (Research wave) produces findings for issue creation:
 
 1. Write merged findings to a file (e.g., the SWARM research summary)
-2. Hand off to `/backlog-groomer workflow 5 (Create issues from findings)`
-   via the Skill tool — reference the findings file
-3. Backlog-groomer deduplicates against existing issues, proposes structured
-   issues, and appends task entries to `.diarie/tasks/tasks-<slug>.yml`
-   (via Edit/Write — no CRUD helper) with user approval
-
-Do not create tasks directly from swarm-wave. Backlog-groomer owns task
-creation for research findings (it has dedup logic and title conventions).
+2. Write task rows directly to `.diarie/tasks/tasks-<slug>.yml`
+   (Edit/Write — no CRUD helper; dedup against existing rows first)
+3. Validate with `diarie validate`
 
 ## Agent Prompt Template
 
@@ -138,8 +133,7 @@ unclear scope:
    descriptions)
 2. Run workflow 5 (Research wave) with intent `validate` scoped to those
    issues
-3. Hand off enriched findings to `/backlog-groomer workflow 6 (Enrich an
-   existing issue)`
+3. Enrich the issue row directly in `.diarie/tasks/tasks-<slug>.yml`
 4. Then run workflow 1 (Plan a swarm sprint) with the enriched backlog
 
 ## Post-Sprint Research Pattern
@@ -148,5 +142,5 @@ Run after the final wave when the sprint surfaced new unknowns:
 
 1. Collect unanswered questions from wave review findings
 2. Run workflow 5 (Research wave) with intent `explore` or `deepen`
-3. Hand off significant findings to `/backlog-groomer workflow 5 (Create
-   issues from findings)` for the next sprint's backlog
+3. Write task rows directly to `.diarie/tasks/tasks-<slug>.yml`
+   (dedup against existing rows)
