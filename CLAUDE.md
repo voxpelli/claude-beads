@@ -21,10 +21,6 @@ skills/
     SKILL.md                          # Upstream issue tracking + BM friction sync
     references/
       basic-memory-friction-format.md # BM section templates, routing, edit_note gotchas
-  backlog-groomer/
-    SKILL.md                          # Backlog triage, research, issue creation
-    references/
-      backlog-health-heuristics.md    # Staleness, closure, priority, issue templates
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
   sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
   migrate-tracker/SKILL.md            # Guided bd → flat-YAML cutover (for other repos)
@@ -41,8 +37,6 @@ skills/
       review-gate-protocol.md         # Two-reviewer gate, confidence thresholds
       agent-concurrency-limits.md     # Memory pressure, backpressure protocol
       command-patterns.md             # Research agent selection, agent prompts
-agents/
-  sprint-review.md                    # Proactive end-of-sprint summary and retro gate
 hooks/
   hooks.json                          # Hook definitions (3 event types)
   session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudge, trend-review reminder
@@ -59,18 +53,7 @@ Dev tooling only: validation and linting via `npm run check`.
 
 ## Components
 
-### Agent (1)
-
-- **sprint-review** — Proactively triggers at end-of-sprint boundaries (closing
-  tasks, "sprint done", "what did we accomplish"). Reads git history, tracker state,
-  and UPSTREAM files, then gives a concise summary and one of five recommendations:
-  not ready, close normally, groom backlog first, do upstream work first, or
-  trend-review sprint.
-  Read-only — never writes files; defers to `/retrospective` and
-  `/upstream-tracker` for mutations. When Basic Memory is available, also
-  checks for cross-project friction notes on project dependencies.
-
-### Skills (9)
+### Skills (8)
 
 - **migrate-tracker** — Guided, one-way cutover of a project's issue tracker off
   beads (`bd`) onto the flat-YAML tracker. Five workflows: detect-and-assess,
@@ -89,11 +72,6 @@ Dev tooling only: validation and linting via `npm run check`.
   clean while every commit routes through `bd`) and reports the rest. All detection
   lives in the tested `scripts/beads-probe.mjs`, not in prose. User-invocable as
   `/deintegrate-beads`.
-- **backlog-groomer** — Triage, prioritize, and research work in the flat-YAML backlog.
-  Six workflows: review-and-triage, reprioritize, suggest-closures,
-  investigate-topic-as-spike, create-issues-from-findings, enrich-existing-issue.
-  Cross-references Basic Memory for known friction and uses Tavily/DeepWiki for
-  external research. User-invocable as `/backlog-groomer`.
 - **retrospective** — Generates a sprint retrospective: reads git history,
   `UPSTREAM-*.md` files, and conversation context, creates `RETRO-NN.md`, runs
   a knowledge gap audit, writes generalizable learnings to Basic Memory, and
@@ -148,7 +126,7 @@ Dev tooling only: validation and linting via `npm run check`.
   parallelism. Five workflows: plan-sprint (file-disjoint wave partitioning),
   execute-wave (parallel agent launches with file-scope isolation),
   post-wave-gate (two-reviewer quality gate), file-contention-map (standalone
-  utility), research-wave (parallel research with backlog-groomer handoff).
+  utility), research-wave (parallel research with direct `.diarie/` task creation).
   Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
 
 ## The tracker migration: bd → flat-YAML (done)
@@ -235,7 +213,7 @@ like "W3" or "W6" — the codebase spells it out.
 
 ### Files-availability convention
 
-vp-beads must **not force its flat-YAML tracker**. Every skill and the agent detect
+vp-beads must **not force its flat-YAML tracker**. Every skill detects
 availability and degrade along a defined tier — **silently skipping a tracker step
 is a bug**: it makes a project that tracks its work elsewhere look like a broken
 one. Hooks are **exempt** — a hook's silent fallback (e.g. `session-start.sh`
@@ -276,17 +254,18 @@ Two consequences, and they bind every component below:
   outcomes, and **they are not the same thing**:
   - **Store present but empty** → an empty backlog. A real, ordinary answer; carry on.
   - **Store absent (`ENOSTORE`)** → **redirect, do not proceed.** This project tracks
-    its work somewhere else, so point at the right tool (`backlog-groomer` →
-    `/swarm-wave` / `ROADMAP.md`). Do **not** report it as an empty backlog.
+    its work somewhere else, so point at the right tool
+    (`/swarm-wave` / `ROADMAP.md`). Do **not** report it as an empty backlog.
 
   This entry used to read *"an absent-or-empty store is simply an empty backlog"* — the
   conflation `ENOSTORE` exists to delete. Tier B has no *stop* in the old beads sense
   (the store is ordinary files, not a daemon that can be down), but it does have a
   branch, and taking the wrong one tells a user with a healthy `ROADMAP.md` that their
-  backlog is empty. Component: `backlog-groomer`.
+  backlog is empty. (Tier B is defined for reference; no active component currently
+  occupies it — the former occupant `backlog-groomer` was retired per P1.4.)
 - **Tier C — degrade-and-announce.** The component does useful non-tracker work
   too; when the tracker is absent it runs the rest and **announces** each skipped
-  tracker step (never skips it silently). Components: `retrospective`, `sprint-review`.
+  tracker step (never skips it silently). Components: `retrospective`.
 - **Exempt — the tracker's state IS the precondition, not a degradation.** Two
   skills, both structural, both inverses of a tier: `migrate-tracker` *creates* the
   store (requires `.beads/` present, `.diarie/tasks/` **absent**, and stops when it
@@ -409,7 +388,7 @@ vp-beads'.
   that must stay out of a public repo (a proprietary sibling's internal paths,
   client names, unreleased plans). **The `PRIVATE-` prefix is load-bearing: it
   keeps the overlay OUTSIDE the `SYNERGY-*.md` glob namespace, so every public
-  consumer (`/retrospective`, `sprint-review`, `session-start`, promotion,
+  consumer (`/retrospective`, `session-start`, promotion,
   reciprocation) structurally cannot read it** — the privacy invariant is a
   filesystem fact, not a per-consumer exclusion rule. Gitignored via the
   explicit `PRIVATE-SYNERGY-*.md` line (prefix-namespaced like `RETRO-*` /
@@ -456,19 +435,19 @@ The agent and skills form a lightweight cycle. The diagram below shows the
 **tracker-backed** path (this repository's own setup); without the flat-YAML store
 the same cycle runs with the per-tier degradations from `### Files-availability
 convention` (swarm-wave sources from a `ROADMAP.md` or a manual list,
-`/backlog-groomer` redirects, `/retrospective` announces skipped tracker steps).
+`/retrospective` announces skipped tracker steps).
 
 ```
 (sprint start)
-backlog-groomer (skill)   → triage backlog, research new work, create issues
+diarie ready → triage backlog, edit .diarie/ YAML directly
   ↓ then
 swarm-wave (skill)        → plan waves, execute with parallel agents   [optional]
   ↓ or                        (workflow 1 (Plan) plans, workflows 2 (Execute) + 3 (Gate) loop per wave)
 diarie ready → normal development cycle
 
 (sprint end)
-sprint-review (agent)     → proactive summary + backlog health signal
-  ↓ recommends                (checks BM, flags stale/skewed backlog)
+user reviews open work     → close completed tasks in .diarie/tasks/
+  ↓ then
 upstream-tracker (skill)  → log/resolve any untracked friction first
   ↓ then                      (workflow 1 (Log) checks BM, workflow 3 (Resolve) annotates BM)
 synergy-tracker (skill)   → log/review extraction candidates           [parallel]
@@ -487,9 +466,7 @@ vendor-sync (skill)       → pull upstream changes, auto-resolve UPSTREAM entri
 upstream-tracker (skill)  → repeat (workflow 7 (Sync from BM) discovers friction)
 ```
 
-`sprint-review` is the *gate* (read-only, proactive). `/retrospective` is the
-*generator* (user-invoked, writes files). They do not call each other — the user
-stays in control of when to commit to the full retro workflow. Basic Memory
+`/retrospective` is the *generator* (user-invoked, writes files). Basic Memory
 serves as the cross-project bridge: workflows 6 (Promote) and 7 (Sync from BM) in upstream-tracker provide
 bidirectional sync between project-local UPSTREAM files and BM entity notes.
 synergy-tracker runs as a parallel track, advancing extraction candidates and

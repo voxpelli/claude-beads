@@ -155,11 +155,12 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 
 - **Agent count and model selection** (2026-03-28) — vp-knowledge has four agents
   (knowledge-gardener, knowledge-maintainer, knowledge-primer, raindrop-gardener
-  — count corrected 2026-07-10; was recorded as three); vp-beads has one
-  (sprint-review). vp-knowledge's gardener specifies `model: sonnet` explicitly;
-  vp-beads sprint-review uses `model: inherit`. Both approaches are deliberate.
-  Convergence path: accept-difference · Reason: different task profiles justify
-  different model strategies
+  — count corrected 2026-07-10; was recorded as three); vp-beads had one
+  (sprint-review, retired per P1.4 2026-07-20 — now has zero agents).
+  vp-knowledge's gardener specifies `model: sonnet` explicitly;
+  sprint-review used `model: inherit`. Both approaches were deliberate.
+  Convergence path: moot — sprint-review retired. vp-knowledge's approach
+  stands as the pattern for any future agent work.
 
 - **Skill invocation layering: three levels vs two levels** (2026-03-28) — vp-beads
   uses three-level invocation (SessionStart hook → user invokes skill → agent as

@@ -267,9 +267,11 @@ function scanCorpus (oracle) {
     join(ROOT, 'CLAUDE.md'),
     join(ROOT, 'README.md'),
     ...walk(join(ROOT, 'skills'), /\.md$/),
-    ...walk(join(ROOT, 'agents'), /\.md$/),
     ...walk(join(ROOT, 'hooks'), /\.sh$/),
   ]
+  // agents/ only if the directory exists (retired vp-beads no longer has one)
+  if (existsSync(join(ROOT, 'agents'))) files.push(...walk(join(ROOT, 'agents'), /\.md$/))
+
   // plugins/* — scan skills/, agents/, hooks/ where they exist
   const pluginsDir = join(ROOT, 'plugins')
   if (existsSync(pluginsDir)) {
@@ -380,7 +382,7 @@ if (findings.length > 0) {
 // SAW. A future regex or fence-logic edit that makes extract() pull nothing yields zero findings and
 // a false green; this makes an inert extractor fail loud instead. ~105 diarie invocations live in the
 // corpus today (measured); the floor sits well below that, and a surprising drop is the signal.
-const EXAMINED_FLOOR = 90
+const EXAMINED_FLOOR = 80
 if (examined < EXAMINED_FLOOR) {
   console.error(`check:prose-commands — only ${examined} invocations examined (floor ${EXAMINED_FLOOR}); the extractor has likely gone inert. A green here would mean nothing.`)
   process.exit(1)

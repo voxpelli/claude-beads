@@ -34,28 +34,6 @@ order: on `PATH`, else the project's `node_modules/.bin/diarie`.
 
 ## What it does
 
-### Sprint Review agent — Proactive end-of-sprint gate
-
-Triggers automatically when a sprint closes and gives a concise summary with a single next-step recommendation:
-
-> "That's the last task closed. What should we do now?"
-
-> "Okay, I think that's everything for this sprint."
-
-> "Should we do a retro? I've lost track of which sprint we're on."
-
-Reads git history, open tracker tasks, `UPSTREAM-*.md` files, and (when available) Basic Memory friction notes for cross-project awareness, then recommends one of five actions:
-
-| Recommendation                                       | Condition                                                      |
-| ---------------------------------------------------- | -------------------------------------------------------------- |
-| **Not ready**                                        | Fewer than 3 meaningful commits                                |
-| **Ready to close** — run `/retrospective`            | Clean state, no gaps                                           |
-| **Groom the backlog first** — run `/backlog-groomer` | Bloated or stale backlog (>30 open, carry-overs, stale issues) |
-| **Upstream work first** — run `/upstream-tracker`    | Untracked friction detected                                    |
-| **Trend-review sprint**                              | Every 4th sprint — full audit ahead                            |
-
-Read-only. Never writes files.
-
 ### `/retrospective` — Sprint retrospective generator
 
 Reads git history, open upstream tracking files, and your current conversation to pre-populate a sprint retrospective:
@@ -67,23 +45,6 @@ Reads git history, open upstream tracking files, and your current conversation t
 Produces `RETRO-NN.md` covering what went well, what could improve, upstream observations, and lessons learned. Appends new tasks to `.diarie/tasks/` from findings, writes generalizable learnings to Basic Memory, and suggests documentation updates.
 
 On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, tracker hygiene (`diarie stats`, stale `in_progress` items, blocked tasks, `diarie validate`), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
-
-### `/backlog-groomer` — Backlog triage and research
-
-Triage, prioritize, and research the work in the flat-YAML backlog:
-
-```
-/backlog-groomer
-/backlog-groomer rate limiting
-```
-
-Six workflows in two groups:
-
-**Grooming** — review and triage open issues, reprioritize based on sprint goals, suggest closures for stale/obsolete items. Cross-references Basic Memory for known friction and UPSTREAM files for vendor context.
-
-**Research** — investigate a topic using multi-source research (Basic Memory → DeepWiki → Tavily), create structured issues from findings with title conventions and dependency linking, or enrich an existing issue with research context.
-
-All mutations require explicit user approval. Complements sprint-review (which fires at sprint end) by operating at sprint start.
 
 ### `/upstream-tracker` — Upstream issue tracking
 
@@ -193,7 +154,7 @@ Five workflows:
 - **Execute a wave** — claims tasks, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
 - **Post-wave gate** — hard blocking quality gate: two review agents (code + domain-specific) in parallel with `npm run check`, sequential tests, fix loop, commit + close. After the final wave, offers `/retrospective` handoff
 - **Map file contention** — standalone utility to build a file-to-issue matrix and flag hot files
-- **Research wave** — parallel research orchestration with dedup, code validation, and handoff to `/backlog-groomer` for issue creation
+- **Research wave** — parallel research orchestration with dedup, code validation, and direct `.diarie/` task creation
 
 `SWARM-NN.md` files are ephemeral (gitignored). All wave execution requires explicit user approval. File isolation is enforced via exhaustive per-agent file lists — no directory globs.
 
@@ -209,8 +170,8 @@ vp-beads does not force a tracker on you. It works against whatever substrate a 
 How each skill behaves without the tracker is defined once by the `### Files-availability convention` in [`CLAUDE.md`](CLAUDE.md):
 
 - **Tier A** — require-or-fallback (`/swarm-wave`): the tracker, else a `ROADMAP.md`, else a manual list; it only stops when no work source can be obtained.
-- **Tier B** — tracker-specific (`/backlog-groomer`): it operates on `.diarie/` directly. An **empty** store is an empty backlog — a real answer. An **absent** store is an error (`ENOSTORE`), and means the project tracks its work somewhere else, so it redirects to `/swarm-wave` / `ROADMAP.md` rather than reporting that you have nothing to do.
-- **Tier C** — degrade-and-announce (`/retrospective`, the sprint-review agent): the rest of the workflow runs and every skipped tracker step is announced.
+- **Tier B** — tracker-specific: operates on `.diarie/` directly. An **empty** store is an empty backlog — a real answer. An **absent** store is an error (`ENOSTORE`), and means the project tracks its work somewhere else, so it redirects to `/swarm-wave` / `ROADMAP.md` rather than reporting that you have nothing to do. (Defined for reference; no active component currently occupies it — the former occupant `/backlog-groomer` was retired.)
+- **Tier C** — degrade-and-announce (`/retrospective`): the rest of the workflow runs and every skipped tracker step is announced.
 
 Silently skipping a tracker step is treated as a bug.
 
@@ -346,19 +307,13 @@ File naming examples:
 
 ### Private SYNERGY overlays
 
-For cross-project notes that must stay out of a public repo (a proprietary sibling's internal paths, client names, unreleased plans), add a **gitignored** `PRIVATE-SYNERGY-<project>.md` companion alongside the committed `SYNERGY-<project>.md`. It holds extra private entries under the same four section headings. The `PRIVATE-` prefix is the safety mechanism: it keeps the overlay **outside the `SYNERGY-*.md` glob namespace**, so every public consumer (retrospective, sprint-review, promotion, reciprocation, the session-start hook) structurally cannot read it — **private entries are never promoted to Basic Memory or reciprocated to a sibling**, by construction rather than by per-consumer discipline. Only synergy-tracker's local-only review deliberately reads both files. Gitignored via the `PRIVATE-SYNERGY-*.md` rule; the session-start hook warns if any is accidentally tracked.
+For cross-project notes that must stay out of a public repo (a proprietary sibling's internal paths, client names, unreleased plans), add a **gitignored** `PRIVATE-SYNERGY-<project>.md` companion alongside the committed `SYNERGY-<project>.md`. It holds extra private entries under the same four section headings. The `PRIVATE-` prefix is the safety mechanism: it keeps the overlay **outside the `SYNERGY-*.md` glob namespace**, so every public consumer (retrospective, promotion, reciprocation, the session-start hook) structurally cannot read it — **private entries are never promoted to Basic Memory or reciprocated to a sibling**, by construction rather than by per-consumer discipline. Only synergy-tracker's local-only review deliberately reads both files. Gitignored via the `PRIVATE-SYNERGY-*.md` rule; the session-start hook warns if any is accidentally tracked.
 
 ## Plugin structure
 
 ```
 .claude-plugin/plugin.json              Plugin manifest
-agents/
-  sprint-review.md                      End-of-sprint assessment agent
 skills/
-  backlog-groomer/
-    SKILL.md                            Backlog triage and research workflow
-    references/
-      backlog-health-heuristics.md      Staleness, closure, priority heuristics
   retrospective/
     SKILL.md                            Sprint retrospective workflow
   upstream-tracker/
@@ -400,16 +355,6 @@ hooks/
 ```
  User says / event        Triggers                 Output
  ──────────────────────   ──────────────────────   ──────────────────────────────
- "groom" / "triage"      -> backlog-groomer skill -> triage table + proposals
- "research X"            -> backlog-groomer skill -> research brief + issue creation
-
- "sprint done" / task closed -> sprint-review agent -> summary + recommendation
-                                                     ├── "run /retrospective"
-                                                     ├── "run /upstream-tracker first"
-                                                     ├── "run /backlog-groomer"
-                                                     ├── "trend-review sprint"
-                                                     └── "not ready yet"
-
  /retrospective          -> retrospective skill   -> RETRO-NN.md
                                                   -> tasks appended to .diarie/tasks/
                                                   -> Basic Memory learnings

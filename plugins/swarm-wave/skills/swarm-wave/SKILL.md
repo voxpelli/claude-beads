@@ -27,9 +27,9 @@ files.
 File isolation is the primary safety mechanism — agents within a wave each own
 distinct files, preventing merge conflicts without relying on worktrees.
 
-This skill does not create tracker tasks (use `/backlog-groomer`), write
-retrospectives (use `/retrospective`), or gate sprint closure (the
-`sprint-review` agent handles that). It orchestrates the execution phase
+This skill does not create tracker tasks (edit `.diarie/tasks/tasks-*.yml` directly), write
+retrospectives (use `/retrospective`), or gate sprint closure (the user
+handles that at sprint close). It orchestrates the execution phase
 between backlog grooming and sprint close.
 
 ## SWARM Files
@@ -313,7 +313,7 @@ sprint).
 ### 5. Research wave
 
 Orchestrate parallel research agents. Takes a topic or domain as argument.
-Delegates issue creation to `/backlog-groomer` — this workflow only handles
+Creates issue rows directly in `.diarie/tasks/tasks-*.yml` — this workflow only handles
 the parallelism and deduplication.
 
 **Steps:**
@@ -337,7 +337,7 @@ the parallelism and deduplication.
    to verify the claim holds in the actual codebase. Flag findings that do
    not match reality — research agents have a 15-20% false positive rate.
 8. Present the merged, validated findings to the user. Suggest: "Run
-   `/backlog-groomer workflow 5 (Create issues from findings)` to turn
+   edit `.diarie/tasks/` to turn
    these into issues." Keep the findings cap at roughly 15 tasks — more
    suggests the research scope was too broad.
 

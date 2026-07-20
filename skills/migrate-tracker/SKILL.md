@@ -50,7 +50,7 @@ anything.
 
 migrate-tracker runs **once, before** the sprint cycle a project's other skills
 operate in. It is the only skill that creates a `.diarie/` store; from then on
-`/backlog-groomer` owns triage of it and ordinary `Edit`/`Write` own the rows.
+from then on the user triages it by editing `.diarie/tasks/tasks-*.yml` directly.
 It never grooms, prioritizes, or closes work — it only moves it.
 
 It is also the one skill exempt from the tiering in CLAUDE.md

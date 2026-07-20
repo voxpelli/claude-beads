@@ -246,7 +246,7 @@ tasks:
 
   - id: vp-beads-rt2
     title: 'P1.4 Retire the sprint-review agent + the backlog-groomer skill'
-    status: pending
+    status: in_progress
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -254,6 +254,7 @@ tasks:
       - vp-beads-wsk
     labels:
       - chore
+    agent: claude
     acceptance_criteria:
       - sprint-review (the only agent) and backlog-groomer removed per decision `vp-beads-dep`
       - >-

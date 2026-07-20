@@ -73,8 +73,8 @@ four section headings.
 
 **The `PRIVATE-` prefix is the privacy mechanism.** It keeps the overlay
 OUTSIDE the `SYNERGY-*.md` glob namespace, so every public consumer (this
-skill's boundary-crossing workflows, `/sibling-sync`, `/retrospective`, the
-`sprint-review` agent, `session-start.sh`) **structurally cannot read it** — no
+skill's boundary-crossing workflows, `/sibling-sync`, `/retrospective`,
+`session-start.sh`) **structurally cannot read it** — no
 per-consumer exclusion is needed or used. Only the deliberate *local-only* read
 in workflow 2 (Review) additionally globs `PRIVATE-SYNERGY-*.md` to assemble the
 combined private view.
@@ -829,7 +829,7 @@ themes and escalations across all SYNERGY files.
 synergy-tracker runs as a parallel track to upstream-tracker at sprint
 boundaries:
 
-- **Sprint end:** sprint-review agent globs `SYNERGY-*.md` alongside
+- **Sprint end:** user reviews `SYNERGY-*.md` alongside
   `UPSTREAM-*.md` and reports extraction candidates. `/retrospective` includes
   a "Synergy observations" section.
 - **Sprint start:** session-start hook emits a dormancy nudge for SYNERGY files
