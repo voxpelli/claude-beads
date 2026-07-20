@@ -280,10 +280,10 @@ function scanCorpus (oracle) {
       if (!statSync(pluginDir).isDirectory()) continue
       for (const sub of ['skills', 'agents']) {
         const subDir = join(pluginDir, sub)
-        if (existsSync(subDir)) files.push(...walk(subDir, /\.md$/))
+        files.push(...(existsSync(subDir) ? walk(subDir, /\.md$/) : []))
       }
       const hooksDir = join(pluginDir, 'hooks')
-      if (existsSync(hooksDir)) files.push(...walk(hooksDir, /\.sh$/))
+      files.push(...(existsSync(hooksDir) ? walk(hooksDir, /\.sh$/) : []))
     }
   }
   /** @type {Array<{ file: string, line: number, problem: string }>} */
