@@ -1,68 +1,54 @@
-# Handoff — diarie publishing (the `voxpelli/diarie` repo)
+# Handoff — diarie publish residuals (the `voxpelli/diarie` repo)
 
-**Audience:** whoever drives publishing `diarie` to npm.
-
-**Why this exists:** the `vp-beads` dissolution (see decision `vp-beads-cst`) makes two choices that
-change what diarie must ship and what it must expose. Neither *blocks* publishing — they just need to
-be true when it happens.
+**Status: the publish is DONE.** `diarie` is on npm (`0.1.0` + `0.2.0`, latest `0.2.0`,
+2026-07-18) — the name gate is satisfied, and the `file:../diarie` → published `^0.2.0`
+dependency flip has landed in vp-skills (`vp-beads-swd`). This doc no longer briefs a
+publish-driver; it keeps only the **one genuinely-open cross-repo item** and the
+**consumer-side contract note** that outlived the publish. The historical sections that
+framed the name gate, the CLI-only shipping decision, and the post-publish handshake are
+retired — they are satisfied, and leaving them here would be the stale-scaffolding this
+repo hunts.
 
 ---
 
-## 1. diarie ships CLI-only — the bd-adoption pair does NOT travel with it
+## 1. Expose `bd-map` — a cross-repo dependency `diarie-adopt` now has
 
-`DESIGN-constellation-repackaging.md` §4 and `vp-beads-ski` originally said "bd IS diarie's framing →
-ship migrate-tracker + deintegrate-beads *with diarie*." **`vp-beads-cst` overrides that:** the
-adoption pair goes to the `vp-skills` monorepo (`plugins/diarie-adopt`), to decouple it from diarie's
-publish timeline. So **diarie publishes as just `cli.js` + `lib/` + its own skills** — no bd-adoption
-skills to carry.
-
-## 2. Expose `bd-map` — a cross-repo dependency `diarie-adopt` now has
-
-Because the adoption pair lives in vp-skills, `plugins/diarie-adopt` will need **both**:
+**OPEN.** Because the bd-adoption pair lives in vp-skills (`plugins/diarie-adopt`,
+decision `vp-beads-cst` — the pair was decoupled from diarie's publish timeline),
+`diarie-adopt` will need **both**:
 
 - `scripts/bootstrap-tasks.mjs` — the generalized migrator (plugin side; travels with the plugin).
-- `diarie/lib/migrate/bd-map.js` — the `TYPE_MAP` / bd-field mapping (currently in the diarie
-  workspace).
+- `diarie/lib/migrate/bd-map.js` — the `TYPE_MAP` / bd-field mapping (in the diarie package).
 
-**Action:** confirm the *published* `diarie` package **exposes `bd-map`** — either a public export or a
-subpath export (`diarie/migrate` / `diarie/lib/migrate/bd-map.js`) that `diarie-adopt` can import. If
-diarie's public API is intentionally CLI-only and won't export `bd-map`, say so — then `diarie-adopt`
-must **vendor a copy** of the map instead of importing it, and that decision should be recorded. Do not
-let this dependency go untraced: a `diarie-adopt` that silently loses its type map degrades quietly.
+**The problem:** diarie's `exports` map exposes only `.` and `./schema` — **not** a
+`./migrate` subpath. `bd-map.js` ships in the tarball (`files` includes `lib/**/*.js`) but
+Node's exports resolution **blocks deep imports not listed in `exports`**, so
+`diarie-adopt` cannot `import 'diarie/lib/migrate/bd-map.js'` against the published
+package.
 
-## 3. The name gate
+**Action (when `vp-beads-dad` lands):** either add `./migrate` (or a `bd-map` subpath) to
+diarie's `exports`, **or** decide `diarie-adopt` vendors a copy of the map — and record
+that decision. Do not let this dependency go untraced: a `diarie-adopt` that silently loses
+its type map degrades quietly. Tracked by the `vp-beads-dad` row.
 
-`diarie.dev` is bought; `npm view diarie` still 404s. **Publishing `0.1.0` *satisfies* the gate — it
-does not breach it.** The branch is unpushed by operator choice; publishing is the deliberate act that
-lifts the gate. (`private: true` must be dropped at publish.)
+## 2. Contracts vp-skills depends on staying stable
 
-## 4. Post-publish handshake back to vp-skills (the one genuinely publish-gated step)
-
-Today vp-skills carries `diarie/` as a **vendored subtree snapshot** (rejoined) and consumes it as an
-npm workspace. Once `diarie` resolves on npm:
-
-- vp-skills **drops the `diarie/` workspace and depends on the published package** (`diarie: "^0.1.0"`),
-  and its `diarie-adopt` / store-reading skills shell out to the installed `diarie` binary instead of
-  `node diarie/cli.js`.
-- Until then, vp-skills keeps the rejoined subtree — this is the ONLY step in the whole dissolution
-  that truly waits on the npm publish. Signal vp-skills when `npm view diarie` resolves.
-
-## 5. Keep these contracts stable across the publish
-
-vp-skills' skills depend on them:
+vp-skills' skills consume diarie's CLI. diarie's own repo is the source of truth for
+these; this is the consumer-side list of what must **not** break under us:
 
 - The **`--root` / nearest-wins** store resolution and `--root <dir>` pin.
 - The **`ENOSTORE`** contract: a missing store is a non-zero-exit error with
-  `{"error": "...", "code": "ENOSTORE"}` on stdout under `--json` — *not* an empty backlog. This is
-  load-bearing for every consumer that must tell "tracks its work elsewhere" from "no work left."
+  `{"error": "...", "code": "ENOSTORE"}` on stdout under `--json` — *not* an empty
+  backlog. Load-bearing for every consumer that must tell "tracks its work elsewhere"
+  from "no work left".
 - `ready` / `stats` / `validate` output shapes (incl. `--json`).
 
-## 6. Pre-publish-gated diarie-side decision (already recorded, owned by diarie)
-
-`diarie-spa` (the store-path API decision, in diarie's own `.diarie/decisions/`) is pre-publish work
-diarie owns: refuse-nested-init-unless-`--nested` (+ `EANCESTOR`), `TASKS_ROOT → DIARIE_ROOT`, and
-`diarie where`. Settle it before or with the first publish per that decision; it does not involve
-vp-skills.
+> Note: the pre-publish `diarie-spa` decision (store-path API — refuse-nested-init-unless
+> `--nested` + `EANCESTOR`, `TASKS_ROOT → DIARIE_ROOT`, `diarie where`) was gated "before
+> or with the first publish" but slipped to post-publish debt when `0.1.0` went out without
+> it. It is diarie's own (`voxpelli/diarie/.diarie/decisions/diarie-spa.md`) and **does not
+> involve vp-skills** — its scope is `init` nesting + an env rename, not the contracts
+> above. Tracked there, not here.
 
 ---
 

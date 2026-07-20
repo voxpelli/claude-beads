@@ -56,8 +56,8 @@ and announce** (never skip silently):
   file (see step 5).
 
 `diarie` is resolved the same way the hooks resolve it: on `PATH` if installed, else the
-project's `node_modules/.bin/diarie`. It is an external dependency (its own repo, not on npm
-yet), consumed here as a `file:../diarie` dependency.
+project's `node_modules/.bin/diarie`. It is an external dependency (its own repo, published to npm
+as `diarie@0.2.0`), consumed here as a `^0.2.0` dependency.
 
 ### 1. Determine sprint number
 

@@ -7,7 +7,6 @@
   "description": "vp-beads Claude Code plugin: sprint-workflow automation skills, an agent, and hooks for projects using the diarie flat-YAML tracker and Basic Memory, plus the diarie CLI workspace and the .mjs validation tooling that powers npm run check.",
   "scripts": {
     "check": "run-p check:* && run-s check-workspaces",
-    "check-workspaces": "npm run check --workspaces --if-present",
     "check:ast-grep": "ast-grep scan",
     "check:ast-grep-test": "ast-grep test",
     "check:beads-probe": "node scripts/check-beads-probe.mjs",
@@ -22,12 +21,13 @@
     "check:tasks": "diarie validate",
     "check:tracked-ignored": "node scripts/check-tracked-ignored.mjs",
     "check:validator": "node scripts/check-validator.mjs",
+    "check-workspaces": "npm run check --workspaces --if-present",
     "fix:ast-grep": "ast-grep scan --update-all"
   },
   "devDependencies": {
     "@ast-grep/cli": "^0.44.1",
     "@voxpelli/eslint-config": "^25.1.0",
-    "diarie": "file:../diarie",
+    "diarie": "^0.2.0",
     "eslint": "^9.39.4",
     "js-yaml": "^4.1.0",
     "npm-run-all2": "^7.0.0",

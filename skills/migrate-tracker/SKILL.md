@@ -83,7 +83,7 @@ Everything runs from the plugin's own `diarie` CLI — **nothing is copied into 
 project.** Every command takes `--root`, so one binary serves any repo:
 
 ```bash
-DIARIE="node $CLAUDE_PLUGIN_ROOT/diarie/cli.js"
+DIARIE="npx diarie"
 
 $DIARIE migrate <export.jsonl> --root <target>   # write the store
 $DIARIE validate --root <target>                 # integrity gate
@@ -216,18 +216,17 @@ mis-projection.
    to copy: the tracker is a package now, not three loose files, and this step used to
    `cp` them into the target. Say the true thing instead.
 
-   `diarie` is **not on npm yet** (it is held behind a name gate). So the target reaches it
-   the same way the hooks do — first rung that resolves wins:
+   `diarie` is **published on npm** (`diarie@0.2.0`, 2026-07-18). So the target no longer
+   depends on THIS plugin being installed for the binary — first rung that resolves wins:
 
    | rung | when |
    | --- | --- |
-   | `diarie` on `PATH` | globally installed |
-   | `./node_modules/.bin/diarie` | **once `diarie` is published — the goal** |
-   | `node <plugin>/diarie/cli.js --root .` | **today, for a consumer repo** |
+   | `diarie` on `PATH` | globally installed (`npm i -g diarie`) |
+   | `npx diarie` | **default — fetches from npm, no local install needed** |
+   | `./node_modules/.bin/diarie` | the target installed `diarie` as a devDep |
 
-   Until it publishes, the target depends on this plugin being installed. That is a real
-   limitation and the `CLAUDE.md` you write in step 3 must not pretend otherwise: document
-   the command that actually works *there*, not the one that works here.
+   The `CLAUDE.md` you write in step 3 should document the command that actually works
+   *there* — `npx diarie` is the portable default (the line above sets `$DIARIE` to it).
 
    Confirm before proceeding: `$DIARIE validate --root <target>` reports the real file
    count. An absent store errors (`ENOSTORE`); it no longer "skips" and exits 0, which is

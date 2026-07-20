@@ -159,10 +159,10 @@ substrate — `.diarie/tasks/tasks-<slug>.yml`, read by `diarie ready` (the file
 `diarie` package's `lib/schema.js` (the `TRACKER_DIR` authority).
 
 The tracker is a real CLI, **`diarie`**, with `ready` / `stats` / `validate` / `init` /
-`migrate`. It is **built but not published** — held behind the name gate (`diarie.dev`
-bought; `npm view diarie` still 404). Here it resolves via `npx diarie` /
-`node_modules/.bin/diarie` — **bare-shell `diarie` is NOT on PATH** (only npm injects it).
-Everything calls the CLI; there are no loose `.mjs` readers left.
+`migrate`. It is **published** (`diarie@0.2.0` on npm, 2026-07-18; `diarie.dev` registered).
+Here it resolves via `npx diarie` / `node_modules/.bin/diarie` — **bare-shell `diarie` is
+NOT on PATH** (only npm injects it). Everything calls the CLI; there are no loose `.mjs`
+readers left.
 
 Verdict from a 12-agent research round (2026-06-09), for provenance:
 `RESEARCH-tracker-migration-synthesis-2026-06.md`; architecture in
@@ -190,7 +190,8 @@ DECLINED** — its MCP server is another daemon/vendor, and it cannot reproduce
   diarie was `git subtree split`'d to its own repo
   [`voxpelli/diarie`](https://github.com/voxpelli/diarie) (its canonical home), then wired
   here as a **`file:../diarie` dependency** (`85600aa`) — the in-repo `diarie/` workspace is
-  **gone**. Still unpublished; the last step is `file:` → the published npm dep.
+  **gone**. Published 2026-07-18 (`diarie@0.2.0` on npm); the `file:../diarie` bridge has since been
+  flipped to the published `^0.2.0` dep.
 
 ## Work-tracking substrates
 
@@ -540,7 +541,8 @@ This project tracks its own work in the **flat-YAML substrate**, **not bd** (see
 
 **diarie is EXTERNAL** — extracted to its own repo, [`voxpelli/diarie`](https://github.com/voxpelli/diarie)
 (the canonical home for diarie's own development, backlog, and decisions), and consumed here as a
-**`file:../diarie` dependency** (`85600aa`). The in-repo `diarie/` workspace is **gone**, so there is
+published npm dependency (**`diarie@^0.2.0`**; externalized via `file:../diarie` in `85600aa`, then
+flipped to npm once published). The in-repo `diarie/` workspace is **gone**, so there is
 now **one store**: root `.diarie/` = this plugin's own work (`vp-beads-*`). Invoke via `npx diarie` /
 `node_modules/.bin/diarie` — bare-shell `diarie` is NOT on PATH. **Edit diarie's own backlog in
 [`voxpelli/diarie`](https://github.com/voxpelli/diarie), not here.**
@@ -716,7 +718,7 @@ diarie binary, not the package). **`check-workspaces` = `npm run check --workspa
 --if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
 Today the only member is `plugins/_placeholder` (a stub whose trivial `check` keeps the delegation
 live and proven until the first real plugin lands); **diarie is NOT a workspace** — it is an external
-`file:../diarie` dependency and owns all its own gates in its own repo.
+npm dependency (`diarie@^0.2.0`) and owns all its own gates in its own repo.
 
 🚨 **`run-p check:*` does NOT match a `test` key.** A workspace's tests reach the aggregate ONLY if
 exposed under a **`check:`-prefixed** script (e.g. `check:test`) — `run-p check:*` never matches a
@@ -809,7 +811,7 @@ rule-test and run `ast-grep test --update-all` to seed the snapshot.
 *(History, 2026-07-18: the root once carried `scripts/check-ast-grep.mjs` over a
 `scripts/ast-grep-paths.mjs` path list, plus an existence-guard and a `scannedFileCount` FLOOR —
 all to exclude an in-repo `diarie/` workspace (which carried its own config) from a bare scan.
-diarie is now an external `file:../diarie` dependency, so the exclusion is moot and the whole
+diarie is an external npm dependency (`diarie@^0.2.0`), so the exclusion is moot and the whole
 apparatus was deleted for standard `ast-grep scan`. The plugin does **not** floor-guard the
 scan's file count: a broad `.gitignore` line can shrink a bare scan, but that risk is accepted
 **at parity with every other ignore-bounded gate** — `check:md` is `remark --ignore-path

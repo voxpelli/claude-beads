@@ -28,9 +28,9 @@ at it via `parent:`.
 The tracker is a real CLI — **`diarie`** (`diarie ready`, `diarie stats`,
 `diarie validate`, `diarie init`, `diarie migrate`) — at
 [diarie.dev](https://diarie.dev). It lives in its own repo
-([voxpelli/diarie](https://github.com/voxpelli/diarie)) and is **not published to npm yet** — this
-repo consumes it as a `file:../diarie` dependency. Skills and hooks resolve it in order: on `PATH`,
-else the project's `node_modules/.bin/diarie`.
+([voxpelli/diarie](https://github.com/voxpelli/diarie)) and is **published to npm**
+(`diarie@0.2.0`) — this repo consumes it as a `^0.2.0` dependency. Skills and hooks resolve it in
+order: on `PATH`, else the project's `node_modules/.bin/diarie`.
 
 ## What it does
 

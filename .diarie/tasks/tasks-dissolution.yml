@@ -223,7 +223,7 @@ tasks:
       - >-
         the bd-map coupling traced: diarie-adopt needs scripts/bootstrap-tasks.mjs (plugin side) AND
         diarie/lib/migrate/bd-map.js (workspace side) — confirm published diarie exposes bd-map or
-        vendor a copy (see handoffs/HANDOFF-diarie-publish.md §2)
+        vendor a copy (see handoffs/HANDOFF-diarie-publish.md §1)
     description: >-
       Plan step 1.3 (diarie-adopt bullet). Overrides DESIGN §4 / `vp-beads-ski` ("ship the adoption
       pair WITH diarie") per `vp-beads-cst` — the pair goes to vp-skills to decouple it from
@@ -478,7 +478,8 @@ tasks:
       - >-
         publish gate SATISFIED — `npm view diarie` resolves to 0.1.0 + 0.2.0 (latest 0.2.0, both
         published 2026-07-18); the `file:../diarie` → published `^0.2.0` flip is executed on the
-        feature branch ahead of the `mpu` merge by operator choice (see handoff §4)
+        feature branch ahead of the `mpu` merge by operator choice (the flip is recorded
+        on this row; the publish handoff retired its §4 once the flip landed)
       - >-
         vp-skills drops the `file:../diarie` dependency, depends on `diarie: "^0.2.0"`, and its
         store-reading skills shell out to the installed binary instead of `node diarie/cli.js`
