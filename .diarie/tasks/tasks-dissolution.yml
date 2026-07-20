@@ -246,7 +246,7 @@ tasks:
 
   - id: vp-beads-rt2
     title: 'P1.4 Retire the sprint-review agent + the backlog-groomer skill'
-    status: in_progress
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -256,11 +256,19 @@ tasks:
       - chore
     agent: claude
     acceptance_criteria:
-      - sprint-review (the only agent) and backlog-groomer removed per decision `vp-beads-dep`
       - >-
-        doc-grep FIRST (global rule): the Tier-B slot in the Files-availability convention emptied;
-        sprint-review de-referenced from retrospective, swarm-wave, CLAUDE.md component list +
-        sprint-cycle diagram, and the marketplace entry
+        sprint-review and backlog-groomer deleted per decision `vp-beads-dep`.
+        doc-grep done before removal: all references retargeted across CLAUDE.md,
+        README.md, swarm-wave/retrospective/synergy-tracker/migrate-tracker SKILL.md,
+        SYNERGY-vp-knowledge.md, .claude/settings.local.json.
+      - >-
+        Tier-B slot emptied with explanatory note referencing P1.4.
+        sprint-review de-referenced from the sprint-cycle diagram.
+        "npm run check" green.
+      - >-
+        backlog-health-heuristics.md reviewed: not vital — priority enums and
+        duplicate-resolution patterns are diarie substrate conventions, not
+        vp-beads-specific knowledge.
     description: >-
       Plan step 1.4; executes decision `vp-beads-dep` (usage evidence + operator testimony:
       sprint-review never fired, backlog-groomer barely used). A doc-and-reference sweep, not a bare

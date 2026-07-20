@@ -268,9 +268,9 @@ function scanCorpus (oracle) {
     join(ROOT, 'README.md'),
     ...walk(join(ROOT, 'skills'), /\.md$/),
     ...walk(join(ROOT, 'hooks'), /\.sh$/),
+    // agents/ might not exist (retired vp-beads no longer has one)
+    ...(existsSync(join(ROOT, 'agents')) ? walk(join(ROOT, 'agents'), /\.md$/) : []),
   ]
-  // agents/ only if the directory exists (retired vp-beads no longer has one)
-  if (existsSync(join(ROOT, 'agents'))) files.push(...walk(join(ROOT, 'agents'), /\.md$/))
 
   // plugins/* — scan skills/, agents/, hooks/ where they exist
   const pluginsDir = join(ROOT, 'plugins')
