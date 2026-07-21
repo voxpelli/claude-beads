@@ -1,5 +1,7 @@
 import { voxpelli } from '@voxpelli/eslint-config'
 
+import jsdocSingleLineTagDescription from './eslint-local-rules/jsdoc-single-line-tag-description.js'
+
 // vp-beads ships pure markdown + JSON plus the .mjs validation tooling
 // (validate-plugin.mjs and everything under scripts/). neostandard via
 // @voxpelli/eslint-config lints that tooling; type-checking rules are
@@ -47,5 +49,15 @@ export default [
       'security/detect-non-literal-fs-filename': 'off',
       'security/detect-non-literal-regexp': 'off',
     },
+  },
+  {
+    // Adopted from voxpelli/liggare-mcp (see SYNERGY-liggare-mcp.md): a JSDoc tag
+    // description must stay on ONE physical line and cap at 100 chars — no published
+    // eslint-plugin-jsdoc rule enforces per-tag single-line. Advisory ('warn'): it
+    // surfaces the debt without reddening the build (`eslint` here has no
+    // --max-warnings 0), matching the repo's other advisory nudge, no-jsdoc-any-type.
+    name: 'vp-beads/jsdoc-single-line',
+    plugins: { local: { rules: { 'jsdoc-single-line-tag-description': jsdocSingleLineTagDescription } } },
+    rules: { 'local/jsdoc-single-line-tag-description': 'warn' },
   },
 ]

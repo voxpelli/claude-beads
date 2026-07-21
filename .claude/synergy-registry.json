@@ -19,5 +19,12 @@
     "remote": "https://github.com/voxpelli/diarie",
     "bm-entity": "engineering/agents/vp-beads-and-diarie",
     "relationship": "dependency"
+  },
+  {
+    "name": "liggare-mcp",
+    "file": "SYNERGY-liggare-mcp.md",
+    "remote": "https://github.com/voxpelli/liggare-mcp",
+    "bm-entity": "engineering/agents/vp-beads-and-liggare-mcp",
+    "relationship": "shared-tooling"
   }
 ]

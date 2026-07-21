@@ -93,9 +93,7 @@ const TRACKER_DIR = '.diarie'
  * can't-determine-vs-determined-bad trap this repo's Reader conventions forbid.
  *
  * @param {string} root
- * @param {(root: string) => { ok: boolean, out: string, code: number|null }} [statsRunner]
- *   How to run `diarie stats --json` for `root`. Injectable so a test can force the CLI-unavailable
- *   path (the branch a real run in a diarie-resolving repo never exercises). Defaults to `npx diarie`.
+ * @param {(root: string) => { ok: boolean, out: string, code: number|null }} [statsRunner] Injectable `diarie stats` runner (default `npx diarie`); lets a test force the CLI-down branch.
  * @returns {unknown}
  */
 export function probeMigration (root, statsRunner = (r) => run('npx', ['diarie', 'stats', '--json', '--root', r])) {
