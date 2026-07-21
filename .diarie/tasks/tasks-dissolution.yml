@@ -656,7 +656,8 @@ tasks:
 
   - id: vp-beads-pch
     title: 'check-prose-commands hardening — path normalization + per-surface floor + $DIARIE alias + self-test'
-    status: pending
+    status: in_progress
+    agent: claude
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -678,6 +679,13 @@ tasks:
       MEDIUM (detection intact — gate still exits 1 — but the reported location is garbled, defeating the
       gate when it finally fires). A blanket per-surface ≥1 floor would false-RED the build today (3 surfaces
       are legitimately empty).
+      PARTIAL (2026-07-21): the M1 path-mangling fix (all corpus paths → absolute + relative(root,file)
+      display, killing the file.slice mangle + the cwd-dependence) + a fixture self-test (scanCorpus pointed
+      at a throwaway tree, asserting the emitted path; RED-proven against the old slice) + comment rot
+      (file:../diarie→npm ^0.2.0, ~105→90, phantom check-prose-commands2.mjs ref removed) are DONE.
+      REMAINING: the $DIARIE/$VAR-alias resolver (migrate-tracker's `$DIARIE migrate …` primary command
+      surface — which the §B/npx-flag work EXPANDED — is still unchecked; all its flags were hand-verified
+      valid, so latent not live) + the per-surface CONDITIONAL floor.
     updated: '2026-07-21'
 
   - id: vp-beads-tda

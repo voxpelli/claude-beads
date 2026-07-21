@@ -37,15 +37,18 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { dirname, join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import {
-  existsSync, globSync, readFileSync,
+  existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync,
 } from 'node:fs'
+import {
+  dirname, join, relative, resolve,
+} from 'node:path'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-// diarie is an EXTERNAL dependency now (file:../diarie), not an in-repo workspace. Invoke it by its
+// diarie is an EXTERNAL, published npm dependency now (diarie@^0.2.0), not an in-repo workspace. Invoke it by its
 // declared BIN (node_modules/.bin/diarie) — the package's public interface — not by reaching into its
 // internal cli.js path. This is the exact binary a consumer runs, so the oracle stays honest, and it
 // survives diarie relocating cli.js internally.
@@ -235,20 +238,24 @@ function extract (text, isMarkdown) {
 }
 
 /**
- * Scan the live corpus. Returns every problem found, plus coverage numbers so an inert extractor is
- * visible rather than silently green.
+ * Scan a corpus. Returns every problem found, plus coverage numbers so an inert extractor is visible
+ * rather than silently green. `root` defaults to the real repo; the fixture self-test points it at a
+ * throwaway tree to prove the file-path handling without ever touching the live corpus.
  *
  * @param {Oracle} oracle
+ * @param {string} [root]
  * @returns {{ findings: Array<{ file: string, line: number, problem: string }>, examined: number, fileCount: number }}
  */
-function scanCorpus (oracle) {
-  // Use Node.js 24+'s built-in globSync (stable since v24) instead of a custom walk(). It handles
-  // non-existent base directories gracefully (returns []), eliminating all existsSync guards and
-  // readdirSync/statSync calls. The pattern array is the only place to update when adding new
-  // scan surfaces — see also check-prose-commands2.mjs for the yield* spike that preceded this.
+function scanCorpus (oracle, root = ROOT) {
+  // globSync (a Node built-in) returns paths RELATIVE to `cwd`; normalize every entry to ABSOLUTE
+  // (join(root, p)) so the two hardcoded literals and the glob results share one convention, and
+  // `relative(root, file)` at DISPLAY time is the only place a relative path is produced again. Mixing
+  // the two was the bug: the old `file.slice(ROOT.length + 1)` ran on already-relative glob results too,
+  // mangling them (a short relative path sliced past its own length returned '', so a real finding
+  // reported an empty location). Absolute paths also drop the latent cwd-dependence readFileSync had.
   const files = [
-    join(ROOT, 'CLAUDE.md'),
-    join(ROOT, 'README.md'),
+    join(root, 'CLAUDE.md'),
+    join(root, 'README.md'),
     ...globSync([
       'skills/**/*.md',
       'hooks/**/*.sh',
@@ -256,7 +263,7 @@ function scanCorpus (oracle) {
       'plugins/*/skills/**/*.md',
       'plugins/*/agents/**/*.md',
       'plugins/*/hooks/**/*.sh',
-    ], { cwd: ROOT }),
+    ], { cwd: root }).map((p) => join(root, p)),
   ]
   /** @type {Array<{ file: string, line: number, problem: string }>} */
   const findings = []
@@ -266,10 +273,43 @@ function scanCorpus (oracle) {
     for (const { candidate, line } of extract(readFileSync(file, 'utf8'), isMarkdown)) {
       if (isInvocation(candidate)) examined++
       const problem = classify(candidate, oracle)
-      if (problem) findings.push({ file: file.slice(ROOT.length + 1), line, problem })
+      if (problem) findings.push({ file: relative(root, file), line, problem })
     }
   }
   return { findings, examined, fileCount: files.length }
+}
+
+/**
+ * Prove scanCorpus's path handling against a THROWAWAY fixture — never the live corpus. What the live
+ * corpus cannot prove: a NESTED finding's reported `file` is its TRUE path relative to root, not a
+ * slice-mangled fragment (`plugins/x/skills/y/SKILL.md` → `-y/SKILL.md`, or `''` for short paths, was
+ * the bug). Runs the SAME production scanCorpus, pointed at the fixture.
+ *
+ * @param {Oracle} oracle
+ * @returns {number}
+ */
+function selfTestScanCorpus (oracle) {
+  let failed = 0
+  const dir = mkdtempSync(join(tmpdir(), 'prose-commands-fixture-'))
+  try {
+    writeFileSync(join(dir, 'CLAUDE.md'), '')
+    writeFileSync(join(dir, 'README.md'), '')
+    const rel = join('skills', 'nested', 'SKILL.md')
+    mkdirSync(dirname(join(dir, rel)), { recursive: true })
+    writeFileSync(join(dir, rel), 'Run `ready-walker --stale` — a retired reader.\n')
+    const { findings } = scanCorpus(oracle, dir)
+    const found = findings.find((x) => x.problem)
+    if (!found) {
+      failed++
+      console.error('  ✗ self-test: scanCorpus fixture — expected a finding for the retired reader, got none')
+    } else if (found.file !== rel) {
+      failed++
+      console.error(`  ✗ self-test: scanCorpus fixture — expected file '${rel}', got '${found.file}'`)
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+  return failed
 }
 
 // --- Self-test: the frozen ground-truth -------------------------------------------------------
@@ -334,7 +374,7 @@ function selfTest (oracle) {
 
 const oracle = buildOracle()
 
-const selfTestFailures = selfTest(oracle)
+const selfTestFailures = selfTest(oracle) + selfTestScanCorpus(oracle)
 if (selfTestFailures > 0) {
   console.error(`\ncheck:prose-commands — the classifier failed ${selfTestFailures} of its own ground-truth checks; not scanning the corpus.`)
   process.exit(1)
@@ -352,8 +392,8 @@ if (findings.length > 0) {
 
 // Coverage floor — the flr lesson one layer over: do not trust that the scan RAN, assert how much it
 // SAW. A future regex or fence-logic edit that makes extract() pull nothing yields zero findings and
-// a false green; this makes an inert extractor fail loud instead. ~105 diarie invocations live in the
-// corpus today (measured); the floor sits well below that, and a surprising drop is the signal.
+// a false green; this makes an inert extractor fail loud instead. ~90 diarie invocations live in the
+// corpus today (measured 90); the floor sits well below that, and a surprising drop is the signal.
 const EXAMINED_FLOOR = 80
 if (examined < EXAMINED_FLOOR) {
   console.error(`check:prose-commands — only ${examined} invocations examined (floor ${EXAMINED_FLOOR}); the extractor has likely gone inert. A green here would mean nothing.`)
