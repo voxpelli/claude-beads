@@ -559,7 +559,7 @@ tasks:
 
   - id: vp-beads-abx
     title: 'CRITICAL: deintegrate-beads unrunnable when installed — shell beads-probe out to the diarie CLI (+ prose)'
-    status: pending
+    status: completed
     type: task
     priority: high
     parent: vp-beads-dis

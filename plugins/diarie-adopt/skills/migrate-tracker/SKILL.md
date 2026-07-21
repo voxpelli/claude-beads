@@ -79,8 +79,9 @@ and **reports each one** — the original edges survive in the archive JSONL.
 
 ## Prerequisites
 
-Everything runs from the plugin's own `diarie` CLI — **nothing is copied into the target
-project.** Every command takes `--root`, so one binary serves any repo:
+Everything runs through the **published `diarie` CLI**, resolved via `npx diarie` (fetched from
+the npm registry on demand) — **nothing is bundled with this plugin** and nothing is copied into
+the target project. Every command takes `--root`, so one binary serves any repo:
 
 ```bash
 DIARIE="npx diarie"
@@ -90,17 +91,18 @@ $DIARIE validate --root <target>                 # integrity gate
 $DIARIE ready --json --root <target>             # what is workable
 ```
 
-**Always pass `--root`.** It is not a convenience: without it the CLI walks up from the
-current directory and would find *the plugin's own* `.diarie/` — which is committed, so a
-marketplace install ships vp-beads' backlog into every consumer's cache. A missing store is
-an error (`ENOSTORE`, non-zero exit), never an empty backlog, so a wrong `--root` fails
-loudly rather than reporting that the target has no work.
+**Always pass `--root`.** It is not a convenience: without it the CLI walks up from the current
+directory and could bind to the *wrong* `.diarie/` — the session's cwd (or a parent) rather than
+the migration target. A missing store is an error (`ENOSTORE`, non-zero exit), never an empty
+backlog, so a wrong `--root` fails loudly rather than reporting that the target has no work.
 
 *(`TASKS_ROOT` still works and is what the test suite uses, but `--root` is the interface.
 Prose that leads with the env var is describing the readers that no longer exist.)*
 
-**Preflight:** `diarie` needs its runtime dependencies. If the first run fails with
-`ERR_MODULE_NOT_FOUND`, run `npm install --prefix "$CLAUDE_PLUGIN_ROOT"` once.
+**On resolution failure:** `npx diarie` needs the registry (or a warm npx cache / a global
+`diarie` on `PATH`). If it cannot resolve — offline, no cache — install diarie once (`npm i -g
+diarie`, or add it as the target's own devDep) rather than expecting a plugin-local copy: this
+plugin ships none.
 
 ## Workflows
 
@@ -276,8 +278,9 @@ mis-projection.
    > session, it is a task row. The todo list is one claimed row's execution made visible —
    > never a second backlog.
 
-   Rationale and the rejected alternatives are recorded in this plugin's decision
-   `vp-beads-tdo`.
+   Rationale and the rejected alternatives are recorded in the vp-beads decision
+   `vp-beads-tdo` (in the vp-skills repo root's `.diarie/decisions/`; this plugin ships
+   no store of its own).
 4. Leave `<target>/.beads/` on disk as a frozen read-only archive. Do not delete
    it — `bd` reads still work, and the memory store may be recoverable later via a
    bd downgrade.
@@ -293,26 +296,27 @@ mis-projection.
      lines like `*.jsonl` or `_archive/` — either one silently swallows the bd
      archive, and `git add -A` will not say a word.
    - **The plugin's ephemeral and private artifacts must BE ignored** — if the
-     project will use vp-beads' other skills, add the stanza from the README's
-     "What to gitignore" section. `PRIVATE-SYNERGY-*.md` is the load-bearing line:
+     project will use vp-beads' other skills, gitignore them: `RETRO-*.md`, `SWARM-*.md`,
+     `PRIVATE-SYNERGY-*.md`, `.claude/*.local.json`, and `.liggare/` (inline here because this
+     plugin ships no README of its own). `PRIVATE-SYNERGY-*.md` is the load-bearing line:
      it is the only thing keeping a private sibling's name out of a public repo,
      and vp-beads' validator that enforces it does not run in the target.
 6. Commit the new `.diarie/` store **and** the archive JSONL together.
 
 ## Error handling
 
-- **`ERR_MODULE_NOT_FOUND`** (`js-yaml`, `@voxpelli/typed-utils`, `peowly`…) — the plugin
-  cache has no `node_modules`. Run `npm install --prefix "$CLAUDE_PLUGIN_ROOT"` once. This
-  is not rare: some plugin caches genuinely ship without one, and the hooks swallow the
-  failure by design (they are recovery plumbing), so the symptom is a tracker that says
-  *nothing* rather than one that complains. **The same error post-cutover means the same
-  thing** — the plugin's own deps, not the target's. There is no "dependency add" step in
-  the target to have skipped: `diarie` is unpublished, so the target never gains its own
-  copy, and workflow 5 (Cut over) says so.
+- **`npx diarie` fails to resolve / times out** — a registry or network problem, not a missing
+  plugin dependency. `diarie` is **published** (`diarie@^0.2.0`); this plugin bundles no copy of its
+  own, so there is no `npm install --prefix` recovery to run and nothing to "add" post-cutover. Retry,
+  or provide diarie another way (`npm i -g diarie`, a warm npx cache, or the target's own devDep — see
+  Prerequisites).
 - **`unmapped bd status for <id>`** — the migrator refuses rather than emit a
   task with no status. bd has statuses beyond the four it maps (`reopened`, …).
-  Add the mapping to `STATUS_MAP` in `diarie/lib/migrate/bd-map.js` — which is exactly what the error text tells you; do not work
-  around it, and do not hand-patch the YAML.
+  `STATUS_MAP` lives in the external **[`voxpelli/diarie`](https://github.com/voxpelli/diarie)** repo
+  (`lib/migrate/bd-map.js`) — diarie is a published dependency here, so do NOT hand-edit the installed
+  copy under `node_modules/diarie/` (npm overwrites it on the next install, and the fix never leaves
+  this machine). Report the status upstream (issue/PR); until it lands, treat the migration as blocked
+  for that id — do not hand-patch the YAML either.
 - **`refusing to overwrite an existing task store`** — the target has already
   migrated. Stop and confirm with the user; reach for `--force` only to redo a
   botched migration, and say what it will discard.

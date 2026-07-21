@@ -73,8 +73,10 @@ node "$CLAUDE_PLUGIN_ROOT/scripts/beads-probe.mjs" --root <target>          # hu
 node "$CLAUDE_PLUGIN_ROOT/scripts/beads-probe.mjs" --root <target> --json   # to act on
 ```
 
-If it fails with `ERR_MODULE_NOT_FOUND` (a marketplace plugin cache has no
-`node_modules`), run `npm install --prefix "$CLAUDE_PLUGIN_ROOT"` once.
+The probe imports **no** npm packages — it shells out to `npx diarie` for the migration check — so it
+always runs, even from a marketplace plugin cache with no `node_modules` (it no longer crashes with
+`ERR_MODULE_NOT_FOUND`). If diarie itself is not resolvable (offline, no npx cache), the probe reports
+`migration.verifyFailed: true` — see the verify gate in workflow 1 (Probe, verify, and confirm the whole plan), step 3.
 
 ## Workflows
 
@@ -88,9 +90,14 @@ user approves in this one.
    de-integrate. Without this check the whole skill runs as a chain of no-ops and
    reports a cleanup that never happened.
 3. **`migration.trusted` must be `true`, or STOP** and point at `/migrate-tracker`.
-   It requires all three of: the store exists, it holds **at least one task**, and it
-   is **committed**. Disarming bd against a store that fails any of these leaves the
-   project with **neither** tracker.
+   It requires all of: the store exists, it holds **at least one task**, it is **committed**, and
+   the check actually **ran** (`migration.verifyFailed` is `false`). Disarming bd against a store
+   that fails any of these leaves the project with **neither** tracker.
+
+   **Distinguish the STOP reason.** `migration.verifyFailed: true` means diarie could not be *run*
+   to check the store (offline / unresolvable) — that is *unverified*, NOT *a bad store*. Say which,
+   so the user fixes the right thing: make diarie runnable and re-probe, versus finish the migration.
+   Never conflate "I couldn't check" with "the store is untrustworthy".
 
    **`diarie validate` cannot substitute for this gate, even now.** A missing store is
    an error today (`ENOSTORE`, non-zero exit) — that half is fixed. But a store that
@@ -232,8 +239,9 @@ rides the confirmation taken in workflow 1 (Probe, verify, and confirm the whole
 
    **Report it; offer the seam; do not impose it.** The ban is usually wrong (Claude
    Code's built-in tracker is *ephemeral* — it complements a durable file-backed tracker
-   rather than competing with it; see decision `vp-beads-tdo` in this plugin's own
-   `.diarie/decisions/`), but it is the target project's call, and a skill that silently
+   rather than competing with it; see the vp-beads decision `vp-beads-tdo` in the vp-skills
+   repo root's `.diarie/decisions/` — this plugin ships no store of its own), but it is the
+   target project's call, and a skill that silently
    rewrites a user's operating instructions is doing the very thing it was invoked to undo.
    Show the matched lines and the one-line replacement rule:
 
