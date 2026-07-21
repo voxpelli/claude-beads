@@ -43,9 +43,6 @@ import {
   argv, cwd, exit, stdout,
 } from 'node:process'
 
-import { TRACKER_DIR } from 'diarie/schema'
-import yaml from 'js-yaml'
-
 /** Hook names bd installs. */
 const BD_HOOKS = new Set(['pre-commit', 'post-merge', 'pre-push', 'post-checkout', 'prepare-commit-msg'])
 
@@ -64,40 +61,68 @@ function run (cmd, args) {
   return { ok: r.status === 0, out: (r.stdout ?? '').trim(), code: r.status }
 }
 
+// diarie's PUBLISHED, stable store-dir contract: the store lives at `<root>/.diarie/` — which is
+// exactly what the `diarie --root` flag means. Kept as a LOCAL constant, NOT imported from
+// `diarie/schema`, so this probe carries NO npm import to resolve at runtime: Claude Code does not
+// `npm install` a git-source plugin, so a `node_modules`-resolved `import` (diarie/schema, js-yaml)
+// throws `ERR_MODULE_NOT_FOUND` the moment the plugin is installed, and the skill's documented
+// `npm install --prefix` recovery cannot help (there is nothing to install).
+//
+// DO NOT "fix" this by importing `TRACKER_DIR` — and do NOT extend the `no-hardcoded-tracker-dir`
+// ast-grep rule (root `scripts/*.mjs`) to cover `plugins/*/scripts/`: that rule EXISTS to force the
+// import, and forcing it here would reintroduce the install bug above. A root dev-tool can import
+// diarie (node_modules present); an installed plugin runtime script cannot. The clean long-term fix
+// is for diarie to expose its store-dir in `stats --json` so consumers neither import nor hardcode
+// it — until then this literal is the sanctioned exception (diarie's `.diarie` is a published,
+// stable contract, not a co-development internal).
+const TRACKER_DIR = '.diarie'
+
 /**
  * Is the flat-YAML migration trustworthy enough to disarm bd?
  *
- * `clean` is NOT sufficient and neither is exit 0. An ABSENT store is now an
- * error (ENOSTORE) rather than a cheerful `{clean:true, skipped:true}` — but an
- * EMPTY store still validates clean at exit 0, exactly as it should. So a green
- * validate still proves nothing about whether work was migrated. Only a non-zero
- * task count does, which is why this parses the YAML itself.
+ * `clean` is NOT sufficient and neither is exit 0. An ABSENT store is now an error (ENOSTORE) rather
+ * than a cheerful `{clean:true, skipped:true}` — but an EMPTY store still validates clean at exit 0,
+ * exactly as it should. So a green validate still proves nothing about whether work was migrated. Only
+ * a non-zero task count does — which we get from `diarie stats --json`, the store's OWN authority on
+ * its count, rather than by re-parsing its YAML here. `diarie stats` reports an unparseable file as a
+ * `warnings[]` entry (the whole file is skipped) instead of crashing, so count + malformed both come
+ * from one CLI call. Invoked via `npx diarie` — the same precondition the adoption skills already rely
+ * on (migrate-tracker runs `npx diarie`), so this adds nothing new. If diarie is NOT runnable
+ * (offline, unresolvable), that is reported as `verifyFailed` (could-not-determine), NEVER as a
+ * `malformed` store — conflating "I couldn't check" with "the store is bad" is the exact
+ * can't-determine-vs-determined-bad trap this repo's Reader conventions forbid.
  *
  * @param {string} root
- * @returns {any}
+ * @param {(root: string) => { ok: boolean, out: string, code: number|null }} [statsRunner]
+ *   How to run `diarie stats --json` for `root`. Injectable so a test can force the CLI-unavailable
+ *   path (the branch a real run in a diarie-resolving repo never exercises). Defaults to `npx diarie`.
+ * @returns {unknown}
  */
-export function probeMigration (root) {
+export function probeMigration (root, statsRunner = (r) => run('npx', ['diarie', 'stats', '--json', '--root', r])) {
   const tasksDir = join(root, TRACKER_DIR, 'tasks')
   const files = existsSync(tasksDir)
     ? readdirSync(tasksDir).filter(f => /^tasks-.+\.ya?ml$/.test(f))
     : []
 
-  // PARSE the YAML; do not pattern-match it. Counting `/^\s*-\s+id:/` looked
-  // "dependency-light" and was simply wrong: the migration preserves every bd body as a
-  // `description:` block scalar, and bd bodies routinely quote YAML — so a `- id:` inside
-  // prose inflated the count, and a store holding `tasks: []` reported as trusted. That is
-  // the exact vacuous gate this function exists to close, reintroduced one layer down.
-  let taskCount = 0
-  let malformed = false
-  for (const f of files) {
-    try {
-      const doc = /** @type {any} */ (yaml.load(readFileSync(join(tasksDir, f), 'utf8')))
-      if (Array.isArray(doc?.tasks)) taskCount += doc.tasks.length
-    } catch {
-      // A store we cannot parse is a store we cannot vouch for.
-      malformed = true
-    }
-  }
+  // ASK the CLI, do not re-parse the files. A store holding `tasks: []` reports total 0 (correctly
+  // NOT trusted); a store with an unparseable file reports total 0 PLUS a warning (malformed → not
+  // trusted). No js-yaml, no diarie/schema.
+  const stats = statsRunner(root)
+  /** @type {{ total?: number, code?: string, warnings?: string[] } | null} */
+  let parsed = null
+  try { parsed = stats.out ? JSON.parse(stats.out) : null } catch { parsed = null }
+
+  const enostore = parsed?.code === 'ENOSTORE'
+  // The CLI gave a USABLE answer iff we got a stats object (a numeric total) or a clean ENOSTORE.
+  // Anything else — npx could not resolve/run diarie, no network, garbled output — is "could NOT
+  // verify", which is NOT "the store is bad". `verifyFailed` keeps them distinct: it forces `trusted`
+  // false (never disarm bd on a store we could not check) WITHOUT falsely labelling it malformed.
+  const cliAnswered = enostore || typeof parsed?.total === 'number'
+  const verifyFailed = !cliAnswered
+  const taskCount = typeof parsed?.total === 'number' ? parsed.total : 0
+  // A store diarie DID read but flagged (an invalid-YAML file skipped) is genuinely malformed —
+  // only meaningful when the CLI actually answered.
+  const malformed = cliAnswered && Array.isArray(parsed?.warnings) && parsed.warnings.length > 0
 
   // `ls-files` reads the INDEX, so a `git add`-ed but never-committed store answered
   // "committed: true" — in a repo with no commits at all. `ls-tree HEAD` asks history.
@@ -109,10 +134,11 @@ export function probeMigration (root) {
     files,
     taskCount,
     malformed,
+    verifyFailed,
     committed: committedFiles.length > 0,
     committedFiles,
-    // The gate. All of them, not any one.
-    trusted: files.length > 0 && taskCount > 0 && !malformed && committedFiles.length > 0,
+    // The gate: the CLI must have RUN, and the store present, non-empty, clean, and committed.
+    trusted: !verifyFailed && files.length > 0 && taskCount > 0 && !malformed && committedFiles.length > 0,
   }
 }
 

@@ -152,6 +152,20 @@ console.log('probeMigration (the gate that must not pass vacuously)')
     assert('an UNPARSEABLE store → malformed, NOT trusted', m.malformed === true && m.trusted === false)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
+{
+  // diarie itself could not RUN (offline, unresolvable) — that is "could NOT verify", NOT a bad store.
+  // It must block trust WITHOUT being falsely reported as malformed: can't-determine != determined-bad.
+  // A real run in a diarie-resolving repo never takes this branch, so it is injected here on purpose.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: real\n    status: pending\n    type: task\n')
+    commitAll(dir)
+    const cliDown = () => ({ ok: false, out: '', code: 1 })
+    const m = probeMigration(dir, cliDown)
+    assert('diarie NOT runnable → verifyFailed, NOT malformed, NOT trusted',
+      m.verifyFailed === true && m.malformed === false && m.trusted === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
 
 console.log('\nprobeDaemon (the function that authorizes killing a process)')
 

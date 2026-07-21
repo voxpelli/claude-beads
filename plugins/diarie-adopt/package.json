@@ -4,6 +4,6 @@
   "type": "module",
   "description": "Beads-to-diarie adoption tooling plugin.",
   "scripts": {
-    "check": "remark skills/ --quiet --frail"
+    "check": "remark skills/ --quiet --frail && node scripts/check-beads-probe.mjs"
   }
 }
