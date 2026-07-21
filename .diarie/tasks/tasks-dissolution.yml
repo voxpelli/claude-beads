@@ -523,3 +523,176 @@ tasks:
       Plan Phase 2 step 7. Final verification. Depends on the [vpk] marketplace bridge (handoff #1)
       being live for the migration notice to fire.
     updated: '2026-07-18'
+
+  # ---- Remediation of the 07-20/07-21 conversion work (multi-agent adversarial review, 2026-07-21) ----
+  # New plugin add + fixes for defects the review found. "-tail" rows under vp-beads-dis per the gtp→gtd
+  # precedent. Full analysis: plan `## ACTIVE EXECUTION (reconciled 2026-07-21)` Part 1 + Part 2.
+
+  - id: vp-beads-vpd
+    title: 'Add vp-dream as plugin #3 (Claude file-memory consolidation; LIGHT template)'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - feature
+    acceptance_criteria:
+      - >-
+        plugins/vp-dream/ created from ~/Downloads/vp-dream (plugin.json name vp-dream v0.1.0; package.json
+        @vp-skills/vp-dream, no version, own .remarkrc + check:md + check:sh; skills/vp-dream/SKILL.md +
+        2 references + scripts/audit-memory.sh)
+      - >-
+        SKILL.md frontmatter conformed — user-invocable: true, permissive allowed-tools, version dropped;
+        validated automatically by the existing plugins/* discovery in validate-plugin.mjs
+      - >-
+        RED-proven twice (drop allowed-tools → check:plugin errors naming the plugin; plant a shellcheck
+        violation → npm run check reddens via the workspace check); reverted
+      - 'root names plugins/vp-dream/* NOWHERE (grep-proven); CLAUDE.md Plugin Layout + Skills(8)→(9) updated'
+    description: >-
+      Plan Part 1. vp-dream is its OWN plugin (NOT vp-knowledge — that owns Basic Memory; this is Claude
+      file-based auto-memory, a different subsystem). SAFE by construction: audit-memory.sh is pure bash,
+      zero npm imports, so it is immune to the §A runtime bug — hence the light template (no own-eslint).
+      Structure-only this pass: no marketplace.json, so /vp-dream is not live from the working tree (frozen
+      cache); the ~/.claude/skills/vp-dream/ prototype stays usable. IP ToS/reverse-engineering question
+      on references/native-autodream-contract.md stays OPEN for any eventual Phase-2 push.
+    updated: '2026-07-21'
+
+  - id: vp-beads-abx
+    title: 'CRITICAL: deintegrate-beads unrunnable when installed — shell beads-probe out to the diarie CLI (+ prose)'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        probeMigration (plugins/diarie-adopt/scripts/beads-probe.mjs) no longer imports diarie/schema or
+        js-yaml — it shells out to `diarie stats --json` in the target for store presence/task count; the
+        committed-vs-staged git ls-tree check sources the tracker-dir name from the CLI (or a param), not
+        a re-import. hooks/daemon probes unchanged.
+      - >-
+        move `check:beads-probe` out of root package.json into diarie-adopt's own `check` aggregate (drop
+        the root reach-in so the test travels on extraction) — §G-cheap
+      - >-
+        prose dead-ends fixed (§B): migrate-tracker :82 "plugin's own diarie CLI" (→ npx), :102-103/:305
+        dead npm-install-prefix preflight, :304-311 published/unpublished contradiction, :312-315 in-repo
+        bd-map path (→ voxpelli/diarie, never hand-edit node_modules), :279-281 + deintegrate :235-236
+        "this plugin's own .diarie/decisions/" (ships none), :295-299 README ref (plugin ships none → inline)
+      - >-
+        PROVEN with the isolated-copy method — rsync plugins/diarie-adopt without node_modules, npm install,
+        run the probe → must emit JSON, not ERR_MODULE_NOT_FOUND (root check:beads-probe never exercises
+        this; hoisting masks it)
+    description: >-
+      Plan Part 2 §A+§B+§G-cheap — the ONE Phase-2 ship-blocker (must precede vp-beads-mpu). Root cause:
+      Claude Code does NOT npm-install git-source plugins (official docs, verified), so a plugin `node`
+      script importing an npm package fails at runtime when installed; deintegrate-beads delegates ALL
+      detection to beads-probe.mjs, which imports diarie/schema + js-yaml — undeclared, resolved only by
+      monorepo hoisting. Declaring the deps does NOT fix it (overruled by the docs). CORRECTS vp-beads-dad's
+      under-verified AC (which claimed "no import depends on bd-map / resolves from any project with diarie
+      in node_modules" — missed this code-level import and the no-node_modules install reality).
+    updated: '2026-07-21'
+
+  - id: vp-beads-swh
+    title: 'swarm-wave: cross-plugin handoff degrade-guard + fix dangling /session-reflect + garbled line'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        wave-planning-checklist.md:76-80 /session-reflect (does not exist) → /retrospective (the rename is
+        gated behind vp-knowledge's absorption; do not pre-rename)
+      - >-
+        new `## Cross-plugin skill handoffs (degrade-and-announce)` section INSIDE the SKILL.md (installed
+        plugins never receive root docs) so /retrospective + /upstream-tracker handoffs degrade-and-announce
+        instead of hard-failing when the sibling plugin is not installed
+      - 'garbled SKILL.md:339 "Run edit `.diarie/tasks/`" line fixed'
+    description: >-
+      Plan Part 2 §C. swarm-wave is now its own plugin but hands off via the Skill tool to skills in OTHER
+      plugins with no guard; the monorepo goal is zero cross-plugin refs. Mirror CLAUDE.md's Files-availability
+      Tier C idiom, but the guard text must live in the shipped SKILL.md, not root CLAUDE.md.
+    updated: '2026-07-21'
+
+  - id: vp-beads-vph
+    title: 'validate-plugin hardening (isRecord + manifest-less flag + fixture RED-test) + correct gtd''s false claim'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        shared isRecord guard added; the per-plugin AND root manifest loops use it — a non-object plugin.json
+        now produces a clean error() instead of a TypeError crash
+      - >-
+        manifest-less positive flag: discover skills under ANY plugins/*/skills (not gated on the manifest),
+        and separately error if a dir has skills/agents but no .claude-plugin/plugin.json (_placeholder-safe:
+        only content-bearing dirs flagged)
+      - >-
+        scripts/check-validator-plugin-fixtures.mjs added (VALIDATE_PLUGIN_ROOT override + spawnSync, ~7
+        planted cases incl. a clean control), wired as a check:-prefixed key; each case proven RED against
+        pre-fix code then GREEN after
+      - >-
+        agent-validation block: keep the frame + a fixture case; DELETE only the foreign knowledge-gardener
+        special case (can never fire here)
+      - >-
+        vp-beads-gtd's acceptance criterion "Proven RED on planted violations" corrected — it was asserted
+        but never built (this row builds it)
+    description: >-
+      Plan Part 2 §D. The plugins/* generalization is functionally correct + genuinely exercised (verified),
+      but had NO RED-proof and two real robustness holes. Two reviewers independently flagged gtd's false
+      "Proven RED" completion note — the repo's own signature bug, in its own tracker.
+    updated: '2026-07-21'
+
+  - id: vp-beads-pch
+    title: 'check-prose-commands hardening — path normalization + per-surface floor + $DIARIE alias + self-test'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        corpus paths normalized to one convention (glob results → absolute via join(ROOT,p); display via
+        relative(ROOT,file)) — fixes the file.slice() mangling of every non-root finding location + the
+        cwd-dependence; scanCorpus takes a root param
+      - >-
+        fixture self-test plants a fossil in a NON-root file and asserts the emitted file path (RED against
+        pre-fix code); pattern-syntax proven per surface (the 3 legitimately-empty surfaces via fixture, NOT
+        a blanket live floor); per-surface CONDITIONAL floor added
+      - 'narrow $DIARIE/$VAR-alias resolver so migrate-tracker''s `$DIARIE migrate …` primary command surface is actually checked'
+      - 'stale comments fixed: ~105→90 examined count; phantom check-prose-commands2.mjs reference dropped'
+    description: >-
+      Plan Part 2 §E. globSync({cwd:ROOT}) refactor returned relative paths mixed with absolute literals;
+      MEDIUM (detection intact — gate still exits 1 — but the reported location is garbled, defeating the
+      gate when it finally fires). A blanket per-surface ≥1 floor would false-RED the build today (3 surfaces
+      are legitimately empty).
+    updated: '2026-07-21'
+
+  - id: vp-beads-tda
+    title: 'Author the missing .diarie/decisions/vp-beads-tdo.md + fold doc-rot into dcr'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    labels:
+      - docs
+    acceptance_criteria:
+      - >-
+        .diarie/decisions/vp-beads-tdo.md authored (the ephemeral-todo-vs-diarie decision cited by CLAUDE.md:547,
+        migrate-tracker, deintegrate-beads, and MEMORY.md but never formalized)
+      - >-
+        doc-rot folded into vp-beads-dcr's AC (NOT a new row): CLAUDE.md Plugin Layout tree corrected to match
+        README (un-nest synergy-tracker, drop the duplicate swarm-wave), package.json:7 "diarie CLI workspace"/"an
+        agent" + plugin.json:4 "backlog grooming" stale descriptions, CLAUDE.md:759 "five prose surfaces"
+        understatement (+plugins/*), the .mjs comment rot
+    description: >-
+      Plan Part 2 §F. Doc-rot has zero new rows — it folds into the already-pending dcr (P1.8). This row
+      covers only the one genuinely-new artifact: authoring the tdo decision record. Review rejected 2 false
+      positives (manifest scoping is deliberate; the repository field is correct until the gated rename).
+    updated: '2026-07-21'
