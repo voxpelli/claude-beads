@@ -1,0 +1,12 @@
+{
+  "name": "vp-dream",
+  "version": "0.1.0",
+  "description": "Manual, approval-gated, fact-verifying consolidation of Claude Code's file-based auto-memory (the per-project memory/ dir + MEMORY.md index), mirroring native autoDream while adding primary-source verification and a delete-approval gate the sandboxed native pass cannot do.",
+  "author": {
+    "name": "Pelle Wessman",
+    "url": "https://github.com/voxpelli"
+  },
+  "repository": "https://github.com/voxpelli/claude-beads",
+  "license": "MIT",
+  "keywords": ["memory", "auto-memory", "consolidation", "dream", "claude-code"]
+}

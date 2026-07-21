@@ -23,7 +23,11 @@ skills/
       basic-memory-friction-format.md # BM section templates, routing, edit_note gotchas
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
   sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
-plugins/
+  synergy-tracker/
+    SKILL.md                          # Cross-project synergy tracking (sibling projects)
+    references/
+      synergy-entry-format.md         # Entry templates, field values, naming, registry schema
+plugins/                              # workspace-plugins (own package.json + .remarkrc + check)
   diarie-adopt/
     skills/
       migrate-tracker/SKILL.md        # Guided bd → flat-YAML cutover (for other repos)
@@ -31,19 +35,17 @@ plugins/
     scripts/
       beads-probe.mjs                 # Read-only beads reconnaissance probe
       check-beads-probe.mjs           # Unit tests for the probe
-  swarm-wave/...
-  synergy-tracker/
-    SKILL.md                          # Cross-project synergy tracking (sibling projects)
-    references/
-      synergy-entry-format.md         # Entry templates, field values, naming, registry schema
   swarm-wave/
-    SKILL.md                          # Multi-agent wave orchestration
-    references/
-      wave-planning-checklist.md      # Pre/post-wave gates, anti-patterns
-      file-contention-and-clustering.md # Contention thresholds, wave sizing
-      review-gate-protocol.md         # Two-reviewer gate, confidence thresholds
-      agent-concurrency-limits.md     # Memory pressure, backpressure protocol
-      command-patterns.md             # Research agent selection, agent prompts
+    skills/
+      swarm-wave/
+        SKILL.md                      # Multi-agent wave orchestration
+        references/                   # wave-planning, contention, review-gate, concurrency, command-patterns
+  vp-dream/
+    skills/
+      vp-dream/
+        SKILL.md                      # Claude file-memory consolidation (verify + approval-gated)
+        references/                   # native-autodream-contract, synthesis-rationale
+        scripts/audit-memory.sh       # descriptive memory-directory audit (pure bash)
 hooks/
   hooks.json                          # Hook definitions (3 event types)
   session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudge, trend-review reminder
@@ -55,12 +57,13 @@ README.md
 CHANGELOG.md
 ```
 
-No application code — skills are pure markdown, hooks are shell scripts.
-Dev tooling only: validation and linting via `npm run check`.
+The root-plugin skills are pure markdown; the `plugins/*` workspaces additionally ship small scripts
+(diarie-adopt's `.mjs` probe + tests, vp-dream's one bash audit). Hooks are shell scripts. Dev tooling
+only: validation and linting via `npm run check`.
 
 ## Components
 
-### Skills (8)
+### Skills (9)
 
 - **migrate-tracker** — Guided, one-way cutover of a project's issue tracker off
   beads (`bd`) onto the flat-YAML tracker. Five workflows: detect-and-assess,
@@ -136,6 +139,15 @@ Dev tooling only: validation and linting via `npm run check`.
   post-wave-gate (two-reviewer quality gate), file-contention-map (standalone
   utility), research-wave (parallel research with direct `.diarie/` task creation).
   Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
+- **vp-dream** — Manual, approval-gated, fact-verifying consolidation of Claude
+  Code's **file-based auto-memory** (the per-project `memory/` dir + `MEMORY.md`
+  index) — a *different* subsystem from Basic Memory (which vp-knowledge owns).
+  Mirrors native `autoDream` (Orient → Gather → Consolidate → Prune & index) and
+  adds the two things the sandboxed native pass structurally cannot: verify
+  volatile facts against primary sources, and a human approval gate before any
+  delete. Ships its own `.remarkrc` + `check:sh` and one bash `audit-memory.sh`;
+  no runtime npm deps (pure bash → safe when installed). User-invocable as
+  `/vp-dream`. Lives in its own `plugins/vp-dream/` workspace.
 
 ## The tracker migration: bd → flat-YAML (done)
 
