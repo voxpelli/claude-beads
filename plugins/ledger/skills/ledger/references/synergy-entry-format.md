@@ -1,7 +1,7 @@
 # Synergy Entry Format Reference
 
-Reference material for synergy-tracker workflows. See `SKILL.md` for the
-workflow steps that reference this document.
+Reference material for the ledger sibling-object modes (`log`, `review`,
+`promote`). See those mode files for the steps that reference this document.
 
 ## SYNERGY-\*.md file template
 
@@ -175,7 +175,7 @@ projects have active synergy tracking relationships.
 | `name`         | yes      | Short display name for the related project                                                                                                                                                                                                                                        |
 | `file`         | yes      | Exact filename of the SYNERGY tracking file                                                                                                                                                                                                                                       |
 | `remote`       | no       | Canonical URL for the related project                                                                                                                                                                                                                                             |
-| `bm-entity`    | no       | Basic Memory entity path — consumed by `/synergy-tracker` workflow 5 (Promote to Basic Memory)                                                                                                                                                                                    |
+| `bm-entity`    | no       | Basic Memory entity path — consumed by the ledger `promote` (sibling) mode                                                                                                                                                                                                        |
 | `relationship` | no       | One of: `sibling-plugin`, `shared-tooling`, `fork`, `consumer`, `coordinated-release`, `dependency`. See `validate-plugin.mjs` `KNOWN_RELATIONSHIPS` for the canonical set; values outside it emit a validator warning.                                                           |
 | `local-path`   | no       | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
 
@@ -188,8 +188,8 @@ sibling entries" below.
 > `engineering/agents/vp-plugins-<this-project>-and-<sibling>` — a
 > relationship note path, not an entity path. The `npm/<name>` form
 > (seen in some older examples) is incorrect for synergy relationships;
-> those `npm/` paths are for package-friction notes owned by
-> `/upstream-tracker` workflow 6 (Promote to Basic Memory). A SYNERGY
+> those `npm/` paths are for package-friction notes owned by the ledger
+> `promote` (upstream) mode. A SYNERGY
 > file tracks how *two projects relate to each other*, not facts about
 > the sibling as a software package — so the relationship note belongs
 > in `engineering/agents/`.
@@ -293,12 +293,12 @@ file. The structural blocks:
   wildcards `PRIVATE-SYNERGY-*.md` and `.claude/*.local.json` already present in
   `.gitignore`. Never add a literal `PRIVATE-SYNERGY-<name>.md` line — that line
   would itself commit the name. The validator flags any such literal line.
-- **Never promoted to Basic Memory.** `/synergy-tracker` workflow 5 (Promote to
-  Basic Memory) globs `SYNERGY-*.md`, never `PRIVATE-SYNERGY-*.md`, and skips any
-  registry entry whose `file` is `PRIVATE-SYNERGY-*` — structural.
-- **Never reciprocated to the sibling's repo.** sibling-sync workflow 4 (Apply
-  reciprocation batch) skips any sibling whose `file` is `PRIVATE-SYNERGY-*`.
-- **Never filed as a public task.** sibling-sync's action menu suppresses
+- **Never promoted to Basic Memory.** The `promote` (sibling) mode globs
+  `SYNERGY-*.md`, never `PRIVATE-SYNERGY-*.md`, and skips any registry entry whose
+  `file` is `PRIVATE-SYNERGY-*` — structural.
+- **Never reciprocated to the sibling's repo.** The `reconcile` mode's apply
+  reciprocation batch skips any sibling whose `file` is `PRIVATE-SYNERGY-*`.
+- **Never filed as a public task.** The `reconcile` action menu suppresses
   task creation for private-sibling findings (a committed `.diarie/tasks/*.yml`
   entry naming the sibling would leak it); such findings stay in the ephemeral report.
 - **Follow-up logging redirects.** Logging an entry for a private sibling writes
@@ -306,9 +306,9 @@ file. The structural blocks:
   `SYNERGY-<name>.md`.
 
 **Hybrid read-diff.** Unlike a public sibling's glob-discovered
-`PRIVATE-SYNERGY-<name>.md` overlay (which `/sibling-sync` never reads), a private
-sibling's `PRIVATE-SYNERGY-<name>.md` *is* the registry `file` value, so
-`/sibling-sync` **may read it for read-only diff** (reciprocal-gap / status-drift
+`PRIVATE-SYNERGY-<name>.md` overlay (which the `reconcile` mode never reads), a
+private sibling's `PRIVATE-SYNERGY-<name>.md` *is* the registry `file` value, so
+`reconcile` **may read it for read-only diff** (reciprocal-gap / status-drift
 findings, shown only in the ephemeral terminal report). The read exception is
 scoped precisely to "this `PRIVATE-SYNERGY-*` file is a registry `file` value";
 the write block above is what keeps the name out of every committed surface.

@@ -1,0 +1,9 @@
+{
+  "name": "@vp-skills/ledger",
+  "private": true,
+  "type": "module",
+  "description": "Cross-project relationship ledger plugin (upstream friction + sibling synergy).",
+  "scripts": {
+    "check": "remark skills/ --quiet --frail"
+  }
+}

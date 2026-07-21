@@ -162,7 +162,8 @@ tasks:
 
   - id: vp-beads-ldg
     title: 'P1.3a Merge upstream/synergy/vendor/sibling-tracker → the `ledger` plugin (biggest transformation)'
-    status: pending
+    status: completed
+    agent: claude
     type: task
     priority: high
     parent: vp-beads-dis

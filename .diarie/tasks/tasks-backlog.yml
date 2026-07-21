@@ -236,9 +236,17 @@ tasks:
     updated: '2026-05-06'
   - id: vp-beads-mjl
     title: 'upstream-tracker: clarify redirect rule for sibling projects with shipped skill code'
-    status: pending
+    status: completed
+    agent: claude
     type: task
     priority: medium
+    acceptance_criteria:
+      - >-
+        Folded into the ledger merge (`vp-beads-ldg`): the ledger `log` mode's object-routing
+        prose distinguishes a cross-project PATTERN (→ log sibling) from a CONCRETE code request
+        against a sibling's shipped artifact (→ log upstream, `UPSTREAM-<sibling-name>.md`) — the
+        vp-plugins sibling-that-is-also-an-upstream-source case. The merge itself dissolves the
+        old cross-skill redirect into an explicit object-routing decision within one `log` mode.
     description: >-
       Sibling friction filed by vp-knowledge in their UPSTREAM-vp-beads.md (2026-05-04, Ownership:
       upstream = us). Surfaced via /sibling-sync Sprint 14+.

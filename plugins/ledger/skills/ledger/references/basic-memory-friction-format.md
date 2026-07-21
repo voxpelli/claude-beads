@@ -1,7 +1,7 @@
 # Basic Memory Friction Integration Reference
 
-Reference material for upstream-tracker workflows 6 and 7. See `SKILL.md` for
-the workflow steps.
+Reference material for the ledger `promote` mode (upstream object) — both the
+outbound promote and the `--sync-back` leg. See `promote.md` for the steps.
 
 ## Target Type Routing
 

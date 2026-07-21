@@ -1,16 +1,14 @@
 # Basic Memory Synergy Integration Reference
 
-Reference material for synergy-tracker workflow 5 (Promote to Basic Memory).
-Also consumed by workflow 4 (Trend review (quarterly)) for the BM
-cross-reference step. See `SKILL.md` for the workflow steps that
-reference this document.
+Reference material for the ledger `promote` mode (sibling object). Also
+consumed by `review --trend` (sibling) for the BM cross-reference step. See
+`promote.md` for the steps that reference this document.
 
-This reference is the structural specification that makes workflow 5
-(Promote to Basic Memory) implementable. The `## Cross-Project Synergy`
-section described here is **owned by synergy-tracker workflow 5 (Promote to
-Basic Memory)** and never overlaps with `## Upstream Friction`
-(owned by upstream-tracker workflow 6 (Promote to Basic Memory)) or
-`engineering/*` notes (owned by retrospective step 7).
+This reference is the structural specification that makes `promote` (sibling)
+implementable. The `## Cross-Project Synergy` section described here is **owned
+by `promote` (sibling)** and never overlaps with `## Upstream Friction` (owned
+by `promote` (upstream)) or `engineering/*` notes (owned by retrospective
+step 7).
 
 ## Target Type Routing
 
@@ -47,7 +45,7 @@ note should receive the section. If no note exists, **flag for enrichment**
 a thin sibling note — never create a thin sibling note as a side effect of
 synergy promotion.
 
-This mirrors upstream-tracker's "no thin BM notes" policy: the BM graph stays
+This mirrors `promote` (upstream)'s "no thin BM notes" policy: the BM graph stays
 clean by refusing side-effect note creation.
 
 ## Target Section Structure
@@ -87,24 +85,22 @@ uses the same four-subsection structure that mirrors the SYNERGY file layout:
 The `### Resolved` subsection collects entries whose synergy outcome has
 landed (e.g. an Extraction Candidate that became a shared package, a
 Divergence that converged on one approach). Manual inline annotation precedes
-a periodic prune pass (no dedicated Resolve workflow yet) — matching the
-upstream-tracker convention where workflow 3 (Resolve) handles annotation.
+a periodic prune pass (no dedicated resolve flow for the sibling object) —
+matching the ledger `resolve` mode convention where annotation is handled.
 
 ## Promotion annotation
 
-When workflow 5 (Promote to Basic Memory) successfully writes an entry to
-the BM sibling note's `## Cross-Project Synergy` section, it annotates the
-**local** SYNERGY entry by appending `_(Promoted YYYY-MM-DD)_` after the
-entry body. This serves as the dedup signal:
+When `promote` (sibling) successfully writes an entry to the BM sibling note's
+`## Cross-Project Synergy` section, it annotates the **local** SYNERGY entry by
+appending `_(Promoted YYYY-MM-DD)_` after the entry body. This serves as the
+dedup signal:
 
-- Workflow 5 (Promote to Basic Memory) step 1 (Scan for candidates) skips
-  entries already carrying this annotation — preventing repeated promotion
-  of the same row.
-- Mirrors the `_(Resolved YYYY-MM-DD)_` annotation pattern from
-  upstream-tracker workflow 3 (Resolve) (see
-  `skills/upstream-tracker/references/basic-memory-friction-format.md`).
+- `promote` (sibling) step 1 (Scan for candidates) skips entries already
+  carrying this annotation — preventing repeated promotion of the same row.
+- Mirrors the `_(Resolved YYYY-MM-DD)_` annotation pattern from the `resolve`
+  mode (see `references/basic-memory-friction-format.md`).
 - Title-keyed dedup at the BM side is the **secondary** defense:
-  workflow 5 (Promote to Basic Memory) must `read_note` the target
+  `promote` (sibling) must `read_note` the target
   sibling note and scan its existing `## Cross-Project Synergy` section
   before appending. If the entry's title
   already appears in the section, skip the write and report — never produce
@@ -146,9 +142,8 @@ When promoting SYNERGY entries to Basic Memory, apply these transforms:
 
 ## edit\_note Gotchas
 
-These are confirmed gotchas from Basic Memory's `edit_note` tool that workflow
-5 (Promote to Basic Memory) must account for. They apply identically to the
-upstream-tracker promotion workflow:
+These are confirmed gotchas from Basic Memory's `edit_note` tool that `promote`
+(sibling) must account for. They apply identically to `promote` (upstream):
 
 - **Never use `append` with `section`** — it appends to END OF FILE, not to the
   end of the named section. This is a confirmed bug/behavior. Use `find_replace`
