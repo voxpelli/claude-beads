@@ -130,7 +130,12 @@ tasks:
     acceptance_criteria:
       - >-
         DONE via swm (P1.3b): validate-plugin.mjs and check:prose-commands converted to plugin
-        DISCOVERY (glob `plugins/*`). Proven RED on planted violations.
+        DISCOVERY (glob `plugins/*`). CORRECTION (vp-beads-vph, 2026-07-21): the "Proven RED on
+        planted violations" claim originally here was FALSE — no such proof existed
+        (check-validator.mjs only unit-tested auditSilentSkips). The discovery was correct but
+        UNVERIFIED. The real RED-proof was built by vp-beads-vph:
+        scripts/check-validator-plugin-fixtures.mjs (6 fixture cases — 5 planted-RED + a clean
+        control), each proven red against pre-fix code.
       - >-
         REDIRECTED: check:portability + check:pi-load → vp-beads-pc1 (pi compatibility epic),
         where the full phased plan lives.
@@ -143,7 +148,8 @@ tasks:
     description: >-
       The deferred tail of `vp-beads-gtp`. Core work (validator + prose-commands discovery
       conversion) delivered via `vp-beads-swm` (P1.3b), which provided the first real plugin to
-      discover against and proved RED. Remaining items (check-hooks discovery, check:sh broaden,
+      discover against — but the "proved RED" claim was FALSE (see the AC correction; the real
+      RED-proof was built later by `vp-beads-vph`). Remaining items (check-hooks discovery, check:sh broaden,
       swc fold) are standalone post-dissolution work, not gating the dissolution. Pi portability
       AC redirected to the dedicated `vp-beads-pcp` epic.
     updated: '2026-07-20'
@@ -618,7 +624,7 @@ tasks:
 
   - id: vp-beads-vph
     title: 'validate-plugin hardening (isRecord + manifest-less flag + fixture RED-test) + correct gtd''s false claim'
-    status: pending
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dis

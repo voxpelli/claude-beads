@@ -6,7 +6,11 @@ import yaml from 'js-yaml'
 
 import { auditSilentSkips } from './scripts/audit-silent-skips.mjs'
 
-const ROOT = new URL('.', import.meta.url).pathname.replace(/\/$/, '')
+// VALIDATE_PLUGIN_ROOT lets the fixture harness (scripts/check-validator-plugin-fixtures.mjs) point
+// the validator at a throwaway plugin tree without touching module resolution — the script still runs
+// from its real on-disk location, so its own imports resolve; only join(ROOT, …) file lookups redirect.
+// Unset in every real run — the default is unchanged.
+const ROOT = (process.env.VALIDATE_PLUGIN_ROOT ?? new URL('.', import.meta.url).pathname).replace(/\/$/, '')
 
 /** @type {string[]} */
 const errors = []
@@ -50,21 +54,41 @@ async function readJson (filePath) {
 // skipped here — it carries no skills/agents to audit.
 const PLUGINS_DIR = join(ROOT, 'plugins')
 
-/** @returns {Promise<string[]>} */
+/**
+ * Every plugins/* directory, split by whether it carries a manifest. Skill/agent DISCOVERY must not
+ * be gated on the manifest: a plugin dir with skills but a MISSING/misnamed `.claude-plugin/plugin.json`
+ * would otherwise be invisible to every frontmatter/tool-ref audit and pass green — this repo's
+ * signature "green over nothing" bug. So `all` drives discovery, `withManifest` drives manifest-field
+ * validation, and a dir that has `skills/` or `agents/` content but NO manifest is a positive error,
+ * never a silent skip. A content-less dir without a manifest (e.g. a placeholder) is a workspace, not
+ * a plugin — left alone.
+ *
+ * @returns {Promise<{ all: string[], withManifest: string[] }>}
+ */
 async function pluginDirs () {
-  if (!existsSync(PLUGINS_DIR)) return []
+  if (!existsSync(PLUGINS_DIR)) return { all: [], withManifest: [] }
   const entries = await readdir(PLUGINS_DIR, { withFileTypes: true })
   /** @type {string[]} */
-  const dirs = []
+  const all = []
+  /** @type {string[]} */
+  const withManifest = []
   for (const entry of entries) {
     if (!entry.isDirectory()) continue
     const dir = join(PLUGINS_DIR, entry.name)
-    if (existsSync(join(dir, '.claude-plugin', 'plugin.json'))) dirs.push(dir)
+    all.push(dir)
+    if (existsSync(join(dir, '.claude-plugin', 'plugin.json'))) {
+      withManifest.push(dir)
+    } else if (existsSync(join(dir, 'skills')) || existsSync(join(dir, 'agents'))) {
+      error(
+        join(dir, '.claude-plugin', 'plugin.json'),
+        'plugins/* dir has skills/ or agents/ content but no .claude-plugin/plugin.json manifest — its skills/agents would go silently unvalidated'
+      )
+    }
   }
-  return dirs
+  return { all, withManifest }
 }
 
-const PLUGIN_DIRS = await pluginDirs()
+const { all: PLUGIN_ALL_DIRS, withManifest: PLUGIN_DIRS } = await pluginDirs()
 
 /**
  * @param {string} content
@@ -75,10 +99,20 @@ function extractFrontmatter (content) {
   if (!match) return
   try {
     const parsed = yaml.load(match[1])
-    return typeof parsed === 'object' && parsed !== null
-      ? /** @type {Record<string, unknown>} */ (parsed)
-      : undefined
+    return isRecord(parsed) ? parsed : undefined
   } catch {}
+}
+
+/**
+ * A non-null, non-array object — the shape a `field in x` membership test needs. `x in null` and
+ * `x in 42` THROW; guarding with this turns a malformed manifest into a clean `error()` instead of an
+ * uncaught crash (the "represent a malformed input, never let it explode" rule).
+ *
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+function isRecord (value) {
+  return typeof value === 'object' && value !== null
 }
 
 const KNOWN_MCP_PREFIXES = [
@@ -217,10 +251,13 @@ function auditWorkflowReferences (file, content) {
 const pluginPath = join(ROOT, '.claude-plugin', 'plugin.json')
 const plugin = await readJson(pluginPath)
 if (plugin !== undefined) {
-  const p = /** @type {Record<string, unknown>} */ (plugin)
-  for (const field of ['name', 'version', 'description']) {
-    if (!(field in p)) {
-      error(pluginPath, `Missing required field: ${field}`)
+  if (!isRecord(plugin)) {
+    error(pluginPath, 'plugin.json must be a JSON object')
+  } else {
+    for (const field of ['name', 'version', 'description']) {
+      if (!(field in plugin)) {
+        error(pluginPath, `Missing required field: ${field}`)
+      }
     }
   }
 }
@@ -232,10 +269,13 @@ for (const dir of PLUGIN_DIRS) {
   const manifestPath = join(dir, '.claude-plugin', 'plugin.json')
   const manifest = await readJson(manifestPath)
   if (manifest !== undefined) {
-    const p = /** @type {Record<string, unknown>} */ (manifest)
-    for (const field of ['name', 'version', 'description']) {
-      if (!(field in p)) {
-        error(manifestPath, `Missing required field: ${field}`)
+    if (!isRecord(manifest)) {
+      error(manifestPath, 'plugin.json must be a JSON object')
+    } else {
+      for (const field of ['name', 'version', 'description']) {
+        if (!(field in manifest)) {
+          error(manifestPath, `Missing required field: ${field}`)
+        }
       }
     }
   }
@@ -502,7 +542,7 @@ const rootSkillEntries = existsSync(join(ROOT, 'skills'))
   : []
 /** @type {string[]} */
 const pluginSkillEntries = []
-for (const dir of PLUGIN_DIRS) {
+for (const dir of PLUGIN_ALL_DIRS) {
   const pluginSkillsDir = join(dir, 'skills')
   if (existsSync(pluginSkillsDir)) {
     const entries = await readdir(pluginSkillsDir, { recursive: true })
@@ -579,7 +619,7 @@ if (existsSync(rootAgentsDir)) {
   const rootAgentEntries = await readdir(rootAgentsDir, { recursive: true })
   for (const f of rootAgentEntries) if (f.endsWith('.md')) agentFiles.push(join(rootAgentsDir, f))
 }
-for (const dir of PLUGIN_DIRS) {
+for (const dir of PLUGIN_ALL_DIRS) {
   const pluginAgentsDir = join(dir, 'agents')
   if (existsSync(pluginAgentsDir)) {
     const entries = await readdir(pluginAgentsDir, { recursive: true })
@@ -636,22 +676,15 @@ for (const file of agentFiles) {
       // gtd-core: resolve phantom skill refs against root skills/ AND plugins/*/skills/.
       const rootSkillPath = join(ROOT, 'skills', skillName, 'SKILL.md')
       const inRoot = existsSync(rootSkillPath)
-      const inPlugin = PLUGIN_DIRS.some((dir) => existsSync(join(dir, 'skills', skillName, 'SKILL.md')))
+      const inPlugin = PLUGIN_ALL_DIRS.some((dir) => existsSync(join(dir, 'skills', skillName, 'SKILL.md')))
       if (!inRoot && !inPlugin) {
         error(file, `Phantom skill reference: "${skillName}" — no SKILL.md at skills/${skillName}/ or plugins/*/skills/${skillName}/`)
       }
     }
   }
 
-  // Gardener read-only invariant
-  if (file.endsWith('knowledge-gardener.md') && Array.isArray(fm.tools)) {
-    const forbidden = ['write_note', 'edit_note', 'delete_note']
-    for (const tool of /** @type {string[]} */ (fm.tools)) {
-      if (forbidden.some((f) => tool.includes(f))) {
-        error(file, `Read-only agent must not have write tool: ${tool}`)
-      }
-    }
-  }
+  // (Removed: a `knowledge-gardener.md` read-only invariant. That agent lives in the vp-knowledge
+  // repo, never this one — the check could never fire here. Dead code, not coverage; do not re-add.)
 }
 
 // --- CLAUDE.md (workflow-reference audit only) ---
