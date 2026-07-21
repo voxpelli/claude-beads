@@ -37,7 +37,7 @@ node_modules/
 # `.beads/` above it is NOT ignored; the dot marks committed project metadata (cf.
 # `.claude/`, `.github/`), not throwaway state. Do not add it here.
 
-# SQLite transient sidecars — WAL/SHM are runtime state, never content.
-# They were committed, which meant they also shipped into every consumer plugin cache.
-.liggare/ledger.sqlite-wal
-.liggare/ledger.sqlite-shm
+# liggare's local register — a regenerable index (`liggare scan` rebuilds it), never content, so
+# the whole dir stays out of git (the tracked ledger.sqlite + its WAL/SHM sidecars had otherwise
+# shipped into every consumer plugin cache).
+.liggare/
