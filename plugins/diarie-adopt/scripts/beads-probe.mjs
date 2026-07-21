@@ -86,17 +86,18 @@ const TRACKER_DIR = '.diarie'
  * a non-zero task count does — which we get from `diarie stats --json`, the store's OWN authority on
  * its count, rather than by re-parsing its YAML here. `diarie stats` reports an unparseable file as a
  * `warnings[]` entry (the whole file is skipped) instead of crashing, so count + malformed both come
- * from one CLI call. Invoked via `npx diarie` — the same precondition the adoption skills already rely
- * on (migrate-tracker runs `npx diarie`), so this adds nothing new. If diarie is NOT runnable
- * (offline, unresolvable), that is reported as `verifyFailed` (could-not-determine), NEVER as a
- * `malformed` store — conflating "I couldn't check" with "the store is bad" is the exact
- * can't-determine-vs-determined-bad trap this repo's Reader conventions forbid.
+ * from one CLI call. Invoked via `npx --no-install diarie`: this is a READ-ONLY probe, so it must
+ * never network-install — `--no-install` uses whatever diarie is locally/globally/cache-resolvable and
+ * FAILS FAST when none is (no prompt, no fetch, no hang in a non-TTY spawn). A fail-fast is reported as
+ * `verifyFailed` (could-not-determine), NEVER as a `malformed` store — conflating "I couldn't check"
+ * with "the store is bad" is the exact can't-determine-vs-determined-bad trap this repo's Reader
+ * conventions forbid. (The deliberate migrate action uses `npx -y diarie`; a read-only probe must not.)
  *
  * @param {string} root
- * @param {(root: string) => { ok: boolean, out: string, code: number|null }} [statsRunner] Injectable `diarie stats` runner (default `npx diarie`); lets a test force the CLI-down branch.
+ * @param {(root: string) => { ok: boolean, out: string, code: number|null }} [statsRunner] Injectable diarie-stats runner (default `npx --no-install diarie`); lets a test force CLI-down.
  * @returns {unknown}
  */
-export function probeMigration (root, statsRunner = (r) => run('npx', ['diarie', 'stats', '--json', '--root', r])) {
+export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-install', 'diarie', 'stats', '--json', '--root', r])) {
   const tasksDir = join(root, TRACKER_DIR, 'tasks')
   const files = existsSync(tasksDir)
     ? readdirSync(tasksDir).filter(f => /^tasks-.+\.ya?ml$/.test(f))

@@ -50,7 +50,7 @@ anything.
 
 migrate-tracker runs **once, before** the sprint cycle a project's other skills
 operate in. It is the only skill that creates a `.diarie/` store; from then on
-from then on the user triages it by editing `.diarie/tasks/tasks-*.yml` directly.
+the user triages it by editing `.diarie/tasks/tasks-*.yml` directly.
 It never grooms, prioritizes, or closes work — it only moves it.
 
 It is also the one skill exempt from the tiering in CLAUDE.md
@@ -79,12 +79,12 @@ and **reports each one** — the original edges survive in the archive JSONL.
 
 ## Prerequisites
 
-Everything runs through the **published `diarie` CLI**, resolved via `npx diarie` (fetched from
+Everything runs through the **published `diarie` CLI**, resolved via `npx -y diarie` (fetched from
 the npm registry on demand) — **nothing is bundled with this plugin** and nothing is copied into
 the target project. Every command takes `--root`, so one binary serves any repo:
 
 ```bash
-DIARIE="npx diarie"
+DIARIE="npx -y diarie"
 
 $DIARIE migrate <export.jsonl> --root <target>   # write the store
 $DIARIE validate --root <target>                 # integrity gate
@@ -99,7 +99,7 @@ backlog, so a wrong `--root` fails loudly rather than reporting that the target 
 *(`TASKS_ROOT` still works and is what the test suite uses, but `--root` is the interface.
 Prose that leads with the env var is describing the readers that no longer exist.)*
 
-**On resolution failure:** `npx diarie` needs the registry (or a warm npx cache / a global
+**On resolution failure:** `npx -y diarie` needs the registry (or a warm npx cache / a global
 `diarie` on `PATH`). If it cannot resolve — offline, no cache — install diarie once (`npm i -g
 diarie`, or add it as the target's own devDep) rather than expecting a plugin-local copy: this
 plugin ships none.
@@ -224,11 +224,11 @@ mis-projection.
    | rung | when |
    | --- | --- |
    | `diarie` on `PATH` | globally installed (`npm i -g diarie`) |
-   | `npx diarie` | **default — fetches from npm, no local install needed** |
+   | `npx -y diarie` | **default — fetches from npm, no local install needed** |
    | `./node_modules/.bin/diarie` | the target installed `diarie` as a devDep |
 
    The `CLAUDE.md` you write in step 3 should document the command that actually works
-   *there* — `npx diarie` is the portable default (the line above sets `$DIARIE` to it).
+   *there* — `npx -y diarie` is the portable default (the line above sets `$DIARIE` to it).
 
    Confirm before proceeding: `$DIARIE validate --root <target>` reports the real file
    count. An absent store errors (`ENOSTORE`); it no longer "skips" and exits 0, which is
@@ -305,7 +305,7 @@ mis-projection.
 
 ## Error handling
 
-- **`npx diarie` fails to resolve / times out** — a registry or network problem, not a missing
+- **`npx -y diarie` fails to resolve / times out** — a registry or network problem, not a missing
   plugin dependency. `diarie` is **published** (`diarie@^0.2.0`); this plugin bundles no copy of its
   own, so there is no `npm install --prefix` recovery to run and nothing to "add" post-cutover. Retry,
   or provide diarie another way (`npm i -g diarie`, a warm npx cache, or the target's own devDep — see
