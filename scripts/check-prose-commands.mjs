@@ -41,7 +41,7 @@ import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import {
-  existsSync, readdirSync, readFileSync, statSync,
+  existsSync, globSync, readFileSync,
 } from 'node:fs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -235,24 +235,6 @@ function extract (text, isMarkdown) {
 }
 
 /**
- * Recursively collect the corpus file paths: the five named surfaces, never `scripts/`.
- *
- * @param {string} dir
- * @param {RegExp} match
- * @returns {string[]}
- */
-function walk (dir, match) {
-  /** @type {string[]} */
-  const found = []
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name)
-    if (statSync(full).isDirectory()) found.push(...walk(full, match))
-    else if (match.test(name)) found.push(full)
-  }
-  return found
-}
-
-/**
  * Scan the live corpus. Returns every problem found, plus coverage numbers so an inert extractor is
  * visible rather than silently green.
  *
@@ -260,32 +242,22 @@ function walk (dir, match) {
  * @returns {{ findings: Array<{ file: string, line: number, problem: string }>, examined: number, fileCount: number }}
  */
 function scanCorpus (oracle) {
-  // gtd-core: discover prose surfaces in both root and plugins/* so commands in
-  // a skill moved under plugins/<name>/ stay checked. Root reads stay so the
-  // still-root skills/agents/hooks keep scanning.
+  // Use Node.js 24+'s built-in globSync (stable since v24) instead of a custom walk(). It handles
+  // non-existent base directories gracefully (returns []), eliminating all existsSync guards and
+  // readdirSync/statSync calls. The pattern array is the only place to update when adding new
+  // scan surfaces — see also check-prose-commands2.mjs for the yield* spike that preceded this.
   const files = [
     join(ROOT, 'CLAUDE.md'),
     join(ROOT, 'README.md'),
-    ...walk(join(ROOT, 'skills'), /\.md$/),
-    ...walk(join(ROOT, 'hooks'), /\.sh$/),
-    // agents/ might not exist (retired vp-beads no longer has one)
-    ...(existsSync(join(ROOT, 'agents')) ? walk(join(ROOT, 'agents'), /\.md$/) : []),
+    ...globSync([
+      'skills/**/*.md',
+      'hooks/**/*.sh',
+      'agents/**/*.md',
+      'plugins/*/skills/**/*.md',
+      'plugins/*/agents/**/*.md',
+      'plugins/*/hooks/**/*.sh',
+    ], { cwd: ROOT }),
   ]
-
-  // plugins/* — scan skills/, agents/, hooks/ where they exist
-  const pluginsDir = join(ROOT, 'plugins')
-  if (existsSync(pluginsDir)) {
-    for (const name of readdirSync(pluginsDir)) {
-      const pluginDir = join(pluginsDir, name)
-      if (!statSync(pluginDir).isDirectory()) continue
-      for (const sub of ['skills', 'agents']) {
-        const subDir = join(pluginDir, sub)
-        files.push(...(existsSync(subDir) ? walk(subDir, /\.md$/) : []))
-      }
-      const hooksDir = join(pluginDir, 'hooks')
-      files.push(...(existsSync(hooksDir) ? walk(hooksDir, /\.sh$/) : []))
-    }
-  }
   /** @type {Array<{ file: string, line: number, problem: string }>} */
   const findings = []
   let examined = 0

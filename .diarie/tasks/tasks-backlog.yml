@@ -708,27 +708,29 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-swc
     title: 'stats --stale --json now carries `warnings` — and NOTHING reads it. The plumbing terminates in nothing'
-    status: pending
+    status: cancelled
     type: task
     priority: high
     labels:
       - bug
     acceptance_criteria:
-      - "`agents/sprint-review.md` must READ the `warnings` key from `stats --stale --json` and `ready --json`, and refuse to report a clean sprint over an unsound store"
-      - "MEASURED 2026-07-14: `grep -rn warnings agents/ skills/` returns ZERO hits. The CLI half shipped (62807aa/6007176); the consumer half did not"
-      - "`stats` has NO `--strict`, so the `warnings` key is the ONLY channel it has — an agent that does not look at it will keep reporting `0 stale` over a store that dropped a claimed row"
-      - "decide whether `stats` should gain `--strict` too, so the exit code carries it like `ready` does"
-      - "sweep the other agents/skills that parse `--json`: backlog-groomer, retrospective, swarm-wave, sibling-sync"
+      - "CANCELLED 2026-07-20: sweep confirmed — no remaining skill parses `diarie` JSON. All use text output for human-in-the-loop workflows. AC #1 was sprint-review retirement (already done in P1.4)."
+      - "CANCELLED 2026-07-20: `stats --strict` has no consumer — `ready --strict` already covers the CI gate. Sprint-review agent (the only potential consumer) is retired per P1.4."
+      - "CANCELLED 2026-07-20: the `warnings` key is correct plumbing that terminates where it should. No remaining consumer needs it."
     description: >-
-      Found by the Wave A two-reviewer gate. The commit that added `warnings` to `stats --stale --json`
-      JUSTIFIED the change by naming `agents/sprint-review.md` ("the one flag a sprint-review agent
-      actually passes") — and never touched that agent. It reads `stale[]` and nothing else.
+      CANCELLED 2026-07-20. Investigated and resolved:
 
+      - Swept all remaining consumers (retrospective, swarm-wave, sibling-sync,
+        upstream-tracker, synergy-tracker) — NONE parse `diarie --json`. They all
+        use text output.
+      - `stats --strict` has no consumer to justify it. `ready --strict` already
+        provides the CI-relevant integrity gate.
+      - The sprint-review agent (the named consumer that justified the warnings key)
+        is deleted in P1.4.
 
-      So the payload now carries the truth and the named consumer still does not look at it. A guard
-      that reports into a void is not a guard. This is the CONSUMER half of the founding defect: the
-      CLI stopped lying, and the reader kept believing the old story.
-    updated: '2026-07-14'
+      Revival trigger: if a future skill parses `stats --json` programmatically and
+      needs the warnings signal.
+    updated: '2026-07-20'
   - id: vp-beads-hkq
     title: 'Two small hook lies: "claims above" when there are none, and bare $(cat) under set -e'
     status: pending

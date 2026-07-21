@@ -23,8 +23,15 @@ skills/
       basic-memory-friction-format.md # BM section templates, routing, edit_note gotchas
   vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
   sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
-  migrate-tracker/SKILL.md            # Guided bd → flat-YAML cutover (for other repos)
-  deintegrate-beads/SKILL.md          # Disarm bd's machinery post-migration (never deletes data)
+plugins/
+  diarie-adopt/
+    skills/
+      migrate-tracker/SKILL.md        # Guided bd → flat-YAML cutover (for other repos)
+      deintegrate-beads/SKILL.md      # Disarm bd's machinery post-migration (never deletes data)
+    scripts/
+      beads-probe.mjs                 # Read-only beads reconnaissance probe
+      check-beads-probe.mjs           # Unit tests for the probe
+  swarm-wave/...
   synergy-tracker/
     SKILL.md                          # Cross-project synergy tracking (sibling projects)
     references/
@@ -58,8 +65,9 @@ Dev tooling only: validation and linting via `npm run check`.
 - **migrate-tracker** — Guided, one-way cutover of a project's issue tracker off
   beads (`bd`) onto the flat-YAML tracker. Five workflows: detect-and-assess,
   export-and-archive, migrate (dry-run first), verify (validate + a dual-run
-  against `bd ready`), cut-over. Wraps `scripts/bootstrap-tasks.mjs`, the
-  generalized migrator. Aimed at *other* repos — vp-beads already migrated; the
+  against `bd ready`), cut-over. Wraps the `diarie migrate` CLI (the
+  generalized migrator, extracted to `voxpelli/diarie`). Aimed at *other* repos
+  — vp-beads already migrated; the
   siblings (vp-knowledge, vp-git) broke on the same global beads 1.1.0 binary.
   User-invocable as `/migrate-tracker`.
 - **deintegrate-beads** — De-integrates beads *after* the migration is trusted. Five
@@ -70,8 +78,8 @@ Dev tooling only: validation and linting via `npm run check`.
   back on the next commit. **Never deletes `.beads/` or any data** — it disarms
   machinery (bd hides five git hooks behind `core.hooksPath`, so `.git/hooks/` looks
   clean while every commit routes through `bd`) and reports the rest. All detection
-  lives in the tested `scripts/beads-probe.mjs`, not in prose. User-invocable as
-  `/deintegrate-beads`.
+  lives in the tested `scripts/beads-probe.mjs` (inside the `plugins/diarie-adopt/`
+  plugin), not in prose. User-invocable as `/deintegrate-beads`.
 - **retrospective** — Generates a sprint retrospective: reads git history,
   `UPSTREAM-*.md` files, and conversation context, creates `RETRO-NN.md`, runs
   a knowledge gap audit, writes generalizable learnings to Basic Memory, and
@@ -693,9 +701,10 @@ the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`
 `check:tasks` (`diarie validate` — validating *this repo's own store* via the installed
 diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces
 --if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
-Today the only member is `plugins/_placeholder` (a stub whose trivial `check` keeps the delegation
-live and proven until the first real plugin lands); **diarie is NOT a workspace** — it is an external
-npm dependency (`diarie@^0.2.0`) and owns all its own gates in its own repo.
+Workspace members today: `plugins/swarm-wave` (wave orchestration) and
+`plugins/diarie-adopt` (migration tooling) — each owns its own `check:` aggregate that the root
+delegates to. **diarie is NOT a workspace** — it is an external npm dependency (`diarie@^0.2.0`)
+and owns all its own gates in its own repo.
 
 🚨 **`run-p check:*` does NOT match a `test` key.** A workspace's tests reach the aggregate ONLY if
 exposed under a **`check:`-prefixed** script (e.g. `check:test`) — `run-p check:*` never matches a
@@ -760,7 +769,7 @@ code span and each fenced/heredoc command line is one atomic candidate, so `` (`
 That is what keeps the dozen descriptive `ready-walker` / `validate-tasks` mentions green.
 
 **Escape hatch:** a line carrying the marker `prose-cmd-ignore` has its candidates skipped — for a
-lesson that must quote a literal broken command (`skills/migrate-tracker/SKILL.md` does). It is the
+lesson that must quote a literal broken command (`plugins/diarie-adopt/skills/migrate-tracker/SKILL.md` does). It is the
 eslint-disable pressure valve, greppable, so a real teaching example never forces the check off.
 
 **Editing caveat:** a `node <path>` or `diarie <sub>` you write in prose (here, in a skill, in the

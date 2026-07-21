@@ -1,10 +1,10 @@
 ---
 id: vp-beads-dep
 title: Retire the sprint-review agent and the backlog-groomer skill
-status: pending
+status: completed
 type: decision
 priority: medium
-updated: '2026-07-18'
+updated: '2026-07-20'
 ---
 
 > **Execution trigger now specified by `vp-beads-cst` (2026-07-18).** These retirements execute in
@@ -17,7 +17,9 @@ updated: '2026-07-18'
 
 **Retire two components — the `sprint-review` agent and the `backlog-groomer` skill.** They have
 not earned their place, and they were the load-bearing members of a "sprint loop" narrative that the
-usage evidence does not support. Execute at the repackaging (see `## Affects`), not piecemeal now.
+usage evidence does not support. Executed in P1.4 (commit `c6b26ce`, 2026-07-20) during the
+dissolution's Phase 1 — ahead of the full repackaging, per the trigger language in `## Execution
+context` below.
 
 ## Rationale
 
@@ -51,6 +53,11 @@ to their real substrates.
   and sprint-review's gate idea into retrospective's opening step. A reasonable salvage — held in
   reserve. Rejected as the default because it still spends effort re-homing capabilities with no
   demonstrated demand; revisit only if a concrete need for either core surfaces.
+
+## Execution
+
+Executed 2026-07-20 as P1.4 (commit `c6b26ce`). 12 files changed, +40/-964. Both skill directories
+deleled, 18+ prose references retargeted across CLAUDE.md, README.md, and 4 SKILL.md files.
 
 ## Affects
 

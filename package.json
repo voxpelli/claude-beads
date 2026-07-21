@@ -9,7 +9,7 @@
     "check": "run-p check:* && run-s check-workspaces",
     "check:ast-grep": "ast-grep scan",
     "check:ast-grep-test": "ast-grep test",
-    "check:beads-probe": "node scripts/check-beads-probe.mjs",
+    "check:beads-probe": "node plugins/diarie-adopt/scripts/check-beads-probe.mjs",
     "check:hooks": "node scripts/check-hooks.mjs",
     "check:lint": "eslint",
     "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'",

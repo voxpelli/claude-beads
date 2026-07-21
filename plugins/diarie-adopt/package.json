@@ -1,0 +1,9 @@
+{
+  "name": "@vp-skills/diarie-adopt",
+  "private": true,
+  "type": "module",
+  "description": "Beads-to-diarie adoption tooling plugin.",
+  "scripts": {
+    "check": "remark skills/ --quiet --frail"
+  }
+}

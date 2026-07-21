@@ -330,10 +330,14 @@ skills/
       project-name-derivation.md        Four-tier project-name derivation algorithm
   sibling-sync/
     SKILL.md                            Bilateral SYNERGY/UPSTREAM reconciliation
-  migrate-tracker/
-    SKILL.md                            Guided bd → flat-YAML tracker cutover
-  deintegrate-beads/
-    SKILL.md                            Disarm bd's machinery after migration
+plugins/
+  diarie-adopt/
+    skills/
+      migrate-tracker/SKILL.md          Guided bd → flat-YAML tracker cutover
+      deintegrate-beads/SKILL.md        Disarm bd's machinery after migration
+    scripts/
+      beads-probe.mjs                   Read-only beads reconnaissance probe
+      check-beads-probe.mjs             Unit tests for the probe
   swarm-wave/
     SKILL.md                            Multi-agent wave orchestration
     references/
