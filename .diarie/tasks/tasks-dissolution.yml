@@ -143,6 +143,12 @@ tasks:
         REMAINING as standalone work (not blocking dissolution): broaden check:sh across plugin
         workspaces; convert check-hooks.mjs to DISCOVERY; fold swc consumer-half in.
       - >-
+        §G-DEFER (vp-beads-vph review, 2026-07-21): per-plugin OWN eslint/remark config + devDeps so a
+        plugin's gates TRAVEL when it is extracted. YAGNI now (adversarial-architect verdict): swarm-wave
+        has no code to lint, nothing is marketplace-listed, and vp-dream/diarie-adopt/swarm-wave rely on
+        root-hoisted lint tooling today. Revival trigger: a plugin is actually `git subtree split` out
+        (P2/vga era). The runtime-dep half of this class was the CRITICAL, already fixed under vp-beads-abx.
+      - >-
         gtd's BLOCKER (needs a real plugin to discover against) was lifted by swm — the core
         conversion landed with the swarm-wave workspace move.
     description: >-
