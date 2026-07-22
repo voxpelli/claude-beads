@@ -591,6 +591,8 @@ any other locally-registered MCP server a sub-agent must call.)
    transcripts yet (new MCP tools, novel Bash patterns).
 3. Main-thread takeover as fallback for one-offs.
 
+**Scope every grant narrowly — see global CLAUDE.md `### NEVER` ("never wildcard a multi-purpose binary").** Concretely for swarm-wave here: `Bash(node scripts/<guard>.mjs)` for guard RED-proofs, and the exact `npm install -D ignore` (fully specified, not a wildcard) for tig's dep add — never `Bash(git|npm|npx:*)` (that trio was pasted from a plan shorthand and reverted on sight, 2026-07-22). CC matcher specifics (doc-verified 2026-07): shell operators `&&`/`;`/`|` ARE decomposed and each subcommand matched independently (a chained `&& git push` under `Bash(git show:*)` is NOT auto-approved), but a pinned verb can't gate an interpreter/runner CC doesn't strip — `Bash(sh:*)`/`Bash(node:*)`/`Bash(devbox run:*)` match whatever they execute (CC's strip list — `timeout`/`nice`/`command`/bare `xargs` … — is finite and excludes them). `$(...)` is scrutinized, not smuggled: an unmatched inner command prompts, and catastrophic `rm` inside `$()` always prompts (v2.1.208+). CC also force-prompts `find -delete`/`-exec` even under `Bash(find *)`, so the un-gated cases are runners/interpreters and `gh api`, not `find`. Catch grants already present: `grep -REn 'Bash\((git|npm|npx|node|gh|sh|bash|python|env|docker|devbox):\*\)' .claude/settings*.json ~/.claude/settings*.json`.
+
 **Skip these (wrong layer / scope):**
 
 - `allowed-tools` frontmatter — only applies to named agents at
@@ -606,8 +608,13 @@ those explicitly. Concrete starter snippet for `.claude/settings.local.json`
 when running swarm-wave (add any `mcp__<server>__*` tools a sub-agent must call):
 
 ```json
-"Bash(diarie:*)", "Bash(npx:*)", "Bash(gh api:*)", "Bash(brew info:*)"
+"Bash(diarie:*)", "Bash(npx diarie:*)", "Bash(gh run view:*)", "Bash(brew info:*)"
 ```
+
+Note the snippet drops `Bash(gh api:*)` deliberately: `gh api` is a launcher for
+arbitrary GitHub calls including writes (`-X DELETE`, `-f` field POSTs create
+issues/PRs), so wildcarding it bypasses the GitHub-write NEVER rule — grant
+read-only `gh` subcommands (`gh run view`, `gh pr view`) instead.
 
 Full details + 5-agent validation trail: BM
 `engineering/agents/parallel-agent-orchestration-lessons` last `[gotcha]`
