@@ -78,6 +78,68 @@ function run (cmd, args) {
 const TRACKER_DIR = '.diarie'
 
 /**
+ * @typedef {{
+ *   name: string,
+ *   mechanism: 'core.hooksPath' | '.git/hooks/',
+ *   effect: 'clobbered-by-bd' | 'dormant-rearms-on-unset',
+ *   remedy: string
+ * }} HookManager
+ */
+
+/**
+ * @typedef {{
+ *   shape: 'hooksPath' | 'git-hooks' | 'none',
+ *   hooksPath: { value: string | null, resolved: string | null, scope: string | null, isBeads: boolean },
+ *   shims: string[],
+ *   gitHooks: { dormantBdHooks: string[], otherGitHooks: string[] },
+ *   otherHookManagers: HookManager[],
+ *   reArmCommand: string | null
+ * }} HooksProbe
+ */
+
+/**
+ * @typedef {{
+ *   pid: string,
+ *   port: string | null,
+ *   alive: boolean,
+ *   isDolt: boolean,
+ *   cwd: string | null,
+ *   cwdInTarget: boolean,
+ *   portMatches: boolean,
+ *   args: string | null
+ * }} DaemonOwner
+ */
+
+/**
+ * @typedef {{
+ *   pidFile: string | null,
+ *   owned: DaemonOwner | null,
+ *   safeToSignal: boolean,
+ *   otherDoltProcesses: string[]
+ * }} DaemonProbe
+ */
+
+/**
+ * @typedef {{
+ *   beadsDirExists: boolean,
+ *   beadsConfigKeys: string[],
+ *   trackedFiles: string[],
+ *   trackedCount: number
+ * }} ResidueProbe
+ */
+
+/**
+ * @typedef {{
+ *   root: string,
+ *   gitAvailable: boolean,
+ *   migration: unknown,
+ *   hooks: HooksProbe,
+ *   daemon: DaemonProbe,
+ *   residue: ResidueProbe
+ * }} Probe
+ */
+
+/**
  * Is the flat-YAML migration trustworthy enough to disarm bd?
  *
  * `clean` is NOT sufficient and neither is exit 0. An ABSENT store is now an error (ENOSTORE) rather
@@ -145,7 +207,7 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
  * What hook machinery is live, and what happens if we unset `core.hooksPath`?
  *
  * @param {string} root
- * @returns {any}
+ * @returns {HooksProbe}
  */
 export function probeHooks (root) {
   const raw = run('git', ['-C', root, 'config', '--get', 'core.hooksPath'])
@@ -213,7 +275,7 @@ export function probeHooks (root) {
  * pid-reuse creates. Require the process args to name this target's own `.beads`.
  *
  * @param {string} root
- * @returns {any}
+ * @returns {DaemonProbe}
  */
 export function probeDaemon (root) {
   const pidFile = join(root, '.beads', 'dolt-server.pid')
@@ -276,7 +338,7 @@ export function probeDaemon (root) {
  * answers what git would actually delete.
  *
  * @param {string} root
- * @returns {any}
+ * @returns {ResidueProbe}
  */
 export function probeResidue (root) {
   const cfg = run('git', ['-C', root, 'config', '--local', '--get-regexp', '^beads\\.'])
@@ -300,7 +362,7 @@ export function probeResidue (root) {
 
 /**
  * @param {string} root
- * @returns {any}
+ * @returns {Probe}
  */
 export function probe (root) {
   // Without git, every git-derived answer below degrades to a benign-looking DEFAULT

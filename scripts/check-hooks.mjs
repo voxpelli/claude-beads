@@ -106,9 +106,9 @@ function test (label, fn) {
       failed++
       console.log(`  \u001B[31m✗\u001B[0m ${label}: ${result.reason}`)
     }
-  } catch (/** @type {any} */ err) {
+  } catch (/** @type {unknown} */ err) {
     failed++
-    console.log(`  \u001B[31m✗\u001B[0m ${label}: threw ${err.message}`)
+    console.log(`  \u001B[31m✗\u001B[0m ${label}: threw ${err instanceof Error ? err.message : String(err)}`)
   }
 }
 
