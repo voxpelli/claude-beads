@@ -364,7 +364,7 @@ function selfTestScanCorpus (oracle) {
       writeFileSync(join(dir, p), 'x `ready-walker --stale` y\n')
     }
 
-    const { findings, bySurface } = scanCorpus(oracle, dir)
+    const { bySurface, findings } = scanCorpus(oracle, dir)
     if (!findings.some((x) => x.file === nested)) {
       failed++
       console.error(`  ✗ self-test: scanCorpus fixture — no finding reported the nested path '${nested}' (path handling regressed)`)
