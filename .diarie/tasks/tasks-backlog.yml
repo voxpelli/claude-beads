@@ -873,7 +873,7 @@ tasks:
     updated: '2026-07-15'
   - id: vp-beads-imd
     title: 'check:md is GREEN over 21 tracked, shipped files carrying 172 warnings — excluded by --ignore-pattern, not .gitignore'
-    status: pending
+    status: completed
     type: task
     priority: high
     labels:
@@ -887,7 +887,20 @@ tasks:
       The same bug class as the `AGENT-*.md` hole fixed in d2f57d4, at 21x the scale, through a
       different door — and the guard written for that hole cannot see this one. A gate, running,
       reporting success, inspecting nothing.
-    updated: '2026-07-15'
+      RESOLVED (ownership, 2026-07-22, user): keep `.diarie/` EXCLUDED from vp-beads' check:md — it is
+      DIARIE'S SUBSTRATE, and linting/validating decision-doc content belongs to `diarie validate` (the
+      store's own authority), NOT a consumer's remark gate (substrate-not-opinion). `RESEARCH-*.md` stays
+      excluded as vp-beads' own frozen provenance artifacts. So the DECIDE resolves to "keep excluded,
+      DELIBERATELY" — package.json patterns UNCHANGED. Warning distribution MEASURED 2026-07-22: all 172
+      are in FROZEN files (`.diarie/_archive/` 23 + `RESEARCH-*` ~150); the 4 LIVE decision docs carry 0.
+      A RED-proof (planted broken-link warning in `.diarie/decisions/`, `remark-validate-links`) confirmed
+      the exclusion mechanism: `remark .` DOES reach `.diarie/` (not dot-dir-skipped — an early wrong
+      hypothesis), so `--ignore-pattern .diarie/` is load-bearing, and narrowing WOULD pull decisions into
+      remark — but that is the wrong owner. FOLLOW-UPS: (a) document the deliberate exclusion in CLAUDE.md
+      Validation → fold into dcr (γ); (b) diarie-side gap: `diarie validate` should cover `.diarie/decisions/`
+      (frontmatter + prose) — external, belongs in voxpelli/diarie's backlog (see handoffs/). Left `pending`
+      until (a)+(b) are routed.
+    updated: '2026-07-22'
   - id: vp-beads-dlf
     title: 'retrospective SKILL.md teaches bd''s decision open/closed lifecycle — diarie has neither status'
     status: pending

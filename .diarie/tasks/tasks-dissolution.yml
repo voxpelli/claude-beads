@@ -414,6 +414,13 @@ tasks:
         workspace); (3) plugin.json description drops "backlog grooming" (backlog-groomer retired,
         vp-beads-dep); (4) the check-prose-commands "five prose surfaces" description understates
         coverage now that pch added the plugins/* surfaces; (5) residual .mjs comment rot
+      - >-
+        doc the check:md exclusions as DELIBERATE in the ## Validation section (folded from vp-beads-imd,
+        2026-07-22): `--ignore-pattern .diarie/` is intentional — `.diarie/` is diarie's substrate and its
+        contents (incl. decision docs) are validated by `diarie validate`, NOT vp-beads' remark gate
+        (substrate-not-opinion); `--ignore-pattern 'RESEARCH-*.md'` excludes vp-beads' own frozen provenance
+        artifacts. Note the residual: `check:tracked-ignored` is blind to these CLI-flag exclusions (the
+        broader "no tracked file invisible to the gates" guard is deferred as vp-beads-vgd)
     description: >-
       Plan step 1.8; the last local capstone. Enumerate every doc surface via grep — do not trust
       the plan's edit list.
