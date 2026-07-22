@@ -13,7 +13,13 @@ repo hunts.
 
 ## 1. Expose `bd-map` — a cross-repo dependency `diarie-adopt` now has
 
-**OPEN.** Because the bd-adoption pair lives in vp-skills (`plugins/diarie-adopt`,
+**DELIVERED to `../diarie` and handled there at least LOCALLY (2026-07-22, per user).** The diarie side
+has addressed the `exports`-subpath gap in its own working tree; what remains is for the fix to land in a
+PUBLISHED diarie release before the vp-skills consumer can import against it. So: **diarie-side
+done-locally; vp-skills-side (`vp-beads-dad`) stays open** until the fix publishes and `diarie-adopt`
+is wired to it. The original open-item text is kept below for the contract detail.
+
+Because the bd-adoption pair lives in vp-skills (`plugins/diarie-adopt`,
 decision `vp-beads-cst` — the pair was decoupled from diarie's publish timeline),
 `diarie-adopt` will need **both**:
 
