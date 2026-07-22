@@ -141,6 +141,30 @@ function isInvocation (raw) {
 }
 
 /**
+ * Normalize the two ways prose reaches the diarie binary INDIRECTLY, so the classifier checks them like
+ * a literal `diarie …`: migrate-tracker's `$DIARIE` alias (`DIARIE="npx -y diarie"`), and an explicit
+ * `npx [-y|--no-install] diarie …`. In both, the tokens AFTER the wrapper ARE the diarie subcommand +
+ * flags, so the whole job is to strip the wrapper down to `diarie`. Deliberately NARROW: the one alias
+ * name this repo uses (`DIARIE`) is hardcoded, NOT parsed from assignment lines — a second, stateful
+ * model of the prose is exactly the complexity this check exists to avoid. A candidate that is neither
+ * form is returned unchanged (so `node "$DIARIE"` and the `DIARIE=…` definition line stay mentions).
+ *
+ * @param {string} raw
+ * @returns {string}
+ */
+function unwrapDiarie (raw) {
+  const t = tokenize(raw)
+  if (t.length === 0) return raw
+  if (/^\$\{?DIARIE\}?$/.test(t[0])) return ['diarie', ...t.slice(1)].join(' ')
+  if (t[0] === 'npx') {
+    let i = 1
+    while (t[i]?.startsWith('-')) i++ // skip npx's own flags: -y, --no-install, …
+    if (t[i] === 'diarie') return ['diarie', ...t.slice(i + 1)].join(' ')
+  }
+  return raw
+}
+
+/**
  * Classify one candidate (an inline code span, or one fenced/heredoc command line).
  * Returns a human-readable problem string, or undefined when it is fine (or a mention).
  *
@@ -238,45 +262,67 @@ function extract (text, isMarkdown) {
 }
 
 /**
- * Scan a corpus. Returns every problem found, plus coverage numbers so an inert extractor is visible
- * rather than silently green. `root` defaults to the real repo; the fixture self-test points it at a
- * throwaway tree to prove the file-path handling without ever touching the live corpus.
+ * The prose surfaces, tracked SEPARATELY. A surface is the two root docs (each a literal path) or one
+ * glob. Per-surface counts are the `flr` lesson one notch finer than the global floor: a single
+ * surface's glob silently matching nothing (a regressed pattern) shows as a per-surface zero instead of
+ * hiding inside a healthy total. Every entry — INCLUDING the three empty-today surfaces (`agents`, and
+ * the two plugins-nested `agents` / `hooks` globs) — is proven to EXTRACT by the fixture self-test, so
+ * their empty LIVE result is real emptiness, not a broken glob.
+ *
+ * @type {ReadonlyArray<{ label: string, files?: string[], glob?: string }>}
+ */
+const SURFACES = [
+  { label: 'CLAUDE.md', files: ['CLAUDE.md'] },
+  { label: 'README.md', files: ['README.md'] },
+  { label: 'skills/**', glob: 'skills/**/*.md' },
+  { label: 'hooks/**', glob: 'hooks/**/*.sh' },
+  { label: 'agents/**', glob: 'agents/**/*.md' },
+  { label: 'plugins/*/skills/**', glob: 'plugins/*/skills/**/*.md' },
+  { label: 'plugins/*/agents/**', glob: 'plugins/*/agents/**/*.md' },
+  { label: 'plugins/*/hooks/**', glob: 'plugins/*/hooks/**/*.sh' },
+]
+
+/**
+ * Scan a corpus. Returns every problem found, plus coverage numbers (total AND per-surface) so an
+ * inert extractor is visible rather than silently green. `root` defaults to the real repo; the fixture
+ * self-test points it at a throwaway tree to prove file-path handling and every surface glob without
+ * ever touching the live corpus. globSync returns paths relative to `cwd`; every entry is normalized to
+ * ABSOLUTE (`join(root, p)`) so the one place a relative path is produced is `relative(root, file)` at
+ * DISPLAY time — the mixed-convention slice that mangled nested findings is gone.
  *
  * @param {Oracle} oracle
  * @param {string} [root]
- * @returns {{ findings: Array<{ file: string, line: number, problem: string }>, examined: number, fileCount: number }}
+ * @returns {{ findings: Array<{ file: string, line: number, problem: string }>, examined: number, fileCount: number, bySurface: Map<string, number> }}
  */
 function scanCorpus (oracle, root = ROOT) {
-  // globSync (a Node built-in) returns paths RELATIVE to `cwd`; normalize every entry to ABSOLUTE
-  // (join(root, p)) so the two hardcoded literals and the glob results share one convention, and
-  // `relative(root, file)` at DISPLAY time is the only place a relative path is produced again. Mixing
-  // the two was the bug: the old `file.slice(ROOT.length + 1)` ran on already-relative glob results too,
-  // mangling them (a short relative path sliced past its own length returned '', so a real finding
-  // reported an empty location). Absolute paths also drop the latent cwd-dependence readFileSync had.
-  const files = [
-    join(root, 'CLAUDE.md'),
-    join(root, 'README.md'),
-    ...globSync([
-      'skills/**/*.md',
-      'hooks/**/*.sh',
-      'agents/**/*.md',
-      'plugins/*/skills/**/*.md',
-      'plugins/*/agents/**/*.md',
-      'plugins/*/hooks/**/*.sh',
-    ], { cwd: root }).map((p) => join(root, p)),
-  ]
   /** @type {Array<{ file: string, line: number, problem: string }>} */
   const findings = []
+  /** @type {Map<string, number>} */
+  const bySurface = new Map()
   let examined = 0
-  for (const file of files) {
-    const isMarkdown = file.endsWith('.md')
-    for (const { candidate, line } of extract(readFileSync(file, 'utf8'), isMarkdown)) {
-      if (isInvocation(candidate)) examined++
-      const problem = classify(candidate, oracle)
-      if (problem) findings.push({ file: relative(root, file), line, problem })
+  let fileCount = 0
+
+  for (const surface of SURFACES) {
+    const rel = surface.files ?? globSync(surface.glob ?? '', { cwd: root })
+    let surfaceExamined = 0
+    for (const p of rel) {
+      const file = join(root, p)
+      if (!existsSync(file)) continue // a root doc may be absent (e.g. in a fixture tree)
+      fileCount++
+      const text = readFileSync(file, 'utf8')
+      const isMarkdown = file.endsWith('.md')
+      for (const { candidate, line } of extract(text, isMarkdown)) {
+        // migrate-tracker reaches diarie via `$DIARIE` / `npx … diarie`; unwrap to `diarie …` so its
+        // primary command surface is checked, not skipped as an unknown executable.
+        const resolved = unwrapDiarie(candidate)
+        if (isInvocation(resolved)) { examined++; surfaceExamined++ }
+        const problem = classify(resolved, oracle)
+        if (problem) findings.push({ file: relative(root, file), line, problem })
+      }
     }
+    bySurface.set(surface.label, surfaceExamined)
   }
-  return { findings, examined, fileCount: files.length }
+  return { bySurface, examined, fileCount, findings }
 }
 
 /**
@@ -294,17 +340,40 @@ function selfTestScanCorpus (oracle) {
   try {
     writeFileSync(join(dir, 'CLAUDE.md'), '')
     writeFileSync(join(dir, 'README.md'), '')
-    const rel = join('skills', 'nested', 'SKILL.md')
-    mkdirSync(dirname(join(dir, rel)), { recursive: true })
-    writeFileSync(join(dir, rel), 'Run `ready-walker --stale` — a retired reader.\n')
-    const { findings } = scanCorpus(oracle, dir)
-    const found = findings.find((x) => x.problem)
-    if (!found) {
+
+    // (1) PATH-HANDLING proof: a NESTED finding must report its TRUE path relative to root, not a
+    // slice-mangled fragment (`plugins/x/skills/y/SKILL.md` → `-y/SKILL.md`, or `''`, was the bug).
+    const nested = join('skills', 'nested', 'SKILL.md')
+    mkdirSync(dirname(join(dir, nested)), { recursive: true })
+    writeFileSync(join(dir, nested), 'Run `ready-walker --stale` — a retired reader.\n')
+
+    // (2) PER-SURFACE GLOB proof: plant one invocation-bearing file at EVERY glob surface — including
+    // the three empty in the real repo today — so a regressed glob (one that matches nothing) is caught
+    // HERE, before the live corpus, rather than hiding as a plausible live zero. One inline span each
+    // (`.sh` and `.md` both read inline spans), a retired reader so it also counts as an invocation.
+    const surfaceFiles = {
+      'skills/**': join('skills', 's', 'SKILL.md'),
+      'hooks/**': join('hooks', 'h.sh'),
+      'agents/**': join('agents', 'a.md'),
+      'plugins/*/skills/**': join('plugins', 'p', 'skills', 's', 'SKILL.md'),
+      'plugins/*/agents/**': join('plugins', 'p', 'agents', 'a.md'),
+      'plugins/*/hooks/**': join('plugins', 'p', 'hooks', 'h.sh'),
+    }
+    for (const p of Object.values(surfaceFiles)) {
+      mkdirSync(dirname(join(dir, p)), { recursive: true })
+      writeFileSync(join(dir, p), 'x `ready-walker --stale` y\n')
+    }
+
+    const { findings, bySurface } = scanCorpus(oracle, dir)
+    if (!findings.some((x) => x.file === nested)) {
       failed++
-      console.error('  ✗ self-test: scanCorpus fixture — expected a finding for the retired reader, got none')
-    } else if (found.file !== rel) {
-      failed++
-      console.error(`  ✗ self-test: scanCorpus fixture — expected file '${rel}', got '${found.file}'`)
+      console.error(`  ✗ self-test: scanCorpus fixture — no finding reported the nested path '${nested}' (path handling regressed)`)
+    }
+    for (const [label, p] of Object.entries(surfaceFiles)) {
+      if ((bySurface.get(label) ?? 0) < 1) {
+        failed++
+        console.error(`  ✗ self-test: surface '${label}' extracted 0 from a planted invocation (${p}); its glob is broken`)
+      }
     }
   } finally {
     rmSync(dir, { recursive: true, force: true })
@@ -348,11 +417,21 @@ function selfTest (oracle) {
     ['bare --format json is not an executable', '--format json', false],
     ['node --test has no script path', 'node --test', false],
     ['node at a variable path', 'node "$DIARIE"', false],
+    // RED/GREEN — `$DIARIE` alias + `npx … diarie` unwrapping (migrate-tracker's primary surface).
+    // These prove unwrapDiarie hands the classifier a real `diarie …` so a bad flag/sub is still caught.
+    ['$DIARIE unknown subcommand', '$DIARIE doctor', true],
+    ['$DIARIE bad flag', '$DIARIE ready --stats', true],
+    ['${DIARIE} braces bad flag', '${DIARIE} ready --stale', true], // eslint-disable-line no-template-curly-in-string -- literal `${DIARIE}` prose, not a template
+    ['npx -y diarie bad flag', 'npx -y diarie ready --stats', true],
+    ['$DIARIE valid migrate --root', '$DIARIE migrate x.jsonl --root /t', false],
+    ['$DIARIE valid validate --root <target>', '$DIARIE validate --root <target>', false],
+    ['npx diarie valid ready', 'npx diarie ready --blocked', false],
+    ['bare $DIARIE is a mention', '$DIARIE', false],
   ]
 
   let failed = 0
   for (const [name, candidate, expectRed] of cases) {
-    const isRed = classify(candidate, oracle) !== undefined
+    const isRed = classify(unwrapDiarie(candidate), oracle) !== undefined
     if (isRed !== expectRed) {
       failed++
       console.error(`  ✗ self-test: ${name} — expected ${expectRed ? 'RED' : 'green'}, got ${isRed ? 'RED' : 'green'}`)
@@ -380,7 +459,7 @@ if (selfTestFailures > 0) {
   process.exit(1)
 }
 
-const { examined, fileCount, findings } = scanCorpus(oracle)
+const { bySurface, examined, fileCount, findings } = scanCorpus(oracle)
 if (findings.length > 0) {
   console.error('check:prose-commands — the docs tell agents to run commands that do not exist:\n')
   for (const { file, line, problem } of findings) {
@@ -392,12 +471,27 @@ if (findings.length > 0) {
 
 // Coverage floor — the flr lesson one layer over: do not trust that the scan RAN, assert how much it
 // SAW. A future regex or fence-logic edit that makes extract() pull nothing yields zero findings and
-// a false green; this makes an inert extractor fail loud instead. ~90 diarie invocations live in the
-// corpus today (measured 90); the floor sits well below that, and a surprising drop is the signal.
+// a false green; this makes an inert extractor fail loud instead. ~95 diarie invocations live in the
+// corpus today (measured 95, incl. the `$DIARIE`/`npx … diarie` surface); the floor sits well below.
 const EXAMINED_FLOOR = 80
 if (examined < EXAMINED_FLOOR) {
   console.error(`check:prose-commands — only ${examined} invocations examined (floor ${EXAMINED_FLOOR}); the extractor has likely gone inert. A green here would mean nothing.`)
   process.exit(1)
+}
+
+// Per-surface CONDITIONAL floor — the flr lesson one notch finer. The global floor catches TOTAL
+// inertness; this catches ONE surface's glob regressing to zero while a big surface masks it in the
+// total. Only the surfaces that carry invocations today are floored (each ≥1); the three empty-today
+// surfaces are deliberately absent — their globs are proven to EXTRACT by selfTestScanCorpus, so an
+// empty LIVE result is real emptiness, not a broken pattern. When a populated surface legitimately
+// empties (e.g. migrate-tracker moves out of `plugins/*/skills`), update this set — the forced edit IS
+// the signal that coverage shifted.
+const POPULATED_SURFACES = ['CLAUDE.md', 'README.md', 'skills/**', 'plugins/*/skills/**']
+for (const label of POPULATED_SURFACES) {
+  if ((bySurface.get(label) ?? 0) < 1) {
+    console.error(`check:prose-commands — surface '${label}' examined 0 invocations (expected ≥1); its glob has likely regressed while the total stayed healthy.`)
+    process.exit(1)
+  }
 }
 
 console.log(`check:prose-commands: ${examined} invocations across ${fileCount} files, ${oracle.subs.size} subcommands, corpus clean.`)

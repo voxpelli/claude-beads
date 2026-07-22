@@ -677,7 +677,7 @@ tasks:
 
   - id: vp-beads-pch
     title: 'check-prose-commands hardening — path normalization + per-surface floor + $DIARIE alias + self-test'
-    status: in_progress
+    status: completed
     agent: claude
     type: task
     priority: medium
@@ -707,7 +707,12 @@ tasks:
       REMAINING: the $DIARIE/$VAR-alias resolver (migrate-tracker's `$DIARIE migrate …` primary command
       surface — which the §B/npx-flag work EXPANDED — is still unchecked; all its flags were hand-verified
       valid, so latent not live) + the per-surface CONDITIONAL floor.
-    updated: '2026-07-21'
+      DONE (2026-07-22): `unwrapDiarie` (SIMPLIFIED from per-file alias detection per review — hardcodes
+      the one `DIARIE` alias + unwraps `npx … diarie`, taking examined 90→95) + a per-surface conditional
+      floor (the populated 4 surfaces, each ≥1) + a per-surface fixture proving every glob extracts even
+      the 3 empty-today ones; all four guards RED-proofed (broken glob, no-op unwrap, empty-surface floor,
+      live bad `$DIARIE`); `npm run check` green.
+    updated: '2026-07-22'
 
   - id: vp-beads-tda
     title: 'Author the missing .diarie/decisions/vp-beads-tdo.md + fold doc-rot into dcr'
