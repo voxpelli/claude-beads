@@ -395,6 +395,25 @@ tasks:
         plugin.json name/repository/description updated; the marketplace description no longer says
         "beads"
       - doc-grep the VOCABULARY (not just command names) per the global rule
+      - >-
+        doc-rot folded in from vp-beads-tda (tda-vetted, 2 false positives already rejected —
+        manifest keyword scoping is deliberate, repository field stays until the gated rename):
+        (1) regenerate BOTH Plugin Layout trees (CLAUDE.md AND README) from the actual on-disk
+        layout as part of the 6-skill/ledger rewrite — they diverge from each other and from disk:
+        CLAUDE.md's synergy-tracker/references/ omits synergy-bm-format.md + project-name-derivation.md,
+        and README's swarm-wave drops the real skills/swarm-wave/ nesting layer; do NOT merely
+        "match README", which is the LESS-accurate tree for swarm-wave (the tda AC's original
+        "un-nest synergy-tracker / drop duplicate swarm-wave" wording was a misread — corrected
+        2026-07-22 after reading README). Those two divergences are ILLUSTRATIVE, not an exhaustive
+        diff: BOTH trees also predate the ledger merge (they still list synergy/upstream/vendor/
+        sibling-tracker as separate top-level skills, now merged into plugins/ledger/) and README's
+        tree omits vp-dream entirely — so the instruction is "regenerate from disk", not "reconcile
+        these two named deltas";
+        (2) package.json description drops "an agent" (none since sprint-review retired,
+        vp-beads-dep) and "the diarie CLI workspace" (diarie is an external ^0.2.0 dep, not a
+        workspace); (3) plugin.json description drops "backlog grooming" (backlog-groomer retired,
+        vp-beads-dep); (4) the check-prose-commands "five prose surfaces" description understates
+        coverage now that pch added the plugins/* surfaces; (5) residual .mjs comment rot
     description: >-
       Plan step 1.8; the last local capstone. Enumerate every doc surface via grep — do not trust
       the plan's edit list.
@@ -406,8 +425,9 @@ tasks:
       (reader guards, type schema, bd-map) repointed to voxpelli/diarie. MEMORY.md consolidation
       handled by a background agent same session. REMAINING: README.md counts/vocabulary; package.json
       + plugin.json name/repository/description; marketplace description still says "beads"; the
-      "9 skills, 1 agent" counts across surfaces.
-    updated: '2026-07-18'
+      "9 skills, 1 agent" counts across surfaces; plus the 5-item doc-rot list folded from tda (see
+      the 3rd acceptance criterion, 2026-07-22).
+    updated: '2026-07-22'
 
   # ---- Phase 2 — GitHub-facing (each step gated on an explicit per-step "yes"; [us] steps only) ----
   # [vpk] vp-knowledge follow-ups and [diarie] publishing are tracked via handoffs/, not here.
@@ -724,7 +744,7 @@ tasks:
 
   - id: vp-beads-tda
     title: 'Author the missing .diarie/decisions/vp-beads-tdo.md + fold doc-rot into dcr'
-    status: pending
+    status: completed
     type: task
     priority: low
     parent: vp-beads-dis
@@ -732,15 +752,27 @@ tasks:
       - docs
     acceptance_criteria:
       - >-
-        .diarie/decisions/vp-beads-tdo.md authored (the ephemeral-todo-vs-diarie decision cited by CLAUDE.md:547,
+        .diarie/decisions/vp-beads-tdo.md authored (the ephemeral-todo-vs-diarie decision cited by CLAUDE.md:559,
         migrate-tracker, deintegrate-beads, and MEMORY.md but never formalized)
       - >-
         doc-rot folded into vp-beads-dcr's AC (NOT a new row): CLAUDE.md Plugin Layout tree corrected to match
         README (un-nest synergy-tracker, drop the duplicate swarm-wave), package.json:7 "diarie CLI workspace"/"an
         agent" + plugin.json:4 "backlog grooming" stale descriptions, CLAUDE.md:759 "five prose surfaces"
         understatement (+plugins/*), the .mjs comment rot
+        — CORRECTION (2026-07-22, post-gate): the "match README / un-nest synergy-tracker / drop duplicate
+        swarm-wave" phrasing above was a MISREAD (both trees nest synergy-tracker; the doubled swarm-wave is
+        the real plugin-dir/skill-dir path convention; README is the LESS-accurate tree). The authoritative,
+        corrected fold lives in dcr AC3 — regenerate BOTH trees from the on-disk layout, do not "match README".
     description: >-
       Plan Part 2 §F. Doc-rot has zero new rows — it folds into the already-pending dcr (P1.8). This row
       covers only the one genuinely-new artifact: authoring the tdo decision record. Review rejected 2 false
       positives (manifest scoping is deliberate; the repository field is correct until the gated rename).
-    updated: '2026-07-21'
+      DONE (2026-07-22): vp-beads-tdo.md authored (Decision/Rationale/Alternatives/Execution/Affects, house
+      style) — verify-before-persisting caught the wrong SHA: MEMORY.md's history note pinned the ban-lift to
+      a453143 (test relocation), but `git log -S "ONLY home of a commitment"` proves it shipped in 6dd4795
+      (2026-07-11); the record cites the verified SHA. Doc-rot items grep-confirmed before folding into dcr's
+      AC3 (2 false positives left out per prior review); item (1) reworded after actually reading README —
+      the tda AC's "un-nest synergy-tracker / drop duplicate swarm-wave / match README" was a misread (both
+      trees nest synergy-tracker; the doubled swarm-wave is the real path convention; README is the LESS
+      accurate tree). `diarie validate` clean.
+    updated: '2026-07-22'
