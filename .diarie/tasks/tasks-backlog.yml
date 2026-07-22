@@ -847,7 +847,8 @@ tasks:
     updated: '2026-07-14'
   - id: vp-beads-tig
     title: 'check:tracked-ignored is a NO-OP IN CI — it asks git; the tool it protects asks the `ignore` package'
-    status: pending
+    status: completed
+    agent: claude
     type: task
     priority: high
     labels:
