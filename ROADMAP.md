@@ -418,6 +418,20 @@ The tracker is explicitly **not**:
 
 ---
 
+## Section 9: Deferred — monorepo consolidation (dissolution, not tracker-substrate)
+
+> **Scope note.** This section is about the **`vp-skills` monorepo structure** — the dissolution
+> (decision `vp-beads-cst`, epic `vp-beads-dis`), which repackages vp-beads into a workspace
+> monorepo of independent plugins. It is **not** about the tracker substrate that Sections 1–8
+> cover. It lives here at the user's request as a long-arc reminder; the active work is tracked in
+> the `.diarie/` store and the staged dissolution plan.
+
+| Item | Why deferred | Revival trigger |
+| ---- | ------------ | --------------- |
+| **Bring `vp-git` + `vp-astgrep` in as monorepo workspaces** — via `git subtree` into `plugins/`; each keeps its own version / CHANGELOG / tests; `vp-astgrep` keeps its runtime deps + `claude-only`. | **Deferred indefinitely (2026-07-22).** Priority is shipping the current monorepo shape (`ledger` + `swarm-wave` + `diarie-adopt` + `vp-dream`). The bring-in carries real reconciliation cost that does **not** block shipping what we have: each source repo ships its own `validate-plugin.mjs` / `check-portability.mjs` gate tooling (duplicating the root's plugin-discovery validator), and `vp-astgrep` ships its own `sgconfig.yml` + `.ast-grep/` rules that would collide with the root's bare `ast-grep scan`. | Appetite to consolidate the git / ast-grep plugins into `vp-skills` (e.g. solo bus-factor maintenance friction across three repos becomes real), OR their standalone repos (`voxpelli/claude-git`, `voxpelli/claude-astgrep`) need retiring. Task: `vp-beads-vga` (deferred). Downstream `vp-beads-rgy` (registry back-pointers premised on vp-git co-location) is rescoped/deferred with it. |
+
+---
+
 ## See also
 
 - `DESIGN-tracker-exploration.md` — current (v2) architecture exploration; this ROADMAP is the long-arc companion

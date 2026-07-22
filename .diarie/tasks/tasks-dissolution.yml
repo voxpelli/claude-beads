@@ -242,7 +242,7 @@ tasks:
 
   - id: vp-beads-vga
     title: 'P1.3d Bring vp-git + vp-astgrep in as workspaces (workspace-ification, not file-move)'
-    status: pending
+    status: deferred
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -261,7 +261,14 @@ tasks:
       consolidated for solo bus-factor per `vp-beads-cst`'s recorded trade (revival trigger: external
       users, or a plugin outgrows the shared repo). Unblocked by `gtp`-core completion; discovery
       hardening is `gtd`, post-landing.
-    updated: '2026-07-18'
+
+
+      DEFERRED INDEFINITELY 2026-07-22 (user): ship the current 4-plugin monorepo shape first;
+      the bring-in carries real reconciliation cost (each source ships its own validate-plugin gate
+      tooling; vp-astgrep ships its own sgconfig.yml + .ast-grep that collide with the root's bare
+      ast-grep scan) that does not block shipping. Revival trigger + rationale recorded in
+      ROADMAP.md Section 9. Downstream `rgy` deferred with it.
+    updated: '2026-07-22'
 
   - id: vp-beads-rt2
     title: 'P1.4 Retire the sprint-review agent + the backlog-groomer skill'
@@ -346,7 +353,7 @@ tasks:
 
   - id: vp-beads-rgy
     title: 'P1.7 Update registries + sibling back-pointers (S9)'
-    status: pending
+    status: deferred
     type: task
     priority: low
     parent: vp-beads-dis
@@ -362,8 +369,15 @@ tasks:
       - >-
         sibling back-pointers (`../vp-git/SYNERGY-vp-beads.md`) noted as going stale on the
         vp-beads→ledger rename; state that vendor-registry.json does not exist (moot)
-    description: 'Plan step 1.7. Depends on vp-git being brought in-repo (P1.3d).'
-    updated: '2026-07-18'
+    description: >-
+      Plan step 1.7. Depends on vp-git being brought in-repo (P1.3d).
+
+
+      DEFERRED 2026-07-22 (user) alongside `vga`: its primary premise (vp-git becomes a co-located
+      plugin) is gone while `vga` is deferred — vp-git stays a cross-repo sibling and the
+      synergy-registry entry remains valid as-is. The residual rename-related back-pointer notes are
+      Phase-2-rename-gated (`rnm`/`dcr`) anyway. See ROADMAP.md Section 9.
+    updated: '2026-07-22'
 
   - id: vp-beads-dcr
     title: 'P1.8 Doc rewrites — counts, manifests, vocabulary (N14)'
