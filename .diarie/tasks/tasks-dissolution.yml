@@ -622,7 +622,8 @@ tasks:
 
   - id: vp-beads-swh
     title: 'swarm-wave: cross-plugin handoff degrade-guard + fix dangling /session-reflect + garbled line'
-    status: pending
+    status: completed
+    agent: claude
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -641,7 +642,14 @@ tasks:
       Plan Part 2 §C. swarm-wave is now its own plugin but hands off via the Skill tool to skills in OTHER
       plugins with no guard; the monorepo goal is zero cross-plugin refs. Mirror CLAUDE.md's Files-availability
       Tier C idiom, but the guard text must live in the shipped SKILL.md, not root CLAUDE.md.
-    updated: '2026-07-21'
+      DONE (2026-07-22): added the `## Cross-plugin skill handoffs (degrade-and-announce)` section to
+      SKILL.md; fixed the garbled L339 "Run edit `.diarie/tasks/`" line; rewrote the dangling
+      `/upstream-tracker workflow 1` → `/ledger log` (upstream-tracker merged into ledger). AC1 (the
+      `/session-reflect` → `/retrospective` swap in wave-planning-checklist) was DELIBERATELY SKIPPED —
+      premise FALSE: `/session-reflect` DOES exist (vp-knowledge 0.33.0, confirmed live this session) and
+      is the forward-looking home for the retrospective role, so leaving it is correct; swapping to the
+      about-to-be-retired `/retrospective` would be wrong. `npm run check` green.
+    updated: '2026-07-22'
 
   - id: vp-beads-vph
     title: 'validate-plugin hardening (isRecord + manifest-less flag + fixture RED-test) + correct gtd''s false claim'

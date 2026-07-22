@@ -336,10 +336,9 @@ the parallelism and deduplication.
 7. **Validate against code.** For each significant finding, use Grep/Glob
    to verify the claim holds in the actual codebase. Flag findings that do
    not match reality — research agents have a 15-20% false positive rate.
-8. Present the merged, validated findings to the user. Suggest: "Run
-   edit `.diarie/tasks/` to turn
-   these into issues." Keep the findings cap at roughly 15 tasks — more
-   suggests the research scope was too broad.
+8. Present the merged, validated findings to the user. Suggest: "Edit
+   `.diarie/tasks/` directly to turn these into task rows." Keep the findings
+   cap at roughly 15 tasks — more suggests the research scope was too broad.
 
 ## Guidelines
 
@@ -382,7 +381,32 @@ the parallelism and deduplication.
   data. Exceeding them produces OOM failures. When in doubt, run fewer
   agents.
 - **Cross-skill boundaries.** swarm-wave does not own UPSTREAM, SYNERGY, or
-  RETRO files. When a wave surfaces upstream friction, suggest
-  `/upstream-tracker workflow 1 (Log a new entry)`. When the sprint closes,
-  hand off to `/retrospective`. Do not replicate logic that belongs in
-  other skills.
+  RETRO files. When a wave surfaces upstream friction, suggest `/ledger log`;
+  when the sprint closes, hand off to `/retrospective` (vp-knowledge's
+  `/session-reflect` once it absorbs the retrospective role). Guard every such
+  cross-plugin handoff per `## Cross-plugin skill handoffs (degrade-and-announce)`
+  below. Do not replicate logic that belongs in other skills.
+
+## Cross-plugin skill handoffs (degrade-and-announce)
+
+swarm-wave hands work off to skills in SIBLING plugins — `/ledger log` for
+upstream friction a wave surfaces, `/retrospective` (vp-knowledge's
+`/session-reflect` once it absorbs that role) at sprint close. In the vp-skills
+monorepo these siblings are independent installs, so a handoff target may not be
+present in a given project.
+
+**Never hard-fail on an absent sibling.** Before invoking a cross-plugin skill
+via the Skill tool, treat its absence as a degrade-and-announce case, not an error:
+
+- If the target skill is installed, invoke it (with the usual approval gate).
+- If it is NOT installed, ANNOUNCE the skipped handoff and name what the user
+  would do instead — e.g. "this wave surfaced 2 upstream-friction items, but the
+  `ledger` plugin is not installed here; log them via your tracker or install
+  `ledger`." Never swallow the handoff silently: a silently-skipped handoff makes
+  a project that tracks this work elsewhere look like one that has none — the same
+  failure `### Files-availability convention` forbids for tracker steps.
+
+This mirrors CLAUDE.md's `### Files-availability convention` Tier C
+(degrade-and-announce), but the guard text lives HERE, in the shipped SKILL.md:
+an installed plugin never receives the repo's root docs, so a handoff guard that
+lived only in CLAUDE.md would not travel with the plugin.
