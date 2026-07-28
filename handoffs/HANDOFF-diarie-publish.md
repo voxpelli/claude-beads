@@ -23,8 +23,8 @@ Because the bd-adoption pair lives in vp-skills (`plugins/diarie-adopt`,
 decision `vp-beads-cst` — the pair was decoupled from diarie's publish timeline),
 `diarie-adopt` will need **both**:
 
-- `scripts/bootstrap-tasks.mjs` — the generalized migrator (plugin side; travels with the plugin).
-- `diarie/lib/migrate/bd-map.js` — the `TYPE_MAP` / bd-field mapping (in the diarie package).
+* `scripts/bootstrap-tasks.mjs` — the generalized migrator (plugin side; travels with the plugin).
+* `diarie/lib/migrate/bd-map.js` — the `TYPE_MAP` / bd-field mapping (in the diarie package).
 
 **The problem:** diarie's `exports` map exposes only `.` and `./schema` — **not** a
 `./migrate` subpath. `bd-map.js` ships in the tarball (`files` includes `lib/**/*.js`) but
@@ -42,12 +42,12 @@ its type map degrades quietly. Tracked by the `vp-beads-dad` row.
 vp-skills' skills consume diarie's CLI. diarie's own repo is the source of truth for
 these; this is the consumer-side list of what must **not** break under us:
 
-- The **`--root` / nearest-wins** store resolution and `--root <dir>` pin.
-- The **`ENOSTORE`** contract: a missing store is a non-zero-exit error with
-  `{"error": "...", "code": "ENOSTORE"}` on stdout under `--json` — *not* an empty
+* The **`--root` / nearest-wins** store resolution and `--root <dir>` pin.
+* The **`ENOSTORE`** contract: a missing store is a non-zero-exit error with
+  `{"error": "...", "code": "ENOSTORE"}` on stdout under `--json` — _not_ an empty
   backlog. Load-bearing for every consumer that must tell "tracks its work elsewhere"
   from "no work left".
-- `ready` / `stats` / `validate` output shapes (incl. `--json`).
+* `ready` / `stats` / `validate` output shapes (incl. `--json`).
 
 > Note: the pre-publish `diarie-spa` decision (store-path API — refuse-nested-init-unless
 > `--nested` + `EANCESTOR`, `TASKS_ROOT → DIARIE_ROOT`, `diarie where`) was gated "before

@@ -7,9 +7,9 @@ mode files that reference this document for their steps.
 
 Two ledger modes cite this reference:
 
-- **`log` / `review` (sibling)** — derive the **sibling**'s name when creating
+* **`log` / `review` (sibling)** — derive the **sibling**'s name when creating
   or resolving `SYNERGY-<project-name>.md` files. Subject is always the sibling.
-- **`reconcile`** — derives **this project's** name (Mode B inverse-file lookup
+* **`reconcile`** — derives **this project's** name (Mode B inverse-file lookup
   at the sibling; the apply-reciprocation SYNERGY destination on the sibling)
   AND the sibling's name (Mode B local lookup; the bidirectional SYNERGY
   comparison). Subject is both, depending on the step.
@@ -23,11 +23,11 @@ practice.
 There are three distinct identity domains across the vp-\* plugin family.
 Keep them disjoint — conflating them is the predictable failure mode:
 
-| Domain      | What it names                               | Authoritative source                                                                          | Who uses it                                                                                              |
-| ----------- | ------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Sibling** | A peer project (e.g., another vp-\* plugin) | `synergy-registry.json` `name` field on the asking side                                       | `log`/`review` (sibling), `reconcile`                                             |
-| **Self**    | This project, as the sibling sees us        | The sibling's `synergy-registry.json` `name` field for our entry; falls back to our manifests | `reconcile` only (Mode B, apply reciprocation batch)                              |
-| **Vendor**  | A third-party dependency (npm, brew, etc.)  | `vendor-registry.json` `package` field                                                        | `log`/`resolve` (upstream), `pull`                                                |
+| Domain      | What it names                               | Authoritative source                                                                          | Who uses it                                          |
+| ----------- | ------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| **Sibling** | A peer project (e.g., another vp-\* plugin) | `synergy-registry.json` `name` field on the asking side                                       | `log`/`review` (sibling), `reconcile`                |
+| **Self**    | This project, as the sibling sees us        | The sibling's `synergy-registry.json` `name` field for our entry; falls back to our manifests | `reconcile` only (Mode B, apply reciprocation batch) |
+| **Vendor**  | A third-party dependency (npm, brew, etc.)  | `vendor-registry.json` `package` field                                                        | `log`/`resolve` (upstream), `pull`                   |
 
 This document covers the **sibling** and **self** domains. Vendor names are
 governed by the vendor-registry convention (see `CLAUDE.md` "Vendor registry
@@ -65,9 +65,9 @@ for us when they created their `UPSTREAM-<this-name>.md` or
 
 Skip this tier silently when:
 
-- The sibling has no `.claude/synergy-registry.json`.
-- The registry exists but contains no entry pointing back at this project.
-- The sibling is not accessible on disk (network mount unavailable, fresh
+* The sibling has no `.claude/synergy-registry.json`.
+* The registry exists but contains no entry pointing back at this project.
+* The sibling is not accessible on disk (network mount unavailable, fresh
   checkout, etc.).
 
 A skip is not an error — fall through to tier 2.
@@ -84,8 +84,8 @@ self-identity source.
 
 In practice, tier 2 is the operative tier when:
 
-- The self subject is being derived AND tier 1 is unavailable.
-- The subject is a sibling AND we are reading the sibling's manifest as part
+* The self subject is being derived AND tier 1 is unavailable.
+* The subject is a sibling AND we are reading the sibling's manifest as part
   of an explicit comparison pass (rare; not the normal sibling case).
 
 For sibling-derivation in normal `log`/`review` (sibling) operation, tier 2 is
@@ -97,10 +97,10 @@ itself a tier-3-style source for the sibling subject).
 
 Two flavors depending on subject:
 
-- **Self subject**: read `package.json` from this project's root. If the
+* **Self subject**: read `package.json` from this project's root. If the
   file exists and has a non-empty `name` string, use it. Handles npm-based
   projects without a `.claude-plugin/plugin.json`.
-- **Sibling subject**: use the registry entry's `name` field directly from
+* **Sibling subject**: use the registry entry's `name` field directly from
   this project's `synergy-registry.json`. The registry name IS the
   authoritative source per `synergy-entry-format.md` "Naming convention".
 
@@ -130,9 +130,9 @@ rules to the raw name produced by whichever tier fired:
 
 Examples (from `synergy-entry-format.md`):
 
-- `vp-knowledge` → `vp-knowledge` (no-op for clean short names)
-- `voxpelli/vp-claude` → `voxpelli--vp-claude`
-- `@scope/shared-utils` → `scope--shared-utils`
+* `vp-knowledge` → `vp-knowledge` (no-op for clean short names)
+* `voxpelli/vp-claude` → `voxpelli--vp-claude`
+* `@scope/shared-utils` → `scope--shared-utils`
 
 Tier 1 (sibling-registry back-pointer) yields a name that is already
 normalized (the sibling stored it that way per the same convention), so
@@ -145,17 +145,17 @@ applying normalization again is a no-op safety pass.
 This project is `vp-beads`. The sibling is `vp-knowledge` (registered in
 `vp-beads/.claude/synergy-registry.json`, lives at `/Users/pelle/Sites/ai/vp-claude`).
 
-- **Tier 1** — read `/Users/pelle/Sites/ai/vp-claude/.claude/synergy-registry.json`.
+* **Tier 1** — read `/Users/pelle/Sites/ai/vp-claude/.claude/synergy-registry.json`.
   Merged with `.local.json` if present. Find the entry pointing back at vp-beads
   via `remote: "https://github.com/voxpelli/claude-beads"` (or by
   `local-path` resolving to `/Users/pelle/Sites/ai/vp-beads`). Entry has
   `name: "vp-beads"`. Raw name = `vp-beads`. Normalize: `vp-beads`. **Win.**
-- Tier 2 (would fire if tier 1 inaccessible): read
+* Tier 2 (would fire if tier 1 inaccessible): read
   `/Users/pelle/Sites/ai/vp-beads/.claude-plugin/plugin.json`. `name: "vp-beads"`.
   Same result.
-- Tier 3 (would fire if no plugin.json): vp-beads has no published
+* Tier 3 (would fire if no plugin.json): vp-beads has no published
   `package.json` `name` distinct from plugin.json. Falls through.
-- Tier 4 (last resort): basename of project root = `vp-beads`. Same result.
+* Tier 4 (last resort): basename of project root = `vp-beads`. Same result.
 
 All tiers agree. Mode B inverse-file lookup constructs `UPSTREAM-vp-beads.md`
 at the sibling root → matches the real file.
@@ -165,13 +165,13 @@ at the sibling root → matches the real file.
 The sibling is `vp-knowledge`. Asking-side context:
 `/Users/pelle/Sites/ai/vp-beads`.
 
-- **Tier 1** — not applicable (back-pointer is self-only).
-- **Tier 2** — not applicable in normal operation (the sibling modes do not
+* **Tier 1** — not applicable (back-pointer is self-only).
+* **Tier 2** — not applicable in normal operation (the sibling modes do not
   read the sibling's manifest for name derivation).
-- **Tier 3** — read `/Users/pelle/Sites/ai/vp-beads/.claude/synergy-registry.json`.
+* **Tier 3** — read `/Users/pelle/Sites/ai/vp-beads/.claude/synergy-registry.json`.
   Entry has `name: "vp-knowledge"`. Raw name = `vp-knowledge`. Normalize:
   `vp-knowledge`. **Win.**
-- Tier 4 (would fire if no registry entry for the sibling): basename of
+* Tier 4 (would fire if no registry entry for the sibling): basename of
   `/Users/pelle/Sites/ai/vp-claude` = `vp-claude`. Different result —
   `vp-claude` ≠ `vp-knowledge`. This divergence is exactly why tier 3 is
   preferred: the registry name is what consumers actually agreed on, while
@@ -181,23 +181,23 @@ Tier 3 wins; SYNERGY filename is `SYNERGY-vp-knowledge.md`.
 
 ## Known Limitations
 
-- **Non-npm ecosystems** (Cargo, Composer, pyproject.toml, go.mod, Gemfile)
+* **Non-npm ecosystems** (Cargo, Composer, pyproject.toml, go.mod, Gemfile)
   have no tier-2/3 manifest the algorithm reads. They fall through to tier 4
   (directory basename). Today no non-npm sibling project is registered in
   any vp-\* synergy-registry, so this is a latent gap, not an active bug. See
   the YAGNI revival trigger below.
-- **Monorepo subdirectory checkouts** — directory basename may include
+* **Monorepo subdirectory checkouts** — directory basename may include
   segments that aren't part of the canonical name (e.g., `packages/ui`).
   Normalization makes this `packages--ui`, which may or may not match the
   registry entry. The defense is tier 1/2/3 — they take precedence over
   tier 4. Confirm the sibling's registry uses the form you expect.
-- **CI/fork checkout paths** — directory names like `pr-123` or `build-xyz`
+* **CI/fork checkout paths** — directory names like `pr-123` or `build-xyz`
   produce meaningless tier-4 results. The defenses are tier 1 (back-pointer)
   and tier 2 (plugin.json). If both are unavailable in CI (no sibling
   accessible, no manifest readable), Mode B and synergy file creation
   cannot run sensibly — this is expected and matches the "Project-name
   not derivable" case in the `reconcile` mode's notes.
-- **YAGNI position on ecosystem expansion**: the algorithm deliberately
+* **YAGNI position on ecosystem expansion**: the algorithm deliberately
   does NOT probe `Cargo.toml`, `pyproject.toml`, `go.mod`, `Gemfile`, or
   `composer.json` in tier 3 today. The revival trigger is: when the second
   non-npm sibling project is added to ANY synergy-registry across the vp-\*
@@ -207,13 +207,13 @@ Tier 3 wins; SYNERGY filename is `SYNERGY-vp-knowledge.md`.
 
 ## Consumer Summary
 
-| Consumer | Subject | Tiers exercised in practice | Notes |
-| --- | --- | --- | --- |
-| `log` (sibling) | sibling | tier 3 (registry `name`), tier 4 (dir basename for unregistered siblings) | Auto-creates `SYNERGY-<sibling>.md` files when missing. Tiers 1/2 unreachable for the sibling subject here. |
-| `review` (sibling) — status, `--compare`, `--trend` | sibling | tier 3 only | Read existing files via registry; never auto-create. |
-| `reconcile` — sync sibling SYNERGY | sibling | tier 3 (this project's registry) | Bidirectional title comparison; same tier as `review` (sibling). |
-| `reconcile` — sync sibling UPSTREAM, Mode B (detect pair) | self + sibling | tiers 1–4 (self), tier 3 (sibling) | The self-subject use site that motivates tier 1 (sibling-registry back-pointer). |
-| `reconcile` — apply reciprocation batch (destination file) | self | tiers 1–4 | Constructs `<sibling>/SYNERGY-<this-project>.md` for opt-in reciprocation writes. |
+| Consumer                                                   | Subject        | Tiers exercised in practice                                               | Notes                                                                                                       |
+| ---------------------------------------------------------- | -------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `log` (sibling)                                            | sibling        | tier 3 (registry `name`), tier 4 (dir basename for unregistered siblings) | Auto-creates `SYNERGY-<sibling>.md` files when missing. Tiers 1/2 unreachable for the sibling subject here. |
+| `review` (sibling) — status, `--compare`, `--trend`        | sibling        | tier 3 only                                                               | Read existing files via registry; never auto-create.                                                        |
+| `reconcile` — sync sibling SYNERGY                         | sibling        | tier 3 (this project's registry)                                          | Bidirectional title comparison; same tier as `review` (sibling).                                            |
+| `reconcile` — sync sibling UPSTREAM, Mode B (detect pair)  | self + sibling | tiers 1–4 (self), tier 3 (sibling)                                        | The self-subject use site that motivates tier 1 (sibling-registry back-pointer).                            |
+| `reconcile` — apply reciprocation batch (destination file) | self           | tiers 1–4                                                                 | Constructs `<sibling>/SYNERGY-<this-project>.md` for opt-in reciprocation writes.                           |
 
 When in doubt, prefer the highest tier that yields a value. Tier 1 is
 specifically for the cross-side case where the sibling's authoritative

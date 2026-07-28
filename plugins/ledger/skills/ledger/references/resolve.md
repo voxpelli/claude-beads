@@ -21,9 +21,9 @@ formal `resolve` for the sibling object — a synergy entry "resolves" by remova
    `find_replace` to append an annotation to the entry's line — matching against the note's
    exact text (never construct match strings from memory). Entry-type-specific text:
 
-   - **Bugs / Feature Requests:** `_(Resolved YYYY-MM-DD)_`
-   - **Upstream Opportunities (merged):** `_(Contributed upstream: <url> merged YYYY-MM-DD)_`
-   - **Upstream Opportunities (abandoned):** `_(Closed YYYY-MM-DD — not contributed)_`
+   * **Bugs / Feature Requests:** `_(Resolved YYYY-MM-DD)_`
+   * **Upstream Opportunities (merged):** `_(Contributed upstream: <url> merged YYYY-MM-DD)_`
+   * **Upstream Opportunities (abandoned):** `_(Closed YYYY-MM-DD — not contributed)_`
 
    **Annotate, never delete** — only `promote`'s prune pass moves entries to the
    `### Resolved` subsection. If no matching BM entry exists (it was never promoted), or BM

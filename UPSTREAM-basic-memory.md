@@ -9,8 +9,8 @@ _No entries yet._
 
 ## Bugs
 
-- **The sync path duplicates observation rows in the index — 19% of all observations are
-  duplicates** (2026-07-11) \[broken\] — 241 of 1,654 entities (14.6%) carry every observation
+* **The sync path duplicates observation rows in the index — 19% of all observations are
+  duplicates** (2026-07-11) \[broken] — 241 of 1,654 entities (14.6%) carry every observation
   **two or three times** in Basic Memory's SQLite index. The markdown files on disk are **clean**.
   This is index corruption, not note corruption.
 
@@ -37,15 +37,15 @@ _No entries yet._
   "double-counts every observation and invents a phantom `note` category". Both halves were
   **wrong**, and wrong in the direction that blamed the tool instead of the data:
 
-  - `schema_validate` reports the index **faithfully**. It returns each observation twice because
+  * `schema_validate` reports the index **faithfully**. It returns each observation twice because
     the observation _is in the database twice_. Verified by querying the `observation` table
     directly against the file on disk.
-  - The `note` category is **real**, not phantom. Basic Memory parses _any_ `- ` bullet as an
+  * The `note` category is **real**, not phantom. Basic Memory parses _any_ `- ` bullet as an
     observation, and an uncategorized one defaults to category `note`. The single `note`
     observation on that entity is the `## Upstream Friction` bullet — a section **this project's
     own `/upstream-tracker` writes**. It then gets duplicated like everything else. (Whether BM
     _should_ parse non-`## Observations` bullets as observations is a separate, milder question.)
-  - **`schema_diff` is unaffected.** Its counts are note-presence counts, not observation counts:
+  * **`schema_diff` is unaffected.** Its counts are note-presence counts, not observation counts:
     the denominator (343 engineering notes) matches `bm project info` exactly, several of its
     numerators are **odd** (31, 19, 23, 11 — a doubled integer cannot be odd), and `new_fields`
     is empty, so the `note` category is not leaking into it either. The earlier claim that

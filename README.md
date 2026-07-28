@@ -21,8 +21,8 @@ diarie validate                 # integrity gate: schema, dep graph, duplicate i
 Writes are plain `Edit`/`Write` on the YAML — there is deliberately **no CRUD helper**.
 The substrate stays a substrate; the opinions live in the skills.
 
-Four task types: `task`, `doc`, `decision`, `milestone`. Framings like *bug*, *feature*,
-*chore*, *story* and *spike* ride in `labels:`; an epic is a `task` with children pointing
+Four task types: `task`, `doc`, `decision`, `milestone`. Framings like _bug_, _feature_,
+_chore_, _story_ and _spike_ ride in `labels:`; an epic is a `task` with children pointing
 at it via `parent:`.
 
 The tracker is a real CLI — **`diarie`** (`diarie ready`, `diarie stats`,
@@ -56,14 +56,14 @@ Manage `UPSTREAM-*.md` files that track bugs, feature requests, and API friction
 
 Supports seven workflows:
 
-- **Log** — infers the package and problem from conversation context; checks Basic Memory for existing cross-project friction before logging
-- **Review** — summarize all open items across tracking files
-- **Resolve** — delete a fixed entry; `git rm` the file when empty (non-vendor only); annotates the corresponding Basic Memory friction entry
-- **Trend review** — quarterly cross-cutting analysis, with empirical resolution timelines:
+* **Log** — infers the package and problem from conversation context; checks Basic Memory for existing cross-project friction before logging
+* **Review** — summarize all open items across tracking files
+* **Resolve** — delete a fixed entry; `git rm` the file when empty (non-vendor only); annotates the corresponding Basic Memory friction entry
+* **Trend review** — quarterly cross-cutting analysis, with empirical resolution timelines:
   bugs resolve in 5–10 sprints, FRs in 10–20, cross-vendor inconsistencies on next major version
-- **Sprint retro support** — draft the "Upstream observations" section
-- **Promote to Basic Memory** — promotes generalizable friction from project-local UPSTREAM files into cross-project Basic Memory entity notes (`## Upstream Friction` sections). Supports all target types: npm, brew, cask, GitHub Actions, Docker, VSCode extensions. When no BM note exists, flags for enrichment via `/package-intel` or `/tool-intel`
-- **Sync from Basic Memory** — discovers friction already known in Basic Memory for this project's dependencies but not yet tracked locally. Pull-based, user-invoked
+* **Sprint retro support** — draft the "Upstream observations" section
+* **Promote to Basic Memory** — promotes generalizable friction from project-local UPSTREAM files into cross-project Basic Memory entity notes (`## Upstream Friction` sections). Supports all target types: npm, brew, cask, GitHub Actions, Docker, VSCode extensions. When no BM note exists, flags for enrichment via `/package-intel` or `/tool-intel`
+* **Sync from Basic Memory** — discovers friction already known in Basic Memory for this project's dependencies but not yet tracked locally. Pull-based, user-invoked
 
 Entry formats support optional `[blocking|degraded|minor]` severity and `[upstream: url]` when you file an upstream issue or PR.
 
@@ -92,10 +92,10 @@ Compare `SYNERGY-*.md` and `UPSTREAM-*.md` files between this project and regist
 
 Read-only by default. Surfaces drift, reciprocal gaps, stale-aligned rows, status divergence, and reciprocal-friction across siblings. Four workflows:
 
-- **Discover sibling(s)** — registry resolution + path probing via `.claude/synergy-registry.json` (+ optional `.local.json` override)
-- **Sync sibling SYNERGY** — reciprocal gaps, unreciprocated entries, stale alignment claims, status drift
-- **Sync sibling UPSTREAM** — Mode A: shared third-party dependency friction (duplicates, complementary workarounds, sibling-only entries); Mode B: reciprocal sibling-friction pairs (`UPSTREAM-<sibling>.md` ↔ `UPSTREAM-<this>.md`) surfacing what the sibling tracks about us
-- **Apply reciprocation batch** (opt-in `--auto-reciprocate`) — per-entry confirmation, writes only to the sibling side
+* **Discover sibling(s)** — registry resolution + path probing via `.claude/synergy-registry.json` (+ optional `.local.json` override)
+* **Sync sibling SYNERGY** — reciprocal gaps, unreciprocated entries, stale alignment claims, status drift
+* **Sync sibling UPSTREAM** — Mode A: shared third-party dependency friction (duplicates, complementary workarounds, sibling-only entries); Mode B: reciprocal sibling-friction pairs (`UPSTREAM-<sibling>.md` ↔ `UPSTREAM-<this>.md`) surfacing what the sibling tracks about us
+* **Apply reciprocation batch** (opt-in `--auto-reciprocate`) — per-entry confirmation, writes only to the sibling side
 
 Workflows 2 and 3 end with a per-sibling two-tier action menu (single `AskUserQuestion`, `header: "Synergy"` + `header: "Upstream"`) that delegates writes to `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or appends a task entry to `.diarie/tasks/` via the `Skill` tool — replacing the previous copy-paste hint workflow. Picking "None" yields a report-only run.
 
@@ -110,11 +110,11 @@ Migrate a project's issue tracker off beads (`bd`) onto the flat-YAML tracker:
 
 For projects still on beads. **beads 1.1.0's schema-migration gate panics on every write** — and because the binary is installed globally, every repo on beads broke at once. This is the cutover path vp-beads itself took. bd **reads** still work, and reads are all a migration needs, so no data is lost. Five workflows:
 
-- **Detect and assess** — confirm bd is present and readable; census live vs closed issues; warn when `.beads/` is gitignored (meaning no bd history is in git today)
-- **Export and archive** — freeze the full `bd export` snapshot to `.diarie/_archive/bd-final-export.jsonl`, the only git-tracked survivor
-- **Migrate** — dry-run into a scratch root first; collapse bd's 9 issue types to 4 (framings ride in `labels:`); extract `## Acceptance Criteria`; drop edges to closed issues rather than dangle them, and report every one
-- **Verify** — `diarie validate` plus a **dual-run** against `bd ready`. Exactly one divergence is expected (bd's ready-walk is type-blind and lists `decision`s as workable); anything else is a migration bug
-- **Cut over** — retarget the project's own `CLAUDE.md`/`AGENTS.md` off bd; leave `.beads/` on disk as a frozen archive
+* **Detect and assess** — confirm bd is present and readable; census live vs closed issues; warn when `.beads/` is gitignored (meaning no bd history is in git today)
+* **Export and archive** — freeze the full `bd export` snapshot to `.diarie/_archive/bd-final-export.jsonl`, the only git-tracked survivor
+* **Migrate** — dry-run into a scratch root first; collapse bd's 9 issue types to 4 (framings ride in `labels:`); extract `## Acceptance Criteria`; drop edges to closed issues rather than dangle them, and report every one
+* **Verify** — `diarie validate` plus a **dual-run** against `bd ready`. Exactly one divergence is expected (bd's ready-walk is type-blind and lists `decision`s as workable); anything else is a migration bug
+* **Cut over** — retarget the project's own `CLAUDE.md`/`AGENTS.md` off bd; leave `.beads/` on disk as a frozen archive
 
 Writes are plain `Edit`/`Write` on the YAML afterwards — there is no CRUD helper, by design.
 
@@ -126,17 +126,17 @@ Writes are plain `Edit`/`Write` on the YAML afterwards — there is no CRUD help
 /deintegrate-beads
 ```
 
-**It never deletes `.beads/` or any data** — it disarms *machinery*, which is a different thing and is why it is safe to run. What bd leaves behind is easy to miss:
+**It never deletes `.beads/` or any data** — it disarms _machinery_, which is a different thing and is why it is safe to run. What bd leaves behind is easy to miss:
 
-- **Five git hooks you cannot see.** `bd init` sets `git config core.hooksPath` → `.beads/hooks/`, so `.git/hooks/` looks pristine while `pre-commit`, `post-merge`, `pre-push`, `post-checkout` and `prepare-commit-msg` intercept every git operation. `pre-commit` shells out to `bd` and **propagates its exit code**. In this very repo, every commit was still routing through the dead binary weeks after the migration
-- **A `dolt sql-server` daemon per repo**, which outlives the session and orphans itself
-- **Injected instructions** — `bd setup claude` writes a managed block into `CLAUDE.md`/`AGENTS.md` and `SessionStart` hooks into `.claude/settings.json`
+* **Five git hooks you cannot see.** `bd init` sets `git config core.hooksPath` → `.beads/hooks/`, so `.git/hooks/` looks pristine while `pre-commit`, `post-merge`, `pre-push`, `post-checkout` and `prepare-commit-msg` intercept every git operation. `pre-commit` shells out to `bd` and **propagates its exit code**. In this very repo, every commit was still routing through the dead binary weeks after the migration
+* **A `dolt sql-server` daemon per repo**, which outlives the session and orphans itself
+* **Injected instructions** — `bd setup claude` writes a managed block into `CLAUDE.md`/`AGENTS.md` and `SessionStart` hooks into `.claude/settings.json`
 
-Five workflows: verify the migration is trusted (the gate is stricter than it looks — `diarie validate` now errors on a store that doesn't exist, but a store that exists and holds `tasks: []` is still perfectly `clean` at exit 0, so "clean" proves the store is well-formed, never that it holds anything. The probe therefore gates on a *counted* task total, a parsed store, and committed files — not on `clean`); disarm the git hooks (both install shapes; it confirms `core.hooksPath` really resolves into `.beads/` before unsetting, so a husky setup is never collateral); stop the daemon (pid-checked, SIGTERM only — the daemon holds the Dolt store open and a `kill -9` could corrupt the very archive this skill refuses to delete); de-colonize the docs and Claude config; and report what is left — including machine-global leftovers, which it names but never touches.
+Five workflows: verify the migration is trusted (the gate is stricter than it looks — `diarie validate` now errors on a store that doesn't exist, but a store that exists and holds `tasks: []` is still perfectly `clean` at exit 0, so "clean" proves the store is well-formed, never that it holds anything. The probe therefore gates on a _counted_ task total, a parsed store, and committed files — not on `clean`); disarm the git hooks (both install shapes; it confirms `core.hooksPath` really resolves into `.beads/` before unsetting, so a husky setup is never collateral); stop the daemon (pid-checked, SIGTERM only — the daemon holds the Dolt store open and a `kill -9` could corrupt the very archive this skill refuses to delete); de-colonize the docs and Claude config; and report what is left — including machine-global leftovers, which it names but never touches.
 
 Hooks are disarmed **before** the daemon is stopped, because the armed `pre-commit` shim calls `bd`, and any `bd` command re-spawns the daemon — stop it first and the next commit simply brings it back.
 
-Everything is reversible, and the report gives you the exact re-arm command — bd stores an *absolute* `core.hooksPath`, so the skill echoes the original value verbatim rather than guessing a relative one.
+Everything is reversible, and the report gives you the exact re-arm command — bd stores an _absolute_ `core.hooksPath`, so the skill echoes the original value verbatim rather than guessing a relative one.
 
 ### `/swarm-wave [workflow] [wave-number|topic]` — Multi-agent wave orchestration
 
@@ -150,11 +150,11 @@ Orchestrate multi-agent development sprints using the swarm wave pattern:
 
 Five workflows:
 
-- **Plan a swarm sprint** — sources work from the tracker (`.diarie/tasks/`, via `diarie ready`), else a `ROADMAP.md` (read in its own idiom — see [Work-tracking substrates](#work-tracking-substrates)), else a manual list; builds a file-contention map, groups file-disjoint items into waves, and generates a `SWARM-NN.md` plan for approval. Tracker-less waves track run-state in the `SWARM-NN.md` Item Status table instead of task claim/close
-- **Execute a wave** — claims tasks, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
-- **Post-wave gate** — hard blocking quality gate: two review agents (code + domain-specific) in parallel with `npm run check`, sequential tests, fix loop, commit + close. After the final wave, offers `/retrospective` handoff
-- **Map file contention** — standalone utility to build a file-to-issue matrix and flag hot files
-- **Research wave** — parallel research orchestration with dedup, code validation, and direct `.diarie/` task creation
+* **Plan a swarm sprint** — sources work from the tracker (`.diarie/tasks/`, via `diarie ready`), else a `ROADMAP.md` (read in its own idiom — see [Work-tracking substrates](#work-tracking-substrates)), else a manual list; builds a file-contention map, groups file-disjoint items into waves, and generates a `SWARM-NN.md` plan for approval. Tracker-less waves track run-state in the `SWARM-NN.md` Item Status table instead of task claim/close
+* **Execute a wave** — claims tasks, launches 4-6 parallel task agents (each with explicit file scope) plus a background research agent
+* **Post-wave gate** — hard blocking quality gate: two review agents (code + domain-specific) in parallel with `npm run check`, sequential tests, fix loop, commit + close. After the final wave, offers `/retrospective` handoff
+* **Map file contention** — standalone utility to build a file-to-issue matrix and flag hot files
+* **Research wave** — parallel research orchestration with dedup, code validation, and direct `.diarie/` task creation
 
 `SWARM-NN.md` files are ephemeral (gitignored). All wave execution requires explicit user approval. File isolation is enforced via exhaustive per-agent file lists — no directory globs.
 
@@ -162,16 +162,16 @@ Five workflows:
 
 vp-beads does not force a tracker on you. It works against whatever substrate a project already uses to track work:
 
-- **Flat-YAML tracker** (`.diarie/`) — the default and richest substrate: typed tasks, dependencies, priorities, labels, and a ready/blocked walk. Used directly when a `.diarie/tasks/` directory exists. See [The tracker](#the-tracker).
-- **`ROADMAP.md`** — a work plan **in whatever structure the project already uses**. `/swarm-wave` reads it in its own idiom (waves, status markers, file scopes) and never imposes a format; it declines cleanly when the file is not a parallelizable work plan. vp-beads never rewrites your ROADMAP.
-- **`VISION.md`** — direction and voice, **not** a backlog. vp-beads never sources work items from it.
-- **Manual list** — `/swarm-wave` can also plan from work items you supply inline, with no file at all.
+* **Flat-YAML tracker** (`.diarie/`) — the default and richest substrate: typed tasks, dependencies, priorities, labels, and a ready/blocked walk. Used directly when a `.diarie/tasks/` directory exists. See [The tracker](#the-tracker).
+* **`ROADMAP.md`** — a work plan **in whatever structure the project already uses**. `/swarm-wave` reads it in its own idiom (waves, status markers, file scopes) and never imposes a format; it declines cleanly when the file is not a parallelizable work plan. vp-beads never rewrites your ROADMAP.
+* **`VISION.md`** — direction and voice, **not** a backlog. vp-beads never sources work items from it.
+* **Manual list** — `/swarm-wave` can also plan from work items you supply inline, with no file at all.
 
 How each skill behaves without the tracker is defined once by the `### Files-availability convention` in [`CLAUDE.md`](CLAUDE.md):
 
-- **Tier A** — require-or-fallback (`/swarm-wave`): the tracker, else a `ROADMAP.md`, else a manual list; it only stops when no work source can be obtained.
-- **Tier B** — tracker-specific: operates on `.diarie/` directly. An **empty** store is an empty backlog — a real answer. An **absent** store is an error (`ENOSTORE`), and means the project tracks its work somewhere else, so it redirects to `/swarm-wave` / `ROADMAP.md` rather than reporting that you have nothing to do. (Defined for reference; no active component currently occupies it — the former occupant `/backlog-groomer` was retired.)
-- **Tier C** — degrade-and-announce (`/retrospective`): the rest of the workflow runs and every skipped tracker step is announced.
+* **Tier A** — require-or-fallback (`/swarm-wave`): the tracker, else a `ROADMAP.md`, else a manual list; it only stops when no work source can be obtained.
+* **Tier B** — tracker-specific: operates on `.diarie/` directly. An **empty** store is an empty backlog — a real answer. An **absent** store is an error (`ENOSTORE`), and means the project tracks its work somewhere else, so it redirects to `/swarm-wave` / `ROADMAP.md` rather than reporting that you have nothing to do. (Defined for reference; no active component currently occupies it — the former occupant `/backlog-groomer` was retired.)
+* **Tier C** — degrade-and-announce (`/retrospective`): the rest of the workflow runs and every skipped tracker step is announced.
 
 Silently skipping a tracker step is treated as a bug.
 
@@ -202,12 +202,12 @@ SPIKE-*.md
 PRIVATE-SYNERGY-*.md
 ```
 
-**Do NOT gitignore `.diarie/`.** It sits next to `.beads/` — which *is* ephemeral and
-*is* ignored — so the instinct to pattern-match is strong and wrong. `.diarie/` is the
+**Do NOT gitignore `.diarie/`.** It sits next to `.beads/` — which _is_ ephemeral and
+_is_ ignored — so the instinct to pattern-match is strong and wrong. `.diarie/` is the
 task store itself; ignoring it throws away the backlog. `/migrate-tracker` refuses to
 finish if it detects this (it asks `git check-ignore`, not the layout).
 
-One thing to *decide* rather than default: `.diarie/_archive/bd-final-export.jsonl`, which
+One thing to _decide_ rather than default: `.diarie/_archive/bd-final-export.jsonl`, which
 `/migrate-tracker` writes with bd's **closed** issues. A pre-existing `*.jsonl` or
 `_archive/` line will silently swallow it — `git add -A` says nothing, and the task store
 commits looking perfectly clean. That may be exactly what you want: closed issues record
@@ -295,15 +295,15 @@ Each entry maps to a permanent `UPSTREAM-<package>.md` tracking file. The `packa
 
 ### Upstream tracking files
 
-- **Vendor packages** — permanent files, always exist (even when empty)
-- **Non-vendor packages** — ephemeral files; delete entirely when all entries are resolved
+* **Vendor packages** — permanent files, always exist (even when empty)
+* **Non-vendor packages** — ephemeral files; delete entirely when all entries are resolved
 
 File naming examples:
 
-- `@voxpelli/typed-utils` → `UPSTREAM-voxpelli--typed-utils.md`
-- `fastify` → `UPSTREAM-fastify.md`
-- `brew:ripgrep` → `UPSTREAM-brew--ripgrep.md`
-- `action:actions/checkout` → `UPSTREAM-action--actions--checkout.md`
+* `@voxpelli/typed-utils` → `UPSTREAM-voxpelli--typed-utils.md`
+* `fastify` → `UPSTREAM-fastify.md`
+* `brew:ripgrep` → `UPSTREAM-brew--ripgrep.md`
+* `action:actions/checkout` → `UPSTREAM-action--actions--checkout.md`
 
 ### Private SYNERGY overlays
 
@@ -395,16 +395,16 @@ hooks/
 
 `vp-beads` and `vp-knowledge` are complementary plugins that form a layered pair:
 
-- **vp-knowledge** owns BM infrastructure — write-validation hooks (`post-bm-write-validate.sh` triggers `schema_validate` after every `write_note`/`edit_note`), note quality standards (`vp-note-quality` skill), and graph health tooling.
-- **vp-beads** builds sprint workflows on top — retrospective, upstream-tracker, synergy-tracker, and vendor-sync all write to Basic Memory, relying on vp-knowledge's hooks to validate those writes.
+* **vp-knowledge** owns BM infrastructure — write-validation hooks (`post-bm-write-validate.sh` triggers `schema_validate` after every `write_note`/`edit_note`), note quality standards (`vp-note-quality` skill), and graph health tooling.
+* **vp-beads** builds sprint workflows on top — retrospective, upstream-tracker, synergy-tracker, and vendor-sync all write to Basic Memory, relying on vp-knowledge's hooks to validate those writes.
 
 Concrete integration points:
 
-| vp-beads feature                                                     | vp-knowledge dependency                             |
-| -------------------------------------------------------------------- | --------------------------------------------------- |
-| Retrospective step 6                                                 | Chains into `/knowledge-gaps`                       |
+| vp-beads feature                                                                                       | vp-knowledge dependency                             |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Retrospective step 6                                                                                   | Chains into `/knowledge-gaps`                       |
 | All BM writes (upstream-tracker workflow 6 (Promote to Basic Memory), vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema   |
-| Sprint learnings                                                     | Written to the same BM graph vp-knowledge maintains |
+| Sprint learnings                                                                                       | Written to the same BM graph vp-knowledge maintains |
 
 **Do not duplicate vp-knowledge hooks in vp-beads.** Both plugins are installed together; duplicating hooks causes double-fire (benign but wasteful) and creates a maintenance burden.
 
@@ -417,38 +417,38 @@ must be bumped manually — the two repos are independent.
 
 ## Possible future additions
 
-- **`vendor-sync` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a task in `.diarie/tasks/` rather than an immediate pull.
+* **`vendor-sync` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a task in `.diarie/tasks/` rather than an immediate pull.
 
 ## Prior art & acknowledgments
 
 vp-beads stands on borrowed shoulders, and it keeps parts of several. Credit to the people,
 not just the projects — and an honest note on what is kept vs. declined:
 
-- **[beads](https://github.com/steveyegge/beads)** — Steve Yegge & the
+* **[beads](https://github.com/steveyegge/beads)** — Steve Yegge & the
   [gastownhall](https://github.com/gastownhall) maintainers. The substrate vp-beads was
   built on, and has now migrated off (for the operational complexity of its Dolt-backed
   daemon, not its data model — that part is good; `ready` and the dependency walk are
-  reimplemented over flat files). ~~**Kept:** the 9-type issue vocabulary.~~ *Corrected
+  reimplemented over flat files). ~~**Kept:** the 9-type issue vocabulary.~~ _Corrected
   2026-06-10, decision [`vp-beads-etm`](DESIGN-tracker-exploration.md): the tracker adopts
   a 4-type model (`task`/`doc`/`decision`/`milestone`); bd's other five types ride in
-  `labels:`. The taxonomy-documentation credit stands.* **Left:** the Dolt substrate. The
+  `labels:`. The taxonomy-documentation credit stands._ **Left:** the Dolt substrate. The
   plugin keeps the name.
-- **[hone-ai](https://github.com/oskarhane/hone-ai)** — Oskar Hane. The amnesiac-loop file
-  shape. **Kept:** the `progress.txt` + `AGENTS.md` accretion *discipline* and the idea of
+* **[hone-ai](https://github.com/oskarhane/hone-ai)** — Oskar Hane. The amnesiac-loop file
+  shape. **Kept:** the `progress.txt` + `AGENTS.md` accretion _discipline_ and the idea of
   a separate reviewer. **Declined:** its three-stage execution loop (vp-beads' skills own
   the workflow).
-- **The Ralph loop** — [Geoffrey Huntley](https://ghuntley.com/ralph/); and
+* **The Ralph loop** — [Geoffrey Huntley](https://ghuntley.com/ralph/); and
   **[`snarktank/ralph`](https://github.com/snarktank/ralph)** — Ryan Carson, for the
   `prd`→`progress.txt` lineage.
-- **"Long-running Agents"** —
+* **"Long-running Agents"** —
   [Addy Osmani](https://addyosmani.com/blog/long-running-agents/), for the "state lives
   outside the amnesiac agent" framing.
-- **Anthropic** —
+* **Anthropic** —
   ["Effective harnesses for long-running agents"](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
   (the feature-list + progress-notes + test-ratchet shape).
-- **[Backlog.md](https://github.com/MrLesk/Backlog.md)** — MrLesk. Evaluated as a substrate
+* **[Backlog.md](https://github.com/MrLesk/Backlog.md)** — MrLesk. Evaluated as a substrate
   candidate and, in the end, declined — but the evaluation sharpened the design.
-- **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** — the cross-project
+* **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** — the cross-project
   knowledge graph vp-beads writes its learnings to.
 
 The calm-sovereign stance behind the substrate rests on a wider canon — local-first
@@ -458,4 +458,3 @@ credited in [`VISION.md`](./VISION.md).
 ## License
 
 MIT
-

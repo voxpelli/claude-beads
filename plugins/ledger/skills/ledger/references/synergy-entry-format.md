@@ -190,7 +190,7 @@ sibling entries" below.
 > (seen in some older examples) is incorrect for synergy relationships;
 > those `npm/` paths are for package-friction notes owned by the ledger
 > `promote` (upstream) mode. A SYNERGY
-> file tracks how *two projects relate to each other*, not facts about
+> file tracks how _two projects relate to each other_, not facts about
 > the sibling as a software package — so the relationship note belongs
 > in `engineering/agents/`.
 
@@ -198,12 +198,12 @@ sibling entries" below.
 
 The six recognized values describe sibling shape, not engineering relationships in Basic Memory:
 
-- `sibling-plugin` — peer Claude Code plugin under the same maintainer (default for vp-\* plugins).
-- `shared-tooling` — peer that shares build/lint/test tooling but ships independently.
-- `fork` — divergent fork tracked for cherry-picks.
-- `consumer` — downstream project that depends on this one.
-- `coordinated-release` — peer that releases in lockstep (shared version cadence).
-- `dependency` — upstream this project consumes directly (rare for sibling-tracking; usually belongs in `vendor-registry.json`).
+* `sibling-plugin` — peer Claude Code plugin under the same maintainer (default for vp-\* plugins).
+* `shared-tooling` — peer that shares build/lint/test tooling but ships independently.
+* `fork` — divergent fork tracked for cherry-picks.
+* `consumer` — downstream project that depends on this one.
+* `coordinated-release` — peer that releases in lockstep (shared version cadence).
+* `dependency` — upstream this project consumes directly (rare for sibling-tracking; usually belongs in `vendor-registry.json`).
 
 If `.claude/synergy-registry.json` does not exist, discover SYNERGY files by
 globbing `SYNERGY-*.md`. The registry is optional but recommended for projects
@@ -234,17 +234,17 @@ Resolution rules:
    win; fields absent from `.local.json` keep the value from the base registry.
 3. Entries in `.local.json` whose `name` does not appear in the base registry
    are handled in two modes:
-   - **Private-add mode** — if the entry's `file` is a `PRIVATE-SYNERGY-<name>.md`
+   * **Private-add mode** — if the entry's `file` is a `PRIVATE-SYNERGY-<name>.md`
      value, it is **added** to the merged result as a private sibling. The
      `PRIVATE-` prefix is the marker (there is no boolean). The content file is
      gitignored and lives outside the `SYNERGY-*.md` glob, so the existing
      PRIVATE-SYNERGY structural guarantees apply (see "Private sibling entries"
      below).
-   - **Ignore mode (backward-compatible)** — any other entry whose `name` is not
+   * **Ignore mode (backward-compatible)** — any other entry whose `name` is not
      in the base registry (including `.local.json`-only entries with an ordinary
      `SYNERGY-<name>.md` file) is ignored. This keeps typos and accidental
      entries silent and preserves the prior behavior where the base registry is
-     the authoritative source of which *public* siblings exist.
+     the authoritative source of which _public_ siblings exist.
 
 Use this file to record local checkouts that don't follow the `../<name>/`
 convention (different parent directory, monorepo subdirectories, CI checkout
@@ -257,7 +257,7 @@ A private sibling is one whose very existence must not be committed — for exam
 a proprietary `open-core-partner` that should not appear in a public OSS repo. It
 is registered **only** in `.claude/synergy-registry.local.json` (gitignored), with
 its `file` set to a `PRIVATE-SYNERGY-<name>.md` value. This reuses the v0.17.0
-`PRIVATE-SYNERGY-` mechanism for *registration* as well as content: one prefix
+`PRIVATE-SYNERGY-` mechanism for _registration_ as well as content: one prefix
 convention does both.
 
 ```json
@@ -271,13 +271,13 @@ convention does both.
 ]
 ```
 
-- **Required:** `name`, and `file` matching `PRIVATE-SYNERGY-<name>.md` (the
+* **Required:** `name`, and `file` matching `PRIVATE-SYNERGY-<name>.md` (the
   prefix is the marker; without it a non-base entry is ignored per rule 3). The
   `<name>` uses the same normalization as committed SYNERGY files (`/` → `--`,
   drop leading `@`), so `@scope/foo` → `PRIVATE-SYNERGY-scope--foo.md`; the
   validator enforces this derivation.
-- **Recommended:** `relationship`, `local-path`.
-- **Omit `bm-entity`:** a private sibling's name in a Basic Memory path would leak
+* **Recommended:** `relationship`, `local-path`.
+* **Omit `bm-entity`:** a private sibling's name in a Basic Memory path would leak
   the relationship into the cross-project graph; promotion is blocked and the
   field is ignored (the validator warns if it is present).
 
@@ -286,28 +286,28 @@ gitignored files (`.claude/synergy-registry.local.json` and the
 `PRIVATE-SYNERGY-<name>.md` filename/content). It must never reach a committed
 file. The structural blocks:
 
-- **Never in the committed base registry.** The private entry lives in
+* **Never in the committed base registry.** The private entry lives in
   `.local.json` only. `validate-plugin.mjs` **errors** if the committed
   `synergy-registry.json` contains any `file: PRIVATE-SYNERGY-*` entry.
-- **Never in `.gitignore` as a per-name line.** Both files are covered by the
+* **Never in `.gitignore` as a per-name line.** Both files are covered by the
   wildcards `PRIVATE-SYNERGY-*.md` and `.claude/*.local.json` already present in
   `.gitignore`. Never add a literal `PRIVATE-SYNERGY-<name>.md` line — that line
   would itself commit the name. The validator flags any such literal line.
-- **Never promoted to Basic Memory.** The `promote` (sibling) mode globs
+* **Never promoted to Basic Memory.** The `promote` (sibling) mode globs
   `SYNERGY-*.md`, never `PRIVATE-SYNERGY-*.md`, and skips any registry entry whose
   `file` is `PRIVATE-SYNERGY-*` — structural.
-- **Never reciprocated to the sibling's repo.** The `reconcile` mode's apply
+* **Never reciprocated to the sibling's repo.** The `reconcile` mode's apply
   reciprocation batch skips any sibling whose `file` is `PRIVATE-SYNERGY-*`.
-- **Never filed as a public task.** The `reconcile` action menu suppresses
+* **Never filed as a public task.** The `reconcile` action menu suppresses
   task creation for private-sibling findings (a committed `.diarie/tasks/*.yml`
   entry naming the sibling would leak it); such findings stay in the ephemeral report.
-- **Follow-up logging redirects.** Logging an entry for a private sibling writes
+* **Follow-up logging redirects.** Logging an entry for a private sibling writes
   to the gitignored `PRIVATE-SYNERGY-<name>.md`, never a committed
   `SYNERGY-<name>.md`.
 
 **Hybrid read-diff.** Unlike a public sibling's glob-discovered
 `PRIVATE-SYNERGY-<name>.md` overlay (which the `reconcile` mode never reads), a
-private sibling's `PRIVATE-SYNERGY-<name>.md` *is* the registry `file` value, so
+private sibling's `PRIVATE-SYNERGY-<name>.md` _is_ the registry `file` value, so
 `reconcile` **may read it for read-only diff** (reciprocal-gap / status-drift
 findings, shown only in the ephemeral terminal report). The read exception is
 scoped precisely to "this `PRIVATE-SYNERGY-*` file is a registry `file` value";
@@ -315,8 +315,8 @@ the write block above is what keeps the name out of every committed surface.
 
 ## Lifecycle rules
 
-- SYNERGY files are **permanent** — never delete them. When all entries in a
+* SYNERGY files are **permanent** — never delete them. When all entries in a
   section are resolved, restore the `_No entries yet._` placeholder.
-- One file per sibling project relationship.
-- Stale threshold: individual entries are stale after 3 months without activity.
+* One file per sibling project relationship.
+* Stale threshold: individual entries are stale after 3 months without activity.
   A Trend Review entry resets the staleness clock for the entire file.

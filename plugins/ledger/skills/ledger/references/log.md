@@ -6,21 +6,21 @@ live in `SKILL.md` `## Shared conventions` and are not restated here.
 
 ## Object routing (upstream vs sibling)
 
-Decide what the observation is *about*:
+Decide what the observation is _about_:
 
-- **A cross-project PATTERN** — a shared approach, a divergence, an extraction candidate,
+* **A cross-project PATTERN** — a shared approach, a divergence, an extraction candidate,
   or a capability gap between this project and a sibling → **`log` (sibling)** below.
-- **CONCRETE FRICTION in code this project doesn't own** — a bug, a missing feature, an
+* **CONCRETE FRICTION in code this project doesn't own** — a bug, a missing feature, an
   awkward API, a cross-vendor inconsistency, or a contribution opportunity → **`log`
   (upstream)** below.
 
 **The sibling-that-is-also-an-upstream-source case (do not conflate).** Under the
-vp-plugins marketplace pattern, sibling projects (vp-beads, vp-knowledge, vp-git) *consume
-each other's* skills, hooks, and agents — so a sibling can be an upstream artifact source.
+vp-plugins marketplace pattern, sibling projects (vp-beads, vp-knowledge, vp-git) _consume
+each other's_ skills, hooks, and agents — so a sibling can be an upstream artifact source.
 When the observation is a **concrete code request against a sibling's shipped artifact** (a
 bug in their skill prose, a feature request for their hook, a contribution opportunity to
 extract shared logic), that IS **`log` (upstream)** work — there is a real upstream artifact
-to file against, named `UPSTREAM-<sibling-name>.md`. Only *patterns and divergences* go to
+to file against, named `UPSTREAM-<sibling-name>.md`. Only _patterns and divergences_ go to
 `log` (sibling). The two are distinct: a request for concrete change ≠ an observation of a
 shared/divergent pattern.
 
@@ -38,7 +38,7 @@ what workaround was needed. Don't make the user re-explain what's already visibl
    `action:<owner>/<repo>`, `docker:<image>`, `vscode:<ext>` (consistent with
    `/tool-intel`). For a concrete request against a sibling's artifact, the target file is
    `UPSTREAM-<sibling-name>.md` (see object routing above).
-   - **1a. Basic Memory pre-check.** If BM MCP tools are available, call
+   * **1a. Basic Memory pre-check.** If BM MCP tools are available, call
      `mcp__basic-memory__search_notes` with the package name. If a matching note has an
      `## Upstream Friction` section with related entries, surface them: "This friction is
      already tracked in Basic Memory from another project: \[summary]. Logging it locally
@@ -89,11 +89,11 @@ no signal (skip `Workaround: none` when severity already says `blocking`).
 7. **Eager promotion check.** If BM tools are available, assess project tempo (see
    `SKILL.md` classifier). **Upstream table:**
 
-   | Tempo    | Commits/90d | Behavior                                                                                             |
-   | -------- | ----------- | ---------------------------------------------------------------------------------------------------- |
-   | Dormant  | 0–4         | Offer inline promotion for any promotable entry (`Ownership: upstream`/`shared`, or any Opportunity) |
+   | Tempo    | Commits/90d | Behavior                                                                                                     |
+   | -------- | ----------- | ------------------------------------------------------------------------------------------------------------ |
+   | Dormant  | 0–4         | Offer inline promotion for any promotable entry (`Ownership: upstream`/`shared`, or any Opportunity)         |
    | Moderate | 5–14        | Offer only for high-urgency: blocking bugs `Ownership: upstream`, or Opportunities `Merge readiness: direct` |
-   | Active   | 15+         | Skip — the normal sprint cadence handles it via `promote`                                             |
+   | Active   | 15+         | Skip — the normal sprint cadence handles it via `promote`                                                    |
 
    When offering, explain low commit frequency means entries sit unread for months. If the
    user agrees, apply `promote` (upstream) steps 3–4 scoped to this single entry. If they
@@ -112,7 +112,7 @@ capability gap between this project and a sibling.
 
 1. **Identify the sibling.** If the user named one, use it directly. Otherwise check
    `.claude/synergy-registry.json`, then glob `SYNERGY-*.md` as a fallback, then ask.
-   - **1b. Guided registry creation** — only when `.claude/synergy-registry.json` is absent
+   * **1b. Guided registry creation** — only when `.claude/synergy-registry.json` is absent
      AND a sibling has been named. If the registry already exists, skip silently (append-to-
      existing is not supported; that falls back to manual editing — add a
      `{name, file, remote, bm-entity, relationship}` entry per
@@ -143,8 +143,8 @@ capability gap between this project and a sibling.
 4. **Classify** into one section: **Shared Pattern** (same approach both projects) ·
    **Divergence** (handled differently) · **Extraction Candidate** (worth extracting from
    this project) · **They Have / We Don't** (sibling has, we lack — apply the domain-fit
-   test: "this project has the underlying need but lacks the implementation" *passes*; "the
-   sibling has a capability in a different domain" *fails* and is noise).
+   test: "this project has the underlying need but lacks the implementation" _passes_; "the
+   sibling has a capability in a different domain" _fails_ and is noise).
 5. Read the target file. **If the entry is proprietary** (a private sibling's internal
    paths, client names, unreleased plans), target the gitignored
    `PRIVATE-SYNERGY-<project>.md` overlay instead — verify it is gitignored first
@@ -171,7 +171,7 @@ side (resolve the sibling path via the registry-with-override pattern — `local
 `../<sibling>/` — and check `<path>/SYNERGY-<this-project>.md` if accessible), reciprocate:
 re-verify each entry from this project's angle, record verification dates, note drift. **Do
 not skip duplicates — reciprocation IS the verification step** (SYNERGY entries are two
-parallel implementations that *happen* to align; each side keeps its own record and
+parallel implementations that _happen_ to align; each side keeps its own record and
 re-verifies at its own cadence). When an entry has no reciprocal yet on the sibling, prompt
 the user to file it there (a follow-up task in the sibling repo).
 
@@ -186,5 +186,5 @@ the user to file it there (a follow-up task in the sibling repo).
    | Active   | 15+         | Skip — the normal sprint cadence handles it                  |
 
    If the user agrees, defer to `promote` (sibling) for the actual write (single-entry
-   path) — `log` only *offers*; `promote` *performs*, keeping `## Cross-Project Synergy`
+   path) — `log` only _offers_; `promote` _performs_, keeping `## Cross-Project Synergy`
    writes within `promote`'s sole-owner boundary. Decline / unavailable / active → skip.

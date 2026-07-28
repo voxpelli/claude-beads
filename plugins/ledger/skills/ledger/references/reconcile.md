@@ -3,24 +3,24 @@
 Bilateral reconciliation of `SYNERGY-*.md` and `UPSTREAM-*.md` files between this project
 and its sibling vp-\* projects. **Read-only by default** — surfaces drift, reciprocal gaps,
 stale-aligned rows, and status drift without mutating anything. The opt-in
-`--auto-reciprocate` flag writes reciprocal entries to the *sibling's* SYNERGY file via
+`--auto-reciprocate` flag writes reciprocal entries to the _sibling's_ SYNERGY file via
 per-entry confirmation.
 
 🚨 **This mode writes NOTHING to Basic Memory.** The `reconcile` layer owns nothing in BM.
-Before the merge, this was enforced by *omitting* `mcp__basic-memory__edit_note` from the
+Before the merge, this was enforced by _omitting_ `mcp__basic-memory__edit_note` from the
 skill's `allowed-tools`; the merged `ledger` skill carries that tool for `promote`, so the
 boundary is now **prose-enforced**: `reconcile` must never call
 `mcp__basic-memory__edit_note`. BM writes are `promote`'s territory. `reconcile` also owns
-nothing on *this* project's side of the SYNERGY/UPSTREAM files — its action menu *delegates*
+nothing on _this_ project's side of the SYNERGY/UPSTREAM files — its action menu _delegates_
 writes (see the protocol below).
 
 ## Cross-mode boundaries
 
-- Does **not** write SYNERGY entries on this project's side — `log` (sibling) owns that.
-- Does **not** pull upstream subtrees — `pull` owns that.
-- Does **not** write `## Trend Reviews` entries — `review --trend` owns those. Even under
+* Does **not** write SYNERGY entries on this project's side — `log` (sibling) owns that.
+* Does **not** pull upstream subtrees — `pull` owns that.
+* Does **not** write `## Trend Reviews` entries — `review --trend` owns those. Even under
   `--auto-reciprocate`, `reconcile` mirrors only content entries into reciprocal sections.
-- **Surfacing** reciprocal-friction findings is in scope; **acting** on them is not — filing
+* **Surfacing** reciprocal-friction findings is in scope; **acting** on them is not — filing
   work is `log` (upstream)'s job, annotating a sibling's entry resolved is `resolve`'s.
 
 ## Registry, paths, and private siblings
@@ -35,11 +35,11 @@ synergy-only).
 
 **Private sibling read-vs-write split** (keyed on the `PRIVATE-SYNERGY-*` `file` predicate):
 
-- **Read (allowed) — hybrid read-diff.** A private sibling's `PRIVATE-SYNERGY-<name>.md` **is**
+* **Read (allowed) — hybrid read-diff.** A private sibling's `PRIVATE-SYNERGY-<name>.md` **is**
   its registry `file`, so workflows 1/2/3-ModeA read it for **read-only diff findings** that
-  appear in the **ephemeral terminal report only** — never written. (This is unlike a *public*
+  appear in the **ephemeral terminal report only** — never written. (This is unlike a _public_
   sibling's glob-discovered `PRIVATE-SYNERGY-*.md` overlay, which `reconcile` never reads.)
-- **Write (blocked) — every committed surface** for a `PRIVATE-SYNERGY-*`-filed sibling:
+* **Write (blocked) — every committed surface** for a `PRIVATE-SYNERGY-*`-filed sibling:
   reciprocation (workflow 4 (Apply reciprocation batch)) skips it entirely; the action menu suppresses task creation (a
   committed `.diarie/tasks/*.yml` naming the sibling would leak it); "log unreciprocated
   entry" follow-ups route to the gitignored `PRIVATE-SYNERGY-<name>.md`; BM promotion never
@@ -64,7 +64,7 @@ synergy-only).
 For each accessible sibling, compare the bidirectional SYNERGY files.
 
 1. Read this side's file by the registry `file` value — `SYNERGY-<sibling>.md` (public) or
-   `PRIVATE-SYNERGY-<sibling>.md` (private, the read-diff exception). For a *public* sibling
+   `PRIVATE-SYNERGY-<sibling>.md` (private, the read-diff exception). For a _public_ sibling
    never pull in a glob-discovered `PRIVATE-SYNERGY-*.md` overlay (the prefix keeps those
    outside the namespace). Absent → treat as zero entries.
 2. Read the sibling's `<local-path>/SYNERGY-<this-project>.md`. Absent → zero entries.
@@ -73,17 +73,17 @@ For each accessible sibling, compare the bidirectional SYNERGY files.
    migration** (Shared Pattern here, Divergence on the sibling) surfaces as findings (a) on
    the origin section and (b) on the destination — NOT as (d) status drift; the migration is
    itself the signal. **`They Have / We Don't` is intrinsically asymmetric** (each side's
-   section describes what the *other* has) — **exclude it from findings (a)/(b)**.
+   section describes what the _other_ has) — **exclude it from findings (a)/(b)**.
 4. Classify each entry:
-   - **(a) Reciprocal gaps** — here, no matching title on the sibling. Candidates for
+   * **(a) Reciprocal gaps** — here, no matching title on the sibling. Candidates for
      workflow 4 (Apply reciprocation batch) under `--auto-reciprocate`. (Excludes `They Have / We Don't`.)
-   - **(b) Unreciprocated on sibling** — on the sibling, no match here. User may `log`
+   * **(b) Unreciprocated on sibling** — on the sibling, no match here. User may `log`
      (sibling) these. `reconcile` never writes this side automatically. (Excludes `They
      Have / We Don't`.)
-   - **(c) Stale alignment claims** — `Status: aligned` with `Last verified:` >8 sprints
+   * **(c) Stale alignment claims** — `Status: aligned` with `Last verified:` >8 sprints
      (≈2 cycles; canonical threshold in `review --trend`). Treat 1 sprint ≈ 2 weeks; no
      `Last verified:` → fall back to the entry date stamp.
-   - **(d) Status drift** — matched entries whose `Status:` differs across sides (Shared
+   * **(d) Status drift** — matched entries whose `Status:` differs across sides (Shared
      Patterns `aligned` vs `drifting`/`diverging`; Divergences `adopt-theirs`/`propose-shared`
      where one side moved to `adopted`/`converged`). Excludes `accept-difference`
      Divergences (intended-asymmetric).
@@ -94,11 +94,11 @@ For each accessible sibling, compare the bidirectional SYNERGY files.
 
 Two pairing modes coexist; both can fire on one sibling.
 
-- **Mode A — shared-dependency pairing.** Both sides have `UPSTREAM-<dep>.md` with the **same
+* **Mode A — shared-dependency pairing.** Both sides have `UPSTREAM-<dep>.md` with the **same
   basename**. Findings (a)–(d).
-- **Mode B — reciprocal sibling-friction.** This project has `UPSTREAM-<sibling-name>.md`
+* **Mode B — reciprocal sibling-friction.** This project has `UPSTREAM-<sibling-name>.md`
   and/or the sibling has `UPSTREAM-<this-name>.md`. **Owner-side semantics invert:**
-  `Ownership: upstream` in the sibling's file *about us* means THIS project must act.
+  `Ownership: upstream` in the sibling's file _about us_ means THIS project must act.
   Findings (e)–(h). **Skipped entirely for private siblings** (the filename would leak the name).
 
 1. **Build Mode A pairs.** Glob both sides for `UPSTREAM-*.md`; intersect by basename.
@@ -116,21 +116,21 @@ Two pairing modes coexist; both can fire on one sibling.
    entries** (friction the sibling tracks for a shared dep that we don't — potential adoption
    via `log` (upstream) or `promote --sync-back`; `reconcile` never writes here).
 4. **Process Mode B pair.** Read whichever side(s) exist; match by title (two-pass). Classify:
-   - **(e) Sibling's unresolved friction against us** — entries in
+   * **(e) Sibling's unresolved friction against us** — entries in
      `<sibling>/UPSTREAM-<this-name>.md` not `_(Resolved …)_` / not in a `## Resolved`
      section. `Ownership: upstream` = WE own the fix (we are upstream from their view).
      Surface ALL unresolved — each is a request directed at us. Hint: file tracker tasks here
      or address inline.
-   - **(f) Our unresolved friction against the sibling** — entries in
+   * **(f) Our unresolved friction against the sibling** — entries in
      `UPSTREAM-<sibling-name>.md` unresolved on our side, no `_(Resolved …)_` either side.
      Informational — work blocked on the sibling. Hint: check their changelog for shipped fixes.
-   - **(g) Cross-side staleness — our entry, sibling may have shipped.** Our unresolved entry
+   * **(g) Cross-side staleness — our entry, sibling may have shipped.** Our unresolved entry
      where the sibling shows a "shipped" signal (6-month look-back). Hint: re-verify; annotate
      via `resolve` if confirmed.
-   - **(h) Reverse cross-side staleness — sibling tracks us, we may have shipped.** The
-     sibling's unresolved entry where *this* project shows a "shipped" signal. Read-only —
+   * **(h) Reverse cross-side staleness — sibling tracks us, we may have shipped.** The
+     sibling's unresolved entry where _this_ project shows a "shipped" signal. Read-only —
      `reconcile` cannot write the sibling's file. Hint: notify the sibling maintainer.
-   - **What "shipped" means** (findings (g)/(h)): (1) a CHANGELOG or `_(Resolved …)_`
+   * **What "shipped" means** (findings (g)/(h)): (1) a CHANGELOG or `_(Resolved …)_`
      annotation on the owner's side, OR (2) the fix referenced in a git tag message or commit
      subject within the window (`git -C <owner-path> log --oneline --since="6 months ago"` as
      a heuristic — string-match the entry title/lead clause; do not parse). A `Workaround:
@@ -180,11 +180,11 @@ a duplicate the user can reject. Never writes `## Trend Reviews`, this project's
 Entries on the two sides are written by different sessions and drift in title formatting. Two
 explicit passes keep the deterministic rule testable and the judgment rule bounded.
 
-- **Pass 1 — deterministic lead-clause.** Lowercase, collapse whitespace to single spaces,
+* **Pass 1 — deterministic lead-clause.** Lowercase, collapse whitespace to single spaces,
   take the **lead clause** = the substring before the first `:`, `—`, `--`, or ` (` (earliest;
   none → the full normalized title). Two entries pair iff their normalized lead clauses are
   byte-identical. E.g. `wc -l portability guard` ↔ `wc -l portability guard (|| count=0 …)`.
-- **Pass 2 — judgment on residuals only.** For unpaired residuals, scan once for
+* **Pass 2 — judgment on residuals only.** For unpaired residuals, scan once for
   qualifier-phrase reorderings/token rearrangements that clearly describe the same idea; pair
   only when subjects are unambiguously the same. E.g. `PreCompact hook retired in vp-knowledge
   v0.28.0` ↔ `PreCompact hook retired in v0.28.0`. **Pass 2 may NEVER override Pass 1** (don't
@@ -203,16 +203,16 @@ Picking "None" for both tiers exits read-only. After workflows 2 (Sync sibling S
 per sibling (options listed only when their finding count is nonzero):
 
 **Q1 — SYNERGY** (`header: "Synergy"`) — options, each listed only when its finding count > 0.
-Option (1) *Apply reciprocal gaps (N)* — when finding (a) > 0, re-enter workflow 4 (Apply
-reciprocation batch) in-skill. Option (2) *Log unreciprocated sibling entries (N)* — when finding
-(b) > 0, continue in the `log` (sibling) mode for those entries. Option (0) *None*.
+Option (1) _Apply reciprocal gaps (N)_ — when finding (a) > 0, re-enter workflow 4 (Apply
+reciprocation batch) in-skill. Option (2) _Log unreciprocated sibling entries (N)_ — when finding
+(b) > 0, continue in the `log` (sibling) mode for those entries. Option (0) _None_.
 
 **Q2 — UPSTREAM** (`header: "Upstream"`) — options, each listed only when its finding count > 0.
-Option (1) *Update our UPSTREAM (b/d, N)* — when finding (b) > 0 OR (d) > 0, continue in the `log`
-(upstream) mode and/or `promote --sync-back`. Option (2) *File tracker tasks for sibling's
-friction (N)* — when finding (e) > 0, `Edit`/`Write` a task entry to
-`.diarie/tasks/tasks-<slug>.yml`. Option (3) *Resolve cross-stale entries (N)* — when finding
-(g) > 0, continue in the `resolve` mode. Option (0) *None*. (Findings (a), (c), (f), (h) are
+Option (1) _Update our UPSTREAM (b/d, N)_ — when finding (b) > 0 OR (d) > 0, continue in the `log`
+(upstream) mode and/or `promote --sync-back`. Option (2) _File tracker tasks for sibling's
+friction (N)_ — when finding (e) > 0, `Edit`/`Write` a task entry to
+`.diarie/tasks/tasks-<slug>.yml`. Option (3) _Resolve cross-stale entries (N)_ — when finding
+(g) > 0, continue in the `resolve` mode. Option (0) _None_. (Findings (a), (c), (f), (h) are
 informational — not in the menu.)
 
 If neither tier is actionable, skip the prompt. If only one is, issue a single-question call.
@@ -246,11 +246,11 @@ report and continue.
 
 ## Notes
 
-- **Skip inaccessible siblings, don't error.** Continue with what's available; report skips.
-- **No new SYNERGY/UPSTREAM sections** — `reconcile` writes only into existing schemas; schema
+* **Skip inaccessible siblings, don't error.** Continue with what's available; report skips.
+* **No new SYNERGY/UPSTREAM sections** — `reconcile` writes only into existing schemas; schema
   evolution is `log`'s job.
-- **Project tempo:** a sibling dormant >90 days
+* **Project tempo:** a sibling dormant >90 days
   (`git -C <path> rev-list --count --since="90 days ago" HEAD` = 0) → contextualize its
   findings "(dormant — drift expected)"; don't suppress them.
-- **Project-name not derivable** (no `plugin.json` name AND empty basename) → skip Mode B for
+* **Project-name not derivable** (no `plugin.json` name AND empty basename) → skip Mode B for
   every sibling and report; Mode A and workflow 2 (Sync sibling SYNERGY) are unaffected.

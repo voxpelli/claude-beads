@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- **`isErrorWithCode`'s type predicate is unsound — it promises `code: string`
+* **`isErrorWithCode`'s type predicate is unsound — it promises `code: string`
   but only checks the key exists** (2026-07-14, v5.0.0) — the declared type is
   `value is Error & { code: string }` (`lib/misc.d.ts:11-13`), while the
   implementation is:
@@ -14,7 +14,7 @@
   ```
 
   `'code' in value` does not prove `code` is a string. Any error class that
-  *declares* the field — a very ordinary thing for a custom error to do —
+  _declares_ the field — a very ordinary thing for a custom error to do —
   satisfies the guard while carrying `undefined`, and TypeScript then cheerfully
   permits `err.code.startsWith(…)` on it.
 
@@ -39,7 +39,7 @@
   Ownership: **upstream** (voxpelli's own package) · Workaround: add
   `typeof err.code === 'string'` at every call site — which is exactly the check
   the predicate exists to spare you, so the guard currently provides negative
-  value: it is more dangerous than an inline `'code' in err`, because it *looks*
+  value: it is more dangerous than an inline `'code' in err`, because it _looks_
   like it narrowed.
 
   Suggested fix:
@@ -59,8 +59,8 @@
 
 ## Feature Requests
 
-*No entries yet.*
+_No entries yet._
 
 ## Upstream Opportunities
 
-*No entries yet.*
+_No entries yet._

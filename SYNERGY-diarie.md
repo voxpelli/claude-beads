@@ -2,8 +2,7 @@
 
 Tracking cross-project synergy with [diarie](https://github.com/voxpelli/diarie).
 
-diarie is the flat-YAML tracker CLI extracted from this repo (2026-07-18, `git subtree split
---rejoin`). This project consumes it: its skills shell out to the `diarie` binary and read the
+diarie is the flat-YAML tracker CLI extracted from this repo (2026-07-18, `git subtree split --rejoin`). This project consumes it: its skills shell out to the `diarie` binary and read the
 `.diarie/` store. **Published 2026-07-18 and consumed as an ordinary npm dependency
 (`diarie@^0.2.0` devDep; upstream is at 0.2.2) — the vendored `diarie/` workspace is GONE.**
 Relationship: `dependency`.
@@ -15,17 +14,17 @@ Relationship: `dependency`.
 
 ## Shared Patterns
 
-- **The `.diarie/` store contract** (2026-07-18) — the store schema, the `--root` / nearest-wins
+* **The `.diarie/` store contract** (2026-07-18) — the store schema, the `--root` / nearest-wins
   resolution, and the `ENOSTORE` "missing store is an error, not an empty backlog" contract are owned
   by diarie (`diarie/lib/schema.js`) and consumed by this project's skills. They must stay aligned:
   a skill that reads the store must speak diarie's current CLI + codes.
   Status: aligned · Last verified: 2026-07-18
-- **THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES** (2026-07-18) — the npm-workspace
+* **THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES** (2026-07-18) — the npm-workspace
   gate-delegation pattern diarie's extraction proved (`npm run check --workspaces --if-present`; a
   workspace's own gates travel the subtree split) is the same pattern the vp-skills monorepo
   generalises to N plugin-workspaces. Keep the delegation shape aligned across both repos.
   Status: aligned · Last verified: 2026-07-18
-- **remark `remarkConfig` markdown-lint config** (2026-07-22, reciprocating the sibling's entry) —
+* **remark `remarkConfig` markdown-lint config** (2026-07-22, reciprocating the sibling's entry) —
   the `remarkConfig` block (frontmatter + gfm + lint-recommended/consistent + validate-links +
   list-marker `-`) was copied verbatim into diarie when it re-added `check:md` after the extraction.
   Two copies with no shared package will drift; converge on a shared `@voxpelli/remark-config` if a
@@ -34,7 +33,7 @@ Relationship: `dependency`.
 
 ## Divergences
 
-- **`check:md` exclusion posture — deliberate, principled, and settled on both sides**
+* **`check:md` exclusion posture — deliberate, principled, and settled on both sides**
   (2026-07-22) — diarie runs ONE pass with **no per-file exclusions**
   (`remark . --quiet --frail --ignore-path .gitignore`), on the stated principle "**no unlinted
   island**" (decision `diarie-tbl`, which explicitly cites `vp-beads-imd` as the hazard it is
@@ -44,7 +43,7 @@ Relationship: `dependency`.
   artifacts (`vp-beads-imd`, resolved 2026-07-22).
   **Both are correct for their role and this is NOT drift to converge:** diarie is the store's
   OWNER (its `.diarie/` is small, live, and entirely its own), while this repo carries frozen
-  inherited artifacts (~172 warnings live in `.diarie/_archive/` + `RESEARCH-*.md`, 0 in live
+  inherited artifacts (\~172 warnings live in `.diarie/_archive/` + `RESEARCH-*.md`, 0 in live
   decision docs) that are deliberately not churned. The shared conclusion both sides reached
   independently: the load-bearing gap is decision **frontmatter**, which neither remark config can
   see — tracked upstream as `diarie-dlm` (see `UPSTREAM-diarie.md`).
@@ -52,7 +51,7 @@ Relationship: `dependency`.
 
 ## Extraction Candidates
 
-- **`diarie-adopt` co-location with diarie** (2026-07-18) — the bd→diarie adoption pair
+* **`diarie-adopt` co-location with diarie** (2026-07-18) — the bd→diarie adoption pair
   (migrate-tracker + deintegrate-beads) was routed to the vp-skills monorepo (`plugins/diarie-adopt`)
   to decouple it from diarie's publish timeline, overriding `DESIGN-constellation-repackaging.md` §4 /
   `vp-beads-ski` ("bd IS diarie's framing → ship with diarie"). If diarie publishes and wants to own

@@ -23,7 +23,7 @@ instructions.
 
 **Why this exists.** beads 1.1.0's schema-migration gate panics on **every
 write** (`bd create`/`update`/`close` fail with `refusing to auto-apply N
-pending schema migrations`). The binary is installed globally, so *every* repo
+pending schema migrations`). The binary is installed globally, so _every_ repo
 on beads broke at once — this is not a per-project problem to work around but a
 substrate to leave. vp-beads made this cutover first; this skill is the path it
 paved.
@@ -41,7 +41,7 @@ anything.
 > equivalent), and add `--readonly` — a migration only ever reads. `bd`
 > auto-discovers `.beads/` from the **current directory**, and this repo still has
 > its own `.beads/` on disk, so a bare `bd export` run from here would happily
-> export *vp-beads'* issues into the project you meant to migrate. The migrator's
+> export _vp-beads'_ issues into the project you meant to migrate. The migrator's
 > overwrite guard cannot catch that: the target has no store, so nothing trips.
 > This is the read-side half of "writing to the wrong project", and it is the
 > single easiest way to ruin a migration.
@@ -55,22 +55,22 @@ It never grooms, prioritizes, or closes work — it only moves it.
 
 It is also the one skill exempt from the tiering in CLAUDE.md
 `### Files-availability convention`: that convention describes how a component
-degrades when the tracker is *absent*, but an absent tracker plus a present
+degrades when the tracker is _absent_, but an absent tracker plus a present
 `.beads/` is precisely this skill's **precondition**, not a degradation.
 
 ## What the migration preserves, and what it drops
 
-| bd concept | Becomes |
-| --- | --- |
-| 9 issue types | **3 of the schema's 4** — `task`, `decision`, `milestone`. (`doc` exists in the schema but nothing in bd maps to it, so a migration never produces one.) `bug`/`feature`/`chore`/`story`/`spike` are *framings* that move into `labels:`; `epic` becomes `task` + `parent:` nesting **and** keeps an `epic` label. |
-| `## Acceptance Criteria` body section | An `acceptance_criteria:` list |
-| The rest of the body | A `description:` field (lossless) |
-| `blocks` dependency | `deps:` — but only when the blocker is still live (see below) |
-| `parent-child` dependency | `parent:` — but only when the epic is still live |
-| P0–P4 priorities | `critical` / `high` / `medium` / `low` / `backlog` |
-| `deferred` status | **Preserved** as `deferred` |
-| Closed issues | **Not migrated.** Frozen to `.diarie/_archive/bd-final-export.jsonl` |
-| `bd remember` memories | **Unrecoverable on 1.1.0** — `bd memories` hits the same write-gate. Say so plainly; do not claim to have evacuated them. |
+| bd concept                            | Becomes                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 9 issue types                         | **3 of the schema's 4** — `task`, `decision`, `milestone`. (`doc` exists in the schema but nothing in bd maps to it, so a migration never produces one.) `bug`/`feature`/`chore`/`story`/`spike` are _framings_ that move into `labels:`; `epic` becomes `task` + `parent:` nesting **and** keeps an `epic` label. |
+| `## Acceptance Criteria` body section | An `acceptance_criteria:` list                                                                                                                                                                                                                                                                                     |
+| The rest of the body                  | A `description:` field (lossless)                                                                                                                                                                                                                                                                                  |
+| `blocks` dependency                   | `deps:` — but only when the blocker is still live (see below)                                                                                                                                                                                                                                                      |
+| `parent-child` dependency             | `parent:` — but only when the epic is still live                                                                                                                                                                                                                                                                   |
+| P0–P4 priorities                      | `critical` / `high` / `medium` / `low` / `backlog`                                                                                                                                                                                                                                                                 |
+| `deferred` status                     | **Preserved** as `deferred`                                                                                                                                                                                                                                                                                        |
+| Closed issues                         | **Not migrated.** Frozen to `.diarie/_archive/bd-final-export.jsonl`                                                                                                                                                                                                                                               |
+| `bd remember` memories                | **Unrecoverable on 1.1.0** — `bd memories` hits the same write-gate. Say so plainly; do not claim to have evacuated them.                                                                                                                                                                                          |
 
 **Edges to closed issues are dropped, not carried.** A `blocks` dep on a closed
 issue is already satisfied; a `parent` pointing at a completed epic is history.
@@ -92,12 +92,12 @@ $DIARIE ready --json --root <target>             # what is workable
 ```
 
 **Always pass `--root`.** It is not a convenience: without it the CLI walks up from the current
-directory and could bind to the *wrong* `.diarie/` — the session's cwd (or a parent) rather than
+directory and could bind to the _wrong_ `.diarie/` — the session's cwd (or a parent) rather than
 the migration target. A missing store is an error (`ENOSTORE`, non-zero exit), never an empty
 backlog, so a wrong `--root` fails loudly rather than reporting that the target has no work.
 
-*(`TASKS_ROOT` still works and is what the test suite uses, but `--root` is the interface.
-Prose that leads with the env var is describing the readers that no longer exist.)*
+_(`TASKS_ROOT` still works and is what the test suite uses, but `--root` is the interface.
+Prose that leads with the env var is describing the readers that no longer exist.)_
 
 **On resolution failure:** `npx -y diarie` needs the registry (or a warm npx cache / a global
 `diarie` on `PATH`). If it cannot resolve — offline, no cache — install diarie once (`npm i -g
@@ -164,7 +164,7 @@ $DIARIE migrate /tmp/bd-export.jsonl --root /tmp/dry \
   --epic <epic-id>=<slug> --title <slug>='Human title' --default-slug backlog
 ```
 
-**`--root` is not optional in practice.** It defaults to the *current directory*.
+**`--root` is not optional in practice.** It defaults to the _current directory_.
 Always pass it explicitly and always name the target you intend.
 
 Show the user the dropped-edge report and the per-file tallies. **Read the
@@ -221,14 +221,14 @@ mis-projection.
    `diarie` is **published on npm** (`diarie@0.2.0`, 2026-07-18). So the target no longer
    depends on THIS plugin being installed for the binary — first rung that resolves wins:
 
-   | rung | when |
-   | --- | --- |
-   | `diarie` on `PATH` | globally installed (`npm i -g diarie`) |
-   | `npx -y diarie` | **default — fetches from npm, no local install needed** |
-   | `./node_modules/.bin/diarie` | the target installed `diarie` as a devDep |
+   | rung                         | when                                                    |
+   | ---------------------------- | ------------------------------------------------------- |
+   | `diarie` on `PATH`           | globally installed (`npm i -g diarie`)                  |
+   | `npx -y diarie`              | **default — fetches from npm, no local install needed** |
+   | `./node_modules/.bin/diarie` | the target installed `diarie` as a devDep               |
 
    The `CLAUDE.md` you write in step 3 should document the command that actually works
-   *there* — `npx -y diarie` is the portable default (the line above sets `$DIARIE` to it).
+   _there_ — `npx -y diarie` is the portable default (the line above sets `$DIARIE` to it).
 
    Confirm before proceeding: `$DIARIE validate --root <target>` reports the real file
    count. An absent store errors (`ENOSTORE`); it no longer "skips" and exits 0, which is
@@ -250,7 +250,7 @@ mis-projection.
    ```
 
    A bd-era project very often carries a **blanket ban on the agent's own task list**.
-   Retargeting the *commands* and leaving that ban in place is how a cutover renews the
+   Retargeting the _commands_ and leaving that ban in place is how a cutover renews the
    habit it was supposed to end — **and it is exactly what vp-beads' own cutover commit
    did**, which is why the second grep exists at all. See step 3.
 3. Retarget what BOTH greps found — editing those files, or **creating** a
@@ -269,7 +269,7 @@ mis-projection.
 
    **If the second grep found a task-list ban, surface it and offer the seam — do not
    impose it.** The ban is usually a category error: Claude Code's built-in tracker is
-   *ephemeral* (it dies with the session, by design) while the tracker is *durable*, so
+   _ephemeral_ (it dies with the session, by design) while the tracker is _durable_, so
    they complement rather than compete. But it is the target project's call. Show the
    matched lines, and propose the rule that actually prevents the failure the ban was
    groping at:
@@ -286,7 +286,7 @@ mis-projection.
    bd downgrade.
 5. **Fix the target's `.gitignore` before committing.** Two directions, both easy to
    get wrong:
-   - **`.diarie/` must NOT be ignored.** It is dotted but tracked, and it sits right
+   * **`.diarie/` must NOT be ignored.** It is dotted but tracked, and it sits right
      next to the ephemeral `.beads/` — the instinct to pattern-match is strong and
      wrong. The migrator already refuses to finish if any file it wrote is ignored
      (it asks `git check-ignore`, not the layout); if it stopped, add a negation
@@ -295,7 +295,7 @@ mis-projection.
      innocuous pre-existing
      lines like `*.jsonl` or `_archive/` — either one silently swallows the bd
      archive, and `git add -A` will not say a word.
-   - **The plugin's ephemeral and private artifacts must BE ignored** — if the
+   * **The plugin's ephemeral and private artifacts must BE ignored** — if the
      project will use vp-beads' other skills, gitignore them: `RETRO-*.md`, `SWARM-*.md`,
      `PRIVATE-SYNERGY-*.md`, `.claude/*.local.json`, and `.liggare/` (inline here because this
      plugin ships no README of its own). `PRIVATE-SYNERGY-*.md` is the load-bearing line:
@@ -305,51 +305,51 @@ mis-projection.
 
 ## Error handling
 
-- **`npx -y diarie` fails to resolve / times out** — a registry or network problem, not a missing
+* **`npx -y diarie` fails to resolve / times out** — a registry or network problem, not a missing
   plugin dependency. `diarie` is **published** (`diarie@^0.2.0`); this plugin bundles no copy of its
   own, so there is no `npm install --prefix` recovery to run and nothing to "add" post-cutover. Retry,
   or provide diarie another way (`npm i -g diarie`, a warm npx cache, or the target's own devDep — see
   Prerequisites).
-- **`unmapped bd status for <id>`** — the migrator refuses rather than emit a
+* **`unmapped bd status for <id>`** — the migrator refuses rather than emit a
   task with no status. bd has statuses beyond the four it maps (`reopened`, …).
   `STATUS_MAP` lives in the external **[`voxpelli/diarie`](https://github.com/voxpelli/diarie)** repo
   (`lib/migrate/bd-map.js`) — diarie is a published dependency here, so do NOT hand-edit the installed
   copy under `node_modules/diarie/` (npm overwrites it on the next install, and the fix never leaves
   this machine). Report the status upstream (issue/PR); until it lands, treat the migration as blocked
   for that id — do not hand-patch the YAML either.
-- **`refusing to overwrite an existing task store`** — the target has already
+* **`refusing to overwrite an existing task store`** — the target has already
   migrated. Stop and confirm with the user; reach for `--force` only to redo a
   botched migration, and say what it will discard.
-- **`--epic <id> is not a live issue`** (a warning, not a stop) — the epic is
+* **`--epic <id> is not a live issue`** (a warning, not a stop) — the epic is
   closed or misspelled, and its slug file will be written empty. Fix the id or
   drop the flag.
-- **The dual-run diverges beyond `decision`/`milestone`** — do not proceed. Check
+* **The dual-run diverges beyond `decision`/`milestone`** — do not proceed. Check
   first that the store is freshly migrated (a hand-edited one diverges
   legitimately) and that `bd` was pinned with `-C <target>`; then treat it as a
   migration bug.
-- **`diarie validate` fails after migration** — a real projection bug. The
+* **`diarie validate` fails after migration** — a real projection bug. The
   likeliest causes are a dangling edge (should be impossible — edges to non-live
   issues are dropped) or a status-less row (should now throw). Report it; do not
   hand-edit the YAML to make the error go away, or the archive and the store will
   disagree about what happened.
-- **An empty or issue-less export** — the target's `.beads/` is empty, or `bd` was
+* **An empty or issue-less export** — the target's `.beads/` is empty, or `bd` was
   pointed at the wrong directory. Re-check the id-prefix sanity assert in
   workflow 1 (Detect and assess).
 
 ## Guidelines
 
-- **The migrator refuses to overwrite an existing store.** If `<root>/.diarie/tasks/`
+* **The migrator refuses to overwrite an existing store.** If `<root>/.diarie/tasks/`
   already holds `tasks-*.yml`, it exits 1 rather than replay the export over
   hand-edits. `--force` overrides this — offer it only to redo a botched migration,
-  and only after saying what will be lost. Note `--force` *overwrites, it does not
-  clean*: redoing with a different `--epic` grouping leaves the previous run's
+  and only after saying what will be lost. Note `--force` _overwrites, it does not
+  clean_: redoing with a different `--epic` grouping leaves the previous run's
   `tasks-<old-slug>.yml` behind. Delete stale slug files by hand.
-- **`--root` defaults to the current directory**, never the plugin's own checkout.
+* **`--root` defaults to the current directory**, never the plugin's own checkout.
   Pass it explicitly anyway; a migration that writes to the wrong project is the
   worst outcome this skill can produce.
-- **Do not use a project's existing `.diarie/tasks/*.yml` as a correctness
+* **Do not use a project's existing `.diarie/tasks/*.yml` as a correctness
   reference** if it has already been hand-edited — it will not reproduce from the
   export, and diffing against it produces phantom failures.
-- **Report the `bd remember` store honestly.** On 1.1.0 it is unreadable. If the
+* **Report the `bd remember` store honestly.** On 1.1.0 it is unreadable. If the
   user wants it, the path is a bd downgrade to 1.0.5 — their decision, not a step
   this skill takes.

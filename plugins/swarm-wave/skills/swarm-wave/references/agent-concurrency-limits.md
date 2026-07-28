@@ -61,17 +61,17 @@ count accordingly.
 
 If pressure is CRITICAL or the wave previously crashed with OOM:
 
-- Run agents sequentially (one at a time, wait for completion before
+* Run agents sequentially (one at a time, wait for completion before
   launching the next)
-- Do not switch back to parallel mid-wave
-- Sequential mode applies to the full wave
+* Do not switch back to parallel mid-wave
+* Sequential mode applies to the full wave
 
 ## Sequential Test Rationale
 
 Tests always run sequentially after the gate, not in parallel:
 
-- Tests may share file fixtures or ports
-- Parallel test results are harder to diagnose when failures occur
-- A failing test in one agent's scope should not mask a pass in another's
-- For workspaced projects: run workspace tests first, root tests last
+* Tests may share file fixtures or ports
+* Parallel test results are harder to diagnose when failures occur
+* A failing test in one agent's scope should not mask a pass in another's
+* For workspaced projects: run workspace tests first, root tests last
   (`npm run test:node --workspace=X`, then `npm run test:node`)

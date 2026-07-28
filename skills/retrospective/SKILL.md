@@ -46,12 +46,12 @@ Basic Memory parts of the trend review are tracker-independent and run unchanged
 When the tracker is **unavailable**, the three tracker-dependent steps **degrade
 and announce** (never skip silently):
 
-- **Health audit (step 4)** — replace the tracker health checks with an announced
+* **Health audit (step 4)** — replace the tracker health checks with an announced
   skip line in the RETRO `### Health audit` subsection (see step 4).
-- **Findings (step 5)** — append a `### Follow-ups (untracked)` task list to the
+* **Findings (step 5)** — append a `### Follow-ups (untracked)` task list to the
   RETRO file instead of appending task entries to
   `.diarie/tasks/tasks-<slug>.yml` (see step 5).
-- **Decision capture (step 5)** — record decisions inline as a `### Decisions`
+* **Decision capture (step 5)** — record decisions inline as a `### Decisions`
   block in the RETRO file instead of writing a `.diarie/decisions/<id>.md`
   file (see step 5).
 
@@ -104,7 +104,7 @@ else
 fi
 ```
 
-Anchor on the last **tag**, not on a commit-subject grep. `git log -1 --grep='^feat: v[0-9]'` looks correct but returns the most recent commit *matching the pattern* — when a project's release-commit convention drifts (here, `feat: vN.N.N —` → `chore(release): vN.N.N`), the grep keeps succeeding against an ancient commit and silently reports a range several sprints too wide. A tag lookup fails loudly instead.
+Anchor on the last **tag**, not on a commit-subject grep. `git log -1 --grep='^feat: v[0-9]'` looks correct but returns the most recent commit _matching the pattern_ — when a project's release-commit convention drifts (here, `feat: vN.N.N —` → `chore(release): vN.N.N`), the grep keeps succeeding against an ancient commit and silently reports a range several sprints too wide. A tag lookup fails loudly instead.
 
 **Announce a degraded commit range.** When the gitignored branch runs, tell the
 user which anchor was used (release commit or file mtime) — the range is a
@@ -114,21 +114,21 @@ sprint. Silently emitting zero commits is the bug this branch exists to prevent.
 
 **Current upstream status:**
 
-- Glob for all `UPSTREAM-*.md` files and read them
-- Count open items per file and per section
+* Glob for all `UPSTREAM-*.md` files and read them
+* Count open items per file and per section
 
 **Current synergy status:**
 
-- Glob for all `SYNERGY-*.md` files and read them
-- Count open entries per file and per section
-- Highlight actionable items: Extraction Candidates with `Readiness: ready`,
+* Glob for all `SYNERGY-*.md` files and read them
+* Count open entries per file and per section
+* Highlight actionable items: Extraction Candidates with `Readiness: ready`,
   Divergences with `Convergence path: adopt-theirs` or `propose-shared`,
   They Have / We Don't with `Priority: adopt-soon`
-- Note any Shared Patterns with `Status: drifting`
+* Note any Shared Patterns with `Status: drifting`
 
 **Recent conversation context:**
 
-- Review the current session for friction, workarounds, discoveries, and
+* Review the current session for friction, workarounds, discoveries, and
   decisions made during development
 
 **Test and coverage status:**
@@ -182,13 +182,13 @@ if no SYNERGY-\*.md files were found in step 2):
 
 **Section guidelines:**
 
-- **What went well** — concrete wins: bugs caught, patterns established, clean
+* **What went well** — concrete wins: bugs caught, patterns established, clean
   commits, test improvements. Reference specific files/commits. Focus on process
   and engineering quality, not just features shipped.
-- **What could improve** — honest assessment of friction, false starts, wasted
+* **What could improve** — honest assessment of friction, false starts, wasted
   effort. Not a blame list — focus on systemic issues and what would prevent
   recurrence.
-- **Upstream observations** — summarize current state of all UPSTREAM files.
+* **Upstream observations** — summarize current state of all UPSTREAM files.
   Log any NEW friction discovered in the session to the appropriate UPSTREAM
   file using `/upstream-tracker` workflow 1 (Log a new entry). Review recent
   session work — did any workarounds or local extensions get built this sprint
@@ -196,7 +196,7 @@ if no SYNERGY-\*.md files were found in step 2):
   `/upstream-tracker` workflow 1 (Log a new entry) with type "Upstream
   Opportunity". Note trends across packages.
   Flag stale items (>3 months old).
-- **Synergy observations** — summarize current state of all SYNERGY files.
+* **Synergy observations** — summarize current state of all SYNERGY files.
   Log any NEW cross-project observations discovered in the session to the
   appropriate SYNERGY file using `/synergy-tracker` workflow 1 (Log a synergy
   entry). Report
@@ -207,7 +207,7 @@ if no SYNERGY-\*.md files were found in step 2):
   log via `/synergy-tracker` workflow 1 (Log a synergy entry). Note trends across sibling projects.
   Flag stale entries (>3 months old). If no SYNERGY files exist, omit this
   section from the generated RETRO-NN.md entirely.
-- **Lessons learned** — reusable insights. Each should be a principle that
+* **Lessons learned** — reusable insights. Each should be a principle that
   future sessions can apply, not a one-off fact. Format: **Bold principle** —
   supporting evidence from this sprint.
 
@@ -245,7 +245,7 @@ diarie ready --blocked    # Blocked review: tasks whose deps are unmet
 
 Per-check guidance:
 
-- **`diarie validate`** — the integrity gate. It validates each task row
+* **`diarie validate`** — the integrity gate. It validates each task row
   against `diarie/lib/schema.js`, checks the dependency graph for cycles and
   dangling `deps:`/`parent:` refs, and reports rows missing required fields. No
   auto-fix — findings require human triage; list the affected task IDs with the
@@ -253,17 +253,17 @@ Per-check guidance:
   Break a dependency cycle or drop a stale reference by editing the offending
   row's `deps:`/`parent:` list (substrate-not-opinion — plain Edit/Write on the
   YAML, no CRUD helper).
-- **`diarie stats --stale --days 30`** — lifecycle. No auto-fix; suggest one of three human
+* **`diarie stats --stale --days 30`** — lifecycle. No auto-fix; suggest one of three human
   actions per task: **defer** (`status: deferred` — consciously postponed, still open),
   **drop** (`status: cancelled` — won't do), or **work** (claim it: `status: in_progress` +
   `agent:`). There is no `closed` status; the vocabulary is
   `pending | in_progress | completed | failed | cancelled | deferred`, and `cancelled`
   ("won't do") is deliberately distinct from `completed` ("done").
-- **`diarie ready --blocked`** — blocked review. A blocked row carries **`blockers`** (deps
+* **`diarie ready --blocked`** — blocked review. A blocked row carries **`blockers`** (deps
   that must FINISH FIRST) and/or **`children`** (it is a container — an epic — and the work
   is in its children). **They are not the same finding and must not be reported as one:** a
   container blocked by its own open children is an epic in flight, which is healthy and not a
-  grooming signal. For a *dep*-blocked task, flag any blocker already `completed` — that row
+  grooming signal. For a _dep_-blocked task, flag any blocker already `completed` — that row
   is unblocked but not actioned, and needs a re-run of `diarie ready` to re-evaluate readiness
   (readiness
   is recomputed on every walk, never stored), or the row's `deps:` edited to drop
@@ -299,10 +299,10 @@ fine since they're real npm packages. Mentioning this project by name is okay
 when genuinely relevant — just don't make notes only useful within this project.
 Call `mcp__basic-memory__search_notes` and:
 
-- Update notes that have been superseded by new learnings this sprint
-- Remove notes that are too project-specific — generalize or delete
-- Check for duplicate notes across directories and merge them
-- Verify tags are consistent and discoverable
+* Update notes that have been superseded by new learnings this sprint
+* Remove notes that are too project-specific — generalize or delete
+* Check for duplicate notes across directories and merge them
+* Verify tags are consistent and discoverable
 
 ### 5. Create tracker tasks from findings
 
@@ -349,7 +349,7 @@ checkbox per actionable finding, so the items are still captured:
 Announce that follow-ups were written to the RETRO file rather than appended to
 the tracker (they can be filed later once the tracker is active).
 
-**Decision capture.** When a sprint outcome is a *decision* (an architectural
+**Decision capture.** When a sprint outcome is a _decision_ (an architectural
 or product choice with explicit rationale and rejected alternatives) rather
 than a task, bug, or feature, record it as a `decision`-typed document — not a
 generic task. Decisions live as standalone markdown files under
@@ -357,9 +357,9 @@ generic task. Decisions live as standalone markdown files under
 
 Recognize a decision when the sprint surfaced any of:
 
-- A choice between two or more viable approaches with rationale recorded
-- A reversal or revision of a previous decision (link it as a supersede)
-- A constraint accepted (e.g., "we will not support X until Y") that future
+* A choice between two or more viable approaches with rationale recorded
+* A reversal or revision of a previous decision (link it as a supersede)
+* A constraint accepted (e.g., "we will not support X until Y") that future
   work must respect
 
 For each decision, write a `.diarie/decisions/<id>.md` file — plain Edit/Write,
@@ -444,8 +444,8 @@ or the project `CLAUDE.md` instead.
 
 For each learning, search first, then create or update:
 
-- If no matching note exists: call `mcp__basic-memory__write_note` to create it
-- If a note exists with new content: call `mcp__basic-memory__read_note` first
+* If no matching note exists: call `mcp__basic-memory__write_note` to create it
+* If a note exists with new content: call `mcp__basic-memory__read_note` first
   to get exact content, then call `mcp__basic-memory__edit_note` with
   `find_replace` or `replace_section` — never call `write_note` on an existing
   note (it requires `overwrite=True` and risks replacing the full note content)
@@ -463,17 +463,17 @@ Organize by engineering domain:
 
 **Guidelines:**
 
-- Only write notes for patterns confirmed this sprint — not speculative
-- Use concrete code examples, not abstract principles
-- Tag notes for discoverability
-- **No project-specific internals** — replace project file paths with generic
+* Only write notes for patterns confirmed this sprint — not speculative
+* Use concrete code examples, not abstract principles
+* Tag notes for discoverability
+* **No project-specific internals** — replace project file paths with generic
   descriptions (e.g., "route handler file" not "lib/routes/settings.js"),
   omit table names, and describe patterns in terms of the technology, not
   the application. Referencing vendor packages by npm name (e.g.,
   `@scope/vendor-package`) is fine — they're real published packages.
   Mentioning this project by name is okay when genuinely relevant — just
   don't make the note only useful within this project.
-- **Division of labor with upstream-tracker and synergy-tracker.** This step
+* **Division of labor with upstream-tracker and synergy-tracker.** This step
   writes `engineering/*` notes (patterns, conventions, lessons learned). For
   upstream friction about specific packages or tools, use `/upstream-tracker`
   workflow 6 (Promote to Basic Memory) instead — it writes to the
@@ -494,8 +494,8 @@ Organize by engineering domain:
 
 After writing the retro, suggest updates to:
 
-- Project `CLAUDE.md` — new conventions, gotchas, or commands discovered
-- `MEMORY.md` — stable patterns confirmed across sprints
-- `README.md` — if project structure or commands changed
+* Project `CLAUDE.md` — new conventions, gotchas, or commands discovered
+* `MEMORY.md` — stable patterns confirmed across sprints
+* `README.md` — if project structure or commands changed
 
 Present suggestions to the user for approval before editing.

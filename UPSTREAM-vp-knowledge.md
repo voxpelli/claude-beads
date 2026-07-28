@@ -1,11 +1,11 @@
 ## Feature Requests
 
-- *(Resolved 2026-04-05, vp-knowledge v0.21.0)* **Knowledge agents should
+* _(Resolved 2026-04-05, vp-knowledge v0.21.0)_ **Knowledge agents should
   preload a note-quality skill** — v0.21.0 added `vp-note-quality` skill and
   agent `skills` frontmatter preloading. Agents now inject the Note Quality
   Checklist automatically on launch.
 
-- **Agent effort defaults not overridable from parent** (2026-04-05) —
+* **Agent effort defaults not overridable from parent** (2026-04-05) —
   v0.21.0 added `effort` frontmatter support and `skills` preloading, but
   `effort` is not overridable from the parent Agent tool call. A parent
   session wanting `effort: max` on a spawned knowledge-maintainer cannot
@@ -15,11 +15,11 @@
   Note: The `model: sonnet` default in knowledge-gardener is a separate
   deliberate choice (SYNERGY accept-difference), not part of this FR.
 
-- *(Resolved 2026-07-02, vp-knowledge v0.32.0 — commit `84bf760`
+* _(Resolved 2026-07-02, vp-knowledge v0.32.0 — commit `84bf760`
   "feat(tool-intel): dispatch third-party Homebrew taps (owner/tap/formula)";
   `ecosystem-brew.md` now carries a `## Third-Party Tap Formulae
   (<owner>/<tap>/<formula>)` section. Surfaced by `/sibling-sync` finding (g),
-  2026-07-10. Detailed entry retained below for design context.)*
+  2026-07-10. Detailed entry retained below for design context.)_
   **tool-intel `brew:` dispatch does not handle third-party taps**
   (2026-05-18) — `skills/tool-intel/references/ecosystem-brew.md` only knows
   the `formulae.brew.sh/api/formula/<name>.json` JSON path. Two-slash
@@ -45,22 +45,22 @@
   half-encoded in BM by 6 precedent notes; user can hand-extend the workflow
   per invocation, but the skill itself doesn't dispatch.
 
-- *(Resolved 2026-04-05, vp-knowledge v0.21.0)* **package-intel should fetch
+* _(Resolved 2026-04-05, vp-knowledge v0.21.0)_ **package-intel should fetch
   npm download stats from the registry API** — v0.21.0 added download stats
   to the package-intel pipeline.
 
 ## Bugs
 
-*No entries yet.*
+_No entries yet._
 
 ## Upstream Opportunities
 
-- *(Resolved 2026-04-05, vp-knowledge v0.21.0)* **Note Quality Checklist —
+* _(Resolved 2026-04-05, vp-knowledge v0.21.0)_ **Note Quality Checklist —
   10-item anti-pattern prevention** — v0.21.0 packaged this as the
   `vp-note-quality` skill with agent `skills` preloading. The checklist is now
   automatically injected into knowledge-gardener and knowledge-maintainer.
 
-- **Observation category audit pattern** (2026-04-05) — A systematic audit
+* **Observation category audit pattern** (2026-04-05) — A systematic audit
   workflow for reviewing `[raindrop]`/`[readwise]` observation categories
   across notes. Identifies observations that should be recategorized to
   `[connection]`/`[source]`/`[quote]`, flags inventory-state `[gap]`

@@ -1,6 +1,6 @@
 # vp-beads-tracker Design Exploration (2026-05 v2 → 2026-06 v3)
 
-> **Lead motif** *(every design decision in this document defers to this sentence; if a proposed feature doesn't serve it, the feature gets deferred or cut):*
+> **Lead motif** _(every design decision in this document defers to this sentence; if a proposed feature doesn't serve it, the feature gets deferred or cut):_
 >
 > **Sprint workflow choreography for solo developers running Claude Code agent swarms — with constitutional safety middleware and Basic Memory graph integration.**
 
@@ -12,22 +12,23 @@
 > (the citation source — primary-source receipts for every claim here).
 >
 > **Verdict: Option C — a lean flat-YAML substrate + a `ready-walker`.** One
-> `tasks-<slug>.yml` per epic/slug + a ~150 LOC `ready-walker.mjs` (deterministic
+> `tasks-<slug>.yml` per epic/slug + a \~150 LOC `ready-walker.mjs` (deterministic
 > single-level ready-walk) + a `validate-tasks.mjs` integrity linter cloning the existing
 > `validate-plugin.mjs` idiom. **Zero new runtime deps** (`js-yaml` already present), no
 > process, no vendor, no SQLite index in v1 (ripgrep for search).
 >
 > This **supersedes the v2 leading recommendation (adopt Backlog.md)** and the committed
-> `SPIKE-MIG.1.md` MIXED verdict. Backlog.md is **declined**: its MCP server is *another
-> daemon/vendor* (a lateral move, not the daemon-escape that is the real driver), and it
+> `SPIKE-MIG.1.md` MIXED verdict. Backlog.md is **declined**: its MCP server is _another
+> daemon/vendor_ (a lateral move, not the daemon-escape that is the real driver), and it
 > **cannot block on dependencies** — so it structurally cannot reproduce `bd ready`, the
-> load-bearing primitive. The hone-ai amnesiac three-stage *loop* (a competing external
+> load-bearing primitive. The hone-ai amnesiac three-stage _loop_ (a competing external
 > proposal) is **also declined** as an opinionated plan→approve→execute→finalize workflow
 > that violates `substrate-not-opinion`; we **borrow** its `progress.txt` + `AGENTS.md`
-> accretion *discipline* and add a *fresh-context reviewer* — take the file shape, reject
+> accretion _discipline_ and add a _fresh-context reviewer_ — take the file shape, reject
 > the loop.
 >
 > **What v2 got wrong** (corrected, primary-sourced — see synthesis §1):
+>
 > 1. **The `node:sqlite` FTS5 gap is stale.** FTS5 ships since Node v24.0/v22.16 (May 2025,
 >    PR nodejs/node#57621). The `openclaw#65033` citation is misapplied (it's about
 >    sqlite-vec, not FTS5). → The Phase-3 "substrate verification" gate is moot.
@@ -36,8 +37,8 @@
 >    refactor of someone else's unstable private project. (The "extend liggare" idea came
 >    from the external hone-ai document, not this v2 — it is **rejected outright**.)
 > 3. **No SQLite index in v1.** Ripgrep over the canonical files covers keyword search; an
->    FTS5/vector index is a *triggered v2* (>500 tasks AND real latency).
-> 4. **The `ready`-walker is the core primitive**, not the index. ~150 LOC over parsed YAML
+>    FTS5/vector index is a _triggered v2_ (>500 tasks AND real latency).
+> 4. **The `ready`-walker is the core primitive**, not the index. \~150 LOC over parsed YAML
 >    reproduces `bd ready`; querying / BM projection / the draft spec compose around it.
 > 5. **The Constitutional Guardrail descopes** to `validate-tasks.mjs` + a PostToolUse hook
 >    (anti-bit-rot integrity at `npm run check` time — honestly a snapshot, not enforcement);
@@ -49,12 +50,12 @@
 > triplet over-fits a repo whose p50 issue lifespan is 1 hour; the rare epic-scale
 > initiative is modelled as epic→children). The open-core "tracker = standalone npm
 > package" framing of v2 is **dropped** — Option C is in-repo `.mjs` helpers, not a separate
-> package (lock-in resistance + platform proximity). *(AMENDED 2026-07-11, decision
+> package (lock-in resistance + platform proximity). _(AMENDED 2026-07-11, decision
 > `vp-beads-dcl`: it is now an in-repo npm **workspace** with a `bin` — `private: true`,
 > unpublished, name still gated. The lock-in-resistance test still passes, because it asks
 > the right question: it is a pure reader over committed files, no daemon, no index, no
 > service, and deleting it costs you a `bin`, not your data. The `.mjs`-helpers clause is
-> superseded; the no-vendor-product principle is not.)* **Rename `vp-beads`→`vp-heddle` stays
+> superseded; the no-vendor-product principle is not.)_ **Rename `vp-beads`→`vp-heddle` stays
 > gated at M4**, decoupled from the substrate swap.
 >
 > **Type model RATIFIED (2026-06-10, decision bead `vp-beads-etm`): 4 types, not 9.** The
@@ -64,7 +65,7 @@
 > `parent:`. Externally validated (beads itself keys no agent behavior on type; working
 > agent-native trackers are typeless; the exclusivity property survives the smaller enum).
 > Implemented in `scripts/task-schema.mjs`. Per-type required-sections return later only as
-> label-conditional *advisory warnings* — never hard errors.
+> label-conditional _advisory warnings_ — never hard errors.
 >
 > **Load-bearing follow-up (2026-06):** the type-vs-decorative gap a code-reading review
 > surfaced — `computeReady` originally ignored `type` entirely, so a pending `doc`/`decision`
@@ -98,26 +99,26 @@ provenance** — corrected by the v3 block above.
 
 > **v3 correction:** the real driver is the **operational complexity-delta of bd-on-Dolt**
 > (daemon + ports + binary DB + dual-store sync + migrations + orphan reaping — observed
-> live), *not* the memory tax or dependency-enforcement loss (both **dormant** at this
-> repo's scale: 1 net-blocked issue, p50 lifespan 1 hour, `bd remember` ~90 tokens). Gas
+> live), _not_ the memory tax or dependency-enforcement loss (both **dormant** at this
+> repo's scale: 1 net-blocked issue, p50 lifespan 1 hour, `bd remember` \~90 tokens). Gas
 > Town "feature creep" / "strategic incoherence" is real but **positioning, not technical
 > forcing** (beads is MIT, stable). Lead the rationale with the complexity-delta; it's the
 > credible plank. See synthesis §2–§3.
 
 The tracker is being explored as part of the user's broader migration off `bd` (now at `gastownhall/beads`). Motivations:
 
-- **bd complexity** — Dolt-backed, multi-process, working-tree binary blobs, documented concurrency-crash failure mode under parallel-agent swarms
-- **bd feature creep** — the gastownhall ecosystem (Gas Town workspace manager + Gas City SDK + Wasteland federation) is expanding bd's substrate role in directions that duplicate vp-beads's own workflow choreography
-- **Strategic incoherence** — vp-beads positions itself as "compete head-on with Gas Town"; depending on Gas Town's substrate while claiming to compete is incoherent at the philosophy layer
-- **Architectural preference for BM-style simplicity** — markdown canonical, projections derived, no daemon, manual editability valued
+* **bd complexity** — Dolt-backed, multi-process, working-tree binary blobs, documented concurrency-crash failure mode under parallel-agent swarms
+* **bd feature creep** — the gastownhall ecosystem (Gas Town workspace manager + Gas City SDK + Wasteland federation) is expanding bd's substrate role in directions that duplicate vp-beads's own workflow choreography
+* **Strategic incoherence** — vp-beads positions itself as "compete head-on with Gas Town"; depending on Gas Town's substrate while claiming to compete is incoherent at the philosophy layer
+* **Architectural preference for BM-style simplicity** — markdown canonical, projections derived, no daemon, manual editability valued
 
 The tracker must:
 
-- Honor Basic Memory's simplicity model
-- Live under the AGPL constraint BM imposes (no DB internals; markdown + MCP only)
-- Follow the user's `harvmcp` + `weft-ai` prior-art templates (third instance is template-following, not novel design)
-- Honor the open-core boundary: **vp-beads = skills (language layer)**; **tracker = computation layer**
-- Be generic infrastructure — vp-beads is one consumer; `weft-ai` also uses bd and would benefit from migration target; tracker should not be vp-beads-specific
+* Honor Basic Memory's simplicity model
+* Live under the AGPL constraint BM imposes (no DB internals; markdown + MCP only)
+* Follow the user's `harvmcp` + `weft-ai` prior-art templates (third instance is template-following, not novel design)
+* Honor the open-core boundary: **vp-beads = skills (language layer)**; **tracker = computation layer**
+* Be generic infrastructure — vp-beads is one consumer; `weft-ai` also uses bd and would benefit from migration target; tracker should not be vp-beads-specific
 
 ## Phased path
 
@@ -148,19 +149,19 @@ Spike `MrLesk/Backlog.md` (in homebrew-core, 5.6K⭐, 38 contributors, MIT, Type
 
 **Spike outcomes drive next phase:**
 
-- **Backlog.md covers ≥85%** → Phase 2b kicks off (integrate + supplement)
-- **Backlog.md covers 50–85%** → mixed adoption; layer supplements where needed; re-evaluate Phase 3 in 2–3 sprints
-- **Backlog.md covers <50%** → Phase 3 build-our-own kicks off, using the blueprint below
+* **Backlog.md covers ≥85%** → Phase 2b kicks off (integrate + supplement)
+* **Backlog.md covers 50–85%** → mixed adoption; layer supplements where needed; re-evaluate Phase 3 in 2–3 sprints
+* **Backlog.md covers <50%** → Phase 3 build-our-own kicks off, using the blueprint below
 
 ### Phase 2b — vp-beads skills layered on Backlog.md (contingent on Phase 2a)
 
 If Backlog.md is the substrate, vp-beads ships these supplements:
 
-- **Constitutional Guardrail PreToolUse hook** — \~50 LOC bash + Node helper, wraps `mcp__backlog__task_*` outputs with provenance-tier + structural quarantine + injection-marker flagging + length cap. Lives in vp-beads/hooks/ + vp-beads/lib/.
-- **BM-graph integration skill** — joins issue body references (`npm:foo`, `brew:bar`) against BM's `## Upstream Friction` sections; surfaces "this issue affects packages with known friction" at read time.
-- **session-reflect graduation hook** — extends vp-knowledge's `session-reflect` to prompt "generalizable pattern here?" when an issue closes; promotes to `engineering/*` BM notes (mirrors upstream-tracker workflow 6).
-- **Memory migration** — existing `bd remember` entries move to auto-memory or CLAUDE.md; SessionStart hook drops the `bd prime` injection. **Implementation caveat (validated 2026-06-03 against Claude Code memory docs):** auto-memory avoids bd's token tax via a **first-200-line / 25 KB truncation cap on `MEMORY.md` plus a topic-file split** — there is **no relevance-recall engine** (topic files are read on demand with the ordinary file tool, navigated from the `MEMORY.md` index; not semantically retrieved). So migrated entries must be **split into topic files with one-line pointers in `MEMORY.md`, not dumped inline** — an inline dump re-creates the per-session tax (now capped at 200 lines, which silently drops anything past it). Keep a **lean, single-sentence recovery-trigger core inline**: per MemGPT/Letta a *small* always-in-context core is correct; abolishing the always-injected tier entirely trades the token tax for retrieval-miss risk on recovery-critical facts.
-- **Skill refactor** — 7 skills update their bd shell-out call sites to backlog CLI. Most surfaces are 1:1 mappings (`bd create` → `backlog task create`); the irreversible delta is the 9→4 type collapse, handled at migration time. (The 8th skill, `harden-memories`, audits the `bd remember` store and has no backlog analog — it is dropped or repurposed by the Memory migration above, not call-site-renamed.)
+* **Constitutional Guardrail PreToolUse hook** — \~50 LOC bash + Node helper, wraps `mcp__backlog__task_*` outputs with provenance-tier + structural quarantine + injection-marker flagging + length cap. Lives in vp-beads/hooks/ + vp-beads/lib/.
+* **BM-graph integration skill** — joins issue body references (`npm:foo`, `brew:bar`) against BM's `## Upstream Friction` sections; surfaces "this issue affects packages with known friction" at read time.
+* **session-reflect graduation hook** — extends vp-knowledge's `session-reflect` to prompt "generalizable pattern here?" when an issue closes; promotes to `engineering/*` BM notes (mirrors upstream-tracker workflow 6).
+* **Memory migration** — existing `bd remember` entries move to auto-memory or CLAUDE.md; SessionStart hook drops the `bd prime` injection. **Implementation caveat (validated 2026-06-03 against Claude Code memory docs):** auto-memory avoids bd's token tax via a **first-200-line / 25 KB truncation cap on `MEMORY.md` plus a topic-file split** — there is **no relevance-recall engine** (topic files are read on demand with the ordinary file tool, navigated from the `MEMORY.md` index; not semantically retrieved). So migrated entries must be **split into topic files with one-line pointers in `MEMORY.md`, not dumped inline** — an inline dump re-creates the per-session tax (now capped at 200 lines, which silently drops anything past it). Keep a **lean, single-sentence recovery-trigger core inline**: per MemGPT/Letta a _small_ always-in-context core is correct; abolishing the always-injected tier entirely trades the token tax for retrieval-miss risk on recovery-critical facts.
+* **Skill refactor** — 7 skills update their bd shell-out call sites to backlog CLI. Most surfaces are 1:1 mappings (`bd create` → `backlog task create`); the irreversible delta is the 9→4 type collapse, handled at migration time. (The 8th skill, `harden-memories`, audits the `bd remember` store and has no backlog analog — it is dropped or repurposed by the Memory migration above, not call-site-renamed.)
 
 Estimated effort: **\~4 sprints total** (Constitutional Guardrail + memory migration → skill refactor → BM-graph + session-reflect → cleanup). Compare \~8+ sprints for from-scratch build.
 
@@ -174,7 +175,7 @@ If Backlog.md doesn't fit, build the tracker following the user's own `harvmcp` 
 
 **Note on prior art:** this section is a clone of the `harvmcp` template with `weft-ai`'s open-core framing applied. The user has built this shape twice (`harvmcp`, `weft-ai`); the third instance is template-following, not novel design. Specific patterns lifted from the prior art are flagged inline.
 
-### Triple-facade pattern *(from harvmcp)*
+### Triple-facade pattern _(from harvmcp)_
 
 ```
                  ┌─ cli.js  (peowly-commands dispatch)
@@ -185,7 +186,7 @@ lib/index.js ────┤
 
 `lib/commands/*.js` = **pure POJO functions** (in → out, no I/O wrapping, no formatting). All three facades dispatch to them. This is the load-bearing invariant from harvmcp's CLAUDE.md.
 
-### File layout — standalone npm package, NOT embedded sub-directory *(from harvmcp)*
+### File layout — standalone npm package, NOT embedded sub-directory _(from harvmcp)_
 
 The v1 of this doc proposed `vp-beads/tracker/` embedded sub-directory with `SessionStart` `diff + npm install` bootstrap. **That was wrong.** harvmcp's distribution model — ship as `@voxpelli/<name>` npm package with `"bin"`; user installs once globally; wire into Claude Code via standard `.mcp.json` or `claude mcp add` — is simpler, cleaner separation, no `${CLAUDE_PLUGIN_DATA}` dance.
 
@@ -221,14 +222,14 @@ The v1 of this doc proposed `vp-beads/tracker/` embedded sub-directory with `Ses
 
 **Distribution:** `npm install -g @voxpelli/<tracker-name>`, then `claude mcp add <name> -- <cli-name> mcp` (matches harvmcp's daily-use pattern). vp-beads's `.mcp.json` (if any) references the installed binary directly. No `${CLAUDE_PLUGIN_DATA}` bootstrap, no `diff + npm install` SessionStart dance.
 
-### Open-core boundary *(from weft-ai)*
+### Open-core boundary _(from weft-ai)_
 
-- **vp-beads plugin** (MIT, OSS via vp-plugins marketplace) — *language* layer: skills, prose, narration, sprint choreography, cross-project sync orchestration (`/sibling-sync`, `/synergy-tracker`, `/upstream-tracker`, `/vendor-sync`)
-- **`@voxpelli/<tracker-name>` package** (MIT, OSS via npm) — *computation* layer: CRUD, dep graph, ready-walker, schema validation, Constitutional Guardrail, atomic claim
-- **MCP tool contracts are the interface**
-- **Tracker never narrates** — returns structured records only (weft-ai's hard rule)
-- vp-beads's skills must never *require* the tracker — degraded path uses direct markdown file reads (weft-ai's degraded-path rule)
-- Same Tailscale pattern weft-ai documents (open protocol + open client + standalone tool)
+* **vp-beads plugin** (MIT, OSS via vp-plugins marketplace) — _language_ layer: skills, prose, narration, sprint choreography, cross-project sync orchestration (`/sibling-sync`, `/synergy-tracker`, `/upstream-tracker`, `/vendor-sync`)
+* **`@voxpelli/<tracker-name>` package** (MIT, OSS via npm) — _computation_ layer: CRUD, dep graph, ready-walker, schema validation, Constitutional Guardrail, atomic claim
+* **MCP tool contracts are the interface**
+* **Tracker never narrates** — returns structured records only (weft-ai's hard rule)
+* vp-beads's skills must never _require_ the tracker — degraded path uses direct markdown file reads (weft-ai's degraded-path rule)
+* Same Tailscale pattern weft-ai documents (open protocol + open client + standalone tool)
 
 Difference from weft-ai: licensing is MIT not proprietary, matching vp-beads's OSS posture.
 
@@ -238,13 +239,13 @@ Markdown notes at `<config-root>/issues/<id>.md` as canonical source of truth. O
 
 Three reasons over JSONL or refs/wal alternatives:
 
-- **Manual editability** wins for human-in-the-loop debugging
-- **Git-mergeability** per-file beats per-line (JSONL has frequent same-line conflicts)
-- **Prompt-injection surface** per-issue is selectable + sanitizable; JSONL all-in-context is not
+* **Manual editability** wins for human-in-the-loop debugging
+* **Git-mergeability** per-file beats per-line (JSONL has frequent same-line conflicts)
+* **Prompt-injection surface** per-issue is selectable + sanitizable; JSONL all-in-context is not
 
 Default `<config-root>` = `backlog/` to align with Backlog.md convention (so migration in either direction is symmetric — if Phase 3 ships and the user later wants to evaluate Backlog.md again, the storage layouts match).
 
-### Schema — 4 types, not 9 *(RATIFIED current — decision `vp-beads-etm`, 2026-06-10; the rest of this Phase-3 section is v2 history)*
+### Schema — 4 types, not 9 _(RATIFIED current — decision `vp-beads-etm`, 2026-06-10; the rest of this Phase-3 section is v2 history)_
 
 | Type        | Required `##` sections                                      | Notes                                                                                                |
 | ----------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -257,12 +258,12 @@ Validation via BM `type: schema` Picoschema notes with `settings.validation: war
 
 Frontmatter `source` provenance field (`user` / `agent:<name>` / `imported:bd` / `imported:backlog` / `sibling-sync` / `upstream-sync`) drives Constitutional Guardrail trust tier.
 
-### Concurrency *(algorithm lifted from br via public README)*
+### Concurrency _(algorithm lifted from br via public README)_
 
-- `flock` advisory `.write.lock` per project
-- SQLite `BEGIN IMMEDIATE` for projection writes
-- `busy_timeout=0` (deliberate — prevents thundering-herd CPU spin)
-- 8-retry application-level jittered exponential backoff (`50ms × 2^attempt ± 25%`, \~12.7s total wait)
+* `flock` advisory `.write.lock` per project
+* SQLite `BEGIN IMMEDIATE` for projection writes
+* `busy_timeout=0` (deliberate — prevents thundering-herd CPU spin)
+* 8-retry application-level jittered exponential backoff (`50ms × 2^attempt ± 25%`, \~12.7s total wait)
 
 Atomic claim: O\_EXCL lockfile in `<config-root>/.locks/<issue-id>.lock` (gitignored), 10-min lease, heartbeat renew, stale-reap in SessionStart. Single-host design.
 
@@ -281,13 +282,13 @@ Atomic claim: O\_EXCL lockfile in `<config-root>/.locks/<issue-id>.lock` (gitign
 
 This is the part of the architecture that justifies building over adopting — if Phase 2a says "Backlog.md is enough," the Constitutional Guardrail ships as a vp-beads PreToolUse hook on Backlog.md MCP. Same code, different attachment point.
 
-### MCP surface — lean v1 *(from harvmcp "Don'ts")*
+### MCP surface — lean v1 _(from harvmcp "Don'ts")_
 
-harvmcp's CLAUDE.md "Things NOT to do": *"Don't add MCP resources (`harvmcp://...`) — explicitly cut for v1."* Applied here:
+harvmcp's CLAUDE.md "Things NOT to do": _"Don't add MCP resources (`harvmcp://...`) — explicitly cut for v1."_ Applied here:
 
 **6–7 tools, NO resources, NO sampling in v1:**
 
-- `task_create`, `task_show`, `task_list`, `task_edit`, `task_close`, `dep_manage`, `prime`
+* `task_create`, `task_show`, `task_list`, `task_edit`, `task_close`, `dep_manage`, `prime`
 
 `prime` returns memory entries in Claude Code `additionalContext` format — the SessionStart hook calls `<cli-name> prime --format claude-additional-context` and emits the JSON. Same code path as MCP `prime` tool.
 
@@ -310,15 +311,15 @@ Resources deferred to v2 (would mirror br's 12 surface: `<scheme>://issues/ready
 
 For comparison: `harvmcp` ships in \~2,000 LOC + skill. Scope is comparable.
 
-### Testing pattern *(from harvmcp + BM note)*
+### Testing pattern _(from harvmcp + BM note)_
 
-- `node --test` runner
-- `InMemoryTransport.createLinkedPair()` for MCP integration tests (BM note: `engineering/testing/mcp-server-integration-testing-via-inmemorytransport`)
-- MCP Inspector is **manual debugging only**, not in automated pipeline
-- `tstyche` type-level tests in `typetests/`
-- `type-coverage` at 98%+ threshold
-- `knip` for dead-code detection
-- `npm run check` runs lint + tsc + knip + type-coverage in parallel via `run-p check:*` + sequential `check-type-tests`
+* `node --test` runner
+* `InMemoryTransport.createLinkedPair()` for MCP integration tests (BM note: `engineering/testing/mcp-server-integration-testing-via-inmemorytransport`)
+* MCP Inspector is **manual debugging only**, not in automated pipeline
+* `tstyche` type-level tests in `typetests/`
+* `type-coverage` at 98%+ threshold
+* `knip` for dead-code detection
+* `npm run check` runs lint + tsc + knip + type-coverage in parallel via `run-p check:*` + sequential `check-type-tests`
 
 ### Graduation roadmap (Phase 3 only)
 
@@ -336,7 +337,7 @@ For comparison: `harvmcp` ships in \~2,000 LOC + skill. Scope is comparable.
 The v1 design exploration had four material errors, all stemming from uncritically importing bd-specific requirements into the new design:
 
 1. **`bd remember` as a needed feature.** Claude Code already has four memory mechanisms (user-global `~/.claude/CLAUDE.md`, project `<project>/CLAUDE.md`, MEMORY.md auto-memory with SessionStart injection, Basic Memory via MCP). `bd remember` was a fifth-tier tool-portable abstraction; vp-beads is Claude-Code-native and doesn't need it. Migration: existing `bd remember` entries move to MEMORY.md or CLAUDE.md; SessionStart hook drops the `bd prime` path.
-2. **9 item types as required vocabulary.** Of bd's 9 types, only 3 are distinct *kinds* of thing: `task` (work), `decision` (record), `milestone` (marker). The other 6 (`bug` / `feature` / `chore` / `story` / `spike` / `epic`) are *framings* of `task` — same lifecycle, same handling, distinguishable via labels or parent relations. Backlog.md's 4-type model (`task / doc / decision / milestone`) cuts at the actual joints.
+2. **9 item types as required vocabulary.** Of bd's 9 types, only 3 are distinct _kinds_ of thing: `task` (work), `decision` (record), `milestone` (marker). The other 6 (`bug` / `feature` / `chore` / `story` / `spike` / `epic`) are _framings_ of `task` — same lifecycle, same handling, distinguishable via labels or parent relations. Backlog.md's 4-type model (`task / doc / decision / milestone`) cuts at the actual joints.
 3. **Hard validation (`validation.on-create=error`).** bd's rigid model was for tool portability — agents had to know the right shape before creating. BM's Picoschema soft-validation with `schema_evolve` drift management is more aligned with the user's stated preference and matches Backlog.md's enum-with-suggestions approach.
 4. **"Cross-project sync as tracker concern".** vp-beads's `/sibling-sync`, `/synergy-tracker`, `/upstream-tracker`, `/vendor-sync` operate on `SYNERGY-*.md` / `UPSTREAM-*.md` / git subtrees — orthogonal markdown files, not tracker state. The tracker only needs to coexist with these files (it does — different paths), not own them.
 
@@ -350,23 +351,23 @@ These five corrections, plus the harvmcp + weft-ai prior-art findings, collapse 
 
 The vp-beads name itself needs to change away from "beads" (since the plugin is rapidly diverging from `gastownhall/beads` as upstream and adopting "beads" in the brand name now signals downstream-dependency that's no longer true). A dedicated branding exercise covers:
 
-- Plugin name (`vp-beads` → ?)
-- Repo name (`voxpelli/claude-beads` → ?)
-- Tracker name (TBD — possibly aligned with `Basis Nexus` / `Weft AI` etymology)
-- File conventions (`.beads/` directory → ?)
+* Plugin name (`vp-beads` → ?)
+* Repo name (`voxpelli/claude-beads` → ?)
+* Tracker name (TBD — possibly aligned with `Basis Nexus` / `Weft AI` etymology)
+* File conventions (`.beads/` directory → ?)
 
 Implementation is name-agnostic; choosing late costs nothing.
 
 ## References
 
-- `RESEARCH-ai-issue-tracker-ultimate-solution.md` (this repo) — Drive doc archive with accuracy caveats
-- `engineering/agents/basis-nexus-design-document` (Basic Memory) — sibling architectural template
-- `engineering/agents/agent-issue-tracker-and-mcp-server-territory-map-2026-05` (Basic Memory) — ecosystem catalog
-- `brew/brew-backlog-md` (Basic Memory) — Backlog.md audit
-- `brew/brew-dicklesworthstone-tap-br` (Basic Memory) — br audit
-- `engineering/testing/mcp-server-integration-testing-via-inmemorytransport` (Basic Memory) — MCP test pattern from harvmcp
-- `/Users/pelle/nollfyranoll/ai/harvmcp` — prior-art MCP server template
-- `/Users/pelle/yikesable/weft-ai` — prior-art MCP server with open-core boundary
-- Willison, Simon. "Agents Rule of Two" (2025-11-02)
-- OWASP LLM Top 10 (2025), LLM01: Prompt Injection
-- MITRE ATLAS AML.T0051.001 (indirect prompt injection)
+* `RESEARCH-ai-issue-tracker-ultimate-solution.md` (this repo) — Drive doc archive with accuracy caveats
+* `engineering/agents/basis-nexus-design-document` (Basic Memory) — sibling architectural template
+* `engineering/agents/agent-issue-tracker-and-mcp-server-territory-map-2026-05` (Basic Memory) — ecosystem catalog
+* `brew/brew-backlog-md` (Basic Memory) — Backlog.md audit
+* `brew/brew-dicklesworthstone-tap-br` (Basic Memory) — br audit
+* `engineering/testing/mcp-server-integration-testing-via-inmemorytransport` (Basic Memory) — MCP test pattern from harvmcp
+* `/Users/pelle/nollfyranoll/ai/harvmcp` — prior-art MCP server template
+* `/Users/pelle/yikesable/weft-ai` — prior-art MCP server with open-core boundary
+* Willison, Simon. "Agents Rule of Two" (2025-11-02)
+* OWASP LLM Top 10 (2025), LLM01: Prompt Injection
+* MITRE ATLAS AML.T0051.001 (indirect prompt injection)

@@ -15,7 +15,7 @@ step 7).
 Synergy entries promote to **sibling-relationship notes** in Basic Memory
 (canonically `engineering/agents/vp-plugins-<this-project>-and-<sibling>`)
 — not to package or tool notes, and not to single-project entity notes.
-A SYNERGY file tracks how *two projects relate to each other*, so the
+A SYNERGY file tracks how _two projects relate to each other_, so the
 target note describes the relationship, not the sibling-as-package.
 The routing source is the `.claude/synergy-registry.json` `bm-entity`
 field, which by convention points to the relationship note.
@@ -95,11 +95,11 @@ When `promote` (sibling) successfully writes an entry to the BM sibling note's
 appending `_(Promoted YYYY-MM-DD)_` after the entry body. This serves as the
 dedup signal:
 
-- `promote` (sibling) step 1 (Scan for candidates) skips entries already
+* `promote` (sibling) step 1 (Scan for candidates) skips entries already
   carrying this annotation — preventing repeated promotion of the same row.
-- Mirrors the `_(Resolved YYYY-MM-DD)_` annotation pattern from the `resolve`
+* Mirrors the `_(Resolved YYYY-MM-DD)_` annotation pattern from the `resolve`
   mode (see `references/basic-memory-friction-format.md`).
-- Title-keyed dedup at the BM side is the **secondary** defense:
+* Title-keyed dedup at the BM side is the **secondary** defense:
   `promote` (sibling) must `read_note` the target
   sibling note and scan its existing `## Cross-Project Synergy` section
   before appending. If the entry's title
@@ -110,31 +110,31 @@ dedup signal:
 
 When promoting SYNERGY entries to Basic Memory, apply these transforms:
 
-- **Strip project-specific file paths** — replace
+* **Strip project-specific file paths** — replace
   `/Users/pelle/Sites/ai/vp-beads/skills/foo/SKILL.md` with generic descriptions
   like "skill file", "hook script", "validation script", or "registry file".
-- **Drop dates from active entries** — SYNERGY files track aging via the
+* **Drop dates from active entries** — SYNERGY files track aging via the
   `(YYYY-MM-DD)` suffix in entry titles; Basic Memory notes are evergreen.
   Keep dates only inside `_(Resolved YYYY-MM-DD)_` annotations.
-- **Drop session-specific metadata** — sprint numbers, commit SHAs, bd issue
+* **Drop session-specific metadata** — sprint numbers, commit SHAs, bd issue
   IDs, and similar local context belong in the SYNERGY file, not the BM note.
-- **Drop project-local triage fields** — `Last verified:`, `Action:`, `Note:`
+* **Drop project-local triage fields** — `Last verified:`, `Action:`, `Note:`
   continuation lines and `Source:` paths are local triage metadata, not
   cross-project knowledge.
-- **Keep cross-project signals** — these enum-valued fields carry meaning to
+* **Keep cross-project signals** — these enum-valued fields carry meaning to
   any other project comparing against the same sibling, so preserve them
   verbatim:
-  - `Status:` (`aligned`, `drifting`) — Shared Patterns
-  - `Convergence path:` (`accept-difference`, `adopt-theirs`, `propose-shared`) — Divergences
-  - `Readiness:` (`ready`, `needs-cleanup`, `proof-of-concept`) — Extraction Candidates
-  - `Priority:` (`adopt-soon`, `consider`, `deferred`) — They Have / We Don't
-- **Keep `Effort:`** (`trivial`, `moderate`, `significant`) where present —
+  * `Status:` (`aligned`, `drifting`) — Shared Patterns
+  * `Convergence path:` (`accept-difference`, `adopt-theirs`, `propose-shared`) — Divergences
+  * `Readiness:` (`ready`, `needs-cleanup`, `proof-of-concept`) — Extraction Candidates
+  * `Priority:` (`adopt-soon`, `consider`, `deferred`) — They Have / We Don't
+* **Keep `Effort:`** (`trivial`, `moderate`, `significant`) where present —
   rough effort signal generalizes across consumers and helps any project
   prioritizing adoption.
-- **Generalize `Source:`** if retained — replace project-specific paths with
+* **Generalize `Source:`** if retained — replace project-specific paths with
   generic module descriptions ("validation script", "hook formatter",
   "subtree registry"). Often safe to drop entirely.
-- **Rewrite from a neutral perspective** — SYNERGY entries are written from
+* **Rewrite from a neutral perspective** — SYNERGY entries are written from
   this project's POV ("we extracted X from their Y"); BM entries should read
   symmetrically so any sibling can find them ("X exists in project A; project B
   shares the pattern via …"). The sibling project note is the shared surface,
@@ -145,27 +145,27 @@ When promoting SYNERGY entries to Basic Memory, apply these transforms:
 These are confirmed gotchas from Basic Memory's `edit_note` tool that `promote`
 (sibling) must account for. They apply identically to `promote` (upstream):
 
-- **Never use `append` with `section`** — it appends to END OF FILE, not to the
+* **Never use `append` with `section`** — it appends to END OF FILE, not to the
   end of the named section. This is a confirmed bug/behavior. Use `find_replace`
   or `insert_before_section` instead.
-- Use `insert_before_section` on `Relations` for initial `## Cross-Project Synergy`
+* Use `insert_before_section` on `Relations` for initial `## Cross-Project Synergy`
   section creation in sibling project notes that don't have one yet. **If the
   note has no `## Relations` section** (a valid state for notes created without
   one), `insert_before_section` will fail — fall back to `mcp__basic-memory__edit_note`
   with `operation="append"` (no `section` parameter) to place the new
   `## Cross-Project Synergy` section at the end of the note.
-- Use `find_replace` anchored to include the next `###` heading for uniqueness
+* Use `find_replace` anchored to include the next `###` heading for uniqueness
   when appending entries to a subsection. For `### They Have / We Don't`, the
   anchor is `### Resolved` (which always follows). For initial creation of
   `### Resolved` when it doesn't exist yet, append it as the trailing
   subsection so future anchors remain stable.
-- Always call `mcp__basic-memory__read_note` before
+* Always call `mcp__basic-memory__read_note` before
   `mcp__basic-memory__edit_note` — construct match text from the note's actual
   content, never from memory. Note content drifts between sessions and stale
   match text silently no-ops.
-- Use `expected_replacements=1` on all `find_replace` calls to prevent
+* Use `expected_replacements=1` on all `find_replace` calls to prevent
   accidental multi-replacements when subsection headings or entry titles
   collide with content elsewhere in the note.
-- `replace_section` auto-strips duplicate headers — useful for atomic section
+* `replace_section` auto-strips duplicate headers — useful for atomic section
   rewrites (e.g. periodic Resolved-pruning passes) but be aware of this
   behavior when constructing replacement text.

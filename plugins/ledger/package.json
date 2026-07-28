@@ -5,5 +5,9 @@
   "description": "Cross-project relationship ledger plugin (upstream friction + sibling synergy).",
   "scripts": {
     "check": "remark skills/ --quiet --frail"
+  },
+  "devDependencies": {
+    "@voxpelli/remark-preset": "^0.1.1",
+    "remark-cli": "^12.0.1"
   }
 }

@@ -10,7 +10,7 @@ Read-only surveys of the ledger. Variants: plain `review` (status), `review --tr
 
 1. Glob all `UPSTREAM-*.md` files and read them.
 2. Present a summary grouped by file: counts + open items per section.
-3. Flag anything stale (older than ~3 months with no activity). Flag Upstream
+3. Flag anything stale (older than \~3 months with no activity). Flag Upstream
    Opportunities with `Merge readiness: direct` and no `[upstream:]` URL as
    "contribution-ready, not yet submitted".
 
@@ -34,13 +34,13 @@ Every 4th sprint, a cross-cutting analysis of all `UPSTREAM-*.md` files.
 3. Look for cross-vendor inconsistencies (one vendor supports a pattern its siblings don't).
 4. Evaluate continued validity — delete obsolete/addressed items (git preserves them).
 5. Identify escalations using these empirical timelines:
-   - **Bugs** resolve in 5–10 sprints; beyond 10 → escalate (PR, issue, or workaround acceptance).
-   - **Feature requests** take 10–20 sprints; beyond 20 → permanent workaround or fork.
-   - **Upstream Opportunities** with no `[upstream:]` URL after 5 sprints → escalate; with a
+   * **Bugs** resolve in 5–10 sprints; beyond 10 → escalate (PR, issue, or workaround acceptance).
+   * **Feature requests** take 10–20 sprints; beyond 20 → permanent workaround or fork.
+   * **Upstream Opportunities** with no `[upstream:]` URL after 5 sprints → escalate; with a
      PR but no merge after 10 → ping upstream or fork.
-   - **Cross-vendor inconsistencies** often resolve only on a next major — low urgency
+   * **Cross-vendor inconsistencies** often resolve only on a next major — low urgency
      unless actively blocking.
-   - **Dormancy-aware scaling:** in repos with ≤4 commits/90d (see `SKILL.md` classifier),
+   * **Dormancy-aware scaling:** in repos with ≤4 commits/90d (see `SKILL.md` classifier),
      double the escalation thresholds — dormant repos age by calendar, not sprint cadence.
 6. Add a Trend Review entry to each file's **Trend Reviews** section.
 7. Delete non-vendor UPSTREAM files with no remaining entries.
@@ -109,13 +109,13 @@ assembles the file; this only drafts the section).
 
 ## `review --compare` (sibling) — compare with a named sibling
 
-Direct comparison between this project and a named sibling to surface *unlogged* synergy
-observations. (Kept under `review`, not `reconcile`: this reads a sibling's *code and
-conventions* and proposes new `log` (sibling) entries, distinct from `reconcile`, which
-diffs the ledger *files* bilaterally.)
+Direct comparison between this project and a named sibling to surface _unlogged_ synergy
+observations. (Kept under `review`, not `reconcile`: this reads a sibling's _code and
+conventions_ and proposes new `log` (sibling) entries, distinct from `reconcile`, which
+diffs the ledger _files_ bilaterally.)
 
 1. **Load the registry with override merge** (base + `.local.json`, by `name`; a
-   `.local.json`-only entry whose `file` is `PRIVATE-SYNERGY-<name>.md` is *added* as a
+   `.local.json`-only entry whose `file` is `PRIVATE-SYNERGY-<name>.md` is _added_ as a
    private sibling, else ignored). If none identified, ask; if no registry at all, offer
    `log` (sibling) step 1b registry creation first.
 2. **Gather sibling context.** Resolve the sibling's local path (`local-path`, else
@@ -140,14 +140,14 @@ every-4th-sprint cadence shared with `/retrospective` and `review --trend` (upst
 private overlays are excluded structurally (the `SYNERGY-*.md` glob cannot match the prefix).
 
 1. **Drift audit.** For every Shared Patterns entry `Status: aligned`, check whether
-   `Last verified:` is more than ~8 sprints (two cycles) old — flag stale `aligned` rows
+   `Last verified:` is more than \~8 sprints (two cycles) old — flag stale `aligned` rows
    (alignment claims decay).
 2. **Reciprocation check.** For each shared-pattern entry, check whether the sibling has a
    corresponding entry in its `SYNERGY-<this-project>.md` (registry-with-override path).
    Asymmetric tracking silently misses drift.
 3. **Status sweep on Extraction Candidates.** List `Readiness: ready` candidates unmoved for
-   >2 cycles (~8 sprints) — stalled (escalate to a `diarie` task) or irrelevant (close).
-4. **They Have / We Don't sweep.** List `Priority: adopt-soon` older than one cycle (~4
+   > 2 cycles (\~8 sprints) — stalled (escalate to a `diarie` task) or irrelevant (close).
+4. **They Have / We Don't sweep.** List `Priority: adopt-soon` older than one cycle (\~4
    sprints) — adopt now or downgrade to `consider`/`deferred`.
 5. **BM cross-reference.** Cross-reference each open entry against `## Cross-Project Synergy`
    in the sibling relationship note to spot already-promoted entries and promotion candidates.

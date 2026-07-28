@@ -65,12 +65,12 @@ absent — no `.diarie/tasks/tasks-*.yml` file, or the reader is not runnable),
 the `SWARM-NN.md` `### Item Status` table replaces the tracker lifecycle edits.
 The orchestrator owns every write:
 
-| Tracker action (tracker source)             | Tracker-less equivalent (Item Status table)    |
-| ------------------------------------------- | ---------------------------------------------- |
-| `diarie ready`             | the work items parsed from ROADMAP / supplied  |
-| edit task row → `status: in_progress`       | set the item's row to `claimed`                |
-| edit task row → `status: completed`         | set the item's row to `done`                   |
-| `diarie ready --filter in_progress`     | rows still `claimed` (not `done`) are unclosed |
+| Tracker action (tracker source)       | Tracker-less equivalent (Item Status table)    |
+| ------------------------------------- | ---------------------------------------------- |
+| `diarie ready`                        | the work items parsed from ROADMAP / supplied  |
+| edit task row → `status: in_progress` | set the item's row to `claimed`                |
+| edit task row → `status: completed`   | set the item's row to `done`                   |
+| `diarie ready --filter in_progress`   | rows still `claimed` (not `done`) are unclosed |
 
 Items deferred to a later wave are marked `carried`. Agent prompts omit the
 completion-edit line in this mode (see below).
@@ -113,16 +113,16 @@ Completion: Edit your task row to `status: completed` (then run
 
 Key requirements:
 
-- **Exhaustive file list** — never use directory globs; agents interpret
+* **Exhaustive file list** — never use directory globs; agents interpret
   globs liberally and wander outside scope
-- **Explicit isolation constraint** — the "do not modify" line prevents
+* **Explicit isolation constraint** — the "do not modify" line prevents
   cross-agent file contention
-- **completion instruction** — without it, tasks remain `in_progress`
+* **completion instruction** — without it, tasks remain `in_progress`
   after the agent finishes. **Tracker-less source:** omit the read-task/
   completion-edit lines; inline the issue description into the prompt and let
   the agent report completion in its final message — the orchestrator marks the
   Item Status row `done`.
-- **`npm run check`** — catches lint/type errors before the post-wave gate
+* **`npm run check`** — catches lint/type errors before the post-wave gate
 
 ## Pre-Sprint Research Pattern
 

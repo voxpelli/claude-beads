@@ -72,11 +72,11 @@ Six steps, all blocking — the gate must fully pass before proceeding.
 
 ## Retrospective Frequency
 
-- **Every wave**: post-wave gate (mandatory, non-negotiable).
-- **5+ waves in a sprint**: offer a mid-sprint retrospective before context
+* **Every wave**: post-wave gate (mandatory, non-negotiable).
+* **5+ waves in a sprint**: offer a mid-sprint retrospective before context
   is lost. Use `/session-reflect` via the Skill tool.
-- **Every sprint close**: offer `/session-reflect` after the final wave.
-- **Every 4th sprint**: trend-review retrospective (the `/session-reflect`
+* **Every sprint close**: offer `/session-reflect` after the final wave.
+* **Every 4th sprint**: trend-review retrospective (the `/session-reflect`
   skill detects this automatically).
 
 ## Anti-Patterns
@@ -93,4 +93,4 @@ Six steps, all blocking — the gate must fully pass before proceeding.
 | Fat agent prompts (>3 issues per agent)      | Incomplete work, scope creep        | 1-3 issues per agent                                   |
 | No file-scope constraint in prompt           | Agent wanders outside scope         | Exhaustive file list required                          |
 | Parallelizing tests                          | Test interference, flaky results    | Sequential tests after gate                            |
-| Closing sprint with open in\_progress issues | Phantom work, stale claims          | Verify with `diarie ready --filter in_progress`    |
+| Closing sprint with open in\_progress issues | Phantom work, stale claims          | Verify with `diarie ready --filter in_progress`        |

@@ -1,6 +1,6 @@
 ## Bugs
 
-- **Sub-agent `permissions.allow` doesn't inherit from user-level `~/.claude/settings.json`** (2026-05-18) — Sub-agents launched via the Task tool only inherit project-level permissions (`.claude/settings.local.json` etc.), not user-level. Symptom: Bash patterns or `mcp__*` tool names pre-listed at user-scope are silently denied in sub-agent context, even though main-thread Bash succeeds (main-thread sees both scopes + has interactive UX to add rules on the fly; sub-agents have neither).
+* **Sub-agent `permissions.allow` doesn't inherit from user-level `~/.claude/settings.json`** (2026-05-18) — Sub-agents launched via the Task tool only inherit project-level permissions (`.claude/settings.local.json` etc.), not user-level. Symptom: Bash patterns or `mcp__*` tool names pre-listed at user-scope are silently denied in sub-agent context, even though main-thread Bash succeeds (main-thread sees both scopes + has interactive UX to add rules on the fly; sub-agents have neither).
 
   **Initial misdiagnosis:** First framed as a sandbox issue (claim: `/tmp/` writes blocked, `dangerouslyDisableSandbox: true` doesn't override). Subsequent empirical validation (Agent B + Agent D + claude-code-guide research, 2026-05-18) refuted this: the OS sandbox is off by default (`/sandbox` is opt-in), `/tmp/` writes actually work in sub-agents, and `dangerouslyDisableSandbox` targets the wrong layer entirely. The real blocker is the `permissions.allow` inheritance bug.
 

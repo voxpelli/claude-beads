@@ -70,7 +70,7 @@ Issues: id1, id2, id3
 **Item Status is the run-state table.** When the flat-YAML tracker is available,
 the `.diarie/tasks/*.yml` files are the source of truth (claim/close via the
 task rows) and this table mirrors them for at-a-glance status. When the tracker
-is **unavailable** (ROADMAP or manual source), this table *is* the source of
+is **unavailable** (ROADMAP or manual source), this table _is_ the source of
 truth: the orchestrator owns all writes to it — `pending` at plan time,
 `claimed` when an agent launches, `done` when the agent reports complete,
 `carried` when an item is deferred to a later wave. `Item` is a task id when the
@@ -96,13 +96,13 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
    `### Files-availability convention`. Select the wave source by precedence — **the
    tracker wins when both the tracker and a `ROADMAP.md` exist**:
 
-   - **Tracker available** — run `diarie ready` and read
+   * **Tracker available** — run `diarie ready` and read
      `.diarie/tasks/*.yml` to load the candidate task set.
-   - **No tracker, `ROADMAP.md` present** — interpret it as the work source
+   * **No tracker, `ROADMAP.md` present** — interpret it as the work source
      following `references/roadmap-interpretation.md` (read it in its own
      idiom; never reformat it). If that interpretation declines the ROADMAP
      (it is not a parallelizable work plan), fall through to the manual path.
-   - **No tracker and no usable ROADMAP** — **manual path**: ask the user for the
+   * **No tracker and no usable ROADMAP** — **manual path**: ask the user for the
      work items and their file scopes, reusing the workflow 4 (Map file
      contention) step-1 prompt (item titles + descriptions + the files each
      touches).
@@ -118,20 +118,20 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
    contention). Identify HIGH contention files (3+ issues touching the same
    file). See `references/file-contention-and-clustering.md` for threshold rules.
 4. Cluster issues into waves. Apply these rules in order:
-   - 4a. Issues sharing HIGH contention files must go into separate waves.
-   - 4b. Within a wave, each agent owns 1-3 files; no file appears in more
+   * 4a. Issues sharing HIGH contention files must go into separate waves.
+   * 4b. Within a wave, each agent owns 1-3 files; no file appears in more
      than one agent's scope.
-   - 4c. P0/P1 issues form earlier waves. P2 fills remaining slots. P3/P4 go
+   * 4c. P0/P1 issues form earlier waves. P2 fills remaining slots. P3/P4 go
      to later waves. See `references/file-contention-and-clustering.md` for
      priority ordering.
-   - 4d. Wave size: 4-6 task agents per wave. Check RAM constraints in
+   * 4d. Wave size: 4-6 task agents per wave. Check RAM constraints in
      `references/agent-concurrency-limits.md` and reduce if needed.
-   - 4e. Each wave gets one background research agent slot if research
+   * 4e. Each wave gets one background research agent slot if research
      questions exist for the sprint.
-   - 4f. Issues that block other issues (check with
+   * 4f. Issues that block other issues (check with
      `diarie ready --blocked`) must go in an earlier wave than
      their dependents.
-   - 4g. **Single owner per issue.** When an issue's scope spans files that
+   * 4g. **Single owner per issue.** When an issue's scope spans files that
      would otherwise be split across multiple agents, assign the whole issue
      to one agent — issue narrative coherence beats wave-level file balance.
      Precedent: RETRO-10 (Sprint 10's `vp-beads-0e9.6`, which spanned skill
@@ -151,7 +151,7 @@ Plan which issues go in which wave, optimizing for file-disjoint parallelism.
    approval.** After approval, suggest: "Run `/swarm-wave execute-wave 1` to
    start Wave 1."
 
-**Note:** Any cross-tracker or remote-mirror sync runs *post-wave* (or
+**Note:** Any cross-tracker or remote-mirror sync runs _post-wave_ (or
 post-sprint), not as part of swarm-wave — swarm-wave orchestrates the execution
 phase only and does not own tracker↔remote synchronization.
 
@@ -183,12 +183,12 @@ argument.
    use the Agent tool with a prompt built from the canonical template in
    `references/command-patterns.md`. Key elements:
 
-   - Issue title and ID (from the task entry in
+   * Issue title and ID (from the task entry in
      `.diarie/tasks/tasks-<slug>.yml`)
-   - Exhaustive file scope list (files this agent may modify — never globs)
-   - Isolation constraint: "Do not modify any file outside your scope list."
-   - Validation: "Run `npm run check` before finishing."
-   - Completion: "Edit your task row to `status: completed` when the issue is
+   * Exhaustive file scope list (files this agent may modify — never globs)
+   * Isolation constraint: "Do not modify any file outside your scope list."
+   * Validation: "Run `npm run check` before finishing."
+   * Completion: "Edit your task row to `status: completed` when the issue is
      done." (Tracker-less source: omit this line — the agent reports completion
      in its final message and the orchestrator marks the Item Status row
      `done`.)
@@ -224,37 +224,37 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
    `gate-pending` or `gate-passed`.
 2. Launch two review agents and `npm run check` in parallel (Agent tool
    calls + Bash in a single response):
-   - **Code reviewer**: reads all files modified by the wave (derive from
+   * **Code reviewer**: reads all files modified by the wave (derive from
      the file ownership map in the SWARM file). Reviews for correctness,
      edge cases, error handling, type safety.
-   - **Domain reviewer**: specialized by wave theme. See
+   * **Domain reviewer**: specialized by wave theme. See
      `references/review-gate-protocol.md` for the domain specialization
      table. If the wave theme is unclear, use a second code reviewer.
-   - **`npm run check`**: via Bash (not an agent — fast and synchronous).
+   * **`npm run check`**: via Bash (not an agent — fast and synchronous).
      Capture pass/fail.
 3. Wait for both review agents and the check to complete. Read findings.
 4. Tally the gate:
-   - `npm run check` must pass (P0 — gate fails immediately on check errors).
-   - Code reviewer confidence must be 80+.
-   - Domain reviewer confidence must be 60+ (80+ for security-adjacent).
+   * `npm run check` must pass (P0 — gate fails immediately on check errors).
+   * Code reviewer confidence must be 80+.
+   * Domain reviewer confidence must be 60+ (80+ for security-adjacent).
      See `references/review-gate-protocol.md` for threshold details and
      severity handling.
 5. If the gate passes:
-   - 5a. Run tests sequentially (workspace-first, root-last if applicable).
-   - 5b. If tests pass: commit all wave changes with
+   * 5a. Run tests sequentially (workspace-first, root-last if applicable).
+   * 5b. If tests pass: commit all wave changes with
      `git commit --no-gpg-sign -m "feat: wave N — [theme] (N issues)"`.
-   - 5c. Close any remaining wave issues by editing their task rows to
+   * 5c. Close any remaining wave issues by editing their task rows to
      `status: completed` (then `diarie validate`).
-   - 5d. Update wave status to `committed` in the SWARM file.
-   - 5e. Report: "Wave N passed gate and committed. N issues closed."
-   - 5f. **If this is the final wave**: offer the retrospective handoff.
+   * 5d. Update wave status to `committed` in the SWARM file.
+   * 5e. Report: "Wave N passed gate and committed. N issues closed."
+   * 5f. **If this is the final wave**: offer the retrospective handoff.
      "All waves committed. Run `/retrospective` to generate the sprint
      retro?" If the user confirms, invoke `/retrospective` via the Skill
      tool.
 6. If the gate fails:
-   - 6a. List specific failures (check errors, review concerns).
-   - 6b. For `npm run check` failures: fix inline (mechanical fixes).
-   - 6c. For HIGH-severity review findings: launch a targeted fix agent
+   * 6a. List specific failures (check errors, review concerns).
+   * 6b. For `npm run check` failures: fix inline (mechanical fixes).
+   * 6c. For HIGH-severity review findings: launch a targeted fix agent
      scoped to the specific concern and affected files. After the fix
      agent completes, re-gate from step 1. **If fix iterations exceed 2
      within a single wave, halt and escalate to the user instead of
@@ -268,10 +268,10 @@ See `references/wave-planning-checklist.md` for the full gate sequence and
      (same dispatch path). This is a preventive cap — Sprint 10 ran one
      fix iteration per wave; the budget exists to bound runaway gate
      failures in future runs where reviewers and fix agents disagree.
-   - 6d. For MEDIUM/LOW findings: present to the user — accept risk and
+   * 6d. For MEDIUM/LOW findings: present to the user — accept risk and
      commit, or fix first. See `references/review-gate-protocol.md` for
      the severity handling table.
-   - 6e. Never commit with an open HIGH-severity concern.
+   * 6e. Never commit with an open HIGH-severity concern.
 
 ### 4. Map file contention
 
@@ -285,9 +285,9 @@ sprint).
    unavailable, ask the user to provide issue titles and descriptions — the same
    manual path workflow 1 (Plan a swarm sprint) Tier A falls back to.
 2. For each issue, identify which files it is likely to touch:
-   - 2a. Read the issue description (the task entry in
+   * 2a. Read the issue description (the task entry in
      `.diarie/tasks/tasks-<slug>.yml`) — look for explicit file mentions.
-   - 2b. Grep/Glob: search for function names, class names, or keywords
+   * 2b. Grep/Glob: search for function names, class names, or keywords
      mentioned in the description against the codebase. Map matches to
      files.
 3. Build the file-to-issue matrix:
@@ -342,45 +342,45 @@ the parallelism and deduplication.
 
 ## Guidelines
 
-- **File isolation is non-negotiable.** Every agent in a wave must have an
+* **File isolation is non-negotiable.** Every agent in a wave must have an
   explicit, exhaustive list of files it may modify. Agents that wander
   outside their scope create the same conflict problems as shared-file
   agents. When in doubt, give an agent a narrower scope and create a
   follow-up issue for the remaining work.
-- **The gate is a hard block.** The post-wave gate (workflow 3 (Post-wave
+* **The gate is a hard block.** The post-wave gate (workflow 3 (Post-wave
   gate)) must fully pass before the next wave launches. Never commit wave work that has not
   passed the gate. "Fix it later" is how parallel agent work produces
   cascading failures.
-- **The tracker is preferred, not required (Tier A).** swarm-wave needs a *work
-  source*, not the flat-YAML tracker specifically (per CLAUDE.md
+* **The tracker is preferred, not required (Tier A).** swarm-wave needs a _work
+  source_, not the flat-YAML tracker specifically (per CLAUDE.md
   `### Files-availability convention`). Use the tracker when available;
   otherwise source waves from a `ROADMAP.md` (workflow 1 (Plan a swarm sprint))
   or a manual list, and use the `SWARM-NN.md` Item Status table as run-state in
   place of the YAML task rows' claim/close. Guard every tracker command so a
   tracker-less run never errors. Only stop when no work source can be obtained
   at all.
-- **SWARM files are ephemeral.** `SWARM-NN.md` files are working documents,
+* **SWARM files are ephemeral.** `SWARM-NN.md` files are working documents,
   not committed artifacts. They should be gitignored.
-- **No mutations without approval.** Wave plans require explicit user
+* **No mutations without approval.** Wave plans require explicit user
   approval before the first agent launches. HIGH-severity gate failures are
   described to the user before fix agents launch. `/retrospective` is only
   invoked via the Skill tool after explicit user confirmation.
-- **Agent prompts must be complete.** Each task agent needs: issue title,
+* **Agent prompts must be complete.** Each task agent needs: issue title,
   file scope, isolation constraint, validation command, and completion
   instruction (edit the task row to `status: completed`). See
   `references/command-patterns.md` for the canonical
   template. An incomplete prompt is a gate failure waiting to happen.
-- **Research agents are read-only for source files.** Research agents may
+* **Research agents are read-only for source files.** Research agents may
   write findings files and may write to Basic Memory (using their own
   tool budgets). They must not modify source files.
-- **Sequential tests, parallel reviews.** Reviews run in parallel (two
+* **Sequential tests, parallel reviews.** Reviews run in parallel (two
   agents). Tests run sequentially after the gate passes. This is a
   correctness requirement, not a performance trade-off.
-- **RAM ceilings are hard caps.** The ceilings in
+* **RAM ceilings are hard caps.** The ceilings in
   `references/agent-concurrency-limits.md` come from empirical sprint
   data. Exceeding them produces OOM failures. When in doubt, run fewer
   agents.
-- **Cross-skill boundaries.** swarm-wave does not own UPSTREAM, SYNERGY, or
+* **Cross-skill boundaries.** swarm-wave does not own UPSTREAM, SYNERGY, or
   RETRO files. When a wave surfaces upstream friction, suggest `/ledger log`;
   when the sprint closes, hand off to `/retrospective` (vp-knowledge's
   `/session-reflect` once it absorbs the retrospective role). Guard every such
@@ -398,8 +398,8 @@ present in a given project.
 **Never hard-fail on an absent sibling.** Before invoking a cross-plugin skill
 via the Skill tool, treat its absence as a degrade-and-announce case, not an error:
 
-- If the target skill is installed, invoke it (with the usual approval gate).
-- If it is NOT installed, ANNOUNCE the skipped handoff and name what the user
+* If the target skill is installed, invoke it (with the usual approval gate).
+* If it is NOT installed, ANNOUNCE the skipped handoff and name what the user
   would do instead — e.g. "this wave surfaced 2 upstream-friction items, but the
   `ledger` plugin is not installed here; log them via your tracker or install
   `ledger`." Never swallow the handoff silently: a silently-skipped handoff makes

@@ -46,9 +46,9 @@ to one agent rather than splitting its scope across two.
 
 **The trade-off:**
 
-- **File-disjointness** keeps agents from stepping on each other within a
+* **File-disjointness** keeps agents from stepping on each other within a
   wave. It is the primary safety mechanism for parallel execution.
-- **Narrative coherence** keeps an issue's intent, context, and acceptance
+* **Narrative coherence** keeps an issue's intent, context, and acceptance
   criteria with a single owner. Splitting an issue across two agents means
   neither agent sees the full picture, and the seam between their changes
   can drift from the issue's stated goal.

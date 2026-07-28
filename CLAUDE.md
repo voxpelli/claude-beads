@@ -65,15 +65,15 @@ only: validation and linting via `npm run check`.
 
 ### Skills (9)
 
-- **migrate-tracker** — Guided, one-way cutover of a project's issue tracker off
+* **migrate-tracker** — Guided, one-way cutover of a project's issue tracker off
   beads (`bd`) onto the flat-YAML tracker. Five workflows: detect-and-assess,
   export-and-archive, migrate (dry-run first), verify (validate + a dual-run
   against `bd ready`), cut-over. Wraps the `diarie migrate` CLI (the
-  generalized migrator, extracted to `voxpelli/diarie`). Aimed at *other* repos
+  generalized migrator, extracted to `voxpelli/diarie`). Aimed at _other_ repos
   — vp-beads already migrated; the
   siblings (vp-knowledge, vp-git) broke on the same global beads 1.1.0 binary.
   User-invocable as `/migrate-tracker`.
-- **deintegrate-beads** — De-integrates beads *after* the migration is trusted. Five
+* **deintegrate-beads** — De-integrates beads _after_ the migration is trusted. Five
   workflows: probe-verify-confirm, disarm-git-hooks, stop-daemon, de-colonize
   (CLAUDE.md/AGENTS.md blocks + Claude hooks + bd perms), report-what-is-left.
   **The hooks are disarmed BEFORE the daemon is stopped** — the armed `pre-commit`
@@ -83,11 +83,11 @@ only: validation and linting via `npm run check`.
   clean while every commit routes through `bd`) and reports the rest. All detection
   lives in the tested `scripts/beads-probe.mjs` (inside the `plugins/diarie-adopt/`
   plugin), not in prose. User-invocable as `/deintegrate-beads`.
-- **retrospective** — Generates a sprint retrospective: reads git history,
+* **retrospective** — Generates a sprint retrospective: reads git history,
   `UPSTREAM-*.md` files, and conversation context, creates `RETRO-NN.md`, runs
   a knowledge gap audit, writes generalizable learnings to Basic Memory, and
   suggests documentation updates. User-invocable as `/retrospective`.
-- **upstream-tracker** — Manages `UPSTREAM-*.md` files that track bugs, feature
+* **upstream-tracker** — Manages `UPSTREAM-*.md` files that track bugs, feature
   requests, contribution opportunities, and friction discovered in upstream
   packages. Supports seven workflows: log, review-open, resolve, trend-review,
   sprint-retro-support, promote-to-basic-memory, sync-from-basic-memory. The
@@ -96,14 +96,14 @@ only: validation and linting via `npm run check`.
   In low-activity repos, workflow 1 (Log) offers eager inline promotion to Basic Memory to
   prevent entries from staying trapped locally. User-invocable as
   `/upstream-tracker`.
-- **vendor-sync** — Pulls latest upstream changes from git subtrees, resolves
+* **vendor-sync** — Pulls latest upstream changes from git subtrees, resolves
   conflicts (always accept upstream), cleans stale node\_modules, re-links
   workspaces, cross-references the sync diff against open `UPSTREAM-*.md`
   entries to auto-resolve fixed issues, annotates corresponding Basic Memory
   friction entries on resolution, and verifies with check + test.
   Reads the subtree registry from `.claude/vendor-registry.json`. User-invocable
   as `/vendor-sync`.
-- **sibling-sync** — Bilateral reconciliation of `SYNERGY-*.md` and
+* **sibling-sync** — Bilateral reconciliation of `SYNERGY-*.md` and
   `UPSTREAM-*.md` files between this project and its registered sibling
   vp-\* projects. Four workflows: discover-siblings (registry resolution +
   path probing), sync-sibling-synergy (reciprocal gaps, stale alignment
@@ -125,7 +125,7 @@ only: validation and linting via `npm run check`.
   and `/synergy-tracker` (logging entries here on this side); sibling-sync
   compares both sides without writing on this side. User-invocable as
   `/sibling-sync`.
-- **synergy-tracker** — Manages `SYNERGY-*.md` files that track cross-project
+* **synergy-tracker** — Manages `SYNERGY-*.md` files that track cross-project
   patterns, divergences, extraction candidates, and capability gaps between
   sibling projects. Supports five workflows: log, review, compare-with-sibling,
   trend-review, promote-to-basic-memory.
@@ -133,15 +133,15 @@ only: validation and linting via `npm run check`.
   peer-project collaboration opportunities. BM integration via
   `## Cross-Project Synergy` section in sibling entity notes via workflow 5 (Promote to Basic Memory).
   User-invocable as `/synergy-tracker`.
-- **swarm-wave** — Orchestrates multi-agent development sprints with wave-based
+* **swarm-wave** — Orchestrates multi-agent development sprints with wave-based
   parallelism. Five workflows: plan-sprint (file-disjoint wave partitioning),
   execute-wave (parallel agent launches with file-scope isolation),
   post-wave-gate (two-reviewer quality gate), file-contention-map (standalone
   utility), research-wave (parallel research with direct `.diarie/` task creation).
   Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
-- **vp-dream** — Manual, approval-gated, fact-verifying consolidation of Claude
+* **vp-dream** — Manual, approval-gated, fact-verifying consolidation of Claude
   Code's **file-based auto-memory** (the per-project `memory/` dir + `MEMORY.md`
-  index) — a *different* subsystem from Basic Memory (which vp-knowledge owns).
+  index) — a _different_ subsystem from Basic Memory (which vp-knowledge owns).
   Mirrors native `autoDream` (Orient → Gather → Consolidate → Prune & index) and
   adds the two things the sandboxed native pass structurally cannot: verify
   volatile facts against primary sources, and a human approval gate before any
@@ -169,21 +169,21 @@ DECLINED** — its MCP server is another daemon/vendor, and it cannot reproduce
 `ready`. There is no Backlog.md MCP server here; its superseded dogfood lives in
 `.diarie/_archive/` for provenance.
 
-- **The forcing function:** beads 1.1.0's schema-migration gate **panics on every
+* **The forcing function:** beads 1.1.0's schema-migration gate **panics on every
   write**, in every repo using the global binary. `bd` reads still work; `bd` writes
   are dead and are not used.
-- **What shipped:** the read/validate tooling and canonical schema (Phase 0); the
+* **What shipped:** the read/validate tooling and canonical schema (Phase 0); the
   data cutover of 24 live issues, with the full 131-issue export frozen to
   `.diarie/_archive/bd-final-export.jsonl` (Wave 1); the retarget of every skill,
   the agent, and the hooks off `bd`, plus `### Beads-availability convention` →
   `### Files-availability convention` and the drop of `/harden-memories` (Wave 2 /
   `vp-beads-e42`).
-- **What is left of bd:** `.beads/` remains on disk as a frozen, readable archive.
-  Its *machinery* — five git hooks hidden behind `core.hooksPath`, a Dolt daemon —
+* **What is left of bd:** `.beads/` remains on disk as a frozen, readable archive.
+  Its _machinery_ — five git hooks hidden behind `core.hooksPath`, a Dolt daemon —
   is what `/deintegrate-beads` disarms. Residual `bd` mentions in skill prose are
   intentional (Integration Charter citations, and mapping explainers like "the
   files-native `bd ready`").
-- Feature branch `feat/tracker-design-exploration` carries this work (local-only per
+* Feature branch `feat/tracker-design-exploration` carries this work (local-only per
   user choice — don't push without approval). **Extracted + externalized 2026-07-18:**
   diarie was `git subtree split`'d to its own repo
   [`voxpelli/diarie`](https://github.com/voxpelli/diarie) (its canonical home), then wired
@@ -199,17 +199,17 @@ How each component degrades when the tracker is absent is defined once by the
 the substrates themselves, not the per-skill behavior (no per-skill tier table
 lives here or in the README; it would duplicate and rot).
 
-- **The flat-YAML tracker** (`.diarie/tasks/tasks-<slug>.yml`) — the default and
+* **The flat-YAML tracker** (`.diarie/tasks/tasks-<slug>.yml`) — the default and
   richest substrate (typed items, dependencies, priorities, an integrity gate).
   Detected by the canonical predicate in `### Files-availability convention`.
   **beads is no longer a substrate** — it was replaced, not demoted (its 1.1.0
   writes are dead).
-- **`ROADMAP.md`** — a work plan **in whatever structure the project already
+* **`ROADMAP.md`** — a work plan **in whatever structure the project already
   uses**. swarm-wave reads it in its own idiom and **never prescribes a format
   or rewrites the file** (the `substrate-not-opinion` principle); it declines
   cleanly when the file is not a parallelizable work plan. The interpretation
   contract lives in `skills/swarm-wave/references/roadmap-interpretation.md`.
-- **`VISION.md`** — direction and voice, **not** a backlog. Never a work source.
+* **`VISION.md`** — direction and voice, **not** a backlog. Never a work source.
 
 A manually supplied work list is the fourth, file-less option swarm-wave
 accepts. Creating and claiming/closing items requires the flat-YAML store; a
@@ -248,7 +248,7 @@ runnable. Both conditions, checked every time — neither alone. Unlike the old
 
 **A missing store is an ERROR, not an empty backlog (`ENOSTORE`).** Pointed at a
 project with no `.diarie/`, `diarie` exits non-zero and emits
-`{"error": "...", "code": "ENOSTORE"}` on **stdout**. It does *not* print an empty
+`{"error": "...", "code": "ENOSTORE"}` on **stdout**. It does _not_ print an empty
 result. This is what makes the predicate above enforceable rather than decorative: a
 component can now tell "this project tracks its work elsewhere" apart from "this
 project has no work left", which are opposite situations that used to look identical.
@@ -256,38 +256,39 @@ An **empty but present** store is a legitimate answer and exits 0.
 
 Two consequences, and they bind every component below:
 
-- **Ask for `--json`, and never discard stderr.** Without `--json` the error goes to
+* **Ask for `--json`, and never discard stderr.** Without `--json` the error goes to
   stderr; a `2>/dev/null` therefore turns ENOSTORE back into silence and re-opens the
   exact defect. With `--json` it lands on stdout with a machine-readable `code`.
-- **Handle ENOSTORE explicitly.** Reporting an absent tracker as an empty backlog is
+* **Handle ENOSTORE explicitly.** Reporting an absent tracker as an empty backlog is
   the original bug wearing a skill's clothes, and nothing fails when you get it wrong
   — which is precisely why it must be written down.
 
 **Tiers.**
 
-- **Tier A — require-or-fallback.** The component needs a work source but not the
-  *flat-YAML tracker specifically*: use `.diarie/tasks/` when available, else fall
+* **Tier A — require-or-fallback.** The component needs a work source but not the
+  _flat-YAML tracker specifically_: use `.diarie/tasks/` when available, else fall
   back to another source (`ROADMAP.md`, or a manual list) and only stop when no
   source can be obtained. Components: `swarm-wave` (workflow 1 (Plan a swarm sprint)).
-- **Tier B — tracker-specific.** The component operates directly on the flat-YAML
+* **Tier B — tracker-specific.** The component operates directly on the flat-YAML
   store: it reads via `diarie` and writes with Edit/Write on `.diarie/tasks/`. Two
   outcomes, and **they are not the same thing**:
-  - **Store present but empty** → an empty backlog. A real, ordinary answer; carry on.
-  - **Store absent (`ENOSTORE`)** → **redirect, do not proceed.** This project tracks
+
+  * **Store present but empty** → an empty backlog. A real, ordinary answer; carry on.
+  * **Store absent (`ENOSTORE`)** → **redirect, do not proceed.** This project tracks
     its work somewhere else, so point at the right tool
     (`/swarm-wave` / `ROADMAP.md`). Do **not** report it as an empty backlog.
 
-  This entry used to read *"an absent-or-empty store is simply an empty backlog"* — the
-  conflation `ENOSTORE` exists to delete. Tier B has no *stop* in the old beads sense
+  This entry used to read _"an absent-or-empty store is simply an empty backlog"_ — the
+  conflation `ENOSTORE` exists to delete. Tier B has no _stop_ in the old beads sense
   (the store is ordinary files, not a daemon that can be down), but it does have a
   branch, and taking the wrong one tells a user with a healthy `ROADMAP.md` that their
   backlog is empty. (Tier B is defined for reference; no active component currently
   occupies it — the former occupant `backlog-groomer` was retired per P1.4.)
-- **Tier C — degrade-and-announce.** The component does useful non-tracker work
+* **Tier C — degrade-and-announce.** The component does useful non-tracker work
   too; when the tracker is absent it runs the rest and **announces** each skipped
   tracker step (never skips it silently). Components: `retrospective`.
-- **Exempt — the tracker's state IS the precondition, not a degradation.** Two
-  skills, both structural, both inverses of a tier: `migrate-tracker` *creates* the
+* **Exempt — the tracker's state IS the precondition, not a degradation.** Two
+  skills, both structural, both inverses of a tier: `migrate-tracker` _creates_ the
   store (requires `.beads/` present, `.diarie/tasks/` **absent**, and stops when it
   finds a store already there); `deintegrate-beads` runs after it (requires
   `.diarie/tasks/` present **and committed**, plus `.beads/` present, and stops
@@ -310,8 +311,8 @@ the per-skill tables this section deliberately omits).
 
 A general lesson this repo earned, worth applying to any guard in vp-beads' own scripts: **a guard
 that rejects a value must also report it, naming the CONSEQUENCE** — not `invalid priority`, but
-*"invalid priority `urgent` — treated as `medium`"*; and **represent a malformed row, never silently
-drop it** (dropping hides the typo from the human; a missing-or-invalid *required* field makes a row
+_"invalid priority `urgent` — treated as `medium`"_; and **represent a malformed row, never silently
+drop it** (dropping hides the typo from the human; a missing-or-invalid _required_ field makes a row
 BROKEN and surfaced for attention, not merely non-workable). The concrete
 `loadTasks`/`computeReady`/`needsAttention` implementation that earned this now lives in the external
 **[`diarie` repo](https://github.com/voxpelli/diarie)** — it is that repo's engineering guidance, not
@@ -319,22 +320,22 @@ vp-beads'.
 
 ### Retrospective file convention
 
-- Named `RETRO-NN.md` in the project root
-- Sprint number increments by 1 from the highest existing number
-- Every 4th sprint triggers a full trend review (UPSTREAM files, tracker hygiene,
+* Named `RETRO-NN.md` in the project root
+* Sprint number increments by 1 from the highest existing number
+* Every 4th sprint triggers a full trend review (UPSTREAM files, tracker hygiene,
   Basic Memory graph health)
 
 ### Vendor registry convention
 
-- File: `.claude/vendor-registry.json` — array of `{ prefix, remote, branch, package }` objects
-- **prefix** — local `vendor/` subtree directory (e.g. `"vendor/my-pkg"`)
-- **remote** — git remote alias (e.g. `"my-pkg"`)
-- **branch** — upstream branch to pull (e.g. `"main"`)
-- **package** — npm package name; maps to the `UPSTREAM-*.md` filename
-- **local-path** (optional) — alternative on-disk path for the subtree if it
+* File: `.claude/vendor-registry.json` — array of `{ prefix, remote, branch, package }` objects
+* **prefix** — local `vendor/` subtree directory (e.g. `"vendor/my-pkg"`)
+* **remote** — git remote alias (e.g. `"my-pkg"`)
+* **branch** — upstream branch to pull (e.g. `"main"`)
+* **package** — npm package name; maps to the `UPSTREAM-*.md` filename
+* **local-path** (optional) — alternative on-disk path for the subtree if it
   does not live at `prefix`. When absent, skills use `prefix` as the on-disk
   location.
-- Local override file: `.claude/vendor-registry.local.json` — gitignored
+* Local override file: `.claude/vendor-registry.local.json` — gitignored
   companion mirroring the `settings.local.json` convention. Per-entry merge
   by the `package` key; fields in `.local.json` win. Skills load the base
   registry first, then merge the override on top. Entries in `.local.json`
@@ -344,17 +345,17 @@ vp-beads'.
 
 ### Upstream tracking convention
 
-- Files named `UPSTREAM-<package-name>.md` in the project root
-- Package name derived from `package` field: slashes → `--`, drop leading `@`
-- Vendor packages: permanent files, always exist (even when empty)
-- Non-vendor packages: ephemeral files, delete when all entries are resolved
-- Vendor packages declared in `.claude/vendor-registry.json` (preferred) or
+* Files named `UPSTREAM-<package-name>.md` in the project root
+* Package name derived from `package` field: slashes → `--`, drop leading `@`
+* Vendor packages: permanent files, always exist (even when empty)
+* Non-vendor packages: ephemeral files, delete when all entries are resolved
+* Vendor packages declared in `.claude/vendor-registry.json` (preferred) or
   inferred from `workspaces` in `package.json`
 
 ### Synergy tracking convention
 
-- Files named `SYNERGY-<project-name>.md` in the project root
-- Project name derived via the four-tier algorithm in
+* Files named `SYNERGY-<project-name>.md` in the project root
+* Project name derived via the four-tier algorithm in
   `skills/synergy-tracker/references/project-name-derivation.md`
   (sibling-registry back-pointer → plugin manifest → package manifest /
   registry `name` → directory basename); normalization rules
@@ -362,15 +363,15 @@ vp-beads'.
   `skills/synergy-tracker/references/synergy-entry-format.md` "Naming
   convention". Both `/synergy-tracker` and `/sibling-sync` use the same
   algorithm
-- Permanent files — never deleted, even when all entries are resolved
-- Four sections: Shared Patterns, Divergences, Extraction Candidates,
+* Permanent files — never deleted, even when all entries are resolved
+* Four sections: Shared Patterns, Divergences, Extraction Candidates,
   They Have / We Don't
-- Synergy registry: `.claude/synergy-registry.json` — optional array of
+* Synergy registry: `.claude/synergy-registry.json` — optional array of
   `{ name, file, remote, bm-entity, relationship, local-path }` objects.
   `local-path` (optional) gives the on-disk path to the sibling checkout
   (relative paths resolve from this project root); when absent, skills fall
   back to `../<name>/`.
-- Local override file: `.claude/synergy-registry.local.json` — gitignored
+* Local override file: `.claude/synergy-registry.local.json` — gitignored
   companion mirroring the `settings.local.json` convention. Per-entry merge
   by the `name` key; fields in `.local.json` win. Skills load the base
   registry first, then merge the override on top. Entries in `.local.json`
@@ -378,14 +379,14 @@ vp-beads'.
   entry's `file` is a `PRIVATE-SYNERGY-<name>.md` value it is **added** as a
   private sibling (see next bullet); (b) otherwise it is ignored
   (backward-compatible — the base registry is the authoritative source of
-  *public* siblings). Used by synergy-tracker workflow 3 (Compare with sibling)
+  _public_ siblings). Used by synergy-tracker workflow 3 (Compare with sibling)
   and `/sibling-sync`. Never committed — encodes machine-specific paths and
   private relationships.
-- **Private (local-only) sibling registration**: a sibling whose existence must
+* **Private (local-only) sibling registration**: a sibling whose existence must
   not be committed (e.g. a proprietary open-core partner) is registered
   **exclusively** in `.claude/synergy-registry.local.json` with `file` set to a
   `PRIVATE-SYNERGY-<name>.md` value. The `PRIVATE-` prefix is the marker — there
-  is no boolean. It reuses the same prefix mechanism as the private *content*
+  is no boolean. It reuses the same prefix mechanism as the private _content_
   overlay (next bullet), so one convention covers both. **No-commit-leak
   invariant** (the private `name` lives only in the gitignored `.local.json` and
   `PRIVATE-SYNERGY-<name>.md`; it must never reach a committed file): the
@@ -400,10 +401,10 @@ vp-beads'.
   for read-only diff (it is a registry `file` value), but never writes the name
   to any committed surface. UPSTREAM Mode-B reciprocal-friction is out of scope
   for private siblings (would need a `PRIVATE-UPSTREAM-` mechanism) — private
-  siblings are SYNERGY-only. This is the *registration*-layer counterpart to the
-  private content overlay below (which makes individual *entries* private within
+  siblings are SYNERGY-only. This is the _registration_-layer counterpart to the
+  private content overlay below (which makes individual _entries_ private within
   an already-registered public sibling).
-- **Private overlay file: `PRIVATE-SYNERGY-<project-name>.md`** — a gitignored
+* **Private overlay file: `PRIVATE-SYNERGY-<project-name>.md`** — a gitignored
   companion to the committed `SYNERGY-<project-name>.md`, for synergy entries
   that must stay out of a public repo (a proprietary sibling's internal paths,
   client names, unreleased plans). **The `PRIVATE-` prefix is load-bearing: it
@@ -414,7 +415,7 @@ vp-beads'.
   explicit `PRIVATE-SYNERGY-*.md` line (prefix-namespaced like `RETRO-*` /
   `SWARM-*`); `session-start.sh` warns if any `PRIVATE-SYNERGY-*.md` is tracked.
   Merge semantics: the overlay holds additional private entries under the same
-  four section headings. Only a deliberate *local-only* read (synergy-tracker
+  four section headings. Only a deliberate _local-only_ read (synergy-tracker
   workflow 2 (Review)) globs BOTH `SYNERGY-*.md` and `PRIVATE-SYNERGY-*.md` to
   assemble the combined view (private rows labelled `[local]`); every other
   read uses `SYNERGY-*.md` and never sees private entries. **Invariant:
@@ -425,9 +426,9 @@ vp-beads'.
   files are invisible to collaborators and `git grep`). A **fully-private
   sibling** (registered only in `.local.json` per the bullet above) has **no**
   committed `SYNERGY-<name>.md` and therefore **no pointer** — a pointer would
-  commit the private name. This *content* overlay is owned by synergy-tracker;
+  commit the private name. This _content_ overlay is owned by synergy-tracker;
   `/sibling-sync` never reads a glob-discovered overlay of a public sibling. The
-  one exception is a *private sibling* whose registry `file` IS a
+  one exception is a _private sibling_ whose registry `file` IS a
   `PRIVATE-SYNERGY-<name>.md` value: `/sibling-sync` may read that file for
   read-only diff (it is the sibling's sole synergy content), but still never
   writes the private name to any committed surface.
@@ -437,13 +438,13 @@ vp-beads'.
 Three skills own distinct sections in Basic Memory entity notes — they never
 overlap:
 
-- **upstream-tracker workflow 6 (Promote)** owns `## Upstream Friction` in `npm/*`, `brew/*`,
+* **upstream-tracker workflow 6 (Promote)** owns `## Upstream Friction` in `npm/*`, `brew/*`,
   `cask/*`, `actions/*`, `docker/*`, `vscode/*` entity notes
-- **synergy-tracker workflow 5 (Promote)** owns `## Cross-Project Synergy` in
+* **synergy-tracker workflow 5 (Promote)** owns `## Cross-Project Synergy` in
   sibling-relationship notes (canonically
   `engineering/agents/vp-plugins-<this-project>-and-<sibling>` — these are
   bilateral relationship notes, NOT single-project entity notes)
-- **retrospective step 7** owns `engineering/*` notes (patterns, conventions)
+* **retrospective step 7** owns `engineering/*` notes (patterns, conventions)
 
 Annotation-only writers (not owners): vendor-sync step 8b and upstream-tracker
 workflow 3 (Resolve) annotate `## Upstream Friction` entries but never delete
@@ -486,7 +487,7 @@ vendor-sync (skill)       → pull upstream changes, auto-resolve UPSTREAM entri
 upstream-tracker (skill)  → repeat (workflow 7 (Sync from BM) discovers friction)
 ```
 
-`/retrospective` is the *generator* (user-invoked, writes files). Basic Memory
+`/retrospective` is the _generator_ (user-invoked, writes files). Basic Memory
 serves as the cross-project bridge: workflows 6 (Promote) and 7 (Sync from BM) in upstream-tracker provide
 bidirectional sync between project-local UPSTREAM files and BM entity notes.
 synergy-tracker runs as a parallel track, advancing extraction candidates and
@@ -530,7 +531,7 @@ rm -rf directory        # NOT: rm -r directory
 ### Issue tracking (flat-YAML — post-bd)
 
 **Scope: this repository's own development.** This is a self-instruction for
-working *on vp-beads*, not a claim about projects that *use* vp-beads — the
+working _on vp-beads_, not a claim about projects that _use_ vp-beads — the
 plugin supports multiple substrates (see `## Work-tracking substrates`).
 
 This project tracks its own work in the **flat-YAML substrate**, **not bd** (see
@@ -595,9 +596,9 @@ any other locally-registered MCP server a sub-agent must call.)
 
 **Skip these (wrong layer / scope):**
 
-- `allowed-tools` frontmatter — only applies to named agents at
+* `allowed-tools` frontmatter — only applies to named agents at
   `.claude/agents/<name>.md`, not Task-tool launches.
-- `dangerouslyDisableSandbox: true` — targets the OS sandbox
+* `dangerouslyDisableSandbox: true` — targets the OS sandbox
   (Seatbelt/bubblewrap, off by default per `/sandbox` opt-in); wrong
   layer entirely.
 
@@ -625,15 +626,15 @@ observation + `UPSTREAM-claude-code.md` at project root.
 **Four exclusive types** (decision `vp-beads-etm`), enforced by `diarie validate` (the
 `VALID_TYPES` set, defined in the external `diarie` package's schema):
 
-| Type        | Lives in                     | When to use                                                                                     |
-| ----------- | ---------------------------- | ----------------------------------------------------------------------------------------------- |
-| `task`      | `.diarie/tasks/tasks-*.yml`  | A unit of work. **The only type the ready-walk surfaces.**                                       |
-| `decision`  | `.diarie/decisions/<id>.md`  | An architectural or product choice, with its reasoning. Stays open indefinitely — never "ready". |
-| `doc`       | `.diarie/docs/<id>.md`       | Reference prose. Nothing in bd mapped to this, so migrations never produce one.                  |
-| `milestone` | `.diarie/tasks/tasks-*.yml`  | A structural marker (`v1.0`, `public-alpha`). No effort, no assignment.                          |
+| Type        | Lives in                    | When to use                                                                                      |
+| ----------- | --------------------------- | ------------------------------------------------------------------------------------------------ |
+| `task`      | `.diarie/tasks/tasks-*.yml` | A unit of work. **The only type the ready-walk surfaces.**                                       |
+| `decision`  | `.diarie/decisions/<id>.md` | An architectural or product choice, with its reasoning. Stays open indefinitely — never "ready". |
+| `doc`       | `.diarie/docs/<id>.md`      | Reference prose. Nothing in bd mapped to this, so migrations never produce one.                  |
+| `milestone` | `.diarie/tasks/tasks-*.yml` | A structural marker (`v1.0`, `public-alpha`). No effort, no assignment.                          |
 
 **The type is exclusive; the framing is additive.** bd's other five types are
-*framings* of a task and ride in `labels:` — `bug`/`feature`/`chore`/`story`/`spike`
+_framings_ of a task and ride in `labels:` — `bug`/`feature`/`chore`/`story`/`spike`
 → `task` + `labels: [<framing>]`. An `epic` is `task` + `parent:` nesting (plus an
 `epic` label). This is the whole point of collapsing 9 → 4: a type answers "what
 kind of thing is this", which admits exactly one answer; a label answers "how should
@@ -659,7 +660,7 @@ Work is NOT complete until pushed. Before ending a session:
 3. `npm run check` (if code changed)
 4. `git push` — mandatory, never skip
 
-There is no separate tracker sync: the store *is* the repo, so `git push` ships it.
+There is no separate tracker sync: the store _is_ the repo, so `git push` ships it.
 
 ### Do not run `bd setup claude`
 
@@ -669,18 +670,18 @@ intentional. Do not "fix" it.
 **What it would actually do** (bd 1.1.0, verified): write `SessionStart` and
 `PreCompact` hook entries running `bd prime` into `.claude/settings.json`, and — in
 older versions — a managed block into `CLAUDE.md`. That is precisely the
-colonization `/deintegrate-beads` exists to *undo*. Do not re-invite it.
+colonization `/deintegrate-beads` exists to _undo_. Do not re-invite it.
 
 It is also pointless now: `bd`'s writes are dead (the 1.1.0 migrate gate) and this
 repo's tracker is flat-YAML. The orientation `bd prime` used to give is now
 `hooks/session-start.sh`'s **tracker prime**, which reads `.diarie/` directly.
 
-*(Historical correction, since this section was wrong for a while and the wrongness
-was load-bearing: the ~1.5k-token `bd prime` injection came from the **external
+_(Historical correction, since this section was wrong for a while and the wrongness
+was load-bearing: the \~1.5k-token `bd prime` injection came from the **external
 beads plugin**, never from vp-beads' own hook. Until the tracker prime shipped
 2026-07-11, this plugin's SessionStart hook injected **no** tracker context at all —
 so the old claim that it "already injects equivalent workflow context plus all
-persistent memories" was false in both halves.)*
+persistent memories" was false in both halves.)_
 
 ## Releasing
 
@@ -717,9 +718,8 @@ authoritative list is the keys in `package.json`, not this paragraph.
 the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`,
 `check:md` (remark), `check:lint` (eslint), `check:sh` (shellcheck + shfmt),
 `check:ast-grep` + `check:ast-grep-test`, `check:hooks`, `check:beads-probe`, and
-`check:tasks` (`diarie validate` — validating *this repo's own store* via the installed
-diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces
---if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
+`check:tasks` (`diarie validate` — validating _this repo's own store_ via the installed
+diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces --if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
 Workspace members today: `plugins/swarm-wave` (wave orchestration) and
 `plugins/diarie-adopt` (migration tooling) — each owns its own `check:` aggregate that the root
 delegates to. **diarie is NOT a workspace** — it is an external npm dependency (`diarie@^0.2.0`)
@@ -733,7 +733,7 @@ you add a `plugins/*` workspace, give its tests a `check:`-prefixed key and **pr
 failing test and watching the ROOT go red.**
 
 **Own gates travel with their workspace — that is the whole point.** diarie's extraction was a no-op
-precisely because its lint/tsc/type-coverage/knip/ast-grep/tests already lived in *its* `package.json`,
+precisely because its lint/tsc/type-coverage/knip/ast-grep/tests already lived in _its_ `package.json`,
 not reached in from the root through a path or glob. The same discipline holds for `plugins/*`: the
 root's `check:*` keys cover the **plugin only**; a workspace the root lints too (two configs that can
 drift) is a workspace that cannot be extracted cleanly.
@@ -753,19 +753,19 @@ guidance-correction plan. Sprint 16 found the hole in it: **a sweep targeting co
 structurally blind to DATA vocabulary.**
 
 `git grep ready-walker` finds every invocation. It finds **nothing** about `priority: 2`,
-`status: closed`, or a scalar where the schema wants a list — the *enum values, field shapes
-and status names of the substrate you just replaced*. Those are the fossils, and they hide in
+`status: closed`, or a scalar where the schema wants a list — the _enum values, field shapes
+and status names of the substrate you just replaced_. Those are the fossils, and they hide in
 the write paths.
 
 What survived a sweep described in its own commit as complete:
 
-- `/retrospective`'s task template emitted `priority: 2` (bd's 0–4 numeric scheme) and a string
-  `acceptance_criteria` — **both HARD ERRORS**, in the skill's *primary write path*, which then
+* `/retrospective`'s task template emitted `priority: 2` (bd's 0–4 numeric scheme) and a string
+  `acceptance_criteria` — **both HARD ERRORS**, in the skill's _primary write path_, which then
   told you to run the very gate that rejects them.
-- `status: closed` — a status that does not exist in `VALID_STATUSES` at all, which made the
+* `status: closed` — a status that does not exist in `VALID_STATUSES` at all, which made the
   surrounding blocked-review conditional **dead code that could never fire**.
 
-So on a substrate swap, grep **both**: the commands (`ready-walker`, `--format json`) *and* the
+So on a substrate swap, grep **both**: the commands (`ready-walker`, `--format json`) _and_ the
 values (`priority: [0-9]`, `status: closed`, every retired enum member). The commands are what
 the sweep sees; the values are what it misses.
 
@@ -780,11 +780,10 @@ scripts/ready-walker.mjs`, deleted two commits earlier) green the whole way.
 **real binary** — subcommands from `diarie --help`, flags from `diarie <sub> --help`. There is no
 hardcoded flag table; a second model of the CLI is the exact failure this check exists to prevent.
 
-**Imperative vs mention** is the hard half, and three rules do it: (1) *span-atomicity* — each inline
-code span and each fenced/heredoc command line is one atomic candidate, so `` (`ready-walker`,
-`--format json`) `` is two spans, the `ready-walker` one bare; (2) *first-token executable* — in
+**Imperative vs mention** is the hard half, and three rules do it: (1) _span-atomicity_ — each inline
+code span and each fenced/heredoc command line is one atomic candidate, so ``(`ready-walker`, `--format json`)`` is two spans, the `ready-walker` one bare; (2) _first-token executable_ — in
 `git grep ready-walker` the executable is `git`, so `ready-walker` is an argument, not an invocation;
-(3) *exact-token* — `check-ready-walker` ≠ `ready-walker`. A bare executable is a noun and is skipped.
+(3) _exact-token_ — `check-ready-walker` ≠ `ready-walker`. A bare executable is a noun and is skipped.
 That is what keeps the dozen descriptive `ready-walker` / `validate-tasks` mentions green.
 
 **Escape hatch:** a line carrying the marker `prose-cmd-ignore` has its candidates skipped — for a
@@ -798,7 +797,7 @@ real command, or mark the line `prose-cmd-ignore`.
 
 **Self-test first:** a prose-check that classifies everything as a mention would scan, find nothing,
 and pass — inert and green, this repo's signature failure. So it reproduces a frozen ground-truth of
-synthetic reds *and* greens before it is trusted on the corpus; if it cannot go red on a planted
+synthetic reds _and_ greens before it is trusted on the corpus; if it cannot go red on a planted
 fossil it fails before scanning. `migrate`'s hand-written help is read like any other; `vp-beads-mig`'s
 USAGE⇔parser test is what keeps that help honest for the oracle to trust.
 
@@ -813,14 +812,14 @@ the shared-root-config model (decision `vp-beads-cst`, option I) that one scan a
 `plugins/*` workspace — no per-plugin ast-grep copies. To add a rule, write the rule + its
 rule-test and run `ast-grep test --update-all` to seed the snapshot.
 
-*(History, 2026-07-18: the root once carried `scripts/check-ast-grep.mjs` over a
+_(History, 2026-07-18: the root once carried `scripts/check-ast-grep.mjs` over a
 `scripts/ast-grep-paths.mjs` path list, plus an existence-guard and a `scannedFileCount` FLOOR —
 all to exclude an in-repo `diarie/` workspace (which carried its own config) from a bare scan.
 diarie is an external npm dependency (`diarie@^0.2.0`), so the exclusion is moot and the whole
 apparatus was deleted for standard `ast-grep scan`. The plugin does **not** floor-guard the
 scan's file count: a broad `.gitignore` line can shrink a bare scan, but that risk is accepted
 **at parity with every other ignore-bounded gate** — `check:md` is `remark --ignore-path
-.gitignore`, equally blindable — rather than met with bespoke tooling for ast-grep alone.)*
+.gitignore`, equally blindable — rather than met with bespoke tooling for ast-grep alone.)_
 
 **diarie's own rules travelled with it** to `voxpelli/diarie` (its `sgconfig.yml` + `.ast-grep/`,
 including four rules of its own — `no-identical-test-title`, `no-unsanctioned-exit-2`,
@@ -833,26 +832,26 @@ ratchet**), `no-jsdoc-object-typedef` (auto-fixable), `no-commonjs-require`,
 `no-identifier-shadow-call`, `no-jq-raw-interpolation` (the hooks build jq programs — and the bare
 scan now points it at the real `hooks/*.sh`, which the old path list once forgot to include,
 `vp-beads-agr`), plus **`no-hardcoded-tracker-dir`**. The last is CROSS-BOUNDARY: the tracker path
-segment lives *only* in `TRACKER_DIR` (`diarie/schema`), and this copy guards the plugin's
+segment lives _only_ in `TRACKER_DIR` (`diarie/schema`), and this copy guards the plugin's
 `scripts/*.mjs` + `validate-plugin.mjs`, which import it precisely because this rule makes them —
-it matters most in guard code, where a hardcoded segment would not *error* after a rename, it
+it matters most in guard code, where a hardcoded segment would not _error_ after a rename, it
 would silently stop guarding. Deliberately NOT adopted: vp-claude's `bash-require-set-euo-pipefail`
-— a hook that aborts on any failing command *blocks the tool call*, and these hooks must degrade
+— a hook that aborts on any failing command _blocks the tool call_, and these hooks must degrade
 quietly.
 
 🚨 **`ast-grep test` does not fail on an untested rule — it SKIPS it, and the pairing key is the
 `id:` FIELD, not the filename.** Both measured. Delete a rule's test file and it prints
 `ok. 7 passed; 0 failed` and **exits 0**, going from 8 rules to 7 without ever naming the one it
-dropped. Change *only* the `id:` inside a test file — leave the filename correct — and it prints
+dropped. Change _only_ the `id:` inside a test file — leave the filename correct — and it prints
 `Configuration not found! <id>` and **still exits 0**, while the rule silently has no test at all.
 `check:rule-parity` asserts all three (the file exists, its `id:` names the rule, it has an
-`invalid:` case), because a checker that pairs by *filename* reports success over exactly this.
+`invalid:` case), because a checker that pairs by _filename_ reports success over exactly this.
 
 🚨 **The bare scan is bounded by `.gitignore` — and ast-grep only honours `.gitignore` INSIDE a git
 repository.** Measured: with no `.git`, an ignored file **is scanned**; after a bare `git init` (no
 commit, no `add`), it is skipped; and ast-grep **skips a TRACKED-but-ignored file**. So the root
-`.gitignore` is load-bearing for the *lint*, not only for git: it is what keeps the bare scan off
-`node_modules` (a scan that walked it would report ~25k errors from other people's code).
+`.gitignore` is load-bearing for the _lint_, not only for git: it is what keeps the bare scan off
+`node_modules` (a scan that walked it would report \~25k errors from other people's code).
 
 **That ignore-bound is a known, accepted risk, deliberately un-guarded.** One broad ignore line
 (`dist/`, `lib/generated/`) shrinks lint coverage with nothing going red — `ast-grep scan` exits 0
@@ -869,7 +868,7 @@ all advisory. The real type ratchet is `check:type-coverage` (98%, and it genuin
 `no-jsdoc-any-type` is a nudge, not the gate MEMORY.md once called it.
 
 🚨 **`no-jq-raw-interpolation` guarded NOTHING until 2026-07-14.** It is `language: bash`, it
-exists *because "the hooks build jq programs"* — and `hooks/` was not in the scan bound, while
+exists _because "the hooks build jq programs"_ — and `hooks/` was not in the scan bound, while
 `scripts/` contains zero `.sh` files. It passed `ast-grep test` 6/6 the entire time, on synthetic
 snippets. **`ast-grep test` cannot see this**: it replays inline fixtures and never learns whether
 a rule's language has anything to read. A rule can be perfect, tested, and pointed at nothing.

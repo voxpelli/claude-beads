@@ -9,7 +9,7 @@ projects built on `@voxpelli/eslint-config`, so **dev tooling** flows between th
 
 ## Shared Patterns
 
-- **`jsdoc-single-line-tag-description` ESLint local rule** (2026-07-21) — a JSDoc tag description
+* **`jsdoc-single-line-tag-description` ESLint local rule** (2026-07-21) — a JSDoc tag description
   (`@param`/`@returns`/`@property`/…) must stay on ONE physical comment line, capped at 100 chars.
   Authored in liggare-mcp (`eslint-local-rules/jsdoc-single-line-tag-description.js`, built on
   `comment-parser`); adopted here into `eslint-local-rules/` and wired as
@@ -21,7 +21,7 @@ projects built on `@voxpelli/eslint-config`, so **dev tooling** flows between th
 
 ## Divergences
 
-- **Severity** (2026-07-21) — both wire the rule at `'warn'`, but for different reasons: liggare-mcp
+* **Severity** (2026-07-21) — both wire the rule at `'warn'`, but for different reasons: liggare-mcp
   runs it as an accepted advisory; vp-beads' `eslint` has no `--max-warnings 0` (tracked as
   `vp-beads-wrn`), so `'warn'` is the only non-breaking option here regardless. If vp-beads ever adds
   `--max-warnings 0`, revisit whether this rule should stay `'warn'` or graduate to `'error'`.
@@ -29,7 +29,7 @@ projects built on `@voxpelli/eslint-config`, so **dev tooling** flows between th
 
 ## Extraction Candidates
 
-- **Extract `jsdoc-single-line-tag-description` into `@voxpelli/eslint-config`** (2026-07-21) — the
+* **Extract `jsdoc-single-line-tag-description` into `@voxpelli/eslint-config`** (2026-07-21) — the
   rule now lives as duplicated copies in two voxpelli repos (liggare-mcp + vp-beads), each also
   carrying its own `comment-parser` devDep. It is a general-purpose lint rule with zero
   project-specifics, and both repos already depend on `@voxpelli/eslint-config` — its natural home.
@@ -39,7 +39,7 @@ projects built on `@voxpelli/eslint-config`, so **dev tooling** flows between th
 
 ## They Have / We Don't
 
-- **`liggare` MCP server + the expiring-marker ledger** (2026-07-21) — liggare-mcp's core product (a
+* **`liggare` MCP server + the expiring-marker ledger** (2026-07-21) — liggare-mcp's core product (a
   local SQLite + FTS5/vector index over due-dated `TODO`/`FIXME` markers, queried via MCP) has no
   analogue here and no obvious fit; noted for completeness, not as an adoption candidate.
   Priority: n/a

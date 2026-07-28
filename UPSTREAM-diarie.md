@@ -1,6 +1,6 @@
 ## Feature Requests
 
-- **Decision-file frontmatter is validated by nothing — ALREADY TRACKED UPSTREAM as `diarie-dlm`**
+* **Decision-file frontmatter is validated by nothing — ALREADY TRACKED UPSTREAM as `diarie-dlm`**
   (2026-07-22) — _Recorded here as a cross-reference, deliberately NOT as a new request._
   `diarie validate` globs only `tasks-*.yml` (`lib/store.js`: `TASKS_FILE_RE = /^tasks-.+\.ya?ml$/`
   — decisions and docs are structurally outside it), so a malformed `.diarie/decisions/*.md`

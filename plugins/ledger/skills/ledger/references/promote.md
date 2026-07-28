@@ -22,7 +22,7 @@ promoted, and private names never reach BM.
    friction); the observation is about the package/tool itself, not this project's use of it;
    it has enough detail to stand alone. When ownership is absent, default to promoting unless
    clearly project-specific. **Upstream Opportunities override:** entries in
-   `## Upstream Opportunities` are *always* eligible regardless of `Ownership:` (knowing a
+   `## Upstream Opportunities` are _always_ eligible regardless of `Ownership:` (knowing a
    working solution exists is inherently cross-project useful).
 2. **Present candidates** (per-entry; never auto-promote): package/tool name + target type
    (npm/brew/cask/action/docker/vscode); title + classification; a draft generalized version
@@ -32,13 +32,13 @@ promoted, and private names never reach BM.
 3. **Route by target type.** Search BM for the entity note using the routing table in
    `references/basic-memory-friction-format.md`.
 4. **Write or flag** (per approved candidate):
-   - **Note exists, has `## Upstream Friction`** — `read_note` first, then `edit_note`
+   * **Note exists, has `## Upstream Friction`** — `read_note` first, then `edit_note`
      `find_replace` to append under the correct subsection (`### Bugs`/`### Feature
      Requests`/`### Upstream Opportunities`), anchored to the next `###`,
      `expected_replacements=1`. Dedup by title first.
-   - **Note exists, no `## Upstream Friction`** — `edit_note` `insert_before_section` on
+   * **Note exists, no `## Upstream Friction`** — `edit_note` `insert_before_section` on
      `Relations` to add the full section with the entry.
-   - **No note exists** — do NOT create a thin note. Flag: "No Basic Memory note for
+   * **No note exists** — do NOT create a thin note. Flag: "No Basic Memory note for
      `<package>`. Run `/package-intel <package>` (or `/tool-intel <tool>`), then re-run
      `promote`."
 5. **Prune pass.** For BM entries annotated `_(Resolved …)_`, offer to move them to the
@@ -73,7 +73,7 @@ on onboarding, or for cross-project awareness.
 
 ## `promote` (sibling) — owns `## Cross-Project Synergy`
 
-Promote generalizable synergy entries from `SYNERGY-*.md` into the sibling *relationship* note
+Promote generalizable synergy entries from `SYNERGY-*.md` into the sibling _relationship_ note
 (typically `engineering/agents/vp-plugins-<this-project>-and-<sibling>`).
 
 1. **Scan candidates.** Glob and read all `SYNERGY-*.md` (structurally excludes every
@@ -96,18 +96,18 @@ Promote generalizable synergy entries from `SYNERGY-*.md` into the sibling *rela
    through to `search_notes` as an absent-`bm-entity` row does. Full routing/fallback order:
    `references/synergy-bm-format.md`.
 4. **Write or flag:**
-   - **Note exists, has `## Cross-Project Synergy` + target subsection** — `read_note` first,
+   * **Note exists, has `## Cross-Project Synergy` + target subsection** — `read_note` first,
      then `edit_note` `find_replace` anchored to the next `###`, `expected_replacements=1`.
      Dedup by title (case-insensitive, whitespace-trimmed). **On zero replacements** (note
      changed between `read_note` and `edit_note`): do NOT annotate the local entry — defer the
      candidate (increment a deferred-count) and continue; the report lists deferred entries
      ("re-run `promote` once BM writes settle"). Do NOT re-invoke `promote` automatically
      (persistent contention would loop).
-   - **Note exists, no `## Cross-Project Synergy`** — `insert_before_section` on `Relations` to
+   * **Note exists, no `## Cross-Project Synergy`** — `insert_before_section` on `Relations` to
      add the full section (all subsections per `references/synergy-bm-format.md`).
-   - **No note exists** — do NOT create a thin note. Flag for enrichment (manual creation under
+   * **No note exists** — do NOT create a thin note. Flag for enrichment (manual creation under
      `engineering/agents/`), then re-run `promote`.
-   - **After a successful write,** annotate the local entry `_(Promoted YYYY-MM-DD)_` via
+   * **After a successful write,** annotate the local entry `_(Promoted YYYY-MM-DD)_` via
      `Edit` (the dedup signal step 1 consults).
 5. **Prune pass.** For entries annotated `_(Resolved …)_` locally, offer to move the BM entry
    to the `### Resolved` subsection (user confirms each). Mirrors the upstream prune pass.

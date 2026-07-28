@@ -76,7 +76,7 @@ redirects here. Derives most fields from the working tree; prompts only residual
    pulled subtree, `git show HEAD -- <prefix>`; read `UPSTREAM-<package>.md`; for each open
    entry the diff visibly addresses (bug fixed, feature added, API changed): delete the entry;
    for vendor files restore `_No entries yet._` if the section empties; note each deletion.
-   - **8b. Annotate Basic Memory (annotation-only).** For each auto-resolved entry, if BM
+   * **8b. Annotate Basic Memory (annotation-only).** For each auto-resolved entry, if BM
      tools are available: `search_notes` the package → `read_note` for a matching friction
      entry → `edit_note` `find_replace` to append (`expected_replacements=1`, match exact
      text): Bugs/Feature Requests `_(Resolved by vendor-sync YYYY-MM-DD)_`, Opportunities
@@ -92,11 +92,11 @@ redirects here. Derives most fields from the working tree; prompts only residual
 
 ## Error handling
 
-- **Registry not found** — offer `0. Bootstrap registry`; otherwise stop.
-- **No changes** — "Already up to date" skips steps 4–8b for that entry.
-- **npm install failures** — usually stale vendor `node_modules` (step 5); else check peer-dep
+* **Registry not found** — offer `0. Bootstrap registry`; otherwise stop.
+* **No changes** — "Already up to date" skips steps 4–8b for that entry.
+* **npm install failures** — usually stale vendor `node_modules` (step 5); else check peer-dep
   conflicts between vendor devDependencies and the root.
-- **Verification failures** — report; do not auto-fix unless clearly a stale artifact (re-run
+* **Verification failures** — report; do not auto-fix unless clearly a stale artifact (re-run
   `npm install` and retry once).
-- **Subtree heuristics fail** — explicit merge fallback: `git fetch <remote> <branch>` then
+* **Subtree heuristics fail** — explicit merge fallback: `git fetch <remote> <branch>` then
   `git merge -X subtree=<prefix> --squash <remote>/<branch>`, then resume from step 4.
