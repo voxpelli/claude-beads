@@ -943,6 +943,103 @@ tasks:
       a floor here against the stopgap's expected lifetime; a floor is still cheap insurance while it
       is the only thing gating decision-doc bodies.
     updated: '2026-07-22'
+  - id: vp-beads-svp
+    title: '`no resolvable validator` test can pass for the WRONG reason — silent-by-design hook + weak assertion'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        the test (scripts/check-hooks.mjs, `no resolvable validator → silent, exit 0`) asserts only
+        EMPTY STDOUT + EXIT 0 — but post-tasks-validate.sh degrades silently BY DESIGN, so that same
+        observation is produced by many unrelated failures (missing jq, missing git, a crash before
+        the branch under test)
+      - >-
+        `scrubValidator` now removes EVERY PATH entry containing a `diarie` binary. Verify what else
+        those directories provide on a typical machine (an fnm/nvm shim dir carries node+npm+npx; a
+        Homebrew bin carries jq) — if the scrub can remove a needed tool, the test passes because the
+        hook broke, not because it chose silence
+      - >-
+        strengthen the assertion so it distinguishes CHOSE-SILENCE from COULD-NOT-RUN — e.g. assert a
+        marker on stderr, or assert the hook reached the branch, rather than inferring from absence
+    description: >-
+      Self-review finding, 2026-07-22 (commit 5163a6a). The premise fix was correct and RED-proofed,
+      but it did not address the pre-existing weakness that the assertion cannot tell the intended
+      cause from any other. Same family as the repo's green-check taxonomy: absence of output is not
+      evidence of the decision that was supposed to produce it.
+    updated: '2026-07-22'
+  - id: vp-beads-rlp
+    title: 'no durable proof that a markdown reformat is lossless — the ad-hoc one was narrower than its claim'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        the 51-file reformat in 2c3b1cf was verified by a THROWAWAY script that compared concatenated
+        text/url/lang/checked values only — it did NOT compare heading `depth`, list `ordered`/`start`,
+        table `align`, or image `alt`/`title`, yet the result was described as "semantically null"
+      - >-
+        decide whether a reformat-safety check earns a permanent home (a `check:`-prefixed script that
+        can compare a tree against a git ref), or whether reformats are rare enough that an ad-hoc
+        script is right — if ad-hoc, say so, and write down what it must compare
+      - '`.diarie/decisions/*.md` frontmatter was NOT verified to survive the reformat — `diarie validate` structurally never opens those files (see vp-beads-mdf, diarie-dlm)'
+    description: >-
+      Self-review finding, 2026-07-22. The claim outran the evidence: text-content equality was
+      measured and structural equality was asserted. A strict AST compare flagged 3 of 51 files; those
+      were dismissed as re-wrapping/escaping after a FILTERED grep, not an exhaustive read.
+    updated: '2026-07-22'
+  - id: vp-beads-nts
+    title: 'root has NO tsc — JSDoc type edits ship unverified by any type checker'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        MEASURED 2026-07-22: the root package.json has no `check:tsc` / `check:type-coverage` script
+        (diarie's own repo has both). So JSDoc types in `scripts/*.mjs`, `validate-plugin.mjs` and
+        `eslint-local-rules/` are checked by eslint's jsdoc rules only — which is not type checking
+      - >-
+        concrete instance: 9946aa2 hoisted `import('eslint').Rule` into a top-level `@import { Rule }`
+        in eslint-local-rules/jsdoc-single-line-tag-description.js. The ast-grep rule's own note warns a
+        half-applied hoist leaves the type UNDEFINED, and nothing here would have caught that
+      - >-
+        decide: add `check:tsc` (+ a tsconfig with checkJs) at root, or accept it deliberately and say
+        why in CLAUDE.md `## Validation`. What is not acceptable is the current implicit gap
+    description: >-
+      Self-review finding, 2026-07-22. The repo's own CLAUDE.md says "Write JavaScript with clear JSDoc
+      types — tsc checks but never compiles". At root, tsc does not check at all.
+    updated: '2026-07-22'
+  - id: vp-beads-rpg
+    title: 'check-rule-parity counts FILES, not guarding — and shells out via npx inside a gate'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        both new assertions (effective === on-disk, effective >= floor) count rule FILES. A package rule
+        whose PATTERN is silently weakened keeps its file, so the count stays 7 and the gate stays green
+        — the guard bounds cardinality, not coverage. Decide whether that is enough, and write down which
+        it is
+      - >-
+        three rules are now consumed from node_modules and are UNTESTED here (`ast-grep test` went 6→4
+        silently; the package excludes its rule-tests/ from the tarball). Consider a thin local smoke
+        test that plants one violation per package rule and asserts it fires
+      - >-
+        the probe spawns `npx ast-grep` inside a check; `node_modules/.bin/ast-grep` exists and avoids
+        both the latency and npx's install-if-missing resolution path
+    description: >-
+      Self-review finding, 2026-07-22 (commit 9946aa2). The guard was RED-proofed for the two failure
+      modes it targets, and its first draft was circular until caught — but its scope is narrower than
+      the confidence its output line projects.
+    updated: '2026-07-22'
   - id: vp-beads-dlf
     title: 'retrospective SKILL.md teaches bd''s decision open/closed lifecycle — diarie has neither status'
     status: pending
