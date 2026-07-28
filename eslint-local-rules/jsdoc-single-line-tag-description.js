@@ -24,12 +24,14 @@
 
 import { parse } from 'comment-parser'
 
+/** @import { Rule } from 'eslint' */
+
 const DEFAULT_MAX_LENGTH = 100
 // @file/@module are file-level prose headers, not structured single-fact tags;
 // @example is expected to hold a multi-line code sample.
 const DEFAULT_IGNORED_TAGS = ['example', 'file', 'module']
 
-/** @type {import('eslint').Rule.RuleModule} */
+/** @type {Rule.RuleModule} */
 const rule = {
   meta: {
     type: 'suggestion',
