@@ -864,8 +864,9 @@ itself.
 
 **A rule at `severity: warning` cannot fail the build** — `ast-grep scan` exits 0 on
 warnings-only. `no-jsdoc-any-type`, `no-jsdoc-object-typedef` and `no-jq-raw-interpolation` are
-all advisory. The real type ratchet is `check:type-coverage` (98%, and it genuinely bites);
-`no-jsdoc-any-type` is a nudge, not the gate MEMORY.md once called it.
+all advisory; `no-jsdoc-any-type` is a nudge, not a gate. **And nothing else type-checks either —
+there is no `check:tsc`, no `check:type-coverage` and no root `tsconfig.json`; JSDoc types here
+are read by eslint's jsdoc rules only.** Closing that is tracked as `vp-beads-nts`.
 
 🚨 **`no-jq-raw-interpolation` guarded NOTHING until 2026-07-14.** It is `language: bash`, it
 exists _because "the hooks build jq programs"_ — and `hooks/` was not in the scan bound, while

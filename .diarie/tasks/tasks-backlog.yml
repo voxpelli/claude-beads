@@ -987,6 +987,21 @@ tasks:
         can compare a tree against a git ref), or whether reformats are rare enough that an ad-hoc
         script is right — if ad-hoc, say so, and write down what it must compare
       - '`.diarie/decisions/*.md` frontmatter was NOT verified to survive the reformat — `diarie validate` structurally never opens those files (see vp-beads-mdf, diarie-dlm)'
+      - >-
+        ESCAPE CHURN — the one thing the text-compare structurally could NOT see, since escaping is
+        invisible after unescaping. With `emphasis: '_'`, remark-stringify defensively escapes bare
+        `_`/`*` in prose (`edit\_note`, `in\_progress`). MEASURED across the whole range: only **3
+        introduced** (2 `edit\_note`, 1 `in\_progress`), and 8 files already carried such escapes at
+        baseline `2769de3` — so this is pre-existing house style, not a regression. An adversarial
+        reviewer reported it as ~7 files of new damage; it had no shell and inferred from current state
+        instead of diffing. NOT worth a fix cycle. Recorded so the next reader does not re-open it.
+      - >-
+        the reformat-losslessness check should stay AD-HOC, not become a `check:` script (test-analyzer's
+        call, and it is right): it compares HEAD against the working tree, a one-shot historical fact that
+        expires the moment it is committed — a permanent version would later compare a moved ref against
+        itself and pass over anything, i.e. become the inspect-nothing guard this repo hunts. The durable
+        invariant worth pinning instead is that the FORMATTER'S OPINION still matches what the 51 files
+        were rewritten to (see the check-config-pinning idea in vp-beads-rpg's sibling discussion).
     description: >-
       Self-review finding, 2026-07-22. The claim outran the evidence: text-content equality was
       measured and structural equality was asserted. A strict AST compare flagged 3 of 51 files; those
@@ -1011,9 +1026,32 @@ tasks:
       - >-
         decide: add `check:tsc` (+ a tsconfig with checkJs) at root, or accept it deliberately and say
         why in CLAUDE.md `## Validation`. What is not acceptable is the current implicit gap
+      - >-
+        MEASURED COST (test-analyzer, 2026-07-22) — stage it, do not attempt whole-repo-and-strict in
+        one move: `tsc --noEmit --allowJs --checkJs` over the whole tree is 13 errors in 3 files, but
+        `scripts/**/*.mjs` + `validate-plugin.mjs` + `eslint.config.js` are **0 errors TODAY**, so that
+        slice can land as a green ratchet immediately; `eslint-local-rules/` is 1 and
+        `plugins/diarie-adopt/` is 12, each its own follow-up. `--strict` alone takes that 1 to 3.
+      - >-
+        REAL DEBT ALREADY ACCRUED, and it is in this repo's own guard code: `beads-probe.mjs` types
+        `migration: unknown` (commit e807559) and then reads `.trusted` / `.files` / `.taskCount` off it
+        UNNARROWED at ~lines 400-402. That is exactly the "type it `unknown`, then NARROW before use —
+        the tsc error at each use site is your signal to add the narrower" step `no-jsdoc-any-type`'s own
+        note prescribes; step 2 was performed and the signal was never delivered, because no tsc runs.
+        `ast-grep scan` reports 0 warnings over it. RED-proof that tsc is the right guard: deleting the
+        `@import { Rule }` line from eslint-local-rules/jsdoc-single-line-tag-description.js yields
+        `TS2552: Cannot find name 'Rule'` — it catches precisely the half-applied hoist the rule warns of.
+      - >-
+        `typescript@5.9.3` is present in node_modules TRANSITIVELY but is NOT a declared devDep — adding
+        it is an ASK-FIRST dependency decision, and relying on the transitive copy would violate the
+        no-transitive-installs rule
     description: >-
-      Self-review finding, 2026-07-22. The repo's own CLAUDE.md says "Write JavaScript with clear JSDoc
-      types — tsc checks but never compiles". At root, tsc does not check at all.
+      Self-review finding, 2026-07-22, validated by the test-coverage reviewer. The repo's own CLAUDE.md
+      says "Write JavaScript with clear JSDoc types — tsc checks but never compiles". At root, tsc does
+      not check at all. CLAUDE.md additionally CLAIMED a `check:type-coverage` (98%) ratchet that does not
+      exist — that text came from the externalized diarie repo and was left behind when diarie moved out;
+      corrected to a two-line statement of fact (the long correction narrative lives here, not in the
+      always-loaded instruction file).
     updated: '2026-07-22'
   - id: vp-beads-rpg
     title: 'check-rule-parity counts FILES, not guarding — and shells out via npx inside a gate'
