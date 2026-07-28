@@ -3,8 +3,15 @@
 Tracking cross-project synergy with [diarie](https://github.com/voxpelli/diarie).
 
 diarie is the flat-YAML tracker CLI extracted from this repo (2026-07-18, `git subtree split
---rejoin`). This project consumes it (its skills shell out to the `diarie` binary; `diarie/` is
-carried as a vendored subtree snapshot until diarie publishes). Relationship: `dependency`.
+--rejoin`). This project consumes it: its skills shell out to the `diarie` binary and read the
+`.diarie/` store. **Published 2026-07-18 and consumed as an ordinary npm dependency
+(`diarie@^0.2.0` devDep; upstream is at 0.2.2) — the vendored `diarie/` workspace is GONE.**
+Relationship: `dependency`.
+
+> Staleness note (2026-07-22): this header previously read "`diarie/` is carried as a vendored
+> subtree snapshot until diarie publishes". That premise expired when diarie published. The
+> sibling's `SYNERGY-vp-beads.md` header carries the **same** stale claim and needs the same fix —
+> a bilateral correction, not a one-sided one.
 
 ## Shared Patterns
 
@@ -18,10 +25,30 @@ carried as a vendored subtree snapshot until diarie publishes). Relationship: `d
   workspace's own gates travel the subtree split) is the same pattern the vp-skills monorepo
   generalises to N plugin-workspaces. Keep the delegation shape aligned across both repos.
   Status: aligned · Last verified: 2026-07-18
+- **remark `remarkConfig` markdown-lint config** (2026-07-22, reciprocating the sibling's entry) —
+  the `remarkConfig` block (frontmatter + gfm + lint-recommended/consistent + validate-links +
+  list-marker `-`) was copied verbatim into diarie when it re-added `check:md` after the extraction.
+  Two copies with no shared package will drift; converge on a shared `@voxpelli/remark-config` if a
+  third consumer appears. (The _invocation_ around it has already diverged — see Divergences.)
+  Status: drifting · Last verified: 2026-07-22
 
 ## Divergences
 
-_No entries yet._
+- **`check:md` exclusion posture — deliberate, principled, and settled on both sides**
+  (2026-07-22) — diarie runs ONE pass with **no per-file exclusions**
+  (`remark . --quiet --frail --ignore-path .gitignore`), on the stated principle "**no unlinted
+  island**" (decision `diarie-tbl`, which explicitly cites `vp-beads-imd` as the hazard it is
+  avoiding); every decision `.md` and brand doc is linted there. This project instead excludes
+  `.diarie/` from `check:md` and covers decision **bodies** with a separate `check:md-decisions`
+  pass, additionally excluding `RESEARCH-*.md` and `.diarie/_archive/` as frozen provenance
+  artifacts (`vp-beads-imd`, resolved 2026-07-22).
+  **Both are correct for their role and this is NOT drift to converge:** diarie is the store's
+  OWNER (its `.diarie/` is small, live, and entirely its own), while this repo carries frozen
+  inherited artifacts (~172 warnings live in `.diarie/_archive/` + `RESEARCH-*.md`, 0 in live
+  decision docs) that are deliberately not churned. The shared conclusion both sides reached
+  independently: the load-bearing gap is decision **frontmatter**, which neither remark config can
+  see — tracked upstream as `diarie-dlm` (see `UPSTREAM-diarie.md`).
+  Convergence status: accept-difference · Last verified: 2026-07-22
 
 ## Extraction Candidates
 
