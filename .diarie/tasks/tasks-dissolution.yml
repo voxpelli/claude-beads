@@ -416,11 +416,15 @@ tasks:
         coverage now that pch added the plugins/* surfaces; (5) residual .mjs comment rot
       - >-
         doc the check:md exclusions as DELIBERATE in the ## Validation section (folded from vp-beads-imd,
-        2026-07-22): `--ignore-pattern .diarie/` is intentional — `.diarie/` is diarie's substrate and its
-        contents (incl. decision docs) are validated by `diarie validate`, NOT vp-beads' remark gate
-        (substrate-not-opinion); `--ignore-pattern 'RESEARCH-*.md'` excludes vp-beads' own frozen provenance
-        artifacts. Note the residual: `check:tracked-ignored` is blind to these CLI-flag exclusions (the
-        broader "no tracked file invisible to the gates" guard is deferred as vp-beads-vgd)
+        2026-07-22, wording CORRECTED after audit — state the MEASURED coverage map, not the original
+        wrong reason): `--ignore-pattern .diarie/` is intentional, but NOT because "diarie validate covers
+        it" — diarie's loader globs only `tasks-*.yml` and never opens `.diarie/decisions/`. Decision-doc
+        BODIES are covered by this repo's own sibling script `check:md-decisions`; decision-doc FRONTMATTER
+        is covered by NOTHING (upstream `diarie-dlm`); `.diarie/tasks/*.yml` by `diarie validate`
+        (`check:tasks`); `.diarie/_archive/**` + `RESEARCH-*.md` by nothing, deliberately (frozen
+        provenance). Note the two residuals: `check:tracked-ignored` is structurally blind to CLI-flag
+        exclusions (its own header already says "a FLOOR, NOT A FENCE"; broader guard deferred as
+        vp-beads-vgd), and `check:md-decisions` has no coverage floor (vp-beads-mdf)
     description: >-
       Plan step 1.8; the last local capstone. Enumerate every doc surface via grep — do not trust
       the plan's edit list.

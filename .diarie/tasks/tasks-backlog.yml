@@ -887,12 +887,23 @@ tasks:
       The same bug class as the `AGENT-*.md` hole fixed in d2f57d4, at 21x the scale, through a
       different door — and the guard written for that hole cannot see this one. A gate, running,
       reporting success, inspecting nothing.
-      RESOLVED (ownership, 2026-07-22, user): keep `.diarie/` EXCLUDED from vp-beads' check:md — it is
-      DIARIE'S SUBSTRATE, and linting/validating decision-doc content belongs to `diarie validate` (the
-      store's own authority), NOT a consumer's remark gate (substrate-not-opinion). `RESEARCH-*.md` stays
-      excluded as vp-beads' own frozen provenance artifacts. So the DECIDE resolves to "keep excluded,
-      DELIBERATELY" — package.json patterns UNCHANGED. Warning distribution MEASURED 2026-07-22: all 172
-      are in FROZEN files (`.diarie/_archive/` 23 + `RESEARCH-*` ~150); the 4 LIVE decision docs carry 0.
+      RESOLVED (ownership, 2026-07-22, user): keep `.diarie/` EXCLUDED from vp-beads' check:md.
+      `RESEARCH-*.md` stays excluded as vp-beads' own frozen provenance artifacts. So the DECIDE
+      resolves to "keep excluded, DELIBERATELY" — package.json patterns UNCHANGED. Warning distribution
+      MEASURED 2026-07-22: all 172 are in FROZEN files (`.diarie/_archive/` 23 + `RESEARCH-*` ~150);
+      the 4 LIVE decision docs carry 0.
+      CORRECTION (2026-07-22, audit — the first write of this note was WRONG): the resolution is sound
+      but its stated REASON was not. It claimed decision-doc content "belongs to `diarie validate`".
+      MEASURED FALSE from diarie's own source — `node_modules/diarie/lib/store.js` globs only
+      `TASKS_FILE_RE = /^tasks-.+\.ya?ml$/` with the comment "Decisions and docs are deliberately
+      outside it"; NO code path in diarie opens `.diarie/decisions/`. The real coverage map, each leg
+      empirically proven by planting a defect: decision-doc BODIES are gated — by this repo's own
+      `check:md-decisions` (`remark '.diarie/decisions/*.md' --frail`, added 2026-07-18 in 8d9e470,
+      confirmed wired into `run-p check:*` by watching `npm run check` fail with
+      `ERROR: "check:md-decisions" exited with 1`); decision-doc FRONTMATTER is gated by NOTHING (the
+      genuine gap → upstream `diarie-dlm`); `.diarie/tasks/*.yml` IS gated by `diarie validate`
+      (exit 2 on a bogus status / dangling dep); `.diarie/_archive/**` is ungated by every root check
+      (deliberate — frozen). So "unlinted" was true only of FRONTMATTER, never of bodies.
       A RED-proof (planted broken-link warning in `.diarie/decisions/`, `remark-validate-links`) confirmed
       the exclusion mechanism: `remark .` DOES reach `.diarie/` (not dot-dir-skipped — an early wrong
       hypothesis), so `--ignore-pattern .diarie/` is load-bearing, and narrowing WOULD pull decisions into
@@ -900,6 +911,37 @@ tasks:
       Validation → fold into dcr (γ); (b) diarie-side gap: `diarie validate` should cover `.diarie/decisions/`
       (frontmatter + prose) — external, belongs in voxpelli/diarie's backlog (see handoffs/). Left `pending`
       until (a)+(b) are routed.
+    updated: '2026-07-22'
+  - id: vp-beads-mdf
+    title: 'check:md-decisions has NO coverage floor — a deleted decisions/ dir exits 0, green over nothing'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        MEASURED 2026-07-22 (twice, independently): `remark '.diarie/decisions/*.md' --quiet --frail`
+        exits **0** when the glob matches zero files — both for an EMPTY `.diarie/decisions/` and for a
+        MISSING one. So deleting or renaming the directory turns the gate green over nothing, silently.
+      - >-
+        the glob is QUOTED in package.json, so remark expands it (not the shell) — correct for
+        portability, and precisely why the empty match is silent instead of a shell "no such file" error
+      - >-
+        fix = assert a non-zero file count before trusting green, matching the floors
+        `check:tracked-ignored` (tracked>0) and `check:prose-commands` (per-surface conditional floor)
+        already carry. RED-PROOF it: empty the directory, watch the gate go red.
+      - >-
+        SCOPE NOTE — do not "fix" this by folding decisions back into `check:md`: keeping `.diarie/`
+        out of `check:md` is the settled call (vp-beads-imd, and the sibling divergence recorded in
+        SYNERGY-diarie.md). This row is about the floor, not the exclusion.
+    description: >-
+      Surfaced by the 2026-07-22 gate-coverage audit while resolving vp-beads-imd. Same class as the
+      four measured ast-grep green-check modes and the AGENT-*.md hole: a gate that runs, reports
+      success, and inspects nothing. `check:md-decisions` is itself the stopgap that upstream
+      `diarie-dlm` plans to retire (CLI-native decision linting that TRAVELS on extraction) — so weigh
+      a floor here against the stopgap's expected lifetime; a floor is still cheap insurance while it
+      is the only thing gating decision-doc bodies.
     updated: '2026-07-22'
   - id: vp-beads-dlf
     title: 'retrospective SKILL.md teaches bd''s decision open/closed lifecycle — diarie has neither status'
