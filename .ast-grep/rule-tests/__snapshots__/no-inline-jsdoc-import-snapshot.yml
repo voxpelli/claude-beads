@@ -1,0 +1,14 @@
+id: no-inline-jsdoc-import
+snapshots:
+  /** @param {import('node:fs').Stats} s */:
+    labels:
+    - source: /** @param {import('node:fs').Stats} s */
+      style: primary
+      start: 0
+      end: 41
+  /** @type {import('node:stream').Readable} */:
+    labels:
+    - source: /** @type {import('node:stream').Readable} */
+      style: primary
+      start: 0
+      end: 45

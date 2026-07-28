@@ -1076,24 +1076,36 @@ tasks:
     updated: '2026-07-22'
   - id: vp-beads-rpg
     title: 'check-rule-parity counts FILES, not guarding — and shells out via npx inside a gate'
-    status: pending
+    status: completed
     type: task
-    priority: low
+    priority: high
     labels:
       - chore
     acceptance_criteria:
       - >-
-        both new assertions (effective === on-disk, effective >= floor) count rule FILES. A package rule
-        whose PATTERN is silently weakened keeps its file, so the count stays 7 and the gate stays green
-        — the guard bounds cardinality, not coverage. Decide whether that is enough, and write down which
-        it is
+        DONE: both assertions counted rule FILES, so a package rule whose PATTERN was weakened kept its
+        file and the gate stayed green — cardinality, not coverage. ANSWERED, and the answer is written
+        into the script header: pairing every LOADED rule (local ∪ package) to an `invalid:`-bearing
+        test closes pattern-neutering, and does NOT close a rule bound to a language the scan has no
+        files of (the no-jq-raw-interpolation failure). A green here is not firing-in-anger
       - >-
-        three rules are now consumed from node_modules and are UNTESTED here (`ast-grep test` went 6→4
-        silently; the package excludes its rule-tests/ from the tarball). Consider a thin local smoke
-        test that plants one violation per package rule and asserts it fires
+        DONE: the three consumed rules now have local tests. ast-grep pairs test→rule by the `id:` FIELD
+        wherever the rule was loaded from, including a ruleDirs entry inside node_modules — so no new
+        script was needed. RED-PROOFED: each of the three neutered in turn took `ast-grep test` to
+        exit 4; all three restored and checksum-verified byte-identical
       - >-
-        the probe spawns `npx ast-grep` inside a check; `node_modules/.bin/ast-grep` exists and avoids
-        both the latency and npx's install-if-missing resolution path
+        DONE: probe now spawns `node_modules/.bin/ast-grep` directly — no npx latency, and no
+        install-if-missing path that could let a gate silently fetch its own subject
+      - >-
+        ADDED beyond the original scope, each RED-proofed: a package rule losing its test is now caught
+        (was structurally invisible); a test whose `id:` names no rule in EITHER dir is caught; and a
+        local rule shadowing a package id is named explicitly, because ast-grep exits 8 on a duplicate
+        and the bare symptom is an unreadable effectiveRuleCount pointing nowhere near the cause
+      - >-
+        FILED UPSTREAM (local tracker only, not sent): UPSTREAM-voxpelli--ast-grep-rules.md — the
+        package excludes rule-tests/ from its tarball while its shipped sgconfig.yml still declares
+        testConfigs for them, and nothing constrains the ast-grep CLI version even though >=0.45
+        silences all three rules
     description: >-
       Self-review finding, 2026-07-22 (commit 9946aa2). The guard was RED-proofed for the two failure
       modes it targets, and its first draft was circular until caught — but its scope is narrower than

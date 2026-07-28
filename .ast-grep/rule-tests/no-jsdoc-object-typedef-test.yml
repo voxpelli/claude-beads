@@ -1,0 +1,5 @@
+id: no-jsdoc-object-typedef
+valid:
+- "/** @typedef Foo\n * @property {string} a\n */"
+invalid:
+- "/** @typedef {object} Foo\n * @property {string} a\n */"

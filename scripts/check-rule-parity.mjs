@@ -16,15 +16,27 @@
 // owns its own rules, so that cross-tree half is gone; what remains is the half that was never about
 // two trees: every root rule is genuinely tested.)
 //
-// NOTE WHAT IS **NOT** ASSERTED: nothing here checks that a rule can ever FIRE — a rule aimed at a
-// language the scan bound contains no files of passes `ast-grep test` on synthetic snippets while
-// guarding nothing (`no-jq-raw-interpolation` did exactly that; `vp-beads-agr`, a different guard).
+// CONSUMED RULES ARE PAIRED TOO (2026-07-28). The pairing check runs over local ∪ package rule ids,
+// because ast-grep pairs a test to a rule by its `id:` FIELD wherever that rule was loaded from —
+// including a `ruleDirs` entry inside `node_modules`. Measured: neuter a package rule's pattern and
+// `ast-grep test` goes to exit 4 via a local test file naming that id.
 //
-// SECOND HALF, added when `@voxpelli/ast-grep-rules` was adopted (2026-07-22): the pairing check above
-// globs rules OFF DISK from `.ast-grep/rules`, so it is structurally blind to the rules `sgconfig.yml`
-// pulls out of `node_modules`. Left alone it would report "4 rules, each paired" — TRUE, and quietly no
-// longer covering three rules the repo depends on. That is this script's own failure mode turned on
-// itself. So the effective COUNT is asserted too, by ASKING ast-grep rather than modelling it
+// That closes a real blind spot rather than a theoretical one. Before this, neutering a CONSUMED
+// rule's pattern left every gate green — `ast-grep test` exits 0 (an unpaired rule is invisible, not
+// failing), `ast-grep scan` exits 0 (all three package rules are `severity: warning`), and the count
+// assertions below never move, because the rule FILE is still there. The same neutering on a local
+// rule was caught. `@voxpelli/ast-grep-rules` excludes its own `rule-tests/` from its tarball, so the
+// rules were untested on both sides (filed: `UPSTREAM-voxpelli--ast-grep-rules.md`).
+//
+// NOTE WHAT IS STILL **NOT** ASSERTED — the pairing proves a rule can match a synthetic snippet, NOT
+// that it fires against the real corpus. A rule aimed at a language the scan bound contains no files
+// of still passes on fixtures while guarding nothing (`no-jq-raw-interpolation` did exactly that;
+// `vp-beads-agr`, a different guard). Do not read a green here as firing-in-anger.
+//
+// Consequence worth expecting, not "fixing": an upstream rule change now reddens the local snapshot
+// on upgrade. That is the point — it is how a silently-altered consumed rule announces itself.
+//
+// The effective COUNT is asserted separately, by ASKING ast-grep rather than modelling it
 // (`vp-beads-agr`): `--inspect summary` prints `effectiveRuleCount` on stderr, and it demonstrably
 // tracks reality. A package that ships fewer rules after an upgrade, or a `ruleDirs` entry that stops
 // resolving, then goes RED here instead of silently shrinking the gate.
@@ -77,12 +89,20 @@ const problems = []
 // its rule. So all three must hold: the file exists, its `id:` names this rule, and it carries an
 // `invalid:` case.
 const ruleIds = idsIn(RULES, /\.yml$/)
+const pkgIds = idsIn(PKG_RULES, /\.yml$/)
 const testIds = idsIn(TESTS, /-test\.yml$/)
 
-for (const id of [...ruleIds].toSorted()) {
+// Every rule the scan LOADS needs a test, wherever it came from. A package rule is exactly as
+// silently-neuterable as a local one, so it gets the same three assertions.
+const allRuleIds = new Set([...ruleIds, ...pkgIds])
+
+/** @param {string} id */
+const originOf = id => (ruleIds.has(id) ? RULES : PKG_RULES)
+
+for (const id of [...allRuleIds].toSorted()) {
   if (!testIds.has(id)) {
     problems.push(
-      `\`${id}\` has NO test file (${TESTS}/${id}-test.yml). ` +
+      `\`${id}\` (from ${originOf(id)}/) has NO test file (${TESTS}/${id}-test.yml). ` +
       '`ast-grep test` will not fail — it will not even name it.'
     )
     continue
@@ -109,14 +129,29 @@ for (const id of [...ruleIds].toSorted()) {
 }
 
 for (const id of [...testIds].toSorted()) {
-  if (!ruleIds.has(id)) {
-    problems.push(`\`${TESTS}/${id}-test.yml\` tests a rule that does not exist in ${RULES}/.`)
+  if (!allRuleIds.has(id)) {
+    problems.push(
+      `\`${TESTS}/${id}-test.yml\` tests a rule that exists in neither ${RULES}/ nor ${PKG_RULES}/. ` +
+      'Either the rule was deleted and its test outlived it, or the `id:` is a typo — ' +
+      '`ast-grep test` reports `Configuration not found!` for this and still exits 0.'
+    )
+  }
+}
+
+// A local rule and a package rule sharing an id is not a layering — ast-grep hard-errors
+// `Duplicate rule id` (exit 8). Name it here, because the symptom otherwise reaches the reader as an
+// unreadable `effectiveRuleCount` and a probe complaint pointing nowhere near the cause.
+for (const id of [...ruleIds].toSorted()) {
+  if (pkgIds.has(id)) {
+    problems.push(
+      `\`${id}\` is defined in BOTH ${RULES}/ and ${PKG_RULES}/. ast-grep does not layer these — ` +
+      'it exits 8 on a duplicate id. Adopting a packaged rule means deleting the local file outright.'
+    )
   }
 }
 
 // THE PACKAGE RULES ARE ACTUALLY LOADED. Ask ast-grep for the count it really used; never infer it.
-const pkgIds = idsIn(PKG_RULES, /\.yml$/)
-const expected = ruleIds.size + pkgIds.size
+const expected = allRuleIds.size
 
 // `--inspect summary` reports on STDERR. `spawnSync` (not `execFileSync`) because the value needed is
 // stderr, which execFileSync does not return — its return value is STDOUT, so an earlier draft that
@@ -124,7 +159,12 @@ const expected = ruleIds.size + pkgIds.size
 // than skipping the assertion, which is the only reason that draft did not ship as a dead guard.
 // spawnSync also tolerates a non-zero scan (a duplicate rule id exits 8) without throwing, and the
 // summary is still printed in that case.
-const probe = spawnSync('npx', ['ast-grep', 'scan', '--inspect', 'summary'], {
+//
+// The binary is addressed DIRECTLY, not through `npx`: inside a gate, `npx` adds startup latency and,
+// worse, carries an install-if-missing resolution path — a check that can silently reach the network
+// and fetch *something* is a check whose subject is not pinned. `@ast-grep/cli` is a devDependency,
+// so this path exists whenever the repo is installed at all.
+const probe = spawnSync('node_modules/.bin/ast-grep', ['scan', '--inspect', 'summary'], {
   encoding: 'utf8', maxBuffer: Infinity,
 })
 const effective = Number(/effectiveRuleCount=(\d+)/.exec(probe.stderr ?? '')?.[1])
@@ -164,7 +204,7 @@ if (problems.length) {
 }
 
 console.log(
-  `check-rule-parity: ${ruleIds.size} local rule(s), each paired to a test by its \`id:\` field, each with an ` +
-  `\`invalid:\` case; ast-grep loaded ${effective} rule(s) total ` +
-  `(+${pkgIds.size} from ${PKG_RULES}/, tested upstream in that package, not here)`
+  `check-rule-parity: ${allRuleIds.size} rule(s) (${ruleIds.size} local + ${pkgIds.size} from ` +
+  `${PKG_RULES}/), each paired to a test by its \`id:\` field, each with an \`invalid:\` case; ` +
+  `ast-grep loaded ${effective}`
 )

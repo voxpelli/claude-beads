@@ -1,0 +1,18 @@
+id: no-jsdoc-object-typedef
+snapshots:
+  ? |-
+    /** @typedef {object} Foo
+     * @property {string} a
+     */
+  : fixed: |-
+      /** @typedef Foo
+       * @property {string} a
+       */
+    labels:
+    - source: |-
+        /** @typedef {object} Foo
+         * @property {string} a
+         */
+      style: primary
+      start: 0
+      end: 53
