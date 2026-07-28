@@ -1,5 +1,6 @@
-// Re-export the preset as the CONFIG ITSELF, never as a `plugins:` entry. Listing it
-// under `plugins:` applies the preset's lint rules but SILENTLY DROPS its `settings`
-// — measured: a thematic break then serializes as `***`, byte-identical to
-// `--no-config`, while the preset declares `rule: "-"`. Half a config, quietly.
+// The shared preset IS the config. Three forms are equivalent (measured 2026-07-22):
+// this re-export, a `.remarkrc` JSON with `{"plugins": ["@voxpelli/remark-preset"]}`,
+// and a `remarkConfig` block in `package.json` — all apply the preset's plugins AND
+// its `settings`. An earlier version of this comment claimed the `plugins:` form drops
+// settings; that was FALSE (confounded experiment — see the root `.remarkrc.mjs`).
 export { default } from '@voxpelli/remark-preset'

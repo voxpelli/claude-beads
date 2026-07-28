@@ -34,12 +34,13 @@ Relationship: `dependency`.
   **`@voxpelli/remark-preset`**, and each plugin workspace declares it itself so the gate travels on
   extraction. diarie still carries its own inline copy — the remaining reciprocation gap, and the
   sibling's own call.
-  ⚠️ **Adoption gotcha both sides must know**: consuming the preset as
-  `"plugins": ["@voxpelli/remark-preset"]` applies its lint rules but **silently drops its
-  `settings`** (measured — a thematic break then serializes as `***`, the remark default, while the
-  preset declares `rule: "-"`). Re-export it as the config instead
-  (`export { default } from '@voxpelli/remark-preset'`). Filed as
-  `UPSTREAM-voxpelli--remark-preset.md`.
+  Adoption note for the sibling: **all three consumption forms are equivalent** — a `plugins:`
+  entry, a `.remarkrc` JSON, or a `package.json` `remarkConfig` block each apply the preset's
+  plugins _and_ its `settings` (measured 2026-07-22). Adopting it changes the marker style
+  (bullets `*`, emphasis `_`), which here meant a 51-file reformat; diarie should expect the same
+  on its own tree. _(An earlier revision of this entry warned that the `plugins:` form drops
+  settings — that was **FALSE**, from a confounded probe run outside the project where remark found
+  no config at all. Retracted; noted so the sibling is not sent a phantom gotcha.)_
   Status: converged here, pending there · Last verified: 2026-07-22
 
 ## Divergences
