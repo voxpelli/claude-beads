@@ -446,8 +446,31 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   stdout.write(`beads probe: ${root}\n\n`)
 
   stdout.write(`migration ${migration.trusted ? 'TRUSTED' : 'NOT TRUSTED — do not disarm bd'}\n`)
-  stdout.write(`  store: ${migration.files.length} file(s), ${migration.taskCount} task(s), committed=${migration.committed}\n`)
-  if (!migration.trusted) stdout.write('  (a store that is absent, EMPTY, or uncommitted all fail this gate)\n')
+  // NEVER print a bare `taskCount` when the CLI could not read the store. `0 task(s)` next to
+  // `1 file(s)` is "absent rendered as empty" — the conflation this probe's own comments say it
+  // exists to delete, reappearing on the path a human actually reads (`--json` is opt-in).
+  const countText = migration.verifyFailed ? 'task count UNKNOWN' : `${migration.taskCount} task(s)`
+  stdout.write(`  store: ${migration.files.length} file(s) in ${migration.storeDir ?? '(none found)'}, ${countText}, committed=${migration.committed}\n`)
+  if (!migration.trusted) {
+    // Derive the reason from the conjuncts that ACTUALLY failed. The old line hardcoded three
+    // causes and listed them unconditionally, so after `ambiguousStore` joined the gate a user could
+    // read "absent, EMPTY, or uncommitted" directly under a line proving the store was present,
+    // non-empty and committed — every offered explanation contradicted, and the real one absent.
+    const reasons = []
+    if (migration.ambiguousStore) {
+      reasons.push(`TWO stores on disk (${migration.storeDirs.join(', ')}) — which one is live is not this probe's call to make`)
+    }
+    if (migration.storeInvisibleToCli) {
+      reasons.push(`the installed diarie cannot read a \`${migration.storeDir}\` store — upgrade diarie, then re-probe`)
+    } else if (migration.verifyFailed) {
+      reasons.push('diarie could not be RUN to check the store (offline / unresolvable) — this is NOT a verdict on the store')
+    }
+    if (!migration.files.length) reasons.push('no store found')
+    else if (!migration.verifyFailed && migration.taskCount === 0) reasons.push('the store is EMPTY')
+    if (migration.malformed) reasons.push('diarie read the store but reported warnings')
+    if (migration.files.length && !migration.committed) reasons.push('the store is UNCOMMITTED')
+    for (const r of reasons) stdout.write(`  ! ${r}\n`)
+  }
 
   stdout.write(`\nhooks: shape=${hooks.shape}\n`)
   if (hooks.hooksPath.value) {

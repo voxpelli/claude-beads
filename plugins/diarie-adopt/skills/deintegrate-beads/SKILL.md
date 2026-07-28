@@ -90,14 +90,20 @@ user approves in this one.
    de-integrate. Without this check the whole skill runs as a chain of no-ops and
    reports a cleanup that never happened.
 3. **`migration.trusted` must be `true`, or STOP** and point at `/migrate-tracker`.
-   It requires all of: the store exists, it holds **at least one task**, it is **committed**, and
-   the check actually **ran** (`migration.verifyFailed` is `false`). Disarming bd against a store
-   that fails any of these leaves the project with **neither** tracker.
+   It requires all of: the store exists, it holds **at least one task**, it is **committed**, the
+   store is **unambiguous** (`migration.ambiguousStore` is `false`), and the check actually **ran**
+   (`migration.verifyFailed` is `false`). Disarming bd against a store that fails any of these
+   leaves the project with **neither** tracker.
 
-   **Distinguish the STOP reason.** `migration.verifyFailed: true` means diarie could not be _run_
-   to check the store (offline / unresolvable) — that is _unverified_, NOT _a bad store_. Say which,
-   so the user fixes the right thing: make diarie runnable and re-probe, versus finish the migration.
-   Never conflate "I couldn't check" with "the store is untrustworthy".
+   **Distinguish the STOP reason — there are three, and they need different remedies.** Never
+   conflate "I couldn't check" with "the store is untrustworthy"; the probe's plain-text output now
+   names the failing reason directly, and `--json` carries the fields below.
+
+   | Field | What it means | What the user should do |
+   | ----- | ------------- | ----------------------- |
+   | `verifyFailed` **and** `storeInvisibleToCli` | The store IS there; the installed `diarie` is too old to recognise its directory form. The store is a **pair** — `diarium/` or `.diarium/` — plus the legacy `.diarie/`, and a pre-0.3.0 CLI knows only the last. `diarie` runs fine. | **Upgrade `diarie`**, then re-probe. Do not tell the user they are offline. |
+   | `verifyFailed` alone | `diarie` could not be _run_ at all (offline, unresolvable). Unverified, NOT a bad store. | Make `diarie` runnable, then re-probe. |
+   | `ambiguousStore` | **Two** stores on disk (`migration.storeDirs` names them). diarie itself answers this with `ETWOSTORES` rather than a precedence rule, because silently picking one makes the loser a file nobody reads and everybody keeps editing. | The user decides which is live and `git rm`s the other. Never pick for them. |
 
    **`diarie validate` cannot substitute for this gate, even now.** A missing store is
    an error today (`ENOSTORE`, non-zero exit) — that half is fixed. But a store that

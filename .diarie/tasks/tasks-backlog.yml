@@ -1328,3 +1328,89 @@ tasks:
       2026-07-28 was "only de-risk, don't rename": make the consumers form-agnostic now (done), adopt
       the rename once 0.3.0 ships.
     updated: '2026-07-28'
+  - id: vp-beads-pbr
+    title: 'beads-probe: four could-not-determine states report as determined (silent-failure review)'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        AN UNREADABLE HOOK IS CLASSIFIED AS SOMEONE ELSE'S (beads-probe.mjs:291-293). The bd-marker
+        read is `try { ...includes(BD_MARKER) } catch { return false }`, so "could not read" becomes
+        "determined: not bd's". Reproduced with one chmod-000 bd hook: dormantBdHooks goes ["pre-commit"]
+        -> [], otherGitHooks goes [] -> ["pre-commit"], and `shape` flips git-hooks -> none. The report
+        then prints bd's own re-arming hook under "(dormant, re-enabled by unset)" and the skill
+        concludes there is no hook machinery — precisely the "a naive disarm can leave bd MORE armed
+        than it found it" failure the module header names as its reason for existing. Root-owned
+        hooks, read-protected hooks, and a DIRECTORY named `pre-commit` (EISDIR) all reach it. Fix:
+        a third bucket, reported as undetermined
+      - >-
+        `gitAvailable` IS COMPUTED TO PREVENT A NAMED FAILURE AND NOTHING CONSUMES IT
+        (beads-probe.mjs:415-419). Its own comment states the obligation — "Without git, every
+        git-derived answer below degrades to a benign-looking DEFAULT... The skill would then tell
+        the user that `rm -rf .beads/` merely frees disk. Say so explicitly." Reproduced with a git
+        stub exiting 127 against a repo where .beads/config.yaml IS tracked: ".beads/ tracked in git:
+        0 file(s) — nothing tracked". The flag is in the JSON, absent from the human report, absent
+        from SKILL.md. The "say so explicitly" never happens. Same class: `probeResidue:396` reads
+        `run(...).out` without checking `.ok`
+      - >-
+        `malformed` FIRES ON WARNINGS DIARIE MARKS RECOVERABLE (beads-probe.mjs:217). It is
+        `warnings.length > 0`, but diarie sources warnings[] from loadTasks for field-level rejections
+        as well as unreadable files. Reproduced with one task carrying `priority: urgent`: diarie says
+        "invalid priority — treated as medium" and returns total 1, and the probe reports malformed,
+        blocks trusted, and (via SKILL.md) sends the user to re-run /migrate-tracker, which cannot fix
+        a hand-edited priority. Fail-closed but with a wrong diagnosis and an unactionable remedy.
+        Only warnings that make rows go MISSING FROM THE COUNT bear on whether the migration moved
+        work. Fix: match those specifically, or surface warnings verbatim and name the consequence
+        per CLAUDE.md `### Reader conventions`
+      - >-
+        TWO UNCHECKED `run()` CALLS. `beads-probe.mjs:399-400` — `try { size = existsSync(...) ?
+        statSync(...).isDirectory() : false } catch { /* ignore */ }` leaves the value null, so a stat
+        failure reads as "no beads residue", in the field SKILL.md step 2 uses as its FIRST STOP gate.
+        `beads-probe.mjs:366` — `run('ps', ...).out` used without `.ok` under spawnSync's default 1 MiB
+        maxBuffer; on a busy host the output truncates, spawnSync sets `error`, and the truncated list
+        is reported as a complete `otherDoltProcesses` "do not touch" set
+      - >-
+        TEST VACUITY (check-beads-probe.mjs:95-96,179-180): the empty-store and block-scalar-prose
+        assertions check only `taskCount === 0 && trusted === false`, both of which hold when diarie is
+        unresolvable — they would pass vacuously in that environment. Other assertions in the suite go
+        red there so the suite as a whole is safe, but pin these anyway (also assert
+        `verifyFailed === false`)
+    description: >-
+      Found by a pr-review-toolkit silent-failure-hunter pass over 8f80594..80b4903 (2026-07-28), all
+      reproduced rather than inferred. Distinct from the diarium de-risk that prompted the review:
+      every item here predates it. Common shape, and the one this repo already has a name for — a
+      could-not-determine result rendered as a determinate one, on the path a human actually reads.
+    updated: '2026-07-29'
+  - id: vp-beads-fgt
+    title: 'nothing gates a fenced TEMPLATE that emits lint-invalid markdown'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - feature
+    acceptance_criteria:
+      - >-
+        vp-beads-tpl fixed 8+2 template sites by hand; nothing stops the next one. A template lives
+        inside a fence, so `check:md` cannot see it (fenced content is not linted) and
+        `check-prose-commands` skips it (it is not a command). `remark --output` cannot repair it
+        either — which is why these markers are hand-maintained
+      - >-
+        the hard half is classification, and it is what made vp-beads-tpl's scope wrong TWICE: a fence
+        may be (a) content written into a repo file — must satisfy the repo's remark config, (b)
+        content written into Basic Memory — the graph uses `-` and is not linted here, or (c) terminal
+        OUTPUT shown to a user — neither applies. review.md holds both (a) and (c); the *-bm-format.md
+        files are all (b)
+      - >-
+        a checker would extract (a)-class fences, assemble them into a scratch document, and lint it
+        with the project's own config. Note the confound that already produced one retracted false bug
+        report: the probe file MUST live inside the repo, or remark finds no config and reports clean
+      - >-
+        classification needs an explicit marker rather than a heuristic — e.g. an infostring
+        (```markdown-entry) or a preceding HTML comment. Decide the mechanism before building
+    description: >-
+      The gap vp-beads-tpl closed by hand and could not close structurally. Filed rather than bolted
+      onto that fix because the classification question is the real work and deserves its own decision.
+    updated: '2026-07-29'

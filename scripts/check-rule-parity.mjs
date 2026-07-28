@@ -68,19 +68,71 @@ const PKG_RULES = 'node_modules/@voxpelli/ast-grep-rules/rules'
 // Raise this deliberately when rules are added; that edit is the point, not an annoyance.
 const MIN_EFFECTIVE_RULES = 7
 
-/**
- * Rule (or test) ids in a directory, keyed off the `.yml` / `-test.yml` suffix.
- *
- * @param {string} dir
- * @param {RegExp} strip
- * @returns {Set<string>}
- */
-const idsIn = (dir, strip) => new Set(
-  readdirSync(dir).filter(f => f.endsWith('.yml')).map(f => f.replace(strip, ''))
-)
-
 /** @type {string[]} */
 const problems = []
+
+/**
+ * Test ids in a directory, keyed off the `-test.yml` suffix. Filenames are how ast-grep DISCOVERS a
+ * test, so discovering them the same way is correct here; the `id:` FIELD inside each is verified
+ * separately below.
+ *
+ * @param {string} dir
+ * @returns {Set<string>}
+ */
+const testIdsIn = (dir) => new Set(
+  readdirSync(dir).filter(f => f.endsWith('.yml')).map(f => f.replace(/-test\.yml$/, ''))
+)
+
+/**
+ * Rule ids as DECLARED INSIDE each `.yml`, mapped to the file that declares them.
+ *
+ * Reading the FIELD rather than the filename is the entire point, and getting it wrong here was a
+ * real defect: the first version of this check derived rule ids from filenames while reading the
+ * `id:` field of every TEST — enforcing the file's own thesis in exactly one of the two directions.
+ * Measured: rename only the `id:` inside a rule file and `ast-grep test` prints
+ * `Configuration not found!` and exits 0, `effectiveRuleCount` does not move (the rule still loads,
+ * under its new id), and this check reported "7 rules, each paired to a test by its `id:` field" —
+ * a claim it had never verified. From there, neutering that rule's pattern is invisible to
+ * everything. Reachable from upstream too: the package is pinned `^0.1.0`, so a minor bump may
+ * rename an id.
+ *
+ * @param {string} dir
+ * @returns {Map<string, string>} declared id -> filename
+ */
+const ruleIdsIn = (dir) => {
+  /** @type {Map<string, string>} */
+  const found = new Map()
+  for (const file of readdirSync(dir).filter(f => f.endsWith('.yml'))) {
+    const doc = /** @type {Record<string, unknown>} */ (
+      yaml.load(readFileSync(join(dir, file), 'utf8')) ?? {}
+    )
+    if (typeof doc.id !== 'string' || doc.id === '') {
+      problems.push(
+        `\`${dir}/${file}\` declares no string \`id:\`. ast-grep cannot load it, so it guards ` +
+        'nothing — and nothing else here would notice, because every other assertion is keyed on the id.'
+      )
+      continue
+    }
+    const stem = file.replace(/\.yml$/, '')
+    if (doc.id !== stem) {
+      problems.push(
+        `\`${dir}/${file}\` declares \`id: ${doc.id}\` — it does not match the filename stem ` +
+        `\`${stem}\`. ast-grep pairs on the FIELD, so the rule is really \`${doc.id}\`, while the ` +
+        'test and snapshot conventions are keyed on the filename. Rename the file or the id so they agree.'
+      )
+    }
+    const clash = found.get(doc.id)
+    if (clash) {
+      problems.push(
+        `\`${dir}/\` declares \`id: ${doc.id}\` twice (${clash} and ${file}). ast-grep exits 8 on a ` +
+        'duplicate rule id.'
+      )
+      continue
+    }
+    found.set(doc.id, file)
+  }
+  return found
+}
 
 // EVERY RULE IS ACTUALLY TESTED. `ast-grep test` does not fail on an untested rule. It SKIPS it, and
 // never says so: it discovers TEST files and replays them, so a rule with no test simply is not in the
@@ -88,15 +140,18 @@ const problems = []
 // to a rule by the `id:` field INSIDE it. Change only that field and the test silently detaches from
 // its rule. So all three must hold: the file exists, its `id:` names this rule, and it carries an
 // `invalid:` case.
-const ruleIds = idsIn(RULES, /\.yml$/)
-const pkgIds = idsIn(PKG_RULES, /\.yml$/)
-const testIds = idsIn(TESTS, /-test\.yml$/)
+const ruleIds = new Set(ruleIdsIn(RULES).keys())
+const pkgIds = new Set(ruleIdsIn(PKG_RULES).keys())
+const testIds = testIdsIn(TESTS)
 
 // Every rule the scan LOADS needs a test, wherever it came from. A package rule is exactly as
 // silently-neuterable as a local one, so it gets the same three assertions.
 const allRuleIds = new Set([...ruleIds, ...pkgIds])
 
-/** @param {string} id */
+/**
+ * @param {string} id
+ * @returns {string} the directory the rule was declared in
+ */
 const originOf = id => (ruleIds.has(id) ? RULES : PKG_RULES)
 
 for (const id of [...allRuleIds].toSorted()) {
@@ -139,8 +194,10 @@ for (const id of [...testIds].toSorted()) {
 }
 
 // A local rule and a package rule sharing an id is not a layering — ast-grep hard-errors
-// `Duplicate rule id` (exit 8). Name it here, because the symptom otherwise reaches the reader as an
-// unreadable `effectiveRuleCount` and a probe complaint pointing nowhere near the cause.
+// `Duplicate rule id` (exit 8) and prints NO summary at all, so `effectiveRuleCount` is unreadable.
+// Name the collision here, because that symptom otherwise reaches the reader as a probe complaint
+// pointing nowhere near the cause. Both sides are DECLARED ids, not filenames: a collision between
+// two differently-named files was the shape that slipped through before.
 for (const id of [...ruleIds].toSorted()) {
   if (pkgIds.has(id)) {
     problems.push(
@@ -157,8 +214,10 @@ const expected = allRuleIds.size
 // stderr, which execFileSync does not return — its return value is STDOUT, so an earlier draft that
 // silenced stdout read back an empty string and could never find the count. It failed loudly rather
 // than skipping the assertion, which is the only reason that draft did not ship as a dead guard.
-// spawnSync also tolerates a non-zero scan (a duplicate rule id exits 8) without throwing, and the
-// summary is still printed in that case.
+// spawnSync also tolerates a non-zero scan (a duplicate rule id exits 8) without throwing. It does
+// NOT print a summary in that case — measured, correcting an earlier claim here that it did — so the
+// count assertions correctly fall into could-not-determine, and the duplicate-id check above exists
+// to name the cause the probe cannot.
 //
 // The binary is addressed DIRECTLY, not through `npx`: inside a gate, `npx` adds startup latency and,
 // worse, carries an install-if-missing resolution path — a check that can silently reach the network
@@ -170,9 +229,18 @@ const probe = spawnSync('node_modules/.bin/ast-grep', ['scan', '--inspect', 'sum
 const effective = Number(/effectiveRuleCount=(\d+)/.exec(probe.stderr ?? '')?.[1])
 
 if (!Number.isInteger(effective)) {
+  // Say WHY. A missing binary, a renamed `--inspect` flag, a changed output format and an ast-grep
+  // crash all land here, and without the spawn's own diagnostics they are one indistinguishable
+  // message — honest about not having run the assertion, useless for fixing it.
+  const why = [
+    probe.error?.message,
+    typeof probe.status === 'number' ? `exit ${probe.status}` : undefined,
+    (probe.stderr ?? '').trim().slice(0, 500) || undefined,
+  ].filter(Boolean).join(' · ')
   problems.push(
-    'could not read `effectiveRuleCount` from `ast-grep scan --inspect summary` — the count assertion ' +
-    'below did not run, so a shrunken rule set would pass unnoticed. Fix the probe rather than dropping it.'
+    'could not read `effectiveRuleCount` from `ast-grep scan --inspect summary` — the count assertions ' +
+    'did not run, so a shrunken rule set would pass unnoticed. Fix the probe rather than dropping it. ' +
+    `Probe said: ${why || '(no output, no error, no exit status)'}`
   )
 } else {
   if (effective !== expected) {
