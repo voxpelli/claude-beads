@@ -1099,6 +1099,37 @@ tasks:
       modes it targets, and its first draft was circular until caught — but its scope is narrower than
       the confidence its output line projects.
     updated: '2026-07-22'
+  - id: vp-beads-tpl
+    title: 'ledger entry templates (in FENCES) still tell agents to write `-` bullets — following them reddens check:md'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        `remark --output` CANNOT reach fenced code, so the 51-file reformat (bullets `-` → `*`) left every
+        entry TEMPLATE untouched. 58 fenced lines repo-wide still start with `- `; the load-bearing ones
+        write into files `check:md` covers (UPSTREAM-*.md / SYNERGY-*.md are not gitignored):
+        plugins/ledger/skills/ledger/references/log.md:65,69,73,78 and
+        plugins/ledger/skills/ledger/references/synergy-entry-format.md:46,65,85,119
+      - >-
+        PROVEN: the literal template line with a `-` bullet under this repo's own config exits 1
+        ("Unexpected unordered list marker `-`, expected `*`"); with `*` it exits 0. An agent following
+        log.md verbatim writes an entry that reddens `npm run check`.
+      - >-
+        flip those 8 fenced bullets to `*`. Lower-risk siblings write to Basic Memory (no lint gate) and
+        can follow: synergy-bm-format.md:62,67,72,77,82 · basic-memory-friction-format.md:30,34,38,43.
+        LEAVE ALONE: review.md (console output), retrospective SKILL.md RETRO/SWARM templates (gitignored),
+        and the `yaml` fence at retrospective/SKILL.md:315-321 (YAML `-` is correct there)
+      - >-
+        consider whether anything can GATE this class — a template that emits lint-invalid markdown is
+        invisible to check:md (it is inside a fence) and to check:prose-commands (not a command)
+    description: >-
+      Found by the comment-accuracy reviewer, 2026-07-22, and independently confirmed by a second sweep
+      which also verified 0 fence markers changed anywhere in the reformat diff. This is the mirror of the
+      reformat: the corpus moved to `*`, the instructions that GENERATE new corpus did not.
+    updated: '2026-07-28'
   - id: vp-beads-dlf
     title: 'retrospective SKILL.md teaches bd''s decision open/closed lifecycle — diarie has neither status'
     status: pending

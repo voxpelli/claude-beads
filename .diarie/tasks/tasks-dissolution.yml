@@ -425,6 +425,17 @@ tasks:
         provenance). Note the two residuals: `check:tracked-ignored` is structurally blind to CLI-flag
         exclusions (its own header already says "a FLOOR, NOT A FENCE"; broader guard deferred as
         vp-beads-vgd), and `check:md-decisions` has no coverage floor (vp-beads-mdf)
+      - >-
+        MORE CLAUDE.md drift found 2026-07-28 (comment-accuracy reviewer), in the `### ast-grep structural
+        lint` / Plugin Layout areas: (a) "The plugin's rules (6)" still lists `no-jsdoc-any-type` +
+        `no-jsdoc-object-typedef`, which MOVED to `@voxpelli/ast-grep-rules` in 9946aa2 — it is now 4 local
+        + 3 package = 7, and the package is not mentioned in CLAUDE.md at all (`grep -c ast-grep-rules
+        CLAUDE.md` = 0); (b) the Plugin Layout tree and the vp-dream bullet both say `.remarkrc`, but all
+        five are `.remarkrc.mjs` now AND are one-line re-exports of a SHARED dep, so "ships its own" is
+        inverted by 2c3b1cf; (c) `## Validation` prose lists a root `check:beads-probe` key that does not
+        exist (it is inline in plugins/diarie-adopt's `check`) and names 2 workspace members when there are
+        4. The "all advisory" claim survives — verified, all three package rules are `severity: warning`.
+        Also add the now-armed `check:type-coverage` and the deliberately-unarmed bare `tsc` (vp-beads-nts)
     description: >-
       Plan step 1.8; the last local capstone. Enumerate every doc surface via grep — do not trust
       the plan's edit list.

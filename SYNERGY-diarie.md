@@ -26,7 +26,12 @@ Relationship: `dependency`.
   Status: aligned · Last verified: 2026-07-18
 * **remark `remarkConfig` markdown-lint config** (2026-07-22, reciprocating the sibling's entry) —
   the `remarkConfig` block (frontmatter + gfm + lint-recommended/consistent + validate-links +
-  list-marker `-`) was copied verbatim into diarie when it re-added `check:md` after the extraction.
+  list-marker) was copied into diarie when it re-added `check:md` after the extraction — **but not
+  verbatim, and the difference is material**: diarie's copy drops the `'-'` OPTION on
+  `remark-lint-unordered-list-marker-style`, whose default is `'consistent'`, so diarie accepts any
+  internally-consistent marker while this side pinned one. Measured: an all-`*` document was rejected
+  here and accepted there before 2026-07-22 — and this repo's own preset adoption has since INVERTED
+  that, so today it is an all-`-` document that is rejected here and accepted there.
   The sibling's entry predicted "two copies with no shared package will drift; converge on a shared
   package if a third consumer appears" — and **the count was already six, not two**: root
   `package.json` plus four byte-identical `plugins/*/.remarkrc` here, plus diarie's.
@@ -55,8 +60,10 @@ Relationship: `dependency`.
   artifacts (`vp-beads-imd`, resolved 2026-07-22).
   **Both are correct for their role and this is NOT drift to converge:** diarie is the store's
   OWNER (its `.diarie/` is small, live, and entirely its own), while this repo carries frozen
-  inherited artifacts (\~172 warnings live in `.diarie/_archive/` + `RESEARCH-*.md`, 0 in live
-  decision docs) that are deliberately not churned. The shared conclusion both sides reached
+  inherited artifacts (**297** warnings live in `.diarie/_archive/` + `RESEARCH-*.md`, 0 in live
+  decision docs) that are deliberately not churned. _(That count was ~172 when first measured under
+  the old inline config; adopting the preset added ~126 marker warnings to the same frozen files,
+  which is exactly why they stay excluded rather than churned.)_ The shared conclusion both sides reached
   independently: the load-bearing gap is decision **frontmatter**, which neither remark config can
   see — tracked upstream as `diarie-dlm` (see `UPSTREAM-diarie.md`).
   Convergence status: accept-difference · Last verified: 2026-07-22
