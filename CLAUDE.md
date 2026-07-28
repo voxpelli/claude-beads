@@ -4,30 +4,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Claude Code plugin (`vp-beads`) providing sprint workflow automation for projects
-using the **`diarie` flat-YAML tracker** (`.diarie/`) and
+An npm-workspaces monorepo of Claude Code plugins for sprint workflow automation, built on the
+**`diarie` flat-YAML tracker** (`.diarie/`) and
 [Basic Memory](https://github.com/basicmachines-co/basic-memory). It migrated off
-[beads](https://github.com/steveyegge/beads) — see `## The tracker migration`. These skills
-promote project-local sprint workflow patterns into a shareable, installable plugin.
+[beads](https://github.com/steveyegge/beads) — see `## The tracker migration`.
+
+**It is mid-dissolution** (epic `vp-beads-dis`, decision `vp-beads-cst`): what was one plugin named
+`vp-beads` is becoming several independent plugins under `plugins/*`, with the root retaining only
+`retrospective` and the hooks. The repo is still named `claude-beads` and the root manifest still
+says `vp-beads` — the rename to `vp-skills` is a deliberately gated later phase (`vp-beads-rnm`), so
+those names being stale is expected, not drift to fix.
 
 ## Plugin Layout
 
+**Regenerate this block from disk when it changes** (`git ls-files`), never by editing around the
+existing text — it drifted through an entire skill merge once, listing four directories that no
+longer existed while the hooks had already been retargeted.
+
 ```
-.claude-plugin/
-  plugin.json                         # Plugin manifest
+.claude-plugin/plugin.json            # Root plugin manifest
 skills/
-  retrospective/SKILL.md              # Sprint retrospective generator
-  upstream-tracker/
-    SKILL.md                          # Upstream issue tracking + BM friction sync
-    references/
-      basic-memory-friction-format.md # BM section templates, routing, edit_note gotchas
-  vendor-sync/SKILL.md                # Pull vendor subtrees and cross-reference UPSTREAM files
-  sibling-sync/SKILL.md               # Bilateral SYNERGY/UPSTREAM reconciliation between siblings
-  synergy-tracker/
-    SKILL.md                          # Cross-project synergy tracking (sibling projects)
-    references/
-      synergy-entry-format.md         # Entry templates, field values, naming, registry schema
-plugins/                              # workspace-plugins (own package.json + .remarkrc + check)
+  retrospective/SKILL.md              # Sprint retrospective generator (root plugin's only skill)
+plugins/                              # workspace-plugins (own package.json + .remarkrc.mjs + check)
+  ledger/
+    skills/ledger/
+      SKILL.md                        # Mode-routed relationship tracker (UPSTREAM + SYNERGY)
+      references/                     # log, review, resolve, promote, pull, reconcile,
+                                      #   synergy-entry-format, synergy-bm-format,
+                                      #   basic-memory-friction-format, project-name-derivation
+  swarm-wave/
+    skills/swarm-wave/
+      SKILL.md                        # Multi-agent wave orchestration
+      references/                     # wave-planning, contention, review-gate, concurrency,
+                                      #   command-patterns, roadmap-interpretation
   diarie-adopt/
     skills/
       migrate-tracker/SKILL.md        # Guided bd → flat-YAML cutover (for other repos)
@@ -35,119 +44,82 @@ plugins/                              # workspace-plugins (own package.json + .r
     scripts/
       beads-probe.mjs                 # Read-only beads reconnaissance probe
       check-beads-probe.mjs           # Unit tests for the probe
-  swarm-wave/
-    skills/
-      swarm-wave/
-        SKILL.md                      # Multi-agent wave orchestration
-        references/                   # wave-planning, contention, review-gate, concurrency, command-patterns
   vp-dream/
-    skills/
-      vp-dream/
-        SKILL.md                      # Claude file-memory consolidation (verify + approval-gated)
-        references/                   # native-autodream-contract, synthesis-rationale
-        scripts/audit-memory.sh       # descriptive memory-directory audit (pure bash)
+    skills/vp-dream/
+      SKILL.md                        # Claude file-memory consolidation (verify + approval-gated)
+      references/                     # native-autodream-contract, synthesis-rationale
+      scripts/audit-memory.sh         # descriptive memory-directory audit (pure bash)
 hooks/
   hooks.json                          # Hook definitions (3 event types)
-  session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudge, trend-review reminder
-  post-file-edit.sh                   # Auto-format hooks/*.sh and scripts/*.sh with shfmt
+  session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact)
+                                      #   + sensitive-file warning, dormancy nudge, trend-review reminder
+  post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt
   post-tasks-validate.sh              # Validate .diarie/tasks/ on edit; report errors, silent when clean
-  post-bm-failure-classify.sh         # Basic Memory error classification + recovery guidance
-CLAUDE.md
-README.md
-CHANGELOG.md
+  post-bm-failure-classify.sh         # Basic Memory error classification (DUPLICATES vp-knowledge's —
+                                      #   double-fire, see vp-beads-hkd)
+scripts/                              # dev-only gates; see ## Validation
+eslint-local-rules/
+CLAUDE.md · README.md · CHANGELOG.md
 ```
 
-The root-plugin skills are pure markdown; the `plugins/*` workspaces additionally ship small scripts
-(diarie-adopt's `.mjs` probe + tests, vp-dream's one bash audit). Hooks are shell scripts. Dev tooling
-only: validation and linting via `npm run check`.
+There is **no `agents/` directory** — the `sprint-review` agent was retired with `backlog-groomer`
+(`vp-beads-rt2`). Skills are markdown; `diarie-adopt` and `vp-dream` additionally ship small scripts.
+Hooks are shell scripts. Everything under `scripts/` is dev tooling, reached only by `npm run check`.
 
 ## Components
 
-### Skills (9)
+### Skills (6)
 
-* **migrate-tracker** — Guided, one-way cutover of a project's issue tracker off
-  beads (`bd`) onto the flat-YAML tracker. Five workflows: detect-and-assess,
-  export-and-archive, migrate (dry-run first), verify (validate + a dual-run
-  against `bd ready`), cut-over. Wraps the `diarie migrate` CLI (the
-  generalized migrator, extracted to `voxpelli/diarie`). Aimed at _other_ repos
-  — vp-beads already migrated; the
-  siblings (vp-knowledge, vp-git) broke on the same global beads 1.1.0 binary.
-  User-invocable as `/migrate-tracker`.
-* **deintegrate-beads** — De-integrates beads _after_ the migration is trusted. Five
-  workflows: probe-verify-confirm, disarm-git-hooks, stop-daemon, de-colonize
-  (CLAUDE.md/AGENTS.md blocks + Claude hooks + bd perms), report-what-is-left.
-  **The hooks are disarmed BEFORE the daemon is stopped** — the armed `pre-commit`
-  shim calls `bd`, which re-spawns the daemon, so stopping it first just brings it
-  back on the next commit. **Never deletes `.beads/` or any data** — it disarms
-  machinery (bd hides five git hooks behind `core.hooksPath`, so `.git/hooks/` looks
-  clean while every commit routes through `bd`) and reports the rest. All detection
-  lives in the tested `scripts/beads-probe.mjs` (inside the `plugins/diarie-adopt/`
-  plugin), not in prose. User-invocable as `/deintegrate-beads`.
-* **retrospective** — Generates a sprint retrospective: reads git history,
-  `UPSTREAM-*.md` files, and conversation context, creates `RETRO-NN.md`, runs
-  a knowledge gap audit, writes generalizable learnings to Basic Memory, and
-  suggests documentation updates. User-invocable as `/retrospective`.
-* **upstream-tracker** — Manages `UPSTREAM-*.md` files that track bugs, feature
-  requests, contribution opportunities, and friction discovered in upstream
-  packages. Supports seven workflows: log, review-open, resolve, trend-review,
-  sprint-retro-support, promote-to-basic-memory, sync-from-basic-memory. The
-  last two provide bidirectional sync between project-local UPSTREAM files and
-  cross-project Basic Memory entity notes (`## Upstream Friction` sections).
-  In low-activity repos, workflow 1 (Log) offers eager inline promotion to Basic Memory to
-  prevent entries from staying trapped locally. User-invocable as
-  `/upstream-tracker`.
-* **vendor-sync** — Pulls latest upstream changes from git subtrees, resolves
-  conflicts (always accept upstream), cleans stale node\_modules, re-links
-  workspaces, cross-references the sync diff against open `UPSTREAM-*.md`
-  entries to auto-resolve fixed issues, annotates corresponding Basic Memory
-  friction entries on resolution, and verifies with check + test.
-  Reads the subtree registry from `.claude/vendor-registry.json`. User-invocable
-  as `/vendor-sync`.
-* **sibling-sync** — Bilateral reconciliation of `SYNERGY-*.md` and
-  `UPSTREAM-*.md` files between this project and its registered sibling
-  vp-\* projects. Four workflows: discover-siblings (registry resolution +
-  path probing), sync-sibling-synergy (reciprocal gaps, stale alignment
-  claims, divergence convergence-status drift), sync-sibling-upstream
-  (two pairing modes — Mode A: shared-dependency basename intersection
-  surfacing duplicate friction, complementary workarounds, sibling-only
-  entries; Mode B: reciprocal sibling-friction pairs `UPSTREAM-<sibling>.md`
-  here ↔ `UPSTREAM-<this-project>.md` there, surfacing friction the sibling tracks
-  about us, our open friction against them, and cross-side staleness from
-  shipped fixes), apply-reciprocation-batch (opt-in `--auto-reciprocate`
-  flag, per-entry confirmation, writes only to the sibling side; SYNERGY
-  finding (a) only — never UPSTREAM). Read-only by default. Workflows 2
-  (Sync sibling SYNERGY) and 3 (Sync sibling UPSTREAM) end with a
-  per-sibling two-tier action menu (single `AskUserQuestion` call,
-  `header: "Synergy"` + `header: "Upstream"`) that delegates writes to
-  `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or a task row appended
-  to `.diarie/tasks/` via the `Skill` tool — replacing the previous copy-paste hint workflow.
-  Distinct from `/vendor-sync` (upstream → project drift, subtree pulls)
-  and `/synergy-tracker` (logging entries here on this side); sibling-sync
-  compares both sides without writing on this side. User-invocable as
-  `/sibling-sync`.
-* **synergy-tracker** — Manages `SYNERGY-*.md` files that track cross-project
-  patterns, divergences, extraction candidates, and capability gaps between
-  sibling projects. Supports five workflows: log, review, compare-with-sibling,
-  trend-review, promote-to-basic-memory.
-  Complements upstream-tracker (which tracks dependency friction) by tracking
-  peer-project collaboration opportunities. BM integration via
-  `## Cross-Project Synergy` section in sibling entity notes via workflow 5 (Promote to Basic Memory).
-  User-invocable as `/synergy-tracker`.
-* **swarm-wave** — Orchestrates multi-agent development sprints with wave-based
-  parallelism. Five workflows: plan-sprint (file-disjoint wave partitioning),
-  execute-wave (parallel agent launches with file-scope isolation),
-  post-wave-gate (two-reviewer quality gate), file-contention-map (standalone
-  utility), research-wave (parallel research with direct `.diarie/` task creation).
-  Manages ephemeral `SWARM-NN.md` files. User-invocable as `/swarm-wave`.
-* **vp-dream** — Manual, approval-gated, fact-verifying consolidation of Claude
-  Code's **file-based auto-memory** (the per-project `memory/` dir + `MEMORY.md`
-  index) — a _different_ subsystem from Basic Memory (which vp-knowledge owns).
-  Mirrors native `autoDream` (Orient → Gather → Consolidate → Prune & index) and
-  adds the two things the sandboxed native pass structurally cannot: verify
-  volatile facts against primary sources, and a human approval gate before any
-  delete. Ships its own `.remarkrc` + `check:sh` and one bash `audit-memory.sh`;
-  no runtime npm deps (pure bash → safe when installed). User-invocable as
-  `/vp-dream`. Lives in its own `plugins/vp-dream/` workspace.
+Six `SKILL.md` files on disk — one in the root plugin, five across the four workspace plugins. If
+this count and the list below disagree with `find . -name SKILL.md`, the file is wrong, not the disk.
+
+* **ledger** (`plugins/ledger/`) — The project's ledger of relationships with code it does not own:
+  upstream dependencies and sibling projects. **One mode-routed skill that replaced four**
+  (`upstream-tracker`, `synergy-tracker`, `vendor-sync`, `sibling-sync`, merged in `c066fbe`), routed
+  by an object × verb matrix rather than by skill name:
+  * `log` — upstream friction (bug / feature request / contribution opportunity) **or** a
+    cross-project pattern, divergence, extraction candidate, or capability gap with a sibling
+  * `resolve` — close a fixed upstream entry, annotating Basic Memory
+  * `review` — status · `--trend` (every 4th sprint) · retro support · `--compare` with a sibling
+  * `pull` — git-subtree vendor sync, auto-resolving `UPSTREAM-*.md` entries the diff fixed
+  * `reconcile` — bilateral SYNERGY/UPSTREAM sibling drift (reciprocation gaps, stale-aligned rows,
+    status drift). Read-only by default; `--auto-reciprocate` writes only to the sibling side
+  * `promote` / `--sync-back` — bidirectional Basic Memory sync
+
+  Its per-mode detail lives in `plugins/ledger/skills/ledger/references/`, which is where the logic
+  actually is — the SKILL.md is a router. User-invocable as `/ledger`.
+* **swarm-wave** (`plugins/swarm-wave/`) — Orchestrates multi-agent sprints with wave-based
+  parallelism. Five workflows: plan-sprint (file-disjoint wave partitioning), execute-wave (parallel
+  launches with file-scope isolation), post-wave-gate (two-reviewer quality gate), file-contention-map,
+  research-wave. Manages ephemeral `SWARM-NN.md` files. Sources work from `.diarie/`, a `ROADMAP.md`,
+  or a manual list — see `## Work-tracking substrates`. User-invocable as `/swarm-wave`.
+* **migrate-tracker** (`plugins/diarie-adopt/`) — Guided, one-way cutover of a project's tracker off
+  beads (`bd`) onto the flat-YAML tracker. Five workflows: detect-and-assess, export-and-archive,
+  migrate (dry-run first), verify (validate + a dual-run against `bd ready`), cut-over. Wraps the
+  `diarie migrate` CLI. Aimed at _other_ repos — this one already migrated. User-invocable as
+  `/migrate-tracker`.
+* **deintegrate-beads** (`plugins/diarie-adopt/`) — De-integrates beads _after_ the migration is
+  trusted. Five workflows: probe-verify-confirm, disarm-git-hooks, stop-daemon, de-colonize
+  (CLAUDE.md/AGENTS.md blocks + Claude hooks + bd perms), report-what-is-left. **The hooks are
+  disarmed BEFORE the daemon is stopped** — the armed `pre-commit` shim calls `bd`, which re-spawns
+  the daemon, so stopping it first just brings it back on the next commit. **Never deletes `.beads/`
+  or any data.** All detection lives in the tested `plugins/diarie-adopt/scripts/beads-probe.mjs`,
+  not in prose. User-invocable as `/deintegrate-beads`.
+* **vp-dream** (`plugins/vp-dream/`) — Manual, approval-gated, fact-verifying consolidation of Claude
+  Code's **file-based auto-memory** (the per-project `memory/` dir + `MEMORY.md` index) — a
+  _different_ subsystem from Basic Memory (which vp-knowledge owns). Mirrors native `autoDream`
+  (Orient → Gather → Consolidate → Prune & index) and adds the two things the sandboxed native pass
+  structurally cannot: verify volatile facts against primary sources, and a human approval gate
+  before any delete. No runtime npm deps (pure bash → safe when installed). User-invocable as
+  `/vp-dream`.
+* **retrospective** (root plugin) — Generates a sprint retrospective: reads git history,
+  `UPSTREAM-*.md` files, and conversation context, creates `RETRO-NN.md`, runs a knowledge-gap audit,
+  writes generalizable learnings to Basic Memory, and suggests documentation updates. User-invocable
+  as `/retrospective`. Slated to move to vp-knowledge as `/session-reflect` in Phase 2
+  (`vp-beads-drt`) — gated, do not pre-empt.
+
+**Retired, deliberately:** `backlog-groomer` and the `sprint-review` agent (`vp-beads-rt2`), and
+`harden-memories` (Wave 2 of the tracker migration). There is no `agents/` directory.
 
 ## The tracker migration: bd → flat-YAML (done)
 
@@ -157,10 +129,15 @@ substrate — `.diarie/tasks/tasks-<slug>.yml`, read by `diarie ready` (the file
 `diarie` package's `lib/schema.js` (the `TRACKER_DIR` authority).
 
 The tracker is a real CLI, **`diarie`**, with `ready` / `stats` / `validate` / `init` /
-`migrate`. It is **published** (`diarie@0.2.0` on npm, 2026-07-18; `diarie.dev` registered).
+`migrate`. It is **published** (`diarie@0.2.2` on npm; `diarie.dev` registered).
 Here it resolves via `npx diarie` / `node_modules/.bin/diarie` — **bare-shell `diarie` is
 NOT on PATH** (only npm injects it). Everything calls the CLI; there are no loose `.mjs`
 readers left.
+
+**A store rename is queued, not landed.** diarie is moving `.diarie/` → `diarium/` | `.diarium/` and
+removing `TRACKER_DIR`. Nothing here breaks by accident — `^0.2.0` resolves `>=0.2.0 <0.3.0-0`, so it
+cannot reach 0.3.0 — and every `.diarie/` reference below is correct today. Adopting it is
+`vp-beads-drn`, gated on 0.3.0 publishing; the consumers were already made form-agnostic (`9dde44a`).
 
 Verdict from a 12-agent research round (2026-06-09), for provenance:
 `RESEARCH-tracker-migration-synthesis-2026-06.md`; architecture in
@@ -188,7 +165,7 @@ DECLINED** — its MCP server is another daemon/vendor, and it cannot reproduce
   diarie was `git subtree split`'d to its own repo
   [`voxpelli/diarie`](https://github.com/voxpelli/diarie) (its canonical home), then wired
   here as a **`file:../diarie` dependency** (`85600aa`) — the in-repo `diarie/` workspace is
-  **gone**. Published 2026-07-18 (`diarie@0.2.0` on npm); the `file:../diarie` bridge has since been
+  **gone**. Published 2026-07-18 (`diarie@0.2.2` is current on npm); the `file:../diarie` bridge has since been
   flipped to the published `^0.2.0` dep.
 
 ## Work-tracking substrates
@@ -318,6 +295,24 @@ BROKEN and surfaced for attention, not merely non-workable). The concrete
 **[`diarie` repo](https://github.com/voxpelli/diarie)** — it is that repo's engineering guidance, not
 vp-beads'.
 
+### Fenced templates are hand-maintained
+
+`remark --output` cannot reach inside a fenced block (measured: it rewrote a document's real bullets
+and left the fence byte-identical), so a template an agent copies verbatim is never auto-corrected —
+the 51-markdown-file bullet reformat left every entry template emitting `-`, and an agent following
+ledger's `log.md` wrote entries that reddened `npm run check`. Nothing gates this: `check:md` cannot
+see into a fence, `check-prose-commands` reads only commands (`vp-beads-fgt`).
+
+Classify by **what consumes the fence**, never by filename pattern — missing this made
+`vp-beads-tpl`'s scope wrong in BOTH directions:
+
+* **repo-file content** (`log.md`, `synergy-entry-format.md`, `review.md`'s Trend Review blocks) —
+  must satisfy the consuming repo's remark config: bullets `*`, brackets escaped `\[like this\]`
+* **Basic Memory content** (`basic-memory-friction-format.md`, `synergy-bm-format.md` — note these
+  do **not** share a filename glob) — the graph uses `-` and unescaped brackets and is not linted
+  here; "fixing" these writes the wrong marker into BM
+* **terminal output** (`review.md`'s `## Upstream Status` / `## Synergy Status`) — neither applies
+
 ### Retrospective file convention
 
 * Named `RETRO-NN.md` in the project root
@@ -339,8 +334,8 @@ vp-beads'.
   companion mirroring the `settings.local.json` convention. Per-entry merge
   by the `package` key; fields in `.local.json` win. Skills load the base
   registry first, then merge the override on top. Entries in `.local.json`
-  whose `package` is not in the base registry are ignored. Used by vendor-sync
-  workflow 1 (Determine scope). Never committed — encodes machine-specific
+  whose `package` is not in the base registry are ignored. Used by `ledger pull`
+  (Determine scope). Never committed — encodes machine-specific
   paths.
 
 ### Upstream tracking convention
@@ -356,13 +351,13 @@ vp-beads'.
 
 * Files named `SYNERGY-<project-name>.md` in the project root
 * Project name derived via the four-tier algorithm in
-  `skills/synergy-tracker/references/project-name-derivation.md`
+  `plugins/ledger/skills/ledger/references/project-name-derivation.md`
   (sibling-registry back-pointer → plugin manifest → package manifest /
   registry `name` → directory basename); normalization rules
   (slashes → `--`, drop leading `@`) live in
-  `skills/synergy-tracker/references/synergy-entry-format.md` "Naming
-  convention". Both `/synergy-tracker` and `/sibling-sync` use the same
-  algorithm
+  `plugins/ledger/skills/ledger/references/synergy-entry-format.md` "Naming
+  convention". Both `ledger log` (sibling object) and `ledger reconcile` use the
+  same algorithm
 * Permanent files — never deleted, even when all entries are resolved
 * Four sections: Shared Patterns, Divergences, Extraction Candidates,
   They Have / We Don't
@@ -379,8 +374,8 @@ vp-beads'.
   entry's `file` is a `PRIVATE-SYNERGY-<name>.md` value it is **added** as a
   private sibling (see next bullet); (b) otherwise it is ignored
   (backward-compatible — the base registry is the authoritative source of
-  _public_ siblings). Used by synergy-tracker workflow 3 (Compare with sibling)
-  and `/sibling-sync`. Never committed — encodes machine-specific paths and
+  _public_ siblings). Used by `ledger review --compare` and `ledger reconcile`.
+  Never committed — encodes machine-specific paths and
   private relationships.
 * **Private (local-only) sibling registration**: a sibling whose existence must
   not be committed (e.g. a proprietary open-core partner) is registered
@@ -397,7 +392,7 @@ vp-beads'.
   reciprocation are skipped for `PRIVATE-SYNERGY-*`-filed siblings (structural);
   the action menu suppresses task creation for private-sibling findings; and
   follow-up logging redirects to the gitignored `PRIVATE-SYNERGY-<name>.md`.
-  `/sibling-sync` **may read** a private sibling's `PRIVATE-SYNERGY-<name>.md`
+  `ledger reconcile` **may read** a private sibling's `PRIVATE-SYNERGY-<name>.md`
   for read-only diff (it is a registry `file` value), but never writes the name
   to any committed surface. UPSTREAM Mode-B reciprocal-friction is out of scope
   for private siblings (would need a `PRIVATE-UPSTREAM-` mechanism) — private
@@ -415,8 +410,8 @@ vp-beads'.
   explicit `PRIVATE-SYNERGY-*.md` line (prefix-namespaced like `RETRO-*` /
   `SWARM-*`); `session-start.sh` warns if any `PRIVATE-SYNERGY-*.md` is tracked.
   Merge semantics: the overlay holds additional private entries under the same
-  four section headings. Only a deliberate _local-only_ read (synergy-tracker
-  workflow 2 (Review)) globs BOTH `SYNERGY-*.md` and `PRIVATE-SYNERGY-*.md` to
+  four section headings. Only a deliberate _local-only_ read (`ledger review`,
+  sibling object) globs BOTH `SYNERGY-*.md` and `PRIVATE-SYNERGY-*.md` to
   assemble the combined view (private rows labelled `[local]`); every other
   read uses `SYNERGY-*.md` and never sees private entries. **Invariant:
   private-overlay entries are NEVER promoted to Basic Memory and NEVER
@@ -426,76 +421,71 @@ vp-beads'.
   files are invisible to collaborators and `git grep`). A **fully-private
   sibling** (registered only in `.local.json` per the bullet above) has **no**
   committed `SYNERGY-<name>.md` and therefore **no pointer** — a pointer would
-  commit the private name. This _content_ overlay is owned by synergy-tracker;
-  `/sibling-sync` never reads a glob-discovered overlay of a public sibling. The
+  commit the private name. This _content_ overlay is owned by `ledger`'s
+  sibling object; `ledger reconcile` never reads a glob-discovered overlay of a
+  public sibling. The
   one exception is a _private sibling_ whose registry `file` IS a
-  `PRIVATE-SYNERGY-<name>.md` value: `/sibling-sync` may read that file for
+  `PRIVATE-SYNERGY-<name>.md` value: `ledger reconcile` may read that file for
   read-only diff (it is the sibling's sole synergy content), but still never
   writes the private name to any committed surface.
 
 ### Basic Memory section ownership
 
-Three skills own distinct sections in Basic Memory entity notes — they never
-overlap:
+Three owners of distinct sections in Basic Memory entity notes — they never overlap. `ledger`
+carries two of the three, one per object, which is why the object matters more than the mode:
 
-* **upstream-tracker workflow 6 (Promote)** owns `## Upstream Friction` in `npm/*`, `brew/*`,
-  `cask/*`, `actions/*`, `docker/*`, `vscode/*` entity notes
-* **synergy-tracker workflow 5 (Promote)** owns `## Cross-Project Synergy` in
-  sibling-relationship notes (canonically
-  `engineering/agents/vp-plugins-<this-project>-and-<sibling>` — these are
-  bilateral relationship notes, NOT single-project entity notes)
-* **retrospective step 7** owns `engineering/*` notes (patterns, conventions)
+* **`ledger promote` (upstream object)** owns `## Upstream Friction` in `npm/*`, `brew/*`, `cask/*`,
+  `actions/*`, `docker/*`, `vscode/*` entity notes
+* **`ledger promote` (sibling object)** owns `## Cross-Project Synergy` in sibling-relationship notes
+  (canonically `engineering/agents/vp-plugins-<this-project>-and-<sibling>` — these are **bilateral
+  relationship** notes, NOT single-project entity notes)
+* **`/retrospective` step 7** owns `engineering/*` notes (patterns, conventions)
 
-Annotation-only writers (not owners): vendor-sync step 8b and upstream-tracker
-workflow 3 (Resolve) annotate `## Upstream Friction` entries but never delete
-or move them.
+Annotation-only writers (not owners): `ledger pull` and `ledger resolve` annotate
+`## Upstream Friction` entries but never delete or move them. Only `promote`'s prune pass moves an
+entry to `### Resolved`.
+
+The canonical copy of this table lives in `plugins/ledger/skills/ledger/SKILL.md`
+`### Basic Memory section ownership`. This one is the cross-plugin summary — if they disagree, the
+skill wins, because it is what executes.
 
 ### Sprint workflow cycle
 
-The agent and skills form a lightweight cycle. The diagram below shows the
-**tracker-backed** path (this repository's own setup); without the flat-YAML store
-the same cycle runs with the per-tier degradations from `### Files-availability
-convention` (swarm-wave sources from a `ROADMAP.md` or a manual list,
-`/retrospective` announces skipped tracker steps).
+The skills form a lightweight cycle. The diagram shows the **tracker-backed** path (this
+repository's own setup); without the flat-YAML store the same cycle runs with the per-tier
+degradations from `### Files-availability convention` (swarm-wave sources from a `ROADMAP.md` or a
+manual list, `/retrospective` announces skipped tracker steps).
 
 ```
 (sprint start)
-diarie ready → triage backlog, edit .diarie/ YAML directly
+diarie ready              → triage backlog, edit .diarie/ YAML directly
   ↓ then
-swarm-wave (skill)        → plan waves, execute with parallel agents   [optional]
-  ↓ or                        (workflow 1 (Plan) plans, workflows 2 (Execute) + 3 (Gate) loop per wave)
-diarie ready → normal development cycle
+/swarm-wave               → plan waves, execute with parallel agents          [optional]
+  ↓ or                       (workflow 1 (Plan) plans; 2 (Execute) + 3 (Gate) loop per wave)
+diarie ready              → normal development cycle
 
 (sprint end)
-user reviews open work     → close completed tasks in .diarie/tasks/
+user reviews open work    → close completed rows in .diarie/tasks/
   ↓ then
-upstream-tracker (skill)  → log/resolve any untracked friction first
-  ↓ then                      (workflow 1 (Log) checks BM, workflow 3 (Resolve) annotates BM)
-synergy-tracker (skill)   → log/review extraction candidates           [parallel]
-  ↓ then                      (ready candidates → act or carry forward)
-                            ←→ sibling-sync (skill) — bilateral SYNERGY/UPSTREAM
-                               drift diagnostic [parallel, optional; read-only
-                               by default; --auto-reciprocate writes reciprocal
-                               entries to sibling side with per-entry
-                               confirmation; never writes on this side or to BM]
-retrospective (skill)     → generate RETRO-NN.md, write to Basic Memory
-  ↓ after retro               (step 7 defers package friction to workflow 6 (Promote))
-upstream-tracker workflow 6 (Promote) → promote generalizable friction to BM entity notes
+/ledger log               → record any untracked friction — upstream OR sibling — before it
+  ↓ then                     evaporates (checks Basic Memory first for known friction)
+/ledger review            → status; --compare <sibling> for cross-project state
+  ↓                          --trend every 4th sprint (RETRO file count mod 4)
+/ledger reconcile         → bilateral SYNERGY/UPSTREAM sibling drift             [optional]
+  ↓                          read-only by default; --auto-reciprocate writes only to the
+  ↓                          sibling side, per-entry confirmed, never here and never to BM
+/retrospective            → generate RETRO-NN.md, write learnings to Basic Memory
+  ↓ after retro              (step 7 defers package friction to `ledger promote`)
+/ledger promote           → generalizable friction + synergy → BM entity notes
   ↓ next sprint
-vendor-sync (skill)       → pull upstream changes, auto-resolve UPSTREAM entries
-  ↓ annotates BM, logs new    (step 8b annotates BM on auto-resolve)
-upstream-tracker (skill)  → repeat (workflow 7 (Sync from BM) discovers friction)
+/ledger pull              → git-subtree vendor sync, auto-resolving UPSTREAM entries the
+  ↓                          diff fixed; annotates BM on resolution
+/ledger --sync-back       → discover friction other projects already recorded in BM
 ```
 
-`/retrospective` is the _generator_ (user-invoked, writes files). Basic Memory
-serves as the cross-project bridge: workflows 6 (Promote) and 7 (Sync from BM) in upstream-tracker provide
-bidirectional sync between project-local UPSTREAM files and BM entity notes.
-synergy-tracker runs as a parallel track, advancing extraction candidates and
-cross-project patterns alongside the upstream friction workflow. `sibling-sync`
-is an optional bilateral diagnostic that runs alongside synergy-tracker
-workflow 2 (Review) — or before workflow 4 (Trend Review) every 4th sprint —
-to detect SYNERGY/UPSTREAM drift between sibling repos; it never gates the
-linear sprint flow.
+`/retrospective` is the _generator_ (user-invoked, writes files). Basic Memory is the cross-project
+bridge: `promote` pushes, `--sync-back` pulls. The sibling track (`review --compare`, `reconcile`)
+runs alongside the upstream track rather than after it, and never gates the linear flow.
 
 ### Relationship to vp-knowledge
 
@@ -503,8 +493,8 @@ linear sprint flow.
 Basic Memory infrastructure: write-validation hooks (`post-bm-write-validate.sh`
 triggers `schema_validate` after every `write_note`/`edit_note`), note quality
 standards, and graph health tooling. vp-beads builds sprint workflows on top,
-relying on vp-knowledge's hooks to validate BM writes from upstream-tracker,
-synergy-tracker, vendor-sync, and retrospective.
+relying on vp-knowledge's hooks to validate BM writes from `/ledger` and
+`/retrospective`.
 
 **Do not duplicate vp-knowledge hooks in vp-beads.** Both plugins are always
 co-installed; duplicating hooks causes double-fire and maintenance burden.
@@ -745,6 +735,42 @@ comes from the pinned `@ast-grep/cli` devDep.
 pattern mentioned in skill/agent prose but missing from the `allowed-tools` or
 `tools` frontmatter will fail validation. This catches the most common bug class
 in this plugin (missing `allowed-tools` entries).
+
+### Run the checker where its config is
+
+A probe outside the repo is not a smaller experiment — it is a different one, and the three checkers
+fail **differently**. **remark discovers config by walking up from the FILE being linted** (measured:
+it finds a config below cwd, finds one above cwd, and ignores the config at cwd when the file lives
+elsewhere), so a probe at `/tmp/probe.md` finds nothing, falls back to tool defaults, reports clean
+and **exits 0**. That is the silent one, and it is the one that bit us. **eslint and ast-grep resolve
+config from CWD, not from the file**: `eslint` exits 2 (`couldn't find eslint.config.js`) outside a
+project, and `ast-grep scan` exits 3 (`No ast-grep project configuration is found`) — loud, not
+silent. Measured 2026-07-29 against this repo's own binaries.
+
+That confound produced a FALSE upstream bug report (retracted, `93116f5`) which had already spread to
+5 config comments, 2 commits, a SYNERGY entry and an UPSTREAM file before anyone re-ran it in place.
+Write the probe INTO the repo and run the real script (`npm run check:md`). Name it so it does **not**
+match a `.gitignore` line — `check:md` runs `--ignore-path .gitignore`, so a `PROBE-*.md` under an
+ignore rule rebuilds the same silence with a shorter walk. The scratchpad is for artefacts, never for
+config-sensitive probes.
+
+### Test conventions — assert the direction a false positive lives in
+
+**A suite that only asserts the SAFE direction cannot see a false positive.** Every `probeDaemon`
+test that asserted an authorization outcome asserted `safeToSignal === false` — three of the four
+that existed — so `cwdInTarget` written as a bare `startsWith(beadsDir)`, which also matches
+`.beads-backup/`, `.beads2/` and `.beadsX/`, sat in the one predicate that authorises SIGTERM, past
+two earlier fixes of that exact class in the same file. Ask which direction a wrong answer is
+dangerous in, and assert THAT one.
+
+**A path fixture must `realpathSync` first.** On macOS `tmpdir()` is `/var/folders/…` while `lsof`
+and `git rev-parse` report `/private/var/folders/…` (`/var` is a symlink to `private/var`). A test
+comparing the two shares no prefix at all, so it passes for a reason unrelated to what it names — the
+sibling-directory test above did exactly that until its own RED-proof caught it.
+
+**RED-proof the TEST, not only the fix.** Mutation-verified this way, several assertions across the
+probe tests, the validator tests and the rule-tests turned out to pass identically against a broken
+implementation.
 
 ### Doc-grep the VOCABULARY, not just the command name
 

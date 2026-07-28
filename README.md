@@ -46,58 +46,49 @@ Produces `RETRO-NN.md` covering what went well, what could improve, upstream obs
 
 On every 4th sprint, also runs a full trend review: UPSTREAM file analysis, tracker hygiene (`diarie stats`, stale `in_progress` items, blocked tasks, `diarie validate`), and Basic Memory graph health (schema validation, drift detection, duplicate audit).
 
-### `/upstream-tracker` — Upstream issue tracking
+### `/ledger` — Upstream + sibling relationship tracking
 
-Manage `UPSTREAM-*.md` files that track bugs, feature requests, and API friction in upstream packages:
-
-```
-/upstream-tracker
-```
-
-Supports seven workflows:
-
-* **Log** — infers the package and problem from conversation context; checks Basic Memory for existing cross-project friction before logging
-* **Review** — summarize all open items across tracking files
-* **Resolve** — delete a fixed entry; `git rm` the file when empty (non-vendor only); annotates the corresponding Basic Memory friction entry
-* **Trend review** — quarterly cross-cutting analysis, with empirical resolution timelines:
-  bugs resolve in 5–10 sprints, FRs in 10–20, cross-vendor inconsistencies on next major version
-* **Sprint retro support** — draft the "Upstream observations" section
-* **Promote to Basic Memory** — promotes generalizable friction from project-local UPSTREAM files into cross-project Basic Memory entity notes (`## Upstream Friction` sections). Supports all target types: npm, brew, cask, GitHub Actions, Docker, VSCode extensions. When no BM note exists, flags for enrichment via `/package-intel` or `/tool-intel`
-* **Sync from Basic Memory** — discovers friction already known in Basic Memory for this project's dependencies but not yet tracked locally. Pull-based, user-invoked
-
-Entry formats support optional `[blocking|degraded|minor]` severity and `[upstream: url]` when you file an upstream issue or PR.
-
-### `/vendor-sync [package-name]` — Vendor subtree sync
-
-Pull latest upstream changes from one or all git subtrees:
+The project's ledger of relationships with code it does not own: **upstream dependencies** and
+**sibling projects**. One mode-routed skill that replaced four (`/upstream-tracker`,
+`/synergy-tracker`, `/vendor-sync`, `/sibling-sync`), routed by an object × verb matrix — the object
+is what you are tracking, the verb is what you are doing to it.
 
 ```
-/vendor-sync
-/vendor-sync auth
+/ledger log                     # record friction, or a cross-project pattern
+/ledger resolve                 # close a fixed upstream entry
+/ledger review                  # status  ·  --trend  ·  --compare <sibling>
+/ledger pull [package-name]     # git-subtree vendor sync
+/ledger reconcile [sibling]     # bilateral sibling drift  ·  --auto-reciprocate
+/ledger promote                 # → Basic Memory  ·  --sync-back pulls the other way
 ```
 
-Reads `.claude/vendor-registry.json`, pulls each selected subtree with `--squash`, checks for conflicts before resolving them (always accept upstream), cleans stale vendor `node_modules`, re-links workspaces, and verifies with `npm run check` + `npm test`.
-
-Step 7 cross-references the full sync diff against open `UPSTREAM-*.md` entries — any issue visibly addressed in the diff is deleted immediately. This is the primary resolution mechanism; don't defer to the retro. Step 8b annotates the corresponding Basic Memory friction entries when available.
-
-### `/sibling-sync [--auto-reciprocate] [sibling-name]` — Bilateral sibling reconciliation
-
-Compare `SYNERGY-*.md` and `UPSTREAM-*.md` files between this project and registered sibling vp-\* projects:
-
-```
-/sibling-sync
-/sibling-sync vp-knowledge
-/sibling-sync --auto-reciprocate
-```
-
-Read-only by default. Surfaces drift, reciprocal gaps, stale-aligned rows, status divergence, and reciprocal-friction across siblings. Four workflows:
-
-* **Discover sibling(s)** — registry resolution + path probing via `.claude/synergy-registry.json` (+ optional `.local.json` override)
-* **Sync sibling SYNERGY** — reciprocal gaps, unreciprocated entries, stale alignment claims, status drift
-* **Sync sibling UPSTREAM** — Mode A: shared third-party dependency friction (duplicates, complementary workarounds, sibling-only entries); Mode B: reciprocal sibling-friction pairs (`UPSTREAM-<sibling>.md` ↔ `UPSTREAM-<this>.md`) surfacing what the sibling tracks about us
-* **Apply reciprocation batch** (opt-in `--auto-reciprocate`) — per-entry confirmation, writes only to the sibling side
-
-Workflows 2 and 3 end with a per-sibling two-tier action menu (single `AskUserQuestion`, `header: "Synergy"` + `header: "Upstream"`) that delegates writes to `/vp-beads:synergy-tracker`, `/vp-beads:upstream-tracker`, or appends a task entry to `.diarie/tasks/` via the `Skill` tool — replacing the previous copy-paste hint workflow. Picking "None" yields a report-only run.
+* **`log`** — infers the package or sibling and the problem from conversation context; checks Basic
+  Memory for existing cross-project friction before logging. Handles upstream bugs, feature requests
+  and contribution opportunities, plus sibling shared-patterns, divergences, extraction candidates
+  and capability gaps. Entry formats support optional `[blocking|degraded|minor]` severity and
+  `[upstream: url]` once you file an issue or PR.
+* **`resolve`** — delete a fixed entry; `git rm` the file when empty (non-vendor only); annotate the
+  corresponding Basic Memory entry.
+* **`review`** — status across all tracking files. `--trend` runs the quarterly cross-cutting
+  analysis with empirical resolution timelines (bugs 5–10 sprints, FRs 10–20, cross-vendor
+  inconsistencies on next major). `--compare <sibling>` reads the other side.
+* **`pull`** — reads `.claude/vendor-registry.json`, pulls each selected subtree with `--squash`,
+  checks for conflicts before resolving them (always accept upstream), cleans stale vendor
+  `node_modules`, re-links workspaces, verifies with `npm run check`. It then cross-references the
+  full sync diff against open `UPSTREAM-*.md` entries — anything visibly addressed is deleted
+  immediately, and the corresponding Basic Memory entry annotated. **This is the primary resolution
+  mechanism; don't defer it to the retro.**
+* **`reconcile`** — bilateral drift between this project and registered sibling vp-\* projects.
+  **Read-only by default.** Surfaces reciprocation gaps, unreciprocated entries, stale-aligned rows,
+  status divergence, and reciprocal friction — including Mode B, what the sibling tracks _about us_
+  (`UPSTREAM-<sibling>.md` here ↔ `UPSTREAM-<this>.md` there). `--auto-reciprocate` writes reciprocal
+  entries **only to the sibling side**, one confirmation per entry, never here and never to Basic
+  Memory.
+* **`promote` / `--sync-back`** — bidirectional Basic Memory sync. `promote` pushes generalizable
+  friction and synergy into cross-project entity notes; `--sync-back` discovers friction other
+  projects already recorded for dependencies this one uses. When no Basic Memory note exists,
+  promotion flags it for enrichment via `/package-intel` or `/tool-intel` rather than creating a
+  thin note.
 
 ### `/migrate-tracker [path-to-project]` — Guided bd → flat-YAML cutover
 
@@ -307,30 +298,30 @@ File naming examples:
 
 ### Private SYNERGY overlays
 
-For cross-project notes that must stay out of a public repo (a proprietary sibling's internal paths, client names, unreleased plans), add a **gitignored** `PRIVATE-SYNERGY-<project>.md` companion alongside the committed `SYNERGY-<project>.md`. It holds extra private entries under the same four section headings. The `PRIVATE-` prefix is the safety mechanism: it keeps the overlay **outside the `SYNERGY-*.md` glob namespace**, so every public consumer (retrospective, promotion, reciprocation, the session-start hook) structurally cannot read it — **private entries are never promoted to Basic Memory or reciprocated to a sibling**, by construction rather than by per-consumer discipline. Only synergy-tracker's local-only review deliberately reads both files. Gitignored via the `PRIVATE-SYNERGY-*.md` rule; the session-start hook warns if any is accidentally tracked.
+For cross-project notes that must stay out of a public repo (a proprietary sibling's internal paths, client names, unreleased plans), add a **gitignored** `PRIVATE-SYNERGY-<project>.md` companion alongside the committed `SYNERGY-<project>.md`. It holds extra private entries under the same four section headings. The `PRIVATE-` prefix is the safety mechanism: it keeps the overlay **outside the `SYNERGY-*.md` glob namespace**, so every public consumer (retrospective, promotion, reciprocation, the session-start hook) structurally cannot read it — **private entries are never promoted to Basic Memory or reciprocated to a sibling**, by construction rather than by per-consumer discipline. Only `ledger review`'s local-only sibling pass deliberately reads both files. Gitignored via the `PRIVATE-SYNERGY-*.md` rule; the session-start hook warns if any is accidentally tracked.
 
 ## Plugin structure
 
 ```
-.claude-plugin/plugin.json              Plugin manifest
+.claude-plugin/plugin.json              Root plugin manifest
 skills/
   retrospective/
     SKILL.md                            Sprint retrospective workflow
-  upstream-tracker/
-    SKILL.md                            Upstream issue tracking workflow
-    references/
-      basic-memory-friction-format.md   BM section templates, routing, gotchas
-  vendor-sync/
-    SKILL.md                            Vendor subtree sync workflow
-  synergy-tracker/
-    SKILL.md                            Cross-project synergy tracking workflow
-    references/
-      synergy-entry-format.md           Entry templates, naming, registry schema
-      synergy-bm-format.md              BM section templates for workflow 5 (Promote to Basic Memory)
-      project-name-derivation.md        Four-tier project-name derivation algorithm
-  sibling-sync/
-    SKILL.md                            Bilateral SYNERGY/UPSTREAM reconciliation
-plugins/
+plugins/                                workspace plugins (own package.json + check)
+  ledger/
+    skills/ledger/
+      SKILL.md                          Mode-routed upstream + sibling ledger
+      references/                       log, review, resolve, promote, pull,
+                                        reconcile, synergy-entry-format,
+                                        synergy-bm-format,
+                                        basic-memory-friction-format,
+                                        project-name-derivation
+  swarm-wave/
+    skills/swarm-wave/
+      SKILL.md                          Multi-agent wave orchestration
+      references/                       wave-planning, contention, review-gate,
+                                        concurrency, command-patterns,
+                                        roadmap-interpretation
   diarie-adopt/
     skills/
       migrate-tracker/SKILL.md          Guided bd → flat-YAML tracker cutover
@@ -338,18 +329,18 @@ plugins/
     scripts/
       beads-probe.mjs                   Read-only beads reconnaissance probe
       check-beads-probe.mjs             Unit tests for the probe
-  swarm-wave/
-    SKILL.md                            Multi-agent wave orchestration
-    references/
-      wave-planning-checklist.md        Pre/post-wave gates, anti-patterns
-      file-contention-and-clustering.md Contention thresholds, wave sizing
-      review-gate-protocol.md           Two-reviewer gate, confidence thresholds
-      agent-concurrency-limits.md       Memory pressure, backpressure protocol
-      command-patterns.md               Research agent selection, agent prompts
+  vp-dream/
+    skills/vp-dream/
+      SKILL.md                          Claude file-memory consolidation
+      references/                       native-autodream-contract,
+                                        synthesis-rationale
+      scripts/audit-memory.sh           Descriptive memory-dir audit (pure bash)
+scripts/                                dev-only gates; see Validation
+eslint-local-rules/
 hooks/
   hooks.json                            Hook definitions (3 event types)
   session-start.sh                      Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudges, trend-review
-  post-file-edit.sh                     Auto-format hooks/*.sh and scripts/*.sh with shfmt
+  post-file-edit.sh                     Auto-format hooks/*.sh with shfmt
   post-tasks-validate.sh                Validate .diarie/tasks/ on edit; silent when clean
   post-bm-failure-classify.sh           BM error classification + recovery guidance
 ```
@@ -364,20 +355,13 @@ hooks/
                                                   -> Basic Memory learnings
                                                   -> doc update suggestions
 
- upstream friction       -> upstream-tracker skill-> UPSTREAM-<pkg>.md entry
- /upstream-tracker                                -> resolve / trend-review
-                                                  -> promote to Basic Memory
-                                                  -> sync from Basic Memory
-
- "synergy" / "compare"   -> synergy-tracker skill -> SYNERGY-<project>.md entry
- /synergy-tracker                                 -> review open synergies
-                                                  -> compare with sibling project
-                                                  -> promote to Basic Memory
-
- "sibling drift" / "sync" -> sibling-sync skill   -> drift findings (read-only)
- /sibling-sync                                    -> two-tier action menu
-                                                  -> delegates via Skill tool
+ upstream friction       -> ledger log           -> UPSTREAM-<pkg>.md entry
+ "synergy" / "compare"      ledger resolve        -> SYNERGY-<project>.md entry
+ "sibling drift"            ledger review         -> status / --trend / --compare
+ /ledger                    ledger promote        -> Basic Memory, both directions
+                            ledger reconcile      -> sibling drift (read-only)
                                                   -> --auto-reciprocate writes
+                                                     ONLY to the sibling side
 
  "swarm sprint" / "wave" -> swarm-wave skill      -> SWARM-NN.md wave plan
  /swarm-wave                                      -> sources: .diarie / ROADMAP / manual
@@ -385,7 +369,7 @@ hooks/
                                                   -> post-wave quality gate
                                                   -> chains to /retrospective
 
- /vendor-sync [pkg]      -> vendor-sync skill     -> git subtree pull --squash
+ /ledger pull [pkg]      -> ledger pull           -> git subtree pull --squash
                                                   -> UPSTREAM auto-resolution
                                                   -> BM friction annotation
                                                   -> npm install + verify
@@ -396,14 +380,14 @@ hooks/
 `vp-beads` and `vp-knowledge` are complementary plugins that form a layered pair:
 
 * **vp-knowledge** owns BM infrastructure — write-validation hooks (`post-bm-write-validate.sh` triggers `schema_validate` after every `write_note`/`edit_note`), note quality standards (`vp-note-quality` skill), and graph health tooling.
-* **vp-beads** builds sprint workflows on top — retrospective, upstream-tracker, synergy-tracker, and vendor-sync all write to Basic Memory, relying on vp-knowledge's hooks to validate those writes.
+* **vp-beads** builds sprint workflows on top — `/retrospective` and `/ledger` both write to Basic Memory, relying on vp-knowledge's hooks to validate those writes.
 
 Concrete integration points:
 
 | vp-beads feature                                                                                       | vp-knowledge dependency                             |
 | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
 | Retrospective step 6                                                                                   | Chains into `/knowledge-gaps`                       |
-| All BM writes (upstream-tracker workflow 6 (Promote to Basic Memory), vendor-sync 8b, retrospective 7) | `post-bm-write-validate.sh` hook validates schema   |
+| All BM writes (`ledger promote`, `ledger pull`'s annotations, `/retrospective` step 7) | `post-bm-write-validate.sh` hook validates schema   |
 | Sprint learnings                                                                                       | Written to the same BM graph vp-knowledge maintains |
 
 **Do not duplicate vp-knowledge hooks in vp-beads.** Both plugins are installed together; duplicating hooks causes double-fire (benign but wasteful) and creates a maintenance burden.
@@ -417,7 +401,7 @@ must be bumped manually — the two repos are independent.
 
 ## Possible future additions
 
-* **`vendor-sync` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a task in `.diarie/tasks/` rather than an immediate pull.
+* **`ledger pull` as a scheduled check** — periodic background check for vendor subtrees that are behind upstream, surfaced as a task in `.diarie/tasks/` rather than an immediate pull.
 
 ## Prior art & acknowledgments
 

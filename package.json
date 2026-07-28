@@ -4,7 +4,7 @@
   "engines": {
     "node": "^22.13.0 || >=24.0.0"
   },
-  "description": "vp-beads Claude Code plugin: sprint-workflow automation skills, an agent, and hooks for projects using the diarie flat-YAML tracker and Basic Memory, plus the diarie CLI workspace and the .mjs validation tooling that powers npm run check.",
+  "description": "An npm-workspaces monorepo of Claude Code plugins for sprint-workflow automation, for projects using the diarie flat-YAML tracker and Basic Memory. Holds the root plugin (retrospective + hooks), four workspace plugins under plugins/, and the .mjs validation tooling that powers npm run check.",
   "scripts": {
     "check": "run-p check:* && run-s check-workspaces",
     "check:ast-grep": "ast-grep scan",
