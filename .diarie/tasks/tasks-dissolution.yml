@@ -381,12 +381,11 @@ tasks:
 
   - id: vp-beads-dcr
     title: 'P1.8 Doc rewrites — counts, manifests, vocabulary (N14)'
-    status: pending
+    status: completed
     type: task
-    priority: low
+    priority: high
     parent: vp-beads-dis
-    deps:
-      - vp-beads-rfs
+    deps: []
     labels:
       - docs
     acceptance_criteria:
