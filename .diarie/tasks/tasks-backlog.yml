@@ -1113,7 +1113,7 @@ tasks:
     updated: '2026-07-22'
   - id: vp-beads-tpl
     title: 'ledger entry templates (in FENCES) still tell agents to write `-` bullets — following them reddens check:md'
-    status: pending
+    status: completed
     type: task
     priority: high
     labels:
@@ -1130,13 +1130,34 @@ tasks:
         ("Unexpected unordered list marker `-`, expected `*`"); with `*` it exits 0. An agent following
         log.md verbatim writes an entry that reddens `npm run check`.
       - >-
-        flip those 8 fenced bullets to `*`. Lower-risk siblings write to Basic Memory (no lint gate) and
-        can follow: synergy-bm-format.md:62,67,72,77,82 · basic-memory-friction-format.md:30,34,38,43.
-        LEAVE ALONE: review.md (console output), retrospective SKILL.md RETRO/SWARM templates (gitignored),
-        and the `yaml` fence at retrospective/SKILL.md:315-321 (YAML `-` is correct there)
+        DONE: the 8 fenced bullets flipped to `*` in log.md and synergy-entry-format.md, each file gaining
+        a note on WHY the marker is hand-maintained (a fence is unreachable by `remark --output`).
       - >-
-        consider whether anything can GATE this class — a template that emits lint-invalid markdown is
-        invisible to check:md (it is inside a fence) and to check:prose-commands (not a command)
+        SCOPE CORRECTED ON INSPECTION, in BOTH directions — the original AC was wrong twice, so verify
+        before trusting it. (a) The "lower-risk siblings" must NOT follow: synergy-bm-format.md and
+        basic-memory-friction-format.md are templates for BASIC MEMORY note content, and the BM graph's
+        own convention is `-` (confirmed by reading live notes). Flipping them would write the wrong
+        marker into the graph. They keep `-`, now stated explicitly in synergy-entry-format.md.
+        (b) review.md was NOT purely console output: its two Trend Review templates land in each file's
+        **Trend Reviews** section — repo `UPSTREAM-*.md` / `SYNERGY-*.md` — so they carry the identical
+        defect and are fixed. Only its `## Upstream Status` / `## Synergy Status` blocks are terminal
+        output and correctly keep `-`.
+      - >-
+        SECOND DEFECT, found only by assembling a file from the corrected template and linting it in-repo
+        (the same not-in-the-repo confound that produced a retracted false bug report earlier this
+        sprint): review.md's trend-review placeholders were bare `[like this]`, which trips
+        `no-undefined-references`. log.md already documented the escaping rule and applied it; review.md
+        never had it. Now escaped `\[like this\]`, with the rule written down there.
+      - >-
+        PROVEN both ways: a file assembled from the corrected templates exits 0 under this repo's real
+        config; the same file with `-` markers reports 3 `unordered-list-marker` warnings and exits 1.
+      - >-
+        STILL OPEN, deliberately not solved here: nothing GATES this class. A template that emits
+        lint-invalid markdown is invisible to check:md (it is inside a fence) and to
+        check:prose-commands (not a command). A checker would have to extract file-content fences,
+        assemble them, and lint the result — and would first need a way to tell a file-content fence
+        from a terminal-output one, which is exactly the distinction that made this row's scope wrong
+        twice. Carried as its own concern rather than bolted on here.
     description: >-
       Found by the comment-accuracy reviewer, 2026-07-22, and independently confirmed by a second sweep
       which also verified 0 fence markers changed anywhere in the reformat diff. This is the mirror of the

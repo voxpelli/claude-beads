@@ -58,24 +58,27 @@ what workaround was needed. Don't make the user re-explain what's already visibl
 6. Add it under the correct section, using today's date. Replace `_No entries yet._` on the
    first entry. Keep it 1–3 sentences; make the title scannable.
 
-**Entry formats** (escape every bracket — see `SKILL.md`):
+**Entry formats** (escape every bracket — see `SKILL.md`). The bullet is `*`, not `-`: these entries
+land in a repo's `UPSTREAM-*.md`, and a project whose remark config pins the marker goes RED on `-`.
+`remark --output` cannot reach inside a fence to correct it, so the marker here is what the agent
+actually writes — keep it in sync with the surrounding project by hand.
 
 ```
 Feature Request:
-- **Short title** (YYYY-MM-DD) — Desired behavior and why it matters. \[upstream: <url>\]
+* **Short title** (YYYY-MM-DD) — Desired behavior and why it matters. \[upstream: <url>\]
   Ownership: upstream|us|shared · Workaround: none|partial|full — description
 
 Bug:
-- **Short title** (YYYY-MM-DD) \[blocking|degraded|minor\] — What happens, repro, expected. \[upstream: <url>\]
+* **Short title** (YYYY-MM-DD) \[blocking|degraded|minor\] — What happens, repro, expected. \[upstream: <url>\]
   Severity: blocking|degraded|minor · Ownership: upstream|us|shared · Workaround: none|partial|full — description
 
 Upstream Opportunity:
-- **Short title** (YYYY-MM-DD) — What was built, why valuable upstream, consumer motivation. \[upstream: <url>\]
+* **Short title** (YYYY-MM-DD) — What was built, why valuable upstream, consumer motivation. \[upstream: <url>\]
   Source: <file-or-branch> · Merge readiness: direct|needs-redesign|proof-of-concept
   Ownership: us|shared · Workaround: full|partial — local solution
 
 Cross-Vendor Inconsistency:
-- **Short title** (YYYY-MM-DD) — What the sibling package does, what this one lacks, the friction.
+* **Short title** (YYYY-MM-DD) — What the sibling package does, what this one lacks, the friction.
   Ownership: upstream|us|shared · Workaround: none|partial|full — description
 ```
 

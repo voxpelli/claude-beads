@@ -49,12 +49,19 @@ Every 4th sprint, a cross-cutting analysis of all `UPSTREAM-*.md` files.
    `Ownership: upstream`/`shared`, and Upstream Opportunities with `Merge readiness: direct`
    (the cross-project signal is immediately actionable). Suggest `promote`.
 
+Trend Review entries land in a repo's `UPSTREAM-*.md` / `SYNERGY-*.md`, so they must satisfy that
+repo's markdown lint. Two things a fence cannot self-correct — `remark --output` never reaches inside
+one, so both are hand-maintained here: the bullet is `*` (a pinned list marker rejects `-`), and every
+placeholder bracket is escaped `\[like this\]` (a bare `[…]` reads as an undefined link reference).
+The Status blocks further up are terminal OUTPUT, not file content, and need neither.
+
 ```
 ### Review — YYYY-MM-DD (Sprint N)
-- **Themes:** [patterns across open items]
-- **Still valid:** [confirmed relevant]
-- **Recommend closing:** [obsolete or low-priority]
-- **Escalate:** [past their window — include upstream URL if filed]
+
+* **Themes:** \[patterns across open items\]
+* **Still valid:** \[confirmed relevant\]
+* **Recommend closing:** \[obsolete or low-priority\]
+* **Escalate:** \[past their window — include upstream URL if filed\]
 ```
 
 ## `review` (upstream) — retrospective support
@@ -159,10 +166,11 @@ private overlays are excluded structurally (the `SYNERGY-*.md` glob cannot match
 
 ```
 ### Review — YYYY-MM-DD (Sprint N)
-- **Themes:** [recurring drift, un-extracted shared infra]
-- **Still valid:** [confirmed relevant]
-- **Recommend closing:** [obsolete or dismissed]
-- **Escalate:** [stalled Extraction Candidates; stale `aligned` rows; overdue `adopt-soon`]
+
+* **Themes:** \[recurring drift, un-extracted shared infra\]
+* **Still valid:** \[confirmed relevant\]
+* **Recommend closing:** \[obsolete or dismissed\]
+* **Escalate:** \[stalled Extraction Candidates; stale `aligned` rows; overdue `adopt-soon`\]
 ```
 
 At trend-review boundaries, `/retrospective` chains into these per-file entries and includes

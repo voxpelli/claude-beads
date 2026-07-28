@@ -3,6 +3,13 @@
 Reference material for the ledger sibling-object modes (`log`, `review`,
 `promote`). See those mode files for the steps that reference this document.
 
+Entry bullets below are `*`, not `-`: these land in a repo's `SYNERGY-*.md`, and a project whose
+remark config pins the list marker goes RED on `-`. `remark --output` cannot reach inside a fence to
+correct it, so the marker in these templates is what the agent actually writes — keep it in sync with
+the surrounding project by hand. (Templates that target **Basic Memory** notes instead —
+`synergy-bm-format.md`, `basic-memory-friction-format.md` — correctly keep `-`; the graph is not
+linted by the consuming repo.)
+
 ## SYNERGY-\*.md file template
 
 ```markdown
@@ -43,7 +50,7 @@ aligned. `Status:` grades current alignment. `Last verified:` records the date
 alignment was last confirmed.
 
 ```
-- **Short title** (YYYY-MM-DD) — Description of the shared approach and why
+* **Short title** (YYYY-MM-DD) — Description of the shared approach and why
   alignment matters.
   Status: aligned|drifting · Last verified: YYYY-MM-DD
 ```
@@ -62,7 +69,7 @@ Documents cases where both projects solve the same problem differently. The goal
 is not to force convergence — `accept-difference` is a valid outcome.
 
 ```
-- **Short title** (YYYY-MM-DD) — What this project does, what the sibling does,
+* **Short title** (YYYY-MM-DD) — What this project does, what the sibling does,
   and the consumer-side impact of the difference.
   Convergence path: accept-difference|adopt-theirs|propose-shared · Reason: description
 ```
@@ -82,7 +89,7 @@ Tracks patterns or implementations worth extracting into a standalone package or
 shared utility. The highest-leverage section.
 
 ```
-- **Short title** (YYYY-MM-DD) — What was built, why it could be useful to the
+* **Short title** (YYYY-MM-DD) — What was built, why it could be useful to the
   sibling or as a shared package, and the consumer-side motivation.
   Source: <file-or-module> · Readiness: ready|needs-cleanup|proof-of-concept
   Effort: trivial|moderate|significant
@@ -116,7 +123,7 @@ filter but failed the domain-fit test, and would have produced noise the
 user had to dismiss.
 
 ```
-- **Short title** (YYYY-MM-DD) — What the sibling has, why this project would
+* **Short title** (YYYY-MM-DD) — What the sibling has, why this project would
   benefit from it, and the estimated adoption cost.
   Priority: adopt-soon|consider|deferred · Effort: trivial|moderate|significant
 ```
