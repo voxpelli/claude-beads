@@ -61,21 +61,31 @@ function parseJsonObjects (stdout) {
  *
  * @param {string} script - Filename in hooks/
  * @param {string} [stdin] - Stdin content
- * @param {{ args?: string[], cwd?: string, pathPrefix?: string, scrubNodeBin?: boolean }} [opts]
+ * @param {{ args?: string[], cwd?: string, pathPrefix?: string, scrubValidator?: boolean }} [opts]
  * @returns {{ stdout: string, stderr: string, status: number | null }}
  */
 function runHook (script, stdin, opts = {}) {
   const scriptPath = join(HOOKS, script)
   const args = opts.args ?? []
-  // `npm run` prepends `node_modules/.bin` to PATH, and `diarie` is a workspace bin —
+  // `npm run` prepends `node_modules/.bin` to PATH, and `diarie` is a dependency bin —
   // so inside `npm run check`, the hooks' first rung (`command -v diarie`) RESOLVES.
   // That is correct in production (a consumer with diarie installed should use it) but
   // it makes "no validator is reachable" impossible to simulate. A test that cannot
-  // create its own premise is not testing anything, so `scrubNodeBin` removes those
-  // entries. Without it, this suite passes standalone and fails under `npm run check`
+  // create its own premise is not testing anything, so this scrubs the entries that
+  // supply one. Without it, this suite passes standalone and fails under `npm run check`
   // — which is exactly how it announced itself.
-  const basePath = opts.scrubNodeBin
-    ? (process.env.PATH ?? '').split(':').filter(p => !p.includes('node_modules/.bin')).join(':')
+  //
+  // ASK THE PATH, DON'T MODEL IT. This filtered on the literal substring
+  // `node_modules/.bin` until 2026-07-22, which encodes a GUESS about where diarie comes
+  // from — and the guess was incomplete: a GLOBAL install (here, an fnm shim dir) is not
+  // a node_modules path, sailed straight through the filter, and the "no validator" test
+  // failed on any machine that had one. Note the failure mode was honest — it went RED,
+  // not quietly green — but it was red for an environmental reason, on a premise the
+  // fixture could no longer create. So drop the substring heuristic and ask the real
+  // question: does this directory actually contain a `diarie` binary? That holds for
+  // node_modules/.bin, a global npm prefix, an fnm/nvm shim, or a Homebrew bin alike.
+  const basePath = opts.scrubValidator
+    ? (process.env.PATH ?? '').split(':').filter(p => p && !existsSync(join(p, 'diarie'))).join(':')
     : process.env.PATH
   const path = opts.pathPrefix ? `${opts.pathPrefix}:${basePath}` : basePath
   const result = spawnSync('bash', [scriptPath, ...args], {
@@ -336,7 +346,7 @@ test('no resolvable validator → silent, exit 0 (never a spam loop)', () => {
   try {
     const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
       args: ['/nonexistent-plugin-root'],
-      scrubNodeBin: true,
+      scrubValidator: true,
     })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `expected silence, got: ${stdout.slice(0, 120)}` }
@@ -886,10 +896,10 @@ test('sensitive-file: tracked PRIVATE-SYNERGY-*.md private overlay → warned', 
 // NEGATIVE (it FAILED if the line appeared), so the suite could detect "announced a tracker that
 // isn't there" and was structurally blind to "failed to announce a tracker that is there" — which
 // is the one that ships. These use a REAL store and the REAL `diarie` CLI resolved on PATH (under
-// `npm run check`, npm injects node_modules/.bin, where the file:../diarie dependency's `diarie` bin
-// lives), so there is no stub to drift from the CLI. (They used to scrubNodeBin to force the hook
-// down to a vendored $PLUGIN_ROOT/diarie/cli.js rung; diarie is an external dependency now, that rung
-// is gone, and the live rung IS the installed CLI.)
+// `npm run check`, npm injects node_modules/.bin, where the `diarie@^0.2.0` dependency's `diarie` bin
+// lives), so there is no stub to drift from the CLI. (They used to scrub the PATH — what is now
+// `scrubValidator` — to force the hook down to a vendored $PLUGIN_ROOT/diarie/cli.js rung; diarie is
+// an external dependency now, that rung is gone, and the live rung IS the installed CLI.)
 // ============================================================================
 
 /**
