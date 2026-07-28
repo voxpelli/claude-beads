@@ -79,7 +79,7 @@ redirects here. Derives most fields from the working tree; prompts only residual
    * **8b. Annotate Basic Memory (annotation-only).** For each auto-resolved entry, if BM
      tools are available: `search_notes` the package → `read_note` for a matching friction
      entry → `edit_note` `find_replace` to append (`expected_replacements=1`, match exact
-     text): Bugs/Feature Requests `_(Resolved by vendor-sync YYYY-MM-DD)_`, Opportunities
+     text): Bugs/Feature Requests `_(Resolved by ledger pull YYYY-MM-DD)_`, Opportunities
      `_(Contributed upstream, merged YYYY-MM-DD)_`. **Never delete or move to `### Resolved`**
      — pruning is `promote`'s job. Best-effort; skip silently if unavailable.
 9. **Verify.** Run the most comprehensive available: `npm run check && npm test`, else

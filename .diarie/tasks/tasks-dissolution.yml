@@ -328,7 +328,7 @@ tasks:
 
   - id: vp-beads-rfs
     title: 'P1.6 Enumerated reference / vocabulary sweep (S8 — doc-grep as INPUT)'
-    status: pending
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -346,10 +346,28 @@ tasks:
         the 4-way ledger merge turns cross-skill refs into intra-ledger MODE refs;
         validate-plugin.mjs auditWorkflowReferences updated accordingly
       - zero dangling `/vp-beads:*` or `workflow N` refs after the sweep
+      - >-
+        DONE 2026-07-29. The grep corrected the plan's edit list in BOTH directions, which is the
+        rule working: `synergy-entry-format.md` was line 120 not 113, and `retrospective/SKILL.md`
+        held NINE refs not eight (line 476 `Division of labor with upstream-tracker and
+        synergy-tracker` is a bare-name heading that a slash-prefixed grep cannot see). Fixed:
+        9 in retrospective/SKILL.md + validate-plugin.mjs:404 (comment path) + pull.md:82
+        (the BM annotation string it WRITES) + synergy-entry-format.md:120 + post-bm-failure-classify.sh:20
+      - >-
+        AC-2 needed NO code change, and that was verified rather than assumed: `auditWorkflowReferences`
+        checks for a naked `workflow N` missing its `(Name)` parenthetical, which is skill-name-agnostic
+        and survives the merge unchanged. RED-proofed by planting `workflow 9` in
+        `plugins/ledger/skills/ledger/references/reconcile.md` — the validator named the file and line,
+        proving it reaches `references/` (the tool audit does not; that gap is `vp-beads-vgp`)
+      - >-
+        `reconcile.md`'s `workflow 2 (Sync sibling SYNERGY)` / `workflow 4 (Apply reciprocation batch)`
+        refs are NOT dangling — the file numbers its own sections `## 1.`-`## 4.`, so they resolve
+        intra-document. LEFT deliberately, with the other two survivors: ledger `plugin.json:11`'s
+        `sibling-sync` keyword and `ledger/SKILL.md:181`'s merge history
     description: >-
       Plan step 1.6. Grep is the authority, not the plan's edit list (global doc-grep rule). Blocked
       on the skill moves + the retirement landing first.
-    updated: '2026-07-18'
+    updated: '2026-07-29'
 
   - id: vp-beads-rgy
     title: 'P1.7 Update registries + sibling back-pointers (S9)'

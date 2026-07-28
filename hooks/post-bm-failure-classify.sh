@@ -17,7 +17,7 @@ if [[ -z "$ERROR" ]]; then
 fi
 
 if echo "$ERROR" | grep -qi "connection refused\|timeout\|unavailable\|ECONNREFUSED"; then
-	MSG="[server-unavailable] Basic Memory MCP server is not responding. Check that it is running (\`claude mcp list\`). Upstream-tracker and vendor-sync skip BM operations silently when unavailable."
+	MSG="[server-unavailable] Basic Memory MCP server is not responding. Check that it is running (\`claude mcp list\`). ledger's upstream and pull modes skip BM operations silently when unavailable."
 elif echo "$ERROR" | grep -qi "not found\|does not exist\|no note\|no such"; then
 	MSG="[note-not-found] Note identifier was not found. The note may not exist yet — run \`/package-intel\` or \`/tool-intel\` first to create the entity note, then retry."
 elif echo "$ERROR" | grep -qi "invalid\|missing.*field\|malformed\|validation error\|too long\|too short"; then

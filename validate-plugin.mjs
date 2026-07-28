@@ -401,7 +401,7 @@ if (existsSync(synergyRegistryPath)) {
           )
         } else if (typeof e.name === 'string' && typeof e.file === 'string') {
           // Apply canonical normalization from
-          // skills/synergy-tracker/references/synergy-entry-format.md
+          // plugins/ledger/skills/ledger/references/synergy-entry-format.md
           // "Naming convention": replace '/' with '--', drop leading '@'.
           const normalizedName = e.name.replace(/^@/, '').replaceAll('/', '--')
           const expectedFile = `SYNERGY-${normalizedName}.md`

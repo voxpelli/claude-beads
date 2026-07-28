@@ -190,21 +190,20 @@ if no SYNERGY-\*.md files were found in step 2):
   recurrence.
 * **Upstream observations** — summarize current state of all UPSTREAM files.
   Log any NEW friction discovered in the session to the appropriate UPSTREAM
-  file using `/upstream-tracker` workflow 1 (Log a new entry). Review recent
+  file using `/ledger log` (upstream object). Review recent
   session work — did any workarounds or local extensions get built this sprint
   that are self-contained enough to contribute back? If yes, log via
-  `/upstream-tracker` workflow 1 (Log a new entry) with type "Upstream
+  `/ledger log` (upstream object) with type "Upstream
   Opportunity". Note trends across packages.
   Flag stale items (>3 months old).
 * **Synergy observations** — summarize current state of all SYNERGY files.
   Log any NEW cross-project observations discovered in the session to the
-  appropriate SYNERGY file using `/synergy-tracker` workflow 1 (Log a synergy
-  entry). Report
+  appropriate SYNERGY file using `/ledger log` (sibling object). Report
   extraction candidates with `Readiness: ready` as sprint-actionable. If any
   candidates were acted on this sprint, record the outcome. Review recent
   session work — did any implementation reveal shared patterns with sibling
   projects, or produce logic worth extracting into a shared package? If yes,
-  log via `/synergy-tracker` workflow 1 (Log a synergy entry). Note trends across sibling projects.
+  log via `/ledger log` (sibling object). Note trends across sibling projects.
   Flag stale entries (>3 months old). If no SYNERGY files exist, omit this
   section from the generated RETRO-NN.md entirely.
 * **Lessons learned** — reusable insights. Each should be a principle that
@@ -473,20 +472,20 @@ Organize by engineering domain:
   `@scope/vendor-package`) is fine — they're real published packages.
   Mentioning this project by name is okay when genuinely relevant — just
   don't make the note only useful within this project.
-* **Division of labor with upstream-tracker and synergy-tracker.** This step
+* **Division of labor with `/ledger`.** This step
   writes `engineering/*` notes (patterns, conventions, lessons learned). For
-  upstream friction about specific packages or tools, use `/upstream-tracker`
-  workflow 6 (Promote to Basic Memory) instead — it writes to the
+  upstream friction about specific packages or tools, use `/ledger promote`
+  (upstream object) instead — it writes to the
   `## Upstream Friction` section of entity notes (`npm/*`, `brew/*`, etc.),
   avoiding duplication. For cross-project extraction opportunities tracked in
-  `SYNERGY-*.md` files, use `/synergy-tracker` — it manages the extraction
+  `SYNERGY-*.md` files, use `/ledger` (sibling object) — it manages the extraction
   lifecycle and any corresponding Basic Memory notes. For packages not yet in
   Basic Memory, suggest `/package-intel` or `/tool-intel` for enrichment first.
   **NEVER write to `engineering/agents/vp-plugins-*` paths from this step**
-  — those are sibling-relationship notes owned by `/synergy-tracker` workflow 5
-  (Promote to Basic Memory). For cross-project lessons that touch a
-  sibling-relationship, log via `/synergy-tracker` workflow 1 (Log a synergy
-  entry) and let workflow 5 (Promote to Basic Memory) promote them; do not
+  — those are sibling-relationship notes owned by `/ledger promote`
+  (sibling object). For cross-project lessons that touch a
+  sibling-relationship, log via `/ledger log` (sibling
+  object) and let `/ledger promote` promote them; do not
   shortcut the relationship-note ownership boundary by writing
   `engineering/agents/vp-plugins-*` directly here.
 
