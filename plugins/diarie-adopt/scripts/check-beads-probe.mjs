@@ -67,10 +67,11 @@ function commitAll (dir) {
 /**
  * @param {string} dir
  * @param {string} body
+ * @param {string} [storeDir] Which store form to write — defaults to the legacy `.diarie`.
  */
-function writeStore (dir, body) {
-  mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
-  writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-x.yml'), body)
+function writeStore (dir, body, storeDir = '.diarie') {
+  mkdirSync(join(dir, storeDir, 'tasks'), { recursive: true })
+  writeFileSync(join(dir, storeDir, 'tasks', 'tasks-x.yml'), body)
 }
 
 const ONE_TASK = 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n'
@@ -112,6 +113,43 @@ console.log('probeMigration (the gate that must not pass vacuously)')
     commitAll(dir)
     const m = probeMigration(dir)
     assert('committed store with real tasks → trusted', m.taskCount === 1 && m.committed === true && m.trusted === true)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
+// The store is a PAIR after diarie's rename — visible `diarium/` or dotted `.diarium/` — plus the
+// legacy `.diarie/`. A probe that knows only one form reports "no store" against the others, and
+// migrate-tracker's precondition IS "no store", so it would migrate a second time. These assert the
+// dangerous direction, not just the happy path.
+// The installed diarie is <0.3.0, so it answers ENOSTORE for these forms. That must read as "this
+// CLI cannot see the store", NOT as "the store is empty" — reporting taskCount 0 on a store full of
+// work is the absent-vs-empty conflation ENOSTORE exists to delete.
+for (const form of ['diarium', '.diarium']) {
+  const dir = makeRepo()
+  try {
+    writeStore(dir, ONE_TASK, form)
+    commitAll(dir)
+    const m = probeMigration(dir)
+    assert(`a committed \`${form}/\` store is SEEN, not reported as absent`,
+      m.storeExists === true && m.storeDir === form && m.committed === true)
+    assert(`\`${form}/\` unreadable by an old CLI → verifyFailed, NOT "empty", NOT trusted`,
+      m.storeInvisibleToCli === true && m.verifyFailed === true &&
+      m.malformed === false && m.trusted === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
+{
+  // Two stores present: diarie answers this with ETWOSTORES rather than a precedence rule, because
+  // silently picking one makes the loser a file nobody reads and everybody keeps editing. The probe
+  // must not resolve it either — and must never report "trusted" while it is unclear which store is
+  // the live backlog, since the caller uses that to decide whether to disarm bd.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, ONE_TASK)
+    writeStore(dir, ONE_TASK, 'diarium')
+    commitAll(dir)
+    const m = probeMigration(dir)
+    assert('TWO stores on disk → reported as ambiguous, NOT trusted',
+      m.ambiguousStore === true && m.storeDirs.length === 2 && m.trusted === false)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 

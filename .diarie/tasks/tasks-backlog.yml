@@ -1266,3 +1266,44 @@ tasks:
       plugin becomes npm-installable under pi with session hooks, agent sync, and build packaging.
       The last phase; depends on Phase 1 and Phase 2 establishing the patterns first.
     updated: '2026-07-20'
+  - id: vp-beads-drn
+    title: 'Adopt the diarium rename — git mv the store, bump to diarie 0.3.0, sweep the docs'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        GATE, and the only one: diarie 0.3.0 is actually PUBLISHED. As of 2026-07-28 the rename lives
+        on the sibling's unmerged, unpushed branch `voxpelli/diarium-pair` (761fcc3) with files still
+        dirty, and npm holds only [0.1.0, 0.2.0, 0.2.2]. Do not chase a branch that is still being
+        shaped
+      - >-
+        NOT URGENT BY CONSTRUCTION: this repo declares `diarie@^0.2.0`, which cannot resolve a 0.3.0.
+        The rename can only arrive here via a deliberate bump, never via `npm install`
+      - >-
+        `git mv .diarie <diarium|.diarium>` for this repo's own store, then pick the posture
+        deliberately — visible or dotted IS the choice, there is no config key. The sibling adopted
+        dotted while the shipped default stays visible
+      - >-
+        bump `diarie@^0.2.0` -> `^0.3.0`; `TASKS_ROOT` -> `DIARIUM_ROOT` (a stale TASKS_ROOT becomes a
+        hard EUSAGE, not a silent ignore); handle the new exit-1 codes ETWOSTORES and ELEGACY
+      - >-
+        the doc sweep: 189 `.diarie` references across tracked files (CLAUDE.md 27, README 22,
+        plugins 44, scripts 15, hooks 10, skills 10, .ast-grep 11). Doc-grep the VOCABULARY per the
+        global rule — the enum values and path shapes, not just command names
+      - >-
+        ALREADY DONE (2026-07-28, the de-risk pass — consumers are form-agnostic, so this row is a
+        rename, not a rescue): audit-silent-skips.mjs no longer imports the removed `TRACKER_DIR` and
+        matches a vocabulary regex covering both names; `no-hardcoded-tracker-dir` gained `kind: regex`
+        (a regex literal escaped it entirely) plus `\.?diarium`; beads-probe.mjs probes all three store
+        forms, reports two-stores-present as ambiguous, and distinguishes "the CLI cannot read this
+        store form" from "the store is empty"
+    description: >-
+      diarie renames its store from `.diarie/` to a PAIR — visible `diarium/` or dotted `.diarium/`,
+      whichever is on disk IS the posture — and REMOVES `TRACKER_DIR` in favour of `TRACKER_DIRS` /
+      `TRACKER_LABEL` / `trackerDirIn(root)`. Filed rather than done because the operator's call on
+      2026-07-28 was "only de-risk, don't rename": make the consumers form-agnostic now (done), adopt
+      the rename once 0.3.0 ships.
+    updated: '2026-07-28'

@@ -1,14 +1,17 @@
 id: no-hardcoded-tracker-dir
 language: javascript
 message: >-
-  Don't hardcode the tracker directory — import `TRACKER_DIR` from
-  `diarie/schema` and build the path from it (`join(root, TRACKER_DIR,
-  'tasks')`). The whole point of the constant is that renaming the store is a
-  one-line change; a literal re-forks it. This bites hardest in *guard* code —
-  bd-map.js's refuse-to-write check is a safety net, so a literal there would
-  not error after a rename, it would silently stop guarding. The legacy
-  `backlog/` segment (renamed to `.diarie/` 2026-07-11) is flagged too; the bare
-  `backlog` PRIORITY value is not a path and is left alone.
+  Don't hardcode the tracker directory — resolve it from `diarie/schema` and
+  build the path from what it returns. The whole point is that renaming the
+  store is a one-line change; a literal re-forks it. This bites hardest in
+  *guard* code — a refuse-to-write check is a safety net, so a literal there
+  would not error after a rename, it would silently stop guarding. Do not name
+  the export here: diarie is replacing the singular `TRACKER_DIR` with
+  `TRACKER_DIRS` / `trackerDirIn(root)` because the store is becoming a PAIR
+  (`diarium/` or `.diarium/`), and a message pinned to one constant becomes
+  wrong guidance the day that lands. The legacy `backlog/` segment (renamed to
+  `.diarie/` 2026-07-11) is flagged too; the bare `backlog` PRIORITY value is
+  not a path and is left alone.
 severity: error
 # THE PLUGIN'S HALF of a cross-boundary rule. Its twin lives in `diarie/.ast-grep/rules/` and
 # guards diarie's own `lib/**`. This copy guards the plugin's tooling — which imports `TRACKER_DIR`
@@ -19,12 +22,22 @@ files:
   - "validate-plugin.mjs"
 ignores:
   # Test fixtures must state the literal: check-validator.mjs feeds planted prose to
-  # auditSilentSkips (which matches via TRACKER_DIR), and check-hooks.mjs asserts on the path
-  # session-start.sh prints. Building either from the constant would make the assertion
-  # tautological — it would prove only that the constant equals itself.
+  # auditSilentSkips, and check-hooks.mjs asserts on the path session-start.sh prints. Building
+  # either from the resolver would make the assertion tautological — it would prove only that the
+  # constant equals itself.
   - "scripts/check-*.mjs"
+  # Holds the store-dir VOCABULARY by design (`TRACKER_VOCABULARY`) — it matches the tracker's name
+  # in PROSE and never builds a path from it, which is the opposite of what this rule polices. The
+  # current compact form does not match the pattern below anyway; this entry exists so that writing
+  # the vocabulary more plainly later is not mistaken for a re-forked path.
+  - "scripts/audit-silent-skips.mjs"
 rule:
   any:
     - kind: string
     - kind: template_string
-  regex: '\.diarie|backlog/'
+    # A regex literal is neither a string nor a template_string, so without this a hardcoded segment
+    # smuggled into a regex walked straight past the rule — the guard's own blind spot.
+    - kind: regex
+  # `.diarie` was always dotted. `diarium` comes as a PAIR — visible `diarium/` or dotted
+  # `.diarium/` — so the leading dot is optional for it and required for the old name.
+  regex: '\.diarie|\.?diarium|backlog/'

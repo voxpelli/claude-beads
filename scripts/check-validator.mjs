@@ -53,5 +53,20 @@ assert(
   auditSilentSkips('Some prose.\n\n```bash\ndiarie ready   # skip silently\n```\n').length === 0
 )
 
+// The post-rename vocabulary. diarie renames its store to `diarium/`|`.diarium/`, so prose written
+// against the new name must trip the audit exactly as the old name does — otherwise the convention
+// quietly stops being enforced on the day the rename lands, with nothing going red.
+assert(
+  'flags a silent-skip written in the post-rename `diarium` vocabulary',
+  auditSilentSkips('- No `.diarium/tasks/` directory — skip the read silently; carry on.').length === 1
+)
+
+// A near-miss that must NOT match: the vocabulary is anchored on word boundaries, so an unrelated
+// word merely starting with the same letters is not a tracker mention.
+assert(
+  'does not flag a non-tracker word that happens to share a prefix',
+  auditSilentSkips('- The diarist notes are skipped silently.').length === 0
+)
+
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

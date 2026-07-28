@@ -1,6 +1,13 @@
 id: no-hardcoded-tracker-dir
 snapshots:
   ? |
+    const isStore = /^\.diarium\/tasks\//
+  : labels:
+    - source: /^\.diarium\/tasks\//
+      style: primary
+      start: 16
+      end: 37
+  ? |
     const p = `${root}/.diarie/tasks/tasks-x.yml`
   : labels:
     - source: '`${root}/.diarie/tasks/tasks-x.yml`'
@@ -15,12 +22,33 @@ snapshots:
       start: 28
       end: 37
   ? |
+    const tasksDir = join(root, '.diarium', 'tasks')
+  : labels:
+    - source: '''.diarium'''
+      style: primary
+      start: 28
+      end: 38
+  ? |
     const tasksDir = join(root, 'backlog/tasks')
   : labels:
     - source: '''backlog/tasks'''
       style: primary
       start: 28
       end: 43
+  ? |
+    const tasksDir = join(root, 'diarium', 'tasks')
+  : labels:
+    - source: '''diarium'''
+      style: primary
+      start: 28
+      end: 37
+  ? |
+    if (/\.diarie\/tasks/.test(p)) return true
+  : labels:
+    - source: /\.diarie\/tasks/
+      style: primary
+      start: 4
+      end: 21
   ? |
     stderr.write('refusing to write under .diarie/tasks/\n')
   : labels:

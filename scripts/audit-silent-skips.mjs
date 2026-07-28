@@ -11,15 +11,22 @@
  * Warn-level heuristic. Operates on logical units (list items / paragraphs)
  * after masking YAML frontmatter and fenced code blocks, so `ready-walker …`
  * command examples in fences do not trip it. A unit is flagged when it mentions
- * skipping (`skip` + `silent`/`silently`) AND a tracker token (`ready-walker`,
- * `.diarie`, or `diarie` as a word) but lacks an exemption marker (`announce`
- * or `Tier`).
+ * skipping (`skip` + `silent`/`silently`) AND a tracker token (see
+ * `TRACKER_VOCABULARY`) but lacks an exemption marker (`announce` or `Tier`).
  *
  * Pure: returns findings rather than mutating shared state, so it is unit-
  * testable in isolation (see `scripts/check-validator.mjs`).
  */
 
-import { TRACKER_DIR } from 'diarie/schema'
+// The store-dir vocabulary this audit looks for IN PROSE. Deliberately NOT `TRACKER_DIR` from
+// `diarie/schema`: that constant is being REMOVED upstream (diarie renames the store to
+// `diarium/`|`.diarium/` and replaces the singular constant with `TRACKER_DIRS` / `trackerDirIn()`),
+// so importing it couples this audit's survival to a shape that is changing. It also never needed
+// the constant — this is prose token matching, not path construction, and the old
+// `t.includes(TRACKER_DIR)` disjunct was already redundant beside `/\bdiarie\b/` (`.diarie` has a
+// word boundary before `d`). Matching both vocabularies keeps the audit working across the rename
+// with no dependency on which name won.
+const TRACKER_VOCABULARY = /\bready-walker\b|\bdiari(?:e|um)\b/
 
 // Module-scope line helpers — pure, so they are not re-created per call.
 const blank = (/** @type {string} */ slice) => slice.replaceAll(/[^\n]/g, ' ')
@@ -60,7 +67,7 @@ export function auditSilentSkips (content) {
   for (const u of units) {
     const t = u.text.toLowerCase()
     const skips = t.includes('skip') && /silent(?:ly)?/.test(t)
-    const tracker = /\bready-walker\b/.test(t) || t.includes(TRACKER_DIR) || /\bdiarie\b/.test(t)
+    const tracker = TRACKER_VOCABULARY.test(t)
     const exempt = t.includes('announce') || t.includes('tier')
     if (skips && tracker && !exempt) {
       findings.push({ line: u.startLine, snippet: u.text.trim().slice(0, 120) })

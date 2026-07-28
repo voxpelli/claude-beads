@@ -75,7 +75,29 @@ function run (cmd, args) {
 // is for diarie to expose its store-dir in `stats --json` so consumers neither import nor hardcode
 // it — until then this literal is the sanctioned exception (diarie's `.diarie` is a published,
 // stable contract, not a co-development internal).
-const TRACKER_DIR = '.diarie'
+// The store is not ONE name. diarie renames it to a PAIR — visible `diarium/` or dotted
+// `.diarium/`, whichever is on disk IS the choice — while `.diarie/` remains as the legacy name
+// this plugin's own migration produced. A probe that knows only one of them is not merely
+// incomplete, it is WRONG in the dangerous direction: pointed at a repo that already uses another
+// form it reports "no store", and `/migrate-tracker` (whose precondition is exactly that) would
+// migrate a second time, leaving two backlogs and nothing pointing at the full one.
+//
+// Ordered legacy-first so an in-place `.diarie/` still wins on a repo mid-rename.
+const TRACKER_DIRS = ['.diarie', 'diarium', '.diarium']
+
+/**
+ * Which store directories actually hold a `tasks/` dir under `root`.
+ *
+ * Returns ALL of them, not the first: two stores present is a real state diarie itself treats as an
+ * error (`ETWOSTORES`), and a probe that silently picked one would make the loser a file nobody
+ * reads and everybody keeps editing.
+ *
+ * @param {string} root
+ * @returns {string[]} store dir names, in `TRACKER_DIRS` order
+ */
+function trackerDirsIn (root) {
+  return TRACKER_DIRS.filter(d => existsSync(join(root, d, 'tasks')))
+}
 
 /**
  * @typedef {{
@@ -160,9 +182,10 @@ const TRACKER_DIR = '.diarie'
  * @returns {unknown}
  */
 export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-install', 'diarie', 'stats', '--json', '--root', r])) {
-  const tasksDir = join(root, TRACKER_DIR, 'tasks')
-  const files = existsSync(tasksDir)
-    ? readdirSync(tasksDir).filter(f => /^tasks-.+\.ya?ml$/.test(f))
+  const storeDirs = trackerDirsIn(root)
+  const trackerDir = storeDirs[0]
+  const files = trackerDir
+    ? readdirSync(join(root, trackerDir, 'tasks')).filter(f => /^tasks-.+\.ya?ml$/.test(f))
     : []
 
   // ASK the CLI, do not re-parse the files. A store holding `tasks: []` reports total 0 (correctly
@@ -178,7 +201,15 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
   // Anything else — npx could not resolve/run diarie, no network, garbled output — is "could NOT
   // verify", which is NOT "the store is bad". `verifyFailed` keeps them distinct: it forces `trusted`
   // false (never disarm bd on a store we could not check) WITHOUT falsely labelling it malformed.
-  const cliAnswered = enostore || typeof parsed?.total === 'number'
+  //
+  // ONE ENOSTORE IS NOT LIKE THE OTHERS. When the probe found a store on disk and the CLI still says
+  // ENOSTORE, the two disagree, and the disagreement has a known cause: a CLI too old to recognise
+  // the store form it is looking at (diarie <0.3.0 knows only `.diarie/`; the store may be
+  // `diarium/` or `.diarium/`). Counting that as a clean answer would report `taskCount: 0` on a
+  // store full of work — "absent" rendered as "empty", the exact conflation ENOSTORE exists to
+  // delete, wearing a probe's clothes. It is an unreadable store, so: verify FAILED.
+  const storeInvisibleToCli = enostore && files.length > 0
+  const cliAnswered = (enostore && !storeInvisibleToCli) || typeof parsed?.total === 'number'
   const verifyFailed = !cliAnswered
   const taskCount = typeof parsed?.total === 'number' ? parsed.total : 0
   // A store diarie DID read but flagged (an invalid-YAML file skipped) is genuinely malformed —
@@ -187,19 +218,36 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
 
   // `ls-files` reads the INDEX, so a `git add`-ed but never-committed store answered
   // "committed: true" — in a repo with no commits at all. `ls-tree HEAD` asks history.
-  const inHead = run('git', ['-C', root, 'ls-tree', '-r', '--name-only', 'HEAD', '--', `${TRACKER_DIR}/tasks`])
+  const inHead = trackerDir
+    ? run('git', ['-C', root, 'ls-tree', '-r', '--name-only', 'HEAD', '--', `${trackerDir}/tasks`])
+    : { ok: false, out: '', code: null }
   const committedFiles = inHead.ok && inHead.out ? inHead.out.split('\n').filter(Boolean) : []
+
+  // Two stores on disk is a real state, and an ambiguous one — diarie itself answers it with
+  // ETWOSTORES rather than a precedence rule. Report it instead of resolving it: the caller is
+  // deciding whether to disarm bd, and "which of these two is the live backlog" is not a question a
+  // read-only probe should answer by picking the first.
+  const ambiguousStore = storeDirs.length > 1
 
   return {
     storeExists: files.length > 0,
+    storeDir: trackerDir ?? null,
+    storeDirs,
+    ambiguousStore,
+    // The probe sees a store the installed diarie cannot read — almost always a CLI predating the
+    // `diarium/`|`.diarium/` rename. Surfaced by name so a caller can say "upgrade diarie" rather
+    // than the useless "could not verify".
+    storeInvisibleToCli,
     files,
     taskCount,
     malformed,
     verifyFailed,
     committed: committedFiles.length > 0,
     committedFiles,
-    // The gate: the CLI must have RUN, and the store present, non-empty, clean, and committed.
-    trusted: !verifyFailed && files.length > 0 && taskCount > 0 && !malformed && committedFiles.length > 0,
+    // The gate: the CLI must have RUN, and the store present, non-empty, clean, committed — and
+    // unambiguous. Never disarm bd while it is unclear which store is the real one.
+    trusted: !verifyFailed && !ambiguousStore && files.length > 0 && taskCount > 0 &&
+      !malformed && committedFiles.length > 0,
   }
 }
 
