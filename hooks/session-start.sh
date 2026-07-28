@@ -78,7 +78,7 @@ if [ "$source" = "compact" ]; then
 
 	if [ -n "$upstream_pkgs" ]; then
 		# shellcheck disable=SC2016
-		parts+=("Open UPSTREAM tracking files: ${upstream_pkgs}. Use \`/upstream-tracker\` workflow 2 (Review open) to inspect entries.")
+		parts+=("Open UPSTREAM tracking files: ${upstream_pkgs}. Use \`/ledger review\` to inspect entries.")
 	fi
 
 	# --- Recently-touched SWARM/RETRO files (within last hour) ---
@@ -166,7 +166,7 @@ Read the task row in \`.diarie/tasks/\` to recover full context for any claim ab
 	# adapted to post-compaction: the agent now works from the summary and has
 	# tool access, so this is a short actionable nudge, not a 6-step script) ---
 	# shellcheck disable=SC2016
-	parts+=("If the compacted conversation produced un-captured sprint insights — upstream friction, technical decisions, vendor issues, resolved UPSTREAM entries, or cross-project extraction opportunities — capture them now via \`/upstream-tracker\`, \`/synergy-tracker\`, or Basic Memory (search first, then edit/write). Keep it concise: capture the insight, not the conversation.")
+	parts+=("If the compacted conversation produced un-captured sprint insights — upstream friction, technical decisions, vendor issues, resolved UPSTREAM entries, or cross-project extraction opportunities — capture them now via \`/ledger log\` (or \`/ledger resolve\` for a fixed entry), or Basic Memory (search first, then edit/write). Keep it concise: capture the insight, not the conversation.")
 
 	# Prepend a recovery preamble so Claude knows why this context arrived.
 	preamble="Context was just compacted. Sprint-state recovery snapshot:"
@@ -337,13 +337,13 @@ if [ "$upstream_count" -gt 0 ] || [ "$synergy_count" -gt 0 ]; then
 	if [ "$recent" -le 4 ]; then
 		if [ "$upstream_count" -gt 0 ] && [ "$synergy_count" -gt 0 ]; then
 			# shellcheck disable=SC2016
-			parts+=("Low-activity repo: ${upstream_count} UPSTREAM and ${synergy_count} SYNERGY tracking file(s). Entries and extraction candidates in dormant repos can stay trapped locally for months. Consider \`/upstream-tracker\` workflow 2 (review-open) or workflow 6 (promote-to-BM), and \`/synergy-tracker\` to review and advance ready candidates.")
+			parts+=("Low-activity repo: ${upstream_count} UPSTREAM and ${synergy_count} SYNERGY tracking file(s). Entries and extraction candidates in dormant repos can stay trapped locally for months. Consider \`/ledger review\` or \`/ledger promote\` to surface them and advance ready candidates.")
 		elif [ "$upstream_count" -gt 0 ]; then
 			# shellcheck disable=SC2016
-			parts+=("Low-activity repo with ${upstream_count} UPSTREAM tracking file(s). Entries in dormant repos can stay trapped locally for months. Consider \`/upstream-tracker\` workflow 2 (review-open) or workflow 6 (promote-to-BM) so friction is discoverable from other projects.")
+			parts+=("Low-activity repo with ${upstream_count} UPSTREAM tracking file(s). Entries in dormant repos can stay trapped locally for months. Consider \`/ledger review\` or \`/ledger promote\` so friction is discoverable from other projects.")
 		else
 			# shellcheck disable=SC2016
-			parts+=("Low-activity repo with ${synergy_count} SYNERGY tracking file(s). Extraction candidates in dormant repos can stay unacted on for months. Consider \`/synergy-tracker\` to review and advance ready candidates.")
+			parts+=("Low-activity repo with ${synergy_count} SYNERGY tracking file(s). Extraction candidates in dormant repos can stay unacted on for months. Consider \`/ledger review\` to review and advance ready candidates.")
 		fi
 	fi
 fi
