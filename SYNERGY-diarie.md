@@ -27,9 +27,20 @@ Relationship: `dependency`.
 * **remark `remarkConfig` markdown-lint config** (2026-07-22, reciprocating the sibling's entry) —
   the `remarkConfig` block (frontmatter + gfm + lint-recommended/consistent + validate-links +
   list-marker `-`) was copied verbatim into diarie when it re-added `check:md` after the extraction.
-  Two copies with no shared package will drift; converge on a shared `@voxpelli/remark-config` if a
-  third consumer appears. (The _invocation_ around it has already diverged — see Divergences.)
-  Status: drifting · Last verified: 2026-07-22
+  The sibling's entry predicted "two copies with no shared package will drift; converge on a shared
+  package if a third consumer appears" — and **the count was already six, not two**: root
+  `package.json` plus four byte-identical `plugins/*/.remarkrc` here, plus diarie's.
+  **CONVERGED on this side 2026-07-22**: all five in-repo copies now re-export
+  **`@voxpelli/remark-preset`**, and each plugin workspace declares it itself so the gate travels on
+  extraction. diarie still carries its own inline copy — the remaining reciprocation gap, and the
+  sibling's own call.
+  ⚠️ **Adoption gotcha both sides must know**: consuming the preset as
+  `"plugins": ["@voxpelli/remark-preset"]` applies its lint rules but **silently drops its
+  `settings`** (measured — a thematic break then serializes as `***`, the remark default, while the
+  preset declares `rule: "-"`). Re-export it as the config instead
+  (`export { default } from '@voxpelli/remark-preset'`). Filed as
+  `UPSTREAM-voxpelli--remark-preset.md`.
+  Status: converged here, pending there · Last verified: 2026-07-22
 
 ## Divergences
 
