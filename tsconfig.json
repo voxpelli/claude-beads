@@ -1,0 +1,18 @@
+{
+  "extends": "@voxpelli/tsconfig/node22.json",
+  "files": [
+    "validate-plugin.mjs",
+    "eslint.config.js",
+    ".remarkrc.mjs"
+  ],
+  "include": [
+    "scripts/**/*",
+    "eslint-local-rules/**/*",
+    "plugins/**/*"
+  ],
+  "compilerOptions": {
+    "types": [
+      "node"
+    ]
+  }
+}

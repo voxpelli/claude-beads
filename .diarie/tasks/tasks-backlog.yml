@@ -1052,6 +1052,27 @@ tasks:
       exist — that text came from the externalized diarie repo and was left behind when diarie moved out;
       corrected to a two-line statement of fact (the long correction narrative lives here, not in the
       always-loaded instruction file).
+      PARTIALLY DONE 2026-07-22 (operator approved the dep add): the trio is installed and configured —
+      `@voxpelli/tsconfig` ^16.2.1 (extending `node22.json`, matching the `^22.13.0` engines floor),
+      `typescript`, `type-coverage`, plus `@types/node`@^22 (pinned to the tsconfig target, NOT the ^26
+      npm default, which would model a Node this repo does not claim) and `@types/js-yaml`. Root
+      `tsconfig.json` covers all 17 tracked JS/MJS files.
+      **`check:type-coverage` IS ARMED and green: 98.75% (5074/5138) against the house floor of 98** —
+      same flags as diarie, so the sibling gate shape stays aligned. Mechanism RED-proofed (`--at-least 99`
+      exits 1). Note the floor gives **38 uncovered identifiers of slack**, so it is a ratchet floor, not a
+      no-regression check; 3 planted `any`s cost only 0.17% and stayed green, which is expected behaviour
+      for a floor and is recorded here so nobody mistakes it for a defect later.
+      **`tsc` is deliberately NOT `check:`-prefixed yet** — it is exposed as a bare `npm run tsc` because
+      the strict house config reports **147 errors**, and enrolling it in `run-p check:*` would ship a red
+      gate. REMAINING: work that census down, then rename `tsc` → `check:tsc` to arm it. Census by code:
+      97 × TS4111 (`noPropertyAccessFromIndexSignature` — mechanical `.foo` → `['foo']` on frontmatter-ish
+      index-signature objects), **25 × TS18046 (`is of type 'unknown'` — the REAL defects, incl. the
+      beads-probe `migration: unknown` reads this row already documents)**, 10 × TS2345, 4 × TS2322,
+      2 × TS2532, 2 × TS18049, 2 × TS18047. By file: validate-plugin.mjs 72, check-hooks.mjs 25,
+      check-beads-probe.mjs 20, check-prose-commands.mjs 13, beads-probe.mjs 8, check-rule-parity.mjs 5,
+      jsdoc-single-line-tag-description.js 3, check-tracked-ignored.mjs 1, .remarkrc.mjs 1. Fix the
+      TS18046 group FIRST — those are unnarrowed-`unknown` reads, the class with real failure modes; the
+      TS4111 bulk is style and can follow.
     updated: '2026-07-22'
   - id: vp-beads-rpg
     title: 'check-rule-parity counts FILES, not guarding — and shells out via npx inside a gate'
