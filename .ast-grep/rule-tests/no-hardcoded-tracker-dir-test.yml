@@ -1,11 +1,14 @@
 id: no-hardcoded-tracker-dir
 valid:
-  # The sanctioned form — the constant, never the literal.
+  # The sanctioned form — resolved from the schema, never a literal. Deliberately NOT naming a
+  # specific export: diarie is replacing the singular `TRACKER_DIR` with `TRACKER_DIRS` /
+  # `trackerDirIn(root)` because the store became a pair, and a fixture pinned to the old name would
+  # teach the very thing the rule's message now refuses to promise.
   - |
-    import { TRACKER_DIR } from './task-schema.mjs'
-    const tasksDir = join(root, TRACKER_DIR, 'tasks')
+    const dir = trackerDirIn(root)
+    const tasksDir = join(root, dir, 'tasks')
   - |
-    stdout.write(`No ${TRACKER_DIR}/tasks/ directory found — skipping.\n`)
+    stdout.write(`No ${trackerDirIn(root)}/tasks/ directory found — skipping.\n`)
   # `backlog` is ALSO a priority value. It is not a path; do not flag it.
   - |
     export const VALID_PRIORITIES = new Set(['critical', 'high', 'medium', 'low', 'backlog'])

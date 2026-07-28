@@ -56,7 +56,7 @@ placeholder bracket is escaped `\[like this\]` (a bare `[…]` reads as an undef
 The Status blocks further up are terminal OUTPUT, not file content, and need neither.
 
 ```
-### Review — YYYY-MM-DD (Sprint N)
+### Trend Review — YYYY-MM-DD (Sprint N)
 
 * **Themes:** \[patterns across open items\]
 * **Still valid:** \[confirmed relevant\]
@@ -165,7 +165,7 @@ private overlays are excluded structurally (the `SYNERGY-*.md` glob cannot match
    extractions, run `promote` for candidates, downgrade stale `adopt-soon` entries.
 
 ```
-### Review — YYYY-MM-DD (Sprint N)
+### Trend Review — YYYY-MM-DD (Sprint N)
 
 * **Themes:** \[recurring drift, un-extracted shared infra\]
 * **Still valid:** \[confirmed relevant\]

@@ -116,7 +116,7 @@ When promoting SYNERGY entries to Basic Memory, apply these transforms:
 * **Drop dates from active entries** — SYNERGY files track aging via the
   `(YYYY-MM-DD)` suffix in entry titles; Basic Memory notes are evergreen.
   Keep dates only inside `_(Resolved YYYY-MM-DD)_` annotations.
-* **Drop session-specific metadata** — sprint numbers, commit SHAs, bd issue
+* **Drop session-specific metadata** — sprint numbers, commit SHAs, tracker issue
   IDs, and similar local context belong in the SYNERGY file, not the BM note.
 * **Drop project-local triage fields** — `Last verified:`, `Action:`, `Note:`
   continuation lines and `Source:` paths are local triage metadata, not

@@ -70,7 +70,11 @@ Restate the live contract (see Hard rule). Resolve the memory directory path.
 
 * `ls` the memory dir; read the index (`MEMORY.md`) to learn the current shape.
 * Run the descriptive audit — it surfaces facts, enforces nothing:
-  `scripts/audit-memory.sh <memory-dir>`
+  `bash "$CLAUDE_PLUGIN_ROOT/skills/vp-dream/scripts/audit-memory.sh" <memory-dir>`
+  (Pinned to the plugin root, and quoted. A bare relative `scripts/…` resolves against the USER'S
+  project cwd, not the plugin — the "unrunnable when installed" bug `vp-beads-abx` fixed next door in
+  `/deintegrate-beads`. Note the `skills/vp-dream/` segment: the script does not sit at the plugin
+  root, so `$CLAUDE_PLUGIN_ROOT/scripts/…` would miss it too.)
   It reports per file: declared `type`, `name`, subsystem-`injected=[…]` fields,
   line count, and flags (`NO_FRONTMATTER`, `SESSION-DATED`, `NOT-IN-INDEX`); plus
   the index line count and any dangling index entries.

@@ -61,11 +61,14 @@ assert(
   auditSilentSkips('- No `.diarium/tasks/` directory — skip the read silently; carry on.').length === 1
 )
 
-// A near-miss that must NOT match: the vocabulary is anchored on word boundaries, so an unrelated
-// word merely starting with the same letters is not a tracker mention.
+// The near-miss that actually exercises the `\b` anchors. `diaries` CONTAINS `diarie`, so it matches
+// the bare alternation and is rejected only by the trailing word boundary — delete the anchors and
+// this assertion goes red. An earlier fixture used `diarist`, which contains neither `diarie` nor
+// `diarium` and therefore passed identically with the anchors removed: a test for the alternation
+// wearing the label of a test for the boundary.
 assert(
-  'does not flag a non-tracker word that happens to share a prefix',
-  auditSilentSkips('- The diarist notes are skipped silently.').length === 0
+  'does not flag `diaries` — a word CONTAINING the vocabulary but not equal to it',
+  auditSilentSkips('- The diaries are skipped silently.').length === 0
 )
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)

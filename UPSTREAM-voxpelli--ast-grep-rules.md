@@ -32,11 +32,12 @@ tooling that picks the other._
   0.44.1, 0 under 0.45.0**. The rules do not degrade to static messages; they go **completely
   silent** — a green scan over an unguarded codebase. The `main`-branch repair (`eab25a6b`) landed
   ~5 hours _after_ 0.1.0 was published, so the fix is not in any release.
-  Severity: degraded · Ownership: upstream · Workaround: full — pin the CLI below 0.45. This repo
-  declares `@ast-grep/cli@^0.44.1` and has 0.44.1 installed; verified 2026-07-28 that all three
-  rules still fire here. But `^0.44.1` resolves 0.45.x, so a fresh install or lockfile refresh
-  re-arms this silently. A published `peerDependencies: {"@ast-grep/cli": "<0.45"}` would make it
-  loud instead.
+  Severity: degraded · Ownership: upstream · Workaround: full — pin the CLI below 0.45. **Done here
+  in `7c4fec3`: `@ast-grep/cli` is `~0.44.1`.** It was `^0.44.1`, which resolves 0.45.x, so a fresh
+  install or lockfile refresh would have disarmed all three rules with nothing going red — the
+  lesson the pin exists to record. Verified 2026-07-28 against a planted violation that all three
+  still fire under 0.44.1. A published `peerDependencies: {"@ast-grep/cli": "<0.45"}` would make
+  this loud for every consumer instead of leaving each to discover it.
 
 * **The shipped `sgconfig.yml` declares `testConfigs` pointing at directories the tarball omits**
   (2026-07-28, `@voxpelli/ast-grep-rules@0.1.0`) \[minor] — the bundled config declares

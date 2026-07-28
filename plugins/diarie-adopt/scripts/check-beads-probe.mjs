@@ -11,7 +11,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync,
 } from 'node:fs'
 
 import {
@@ -150,6 +150,30 @@ for (const form of ['diarium', '.diarium']) {
     const m = probeMigration(dir)
     assert('TWO stores on disk → reported as ambiguous, NOT trusted',
       m.ambiguousStore === true && m.storeDirs.length === 2 && m.trusted === false)
+    // PRECEDENCE, not just the count. `storeDir` feeds `files`, `committed`, the ls-tree pathspec
+    // and the human report, and TRACKER_DIRS is ordered legacy-first on purpose so an in-place
+    // `.diarie/` still wins mid-rename. Asserting only `.length === 2` let a reorder pass 31/31.
+    assert('the legacy `.diarie` wins precedence when both are present',
+      m.storeDir === '.diarie' && m.storeDirs[0] === '.diarie')
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
+{
+  // The store-file filter was unpinned in BOTH directions: widening it to /\.ya?ml$/ and narrowing
+  // it to /^tasks-.+\.yml$/ each passed 31/31. The narrowing is the dangerous one — a `.yaml` store
+  // yields files: [] and storeExists: false, and /migrate-tracker's precondition IS "no store", so
+  // it migrates a second time. That is the two-backlogs failure this probe exists to prevent.
+  const dir = makeRepo()
+  try {
+    mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
+    writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-x.yaml'), ONE_TASK)
+    writeFileSync(join(dir, '.diarie', 'tasks', 'notes-x.yml'), ONE_TASK)
+    writeFileSync(join(dir, '.diarie', 'tasks', 'tasks.yml'), ONE_TASK)
+    const m = probeMigration(dir)
+    assert('a `.yaml` store file counts — the extension is optional, not the prefix',
+      m.storeExists === true && m.files.includes('tasks-x.yaml'))
+    assert('files not matching `tasks-<slug>.` are excluded',
+      !m.files.includes('notes-x.yml') && !m.files.includes('tasks.yml'))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
@@ -245,6 +269,30 @@ console.log('\nprobeDaemon (the function that authorizes killing a process)')
       d.owned?.alive === true && d.owned.isDolt === false && d.safeToSignal === false)
   } finally {
     if (fake.pid) { try { process.kill(fake.pid) } catch { /* already gone */ } }
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
+  // OWNERSHIP MUST BE BOUNDARY-ANCHORED. `cwdInTarget` was a bare `startsWith(beadsDir)`, so a
+  // process living in a SIBLING directory — `.beads-backup/`, `.beads2/`, `.beadsX/` — satisfied the
+  // one predicate that authorises SIGTERM. Every other daemon test asserts `safeToSignal === false`,
+  // which is the direction that cannot expose a false positive; that is exactly why this survived.
+  // realpathSync is load-bearing, not tidiness: on macOS `tmpdir()` is `/var/folders/…` while `lsof`
+  // reports the resolved `/private/var/folders/…`. Without it the two paths share no prefix at all,
+  // so `cwdInTarget` comes back false for a reason unrelated to the anchor — and the assertion below
+  // passes identically against the BUGGY code. Caught by RED-proofing this very test.
+  const dir = realpathSync(makeRepo())
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  mkdirSync(join(dir, '.beads-backup'), { recursive: true })
+  const sibling = spawn('sleep', ['30'], { detached: true, stdio: 'ignore', cwd: join(dir, '.beads-backup') })
+  sibling.unref()
+  try {
+    writeFileSync(join(dir, '.beads', 'dolt-server.pid'), `${sibling.pid}\n`)
+    const d = probeDaemon(dir)
+    assert('a process in a SIBLING dir (.beads-backup) is NOT in the target',
+      d.owned?.alive === true && d.owned.cwd !== null && d.owned.cwdInTarget === false && d.safeToSignal === false)
+  } finally {
+    if (sibling.pid) { try { process.kill(sibling.pid) } catch { /* already gone */ } }
     rmSync(dir, { recursive: true, force: true })
   }
 }

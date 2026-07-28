@@ -104,7 +104,7 @@ shared utility. The highest-leverage section.
 | `Effort:`     | Meaning                                           |
 | ------------- | ------------------------------------------------- |
 | `trivial`     | A few hours; fits within a sprint                 |
-| `moderate`    | 1-3 days; may need its own beads issue            |
+| `moderate`    | 1-3 days; may need its own `diarie` task row      |
 | `significant` | Multi-sprint effort; needs architectural planning |
 
 ### They Have / We Don't

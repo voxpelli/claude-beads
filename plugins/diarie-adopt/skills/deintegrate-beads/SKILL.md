@@ -89,21 +89,38 @@ user approves in this one.
 2. **`residue.beadsDirExists` must be `true`, or STOP** — there is no beads to
    de-integrate. Without this check the whole skill runs as a chain of no-ops and
    reports a cleanup that never happened.
-3. **`migration.trusted` must be `true`, or STOP** and point at `/migrate-tracker`.
-   It requires all of: the store exists, it holds **at least one task**, it is **committed**, the
-   store is **unambiguous** (`migration.ambiguousStore` is `false`), and the check actually **ran**
+3. **`migration.trusted` must be `true`, or STOP.** It is the conjunction of **six** conditions —
+   a store directory exists, it holds at least one `tasks-*.yml`, the task count is **above zero**,
+   the store is **unambiguous** (`migration.ambiguousStore` is `false`), diarie reported **no
+   warnings** (`migration.malformed` is `false`), and the check actually **ran**
    (`migration.verifyFailed` is `false`). Disarming bd against a store that fails any of these
    leaves the project with **neither** tracker.
 
-   **Distinguish the STOP reason — there are three, and they need different remedies.** Never
-   conflate "I couldn't check" with "the store is untrustworthy"; the probe's plain-text output now
-   names the failing reason directly, and `--json` carries the fields below.
+   **Report EVERY reason that fires, not the first.** These are not exclusive branches — a repo can
+   be ambiguous _and_ unverified. The probe's plain-text output already lists all applicable reasons;
+   `--json` carries the fields below. And `/migrate-tracker` is **not** the universal remedy: it is
+   right only for a missing or empty store.
 
-   | Field | What it means | What the user should do |
-   | ----- | ------------- | ----------------------- |
-   | `verifyFailed` **and** `storeInvisibleToCli` | The store IS there; the installed `diarie` is too old to recognise its directory form. The store is a **pair** — `diarium/` or `.diarium/` — plus the legacy `.diarie/`, and a pre-0.3.0 CLI knows only the last. `diarie` runs fine. | **Upgrade `diarie`**, then re-probe. Do not tell the user they are offline. |
-   | `verifyFailed` alone | `diarie` could not be _run_ at all (offline, unresolvable). Unverified, NOT a bad store. | Make `diarie` runnable, then re-probe. |
-   | `ambiguousStore` | **Two** stores on disk (`migration.storeDirs` names them). diarie itself answers this with `ETWOSTORES` rather than a precedence rule, because silently picking one makes the loser a file nobody reads and everybody keeps editing. | The user decides which is live and `git rm`s the other. Never pick for them. |
+   | Condition | What it means | Remedy |
+   | --------- | ------------- | ------ |
+   | `migration.verifyFailed` **and** `migration.storeInvisibleToCli` | The store IS there and diarie RAN; it does not recognise this store's directory name. **Two opposite causes — read `migration.storeDir` to tell them apart.** | See the sub-table below. Never emit a bare "upgrade diarie". |
+   | `migration.verifyFailed` alone | diarie could not be _run_ at all (offline, unresolvable). Unverified, **not** a verdict on the store. | Make diarie runnable, then re-probe. |
+   | `migration.ambiguousStore` | **Two** store directories on disk; `migration.storeDirs` names them. Picking one silently makes the loser a file nobody reads and everybody keeps editing. | The user decides which is live and `git rm`s the other. **Never pick for them.** |
+   | `migration.malformed` | diarie READ the store and reported warnings. The store is present and parsed — this is not a migration failure. | `diarie validate` in the target, repair what it flags. **Re-running `/migrate-tracker` cannot fix this.** |
+   | no store, or `taskCount` 0 | Nothing was migrated, or nothing landed. | This is the one case that belongs to `/migrate-tracker`. |
+
+   **`storeInvisibleToCli` points in opposite directions.** diarie's store is the pair
+   `diarium/` | `.diarium/`; `.diarie/` is its **legacy** name (`LEGACY_TRACKER_DIRS` — "no longer
+   the store, never READ"). So:
+
+   | `migration.storeDir` | Meaning | Remedy |
+   | -------------------- | ------- | ------ |
+   | `diarium` or `.diarium` | The CLI **predates** the store name. | Upgrade diarie to a version that knows `diarium/` — state the capability, not a version number. |
+   | `.diarie` | The CLI is **newer** than the store name. This is the **default** case for this skill, because `/migrate-tracker` produced `.diarie/`. | **Rename the store**, do not upgrade — upgrading makes it worse. `migration.cliError` carries diarie's own message, which already includes the exact `git mv` to run. Show that verbatim. |
+
+   Confirm which case you are in rather than inferring it: run `diarie --version` **in the target**
+   and report it. Note the probe itself invokes `npx --no-install diarie` without a `cwd`, so it
+   resolves from _your_ cwd, not `<target>` — say which diarie you checked.
 
    **`diarie validate` cannot substitute for this gate, even now.** A missing store is
    an error today (`ENOSTORE`, non-zero exit) — that half is fixed. But a store that

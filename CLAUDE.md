@@ -827,17 +827,32 @@ including four rules of its own — `no-identical-test-title`, `no-unsanctioned-
 `extends`/`include`** — no config inheritance — so a rule needed on both sides is a knowing COPY,
 not a share.
 
-The plugin's rules (6): `no-jsdoc-any-type` (prefer `unknown` + a guard — **advisory, not a
-ratchet**), `no-jsdoc-object-typedef` (auto-fixable), `no-commonjs-require`,
-`no-identifier-shadow-call`, `no-jq-raw-interpolation` (the hooks build jq programs — and the bare
-scan now points it at the real `hooks/*.sh`, which the old path list once forgot to include,
-`vp-beads-agr`), plus **`no-hardcoded-tracker-dir`**. The last is CROSS-BOUNDARY: the tracker path
-segment lives _only_ in `TRACKER_DIR` (`diarie/schema`), and this copy guards the plugin's
-`scripts/*.mjs` + `validate-plugin.mjs`, which import it precisely because this rule makes them —
-it matters most in guard code, where a hardcoded segment would not _error_ after a rename, it
-would silently stop guarding. Deliberately NOT adopted: vp-claude's `bash-require-set-euo-pipefail`
-— a hook that aborts on any failing command _blocks the tool call_, and these hooks must degrade
-quietly.
+**Seven rules load — 4 local + 3 from the package**, and `check:rule-parity` prints that split on
+every run rather than trusting a count written down here.
+
+Local (4): `no-commonjs-require`, `no-identifier-shadow-call`, `no-jq-raw-interpolation` (the hooks
+build jq programs — and the bare scan now points it at the real `hooks/*.sh`, which the old path
+list once forgot to include, `vp-beads-agr`), plus **`no-hardcoded-tracker-dir`**.
+
+From **`@voxpelli/ast-grep-rules`** (3, consumed via a `ruleDirs` entry into `node_modules`):
+`no-jsdoc-any-type` (prefer `unknown` + a guard), `no-jsdoc-object-typedef` (auto-fixable),
+`no-inline-jsdoc-import`. All three are `severity: warning`, so they cannot fail a scan on their own
+— `ast-grep scan --error=<id>` escalates one without forking it. **They are pinned to the CLI**:
+`@ast-grep/cli` is `~0.44.1`, not `^`, because 0.45 breaks the comment-node binding all three rely
+on and silences them completely rather than degrading (`UPSTREAM-voxpelli--ast-grep-rules.md`).
+Each has a local test in `.ast-grep/rule-tests/` — ast-grep pairs on the `id:` FIELD wherever the
+rule was loaded from, so a consumer-side test does reach a package rule, and without one a neutered
+pattern is invisible to every gate.
+
+`no-hardcoded-tracker-dir` is CROSS-BOUNDARY — its twin guards diarie's own `lib/**` — and it is
+**preventive**: as of 2026-07-28 nothing here imports the store dir at all, so it finds nothing, and
+that is the correct state rather than evidence it is dead. It matters most in guard code, where a
+hardcoded segment would not _error_ after a rename, it would silently stop guarding. Do not narrow
+its `files:` bound to reflect the zero findings — one whole-file `ignores:` entry already collapsed
+it to a single file once.
+
+Deliberately NOT adopted: vp-claude's `bash-require-set-euo-pipefail` — a hook that aborts on any
+failing command _blocks the tool call_, and these hooks must degrade quietly.
 
 🚨 **`ast-grep test` does not fail on an untested rule — it SKIPS it, and the pairing key is the
 `id:` FIELD, not the filename.** Both measured. Delete a rule's test file and it prints
@@ -861,6 +876,16 @@ ignore-bound is the same risk `check:md` carries as `remark --ignore-path .gitig
 accepted uniformly rather than singled out for bespoke tooling — see the History note above and
 `UPSTREAM-ast-grep--cli.md` for the `--min-files`/`--error-on-empty` gap this leaves in the tool
 itself.
+
+**A FIFTH silent-green mode, measured 2026-07-29: a `files:` glob that resolves to nothing.** Typo a
+rule's `files:` (`sripts/*.mjs`) and `ast-grep scan` exits 0, `ast-grep test` passes 7/7, and
+`check:rule-parity` stays green reporting "ast-grep loaded 7" — because the rule still **loads**, it
+just selects no files. `effectiveRuleCount` cannot see it. Distinct from the nonexistent-scan-path
+case, and nothing here catches it. The same arithmetic applies to `ignores:`: `scripts/` holds 7
+files and 6 match `check-*`, so one added exemption once left `no-hardcoded-tracker-dir` applying to
+`validate-plugin.mjs` alone. **Ask ast-grep which files a rule reached** —
+`ast-grep scan --inspect entity` prints `appliedRuleCount` per file — rather than reading the globs
+and assuming.
 
 **A rule at `severity: warning` cannot fail the build** — `ast-grep scan` exits 0 on
 warnings-only. `no-jsdoc-any-type`, `no-jsdoc-object-typedef` and `no-jq-raw-interpolation` are

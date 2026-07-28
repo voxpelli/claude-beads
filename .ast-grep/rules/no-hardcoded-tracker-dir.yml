@@ -13,10 +13,15 @@ message: >-
   `.diarie/` 2026-07-11) is flagged too; the bare `backlog` PRIORITY value is
   not a path and is left alone.
 severity: error
-# THE PLUGIN'S HALF of a cross-boundary rule. Its twin lives in `diarie/.ast-grep/rules/` and
-# guards diarie's own `lib/**`. This copy guards the plugin's tooling — which imports `TRACKER_DIR`
-# from `diarie/schema` precisely BECAUSE this rule makes it. The rule could not "move" with diarie;
-# had it, the plugin's own tooling would have been free to re-fork the constant the day diarie left.
+# THE PLUGIN'S HALF of a cross-boundary rule. Its twin lives in diarie's own repo and guards its
+# `lib/**`. The rule could not "move" with diarie; had it, the plugin's own tooling would have been
+# free to re-fork the store path the day diarie left.
+#
+# It is PREVENTIVE, and currently finds nothing: as of 2026-07-28 no file here imports the store dir
+# at all (`audit-silent-skips.mjs` was the last importer and now matches a vocabulary regex instead,
+# because it does prose matching rather than path construction). Zero findings is the correct state
+# for a rule like this — do not read it as the rule being dead, and do not narrow its `files:` bound
+# on that basis.
 files:
   - "scripts/*.mjs"
   - "validate-plugin.mjs"
@@ -26,11 +31,15 @@ ignores:
   # either from the resolver would make the assertion tautological — it would prove only that the
   # constant equals itself.
   - "scripts/check-*.mjs"
-  # Holds the store-dir VOCABULARY by design (`TRACKER_VOCABULARY`) — it matches the tracker's name
-  # in PROSE and never builds a path from it, which is the opposite of what this rule polices. The
-  # current compact form does not match the pattern below anyway; this entry exists so that writing
-  # the vocabulary more plainly later is not mistaken for a re-forked path.
-  - "scripts/audit-silent-skips.mjs"
+  # NOTE — do NOT add `scripts/audit-silent-skips.mjs` here. It was added 2026-07-28 as insurance for
+  # a vocabulary regex that does not match this pattern anyway, and measured cost exceeded zero
+  # benefit: `scripts/` holds 7 files, 6 match the `check-*` line above, so exempting the 7th left
+  # this rule applying to `validate-plugin.mjs` ALONE (`ast-grep scan --inspect entity`:
+  # appliedRuleCount=6 on exactly one file). A whole-file exemption to pre-empt a hypothetical is how
+  # a guard's bound quietly collapses. If a real vocabulary literal ever trips this, suppress that
+  # LINE instead, with ast-grep's own inline ignore comment naming this rule id — it is rule-id-scoped
+  # (verified on 0.44.1) and greppable, the same pressure-valve shape as `prose-cmd-ignore`.
+  # (Spelling the directive out here would BE one — ast-grep reads its own rule files.)
 rule:
   any:
     - kind: string

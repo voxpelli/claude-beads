@@ -146,7 +146,7 @@ const testIds = testIdsIn(TESTS)
 
 // Every rule the scan LOADS needs a test, wherever it came from. A package rule is exactly as
 // silently-neuterable as a local one, so it gets the same three assertions.
-const allRuleIds = new Set([...ruleIds, ...pkgIds])
+const allRuleIds = ruleIds.union(pkgIds)
 
 /**
  * @param {string} id
@@ -183,14 +183,13 @@ for (const id of [...allRuleIds].toSorted()) {
   }
 }
 
-for (const id of [...testIds].toSorted()) {
-  if (!allRuleIds.has(id)) {
-    problems.push(
-      `\`${TESTS}/${id}-test.yml\` tests a rule that exists in neither ${RULES}/ nor ${PKG_RULES}/. ` +
-      'Either the rule was deleted and its test outlived it, or the `id:` is a typo — ' +
-      '`ast-grep test` reports `Configuration not found!` for this and still exits 0.'
-    )
-  }
+// The loop header states the finding — these ARE the tests with no rule.
+for (const id of [...testIds.difference(allRuleIds)].toSorted()) {
+  problems.push(
+    `\`${TESTS}/${id}-test.yml\` tests a rule that exists in neither ${RULES}/ nor ${PKG_RULES}/. ` +
+    'Either the rule was deleted and its test outlived it, or the `id:` is a typo — ' +
+    '`ast-grep test` reports `Configuration not found!` for this and still exits 0.'
+  )
 }
 
 // A local rule and a package rule sharing an id is not a layering — ast-grep hard-errors
@@ -198,13 +197,11 @@ for (const id of [...testIds].toSorted()) {
 // Name the collision here, because that symptom otherwise reaches the reader as a probe complaint
 // pointing nowhere near the cause. Both sides are DECLARED ids, not filenames: a collision between
 // two differently-named files was the shape that slipped through before.
-for (const id of [...ruleIds].toSorted()) {
-  if (pkgIds.has(id)) {
-    problems.push(
-      `\`${id}\` is defined in BOTH ${RULES}/ and ${PKG_RULES}/. ast-grep does not layer these — ` +
-      'it exits 8 on a duplicate id. Adopting a packaged rule means deleting the local file outright.'
-    )
-  }
+for (const id of [...ruleIds.intersection(pkgIds)].toSorted()) {
+  problems.push(
+    `\`${id}\` is defined in BOTH ${RULES}/ and ${PKG_RULES}/. ast-grep does not layer these — ` +
+    'it exits 8 on a duplicate id. Adopting a packaged rule means deleting the local file outright.'
+  )
 }
 
 // THE PACKAGE RULES ARE ACTUALLY LOADED. Ask ast-grep for the count it really used; never infer it.
@@ -235,6 +232,10 @@ if (!Number.isInteger(effective)) {
   const why = [
     probe.error?.message,
     typeof probe.status === 'number' ? `exit ${probe.status}` : undefined,
+    // A spawn killed by a signal leaves `error` undefined AND `status` null, so without this the
+    // whole message collapses to "(no output, no error, no exit status)" — the one path that
+    // otherwise loses its own diagnostic.
+    probe.signal ? `killed by ${probe.signal}` : undefined,
     (probe.stderr ?? '').trim().slice(0, 500) || undefined,
   ].filter(Boolean).join(' · ')
   problems.push(

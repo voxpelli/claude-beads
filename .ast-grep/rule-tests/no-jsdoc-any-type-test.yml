@@ -6,5 +6,10 @@ valid:
 - "/** @param {unknown} x */"
 - "/** @returns {string} */"
 invalid:
+# All FOUR tags the rule matches. With only @param and @returns pinned, narrowing the upstream regex
+# to `@(param|returns)` passed 7/7 — measured — so @type and @property guarding could be dropped by a
+# minor bump (the package is pinned `^0.1.0`) with every gate green.
 - "/** @param {any} x */"
 - "/** @returns {any} */"
+- "/** @type {any} */"
+- "/** @property {any} a */"

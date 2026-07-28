@@ -33,7 +33,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
@@ -192,11 +192,23 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
   // NOT trusted); a store with an unparseable file reports total 0 PLUS a warning (malformed → not
   // trusted). No js-yaml, no diarie/schema.
   const stats = statsRunner(root)
-  /** @type {{ total?: number, code?: string, warnings?: string[] } | null} */
+  // A UNION, not a flat bag of optionals. diarie's contract is exclusive — an ENOSTORE envelope XOR
+  // a stats result — and modelling it as one object with every key optional let the two be read as
+  // if both could hold at once. That is not academic: it produced a probe that reported
+  // `storeInvisibleToCli: true` and `trusted: true` in the same object, i.e. "the CLI cannot see this
+  // store" and "go ahead and disarm bd". Declaring the union is what makes `code === 'ENOSTORE'`
+  // narrow `total` away instead of leaving both readable.
+  /** @type {{ error: string, code: string } | { total: number, warnings?: string[] } | null} */
   let parsed = null
   try { parsed = stats.out ? JSON.parse(stats.out) : null } catch { parsed = null }
+  const envelope = parsed && 'code' in parsed ? parsed : null
+  const statsResult = parsed && 'total' in parsed && !envelope ? parsed : null
 
-  const enostore = parsed?.code === 'ENOSTORE'
+  const enostore = envelope?.code === 'ENOSTORE'
+  // diarie's own diagnostic, passed through verbatim rather than paraphrased. For a legacy store it
+  // already names the path AND the `git mv` to run; re-deriving that in skill prose is how a remedy
+  // ends up pointing the wrong way.
+  const cliError = envelope?.error ?? null
   // The CLI gave a USABLE answer iff we got a stats object (a numeric total) or a clean ENOSTORE.
   // Anything else — npx could not resolve/run diarie, no network, garbled output — is "could NOT
   // verify", which is NOT "the store is bad". `verifyFailed` keeps them distinct: it forces `trusted`
@@ -208,20 +220,36 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
   // `diarium/` or `.diarium/`). Counting that as a clean answer would report `taskCount: 0` on a
   // store full of work — "absent" rendered as "empty", the exact conflation ENOSTORE exists to
   // delete, wearing a probe's clothes. It is an unreadable store, so: verify FAILED.
+  //
+  // AN ENVELOPE WINS OVER A COUNT, unconditionally. An earlier form of this read the two as peers —
+  // `enostore && !storeInvisibleToCli || typeof parsed?.total === 'number'` — so a payload carrying
+  // BOTH an ENOSTORE code and a total took the second disjunct and produced `storeInvisibleToCli:
+  // true` together with `trusted: true`: "the CLI cannot see this store" and "go disarm bd", in one
+  // object, on the gate that authorises a destructive operation. Not reachable against diarie 0.2.x,
+  // whose envelope carries no count — reachable the day it grows one, which is an ordinary thing to
+  // add. A probe whose stated principle is "ASK the CLI, do not re-parse the files" must not also
+  // assume the CLI's reply shape is disjoint when nothing makes it so.
   const storeInvisibleToCli = enostore && files.length > 0
-  const cliAnswered = (enostore && !storeInvisibleToCli) || typeof parsed?.total === 'number'
+  const cliAnswered = enostore ? !storeInvisibleToCli : typeof statsResult?.total === 'number'
   const verifyFailed = !cliAnswered
-  const taskCount = typeof parsed?.total === 'number' ? parsed.total : 0
+  // `null`, never 0, when the CLI did not answer — per this module's opening contract, an explicit
+  // null is "we looked and there is nothing to report", and 0 would be "the store is empty". The
+  // JSON path is the one the skill acts on, so the distinction has to live in the DATA; patching it
+  // only in the human print left `--json` emitting a bare 0 for a store full of work.
+  const taskCount = cliAnswered && typeof statsResult?.total === 'number' ? statsResult.total : null
   // A store diarie DID read but flagged (an invalid-YAML file skipped) is genuinely malformed —
   // only meaningful when the CLI actually answered.
-  const malformed = cliAnswered && Array.isArray(parsed?.warnings) && parsed.warnings.length > 0
+  const malformed = cliAnswered && Array.isArray(statsResult?.warnings) && statsResult.warnings.length > 0
 
   // `ls-files` reads the INDEX, so a `git add`-ed but never-committed store answered
   // "committed: true" — in a repo with no commits at all. `ls-tree HEAD` asks history.
+  // `null` when there was nothing to ask about, NOT a synthesized `{ok: false}`. Manufacturing a
+  // failed-run result for a run that never happened is this module's own anti-thesis in miniature —
+  // "we never checked" must not be shaped like "we checked and it failed".
   const inHead = trackerDir
     ? run('git', ['-C', root, 'ls-tree', '-r', '--name-only', 'HEAD', '--', `${trackerDir}/tasks`])
-    : { ok: false, out: '', code: null }
-  const committedFiles = inHead.ok && inHead.out ? inHead.out.split('\n').filter(Boolean) : []
+    : null
+  const committedFiles = inHead?.ok && inHead.out ? inHead.out.split('\n').filter(Boolean) : []
 
   // Two stores on disk is a real state, and an ambiguous one — diarie itself answers it with
   // ETWOSTORES rather than a precedence rule. Report it instead of resolving it: the caller is
@@ -234,10 +262,17 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
     storeDir: trackerDir ?? null,
     storeDirs,
     ambiguousStore,
-    // The probe sees a store the installed diarie cannot read — almost always a CLI predating the
-    // `diarium/`|`.diarium/` rename. Surfaced by name so a caller can say "upgrade diarie" rather
-    // than the useless "could not verify".
+    // The probe sees a store the installed diarie cannot read. TWO OPPOSITE CAUSES, and the remedy
+    // is inverted between them, so a caller must NOT assume one:
+    //   - store is `diarium/`|`.diarium/`, CLI predates the rename  -> upgrade diarie
+    //   - store is `.diarie/`, CLI is NEWER than the rename         -> rename the store
+    // The second is this plugin's DEFAULT case, because `/migrate-tracker` produces `.diarie/`, and
+    // diarie now lists `.diarie` in LEGACY_TRACKER_DIRS ("no longer the store, never READ") rather
+    // than TRACKER_DIRS. Telling that user to upgrade makes it worse. `storeDir` is what
+    // discriminates; `cliError` carries diarie's own wording, which already includes the exact
+    // `git mv` to run — better than any remedy re-derived here.
     storeInvisibleToCli,
+    cliError,
     files,
     taskCount,
     malformed,
@@ -355,7 +390,14 @@ export function probeDaemon (root) {
     //     which is precisely the pid-reuse hazard we are defending against.
     const cwdOut = run('lsof', ['-p', pid, '-a', '-d', 'cwd', '-Fn']).out
     const cwdLine = cwdOut.split('\n').find(l => l.startsWith('n'))?.slice(1) ?? null
-    const cwdInTarget = Boolean(cwdLine && resolve(cwdLine).startsWith(beadsDir))
+    // BOUNDARY-ANCHORED, and it must be. A bare `startsWith(beadsDir)` also matched
+    // `.beads-backup/`, `.beads2/` and `.beadsX/` — measured — so a daemon belonging to a SIBLING
+    // directory satisfied the one predicate that authorises SIGTERM. Third time this exact class has
+    // bitten this file: `includes()` on hooksPath claimed another repo's `.beads/hooks`, and
+    // `line.startsWith(pid)` let our pid 4443 hide a different daemon at 44430. A prefix test needs
+    // a terminator or it is a substring test wearing a path's clothes.
+    const cwd = cwdLine ? resolve(cwdLine) : null
+    const cwdInTarget = Boolean(cwd && (cwd === beadsDir || cwd.startsWith(beadsDir + sep)))
     const portMatches = Boolean(port && new RegExp(String.raw`-P\s+${port}\b`).test(args.out))
 
     owned = { pid, port, alive, isDolt, cwd: cwdLine, cwdInTarget, portMatches, args: alive ? args.out : null }
@@ -449,24 +491,35 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   // NEVER print a bare `taskCount` when the CLI could not read the store. `0 task(s)` next to
   // `1 file(s)` is "absent rendered as empty" — the conflation this probe's own comments say it
   // exists to delete, reappearing on the path a human actually reads (`--json` is opt-in).
-  const countText = migration.verifyFailed ? 'task count UNKNOWN' : `${migration.taskCount} task(s)`
-  stdout.write(`  store: ${migration.files.length} file(s) in ${migration.storeDir ?? '(none found)'}, ${countText}, committed=${migration.committed}\n`)
+  const countText = migration.taskCount === null ? 'task count UNKNOWN' : `${migration.taskCount} task(s)`
+  const whereText = migration.storeDir ? `in ${migration.storeDir}` : 'no store directory'
+  stdout.write(`  store: ${migration.files.length} file(s) ${whereText}, ${countText}, committed=${migration.committed}\n`)
   if (!migration.trusted) {
     // Derive the reason from the conjuncts that ACTUALLY failed. The old line hardcoded three
     // causes and listed them unconditionally, so after `ambiguousStore` joined the gate a user could
     // read "absent, EMPTY, or uncommitted" directly under a line proving the store was present,
     // non-empty and committed — every offered explanation contradicted, and the real one absent.
+    /** @type {string[]} */
     const reasons = []
     if (migration.ambiguousStore) {
       reasons.push(`TWO stores on disk (${migration.storeDirs.join(', ')}) — which one is live is not this probe's call to make`)
     }
     if (migration.storeInvisibleToCli) {
-      reasons.push(`the installed diarie cannot read a \`${migration.storeDir}\` store — upgrade diarie, then re-probe`)
+      // Which way the fix points depends on WHICH store form is on disk — see the note on
+      // `storeInvisibleToCli` above. Never emit a bare "upgrade diarie".
+      const remedy = migration.storeDir === '.diarie'
+        ? 'the CLI is NEWER than the store name — `.diarie/` is diarie\'s legacy name and is no longer read; rename the store'
+        : 'the CLI predates this store name — upgrade diarie'
+      reasons.push(`the installed diarie cannot read a \`${migration.storeDir}\` store: ${remedy}, then re-probe`)
+      if (migration.cliError) reasons.push(`  diarie said: ${migration.cliError}`)
     } else if (migration.verifyFailed) {
       reasons.push('diarie could not be RUN to check the store (offline / unresolvable) — this is NOT a verdict on the store')
     }
-    if (!migration.files.length) reasons.push('no store found')
-    else if (!migration.verifyFailed && migration.taskCount === 0) reasons.push('the store is EMPTY')
+    // Two DIFFERENT absences, and saying "no store found" for both is how a user with a real
+    // directory reads a line that contradicts the one above it.
+    if (!migration.storeDir) reasons.push('no store directory found')
+    else if (!migration.files.length) reasons.push(`\`${migration.storeDir}/tasks/\` exists but holds no \`tasks-*.yml\``)
+    else if (migration.taskCount === 0) reasons.push('the store is EMPTY')
     if (migration.malformed) reasons.push('diarie read the store but reported warnings')
     if (migration.files.length && !migration.committed) reasons.push('the store is UNCOMMITTED')
     for (const r of reasons) stdout.write(`  ! ${r}\n`)

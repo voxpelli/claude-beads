@@ -1414,3 +1414,147 @@ tasks:
       The gap vp-beads-tpl closed by hand and could not close structurally. Filed rather than bolted
       onto that fix because the classification question is the real work and deserves its own decision.
     updated: '2026-07-29'
+  - id: vp-beads-rpf
+    title: 'check-rule-parity has no test — its RED-proof lives in a commit message, not in CI'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - test
+    acceptance_criteria:
+      - >-
+        `8f32f0a` says "Three new problems, each RED-proofed" and `3a5e140` says the same of three
+        more. That proof exists only in commit prose. This repo has already been bitten by exactly
+        that: `check-validator-plugin-fixtures.mjs` exists (vp-beads-vph) BECAUSE vp-beads-gtd was
+        marked complete asserting "Proven RED on planted violations" with no such proof ever built
+      - >-
+        check-rule-parity is the only thing standing between a neutered ast-grep rule and a green
+        build, and it shipped WITH the defect it was written to prevent (paired rules by filename
+        while claiming to pair by `id:` field) — a fixture test reproduces that in two states: red on
+        the old code, green on the new
+      - >-
+        copy the in-repo precedent exactly (`scripts/check-validator-plugin-fixtures.mjs`): add a
+        `RULE_PARITY_ROOT` env override for RULES/TESTS/PKG_RULES mirroring `VALIDATE_PLUGIN_ROOT`,
+        then a fixtures script asserting non-zero exit AND the fixture named, for each planted state —
+        id != filename stem · rule with no string id · rule with no test · test naming no rule · test
+        with no invalid: case · duplicate id across two differently-NAMED files — plus a clean control
+        that must stay green. ~60-80 lines, new `check:rule-parity-fixtures` key
+      - >-
+        SCOPE HONESTLY: this cannot cover the effectiveRuleCount assertions (they need a real ast-grep
+        run against a fixture sgconfig.yml) or the probe-failure branch. Six of the seven
+        `problems.push` branches is the right stopping point. Do NOT test the MIN_EFFECTIVE_RULES
+        floor — three lines of comparison whose whole design point is that it is edited deliberately
+    description: >-
+      Found by a pr-test-analyzer pass over 8f80594..HEAD (2026-07-29), which reproduced the
+      pre-/post-fix two-state behaviour directly. The gap is not coverage-for-its-own-sake: it is that
+      the repo's most self-aware guard is the one guard nobody can demonstrate going red on demand.
+    updated: '2026-07-29'
+  - id: vp-beads-hkd
+    title: 'vp-beads DUPLICATES vp-knowledge''s PostToolUseFailure hook — double-fire, contradictory advice'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        `hooks/post-bm-failure-classify.sh` here and the same-named script in vp-knowledge 0.33.5 are
+        the same script with DIVERGENT message text, registered on the same event with overlapping
+        matchers. On any failed write_note/edit_note/schema_*, BOTH fire and inject two
+        additionalContext blocks that disagree — vp-knowledge says "Use write_note to create it",
+        vp-beads says "run /package-intel or /tool-intel first". Live in the working tree AND in the
+        released 0.18.0 cache
+      - >-
+        CLAUDE.md `### Relationship to vp-knowledge` forbids exactly this ("Do not duplicate
+        vp-knowledge hooks in vp-beads ... duplicating hooks causes double-fire"). So the fix direction
+        is settled by existing policy; what is NOT settled is whether anything here depends on the
+        vp-beads wording — check before deleting
+      - >-
+        vp-beads' matcher ALSO covers `read_note` and `search_notes`; vp-knowledge deliberately
+        excludes both because a failed search is common and benign. Whatever survives should adopt the
+        narrower matcher
+      - >-
+        `check-hooks.mjs` tests this hook in ISOLATION, so it looks healthy — no gate can see a
+        cross-plugin duplicate. Note that `vp-beads-sss`'s AC says "BM-failure-classify stays
+        vp-knowledge's", which reads as routing for a future shard, not as "the duplicate is firing
+        today"
+    description: >-
+      Found by a plugin-validator pass, 2026-07-29. Filed rather than fixed inline because deleting a
+      shipped hook is a behaviour change with a released-cache blast radius, and it wants the operator's
+      call on which wording survives.
+    updated: '2026-07-29'
+  - id: vp-beads-vgp
+    title: 'validate-plugin gaps: nested hooks.json unread, quoted/relative hook paths unchecked, event names unvalidated'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        NESTED hooks.json IS NEVER READ. `validate-plugin.mjs:309` hardcodes `join(ROOT, 'hooks',
+        'hooks.json')`. Proven with a byte-identical garbage file: at `plugins/nested/hooks/` it exits
+        0 "validation passed"; at `hooks/` it exits 1 "Invalid JSON". A fuller nested fixture (missing
+        matcher, a `type: prompt` hook, a bogus type, missing timeouts, dangling script path) produced
+        ZERO errors. `scripts/check-hooks.mjs:17` has the identical blind spot. This matters NOW —
+        vp-beads-sss is pending and will create exactly these files
+      - >-
+        THE SCRIPT-EXISTENCE CHECK IS SKIPPED FOR THE TWO FORMS THAT NEED IT MOST. `:350` finds the
+        path via `parts.find(p => p.startsWith('/') || p.startsWith('./'))`. Measured against a
+        nonexistent target: `bash ${CLAUDE_PLUGIN_ROOT}/hooks/NOPE.sh` errors (control), but `bash
+        "${CLAUDE_PLUGIN_ROOT}/hooks/NOPE.sh"` and `bash hooks/NOPE.sh` both pass SILENTLY. Quoting is
+        correct practice for a path that may contain spaces, and the relative form is the one that is
+        genuinely broken at runtime (hooks run with the USER'S project as cwd) — so the guard misses
+        precisely the two forms it exists for
+      - >-
+        HOOK EVENT NAMES ARE NEVER VALIDATED. `:319` iterates `Object.entries(hooks)` and accepts any
+        key, so `SesionStart` registers cleanly and never fires
+      - >-
+        `references/*.md` GET NO TOOL AUDIT. `:608-611` runs only auditWorkflowReferences on them. 11
+        `mcp__basic-memory__*` refs live in `plugins/ledger/skills/ledger/references/` today (all
+        currently declared — verified), but the ledger skill deliberately pushes its logic INTO
+        references/, so the audit now points at the file where the logic is not
+      - >-
+        `auditToolReferences` only matches `mcp__*` (`:160`), so a skill instructing "use the Grep
+        tool" with Grep absent from allowed-tools is invisible. And a skill directory name is never
+        compared to its frontmatter `name` — `skills/wrongname/` declaring `name: other` passes
+    description: >-
+      Found by a plugin-validator pass, 2026-07-29, each gap proven with a fixture tree under
+      VALIDATE_PLUGIN_ROOT. The validator is the thing this repo would otherwise trust, so its blind
+      spots are worth more than most findings.
+    updated: '2026-07-29'
+  - id: vp-beads-wsx
+    title: 'root gates reach INTO workspaces — extraction would leave the linter behind'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        `eslint.config.js:35` lists `plugins/diarie-adopt/scripts/**/*.mjs` in cliFiles — a root gate
+        reaching into a workspace by PATH, in the very file whose `vp-beads/delegate-to-workspace`
+        block (`:21-32`) documents that as the reason diarie got its own config. Meanwhile
+        `plugins/diarie-adopt/package.json` has no eslint devDep, no eslint config, and its `check` is
+        remark + the probe tests — no lint. `git subtree split` takes ~600 lines of probe logic and
+        leaves the linter behind, nothing red
+      - >-
+        three of four workspaces' entire `check` is `remark skills/ --quiet --frail` — a markdown
+        formatter, which structurally cannot see YAML frontmatter fields or tool names. All
+        frontmatter/tool-ref/workflow-ref/silent-skip validation lives only in root gates, so an
+        extracted plugin arrives with markdown-style checking and nothing else
+      - >-
+        root `check:md` (`remark .`) also walks into plugins/, double-linting every workspace's
+        markdown that its own `check` then lints again. Same shared preset via one-line .remarkrc.mjs
+        re-exports so there is no drift risk — just a root glob crossing the boundary
+      - >-
+        no workspace ships a LICENSE file though all four manifests declare "license": "MIT";
+        extraction yields an MIT-claiming repo with no license text
+      - >-
+        CONFIRMED FINE, do not re-investigate: `check-workspaces` calls `npm run check --workspaces
+        --if-present`, which invokes each workspace's AGGREGATE `check`, so the `run-p check:*`
+        single-segment-glob trap does not apply at that boundary. No workspace has a bare `test` key
+    description: >-
+      Found by a plugin-validator pass, 2026-07-29. The stated architecture is that a workspace owns
+      its gates so it can be extracted cleanly; these are the places that is not yet true.
+    updated: '2026-07-29'
