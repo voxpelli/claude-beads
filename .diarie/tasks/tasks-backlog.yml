@@ -1423,7 +1423,7 @@ tasks:
     title: 'beads-probe: four could-not-determine states report as determined (silent-failure review)'
     status: pending
     type: task
-    priority: high
+    priority: medium
     labels:
       - bug
     acceptance_criteria:
@@ -1677,21 +1677,26 @@ tasks:
         bucket assertions change outcome — green here for an environmental reason. Two lines at the
         top of the suite (`GIT_CONFIG_GLOBAL` / `GIT_CONFIG_SYSTEM` -> `/dev/null`) pin it
       - >-
-        N8 LEFTOVER — FOUR call sites remain `.ok`-checked but still AMBIGUOUS, because `ok: false`
-        conflates "answered no" with "could not ask": `git config --show-scope` (:306, this is N5),
-        `ps -p <pid>` (absent ps reads as a dead pid), `git ls-tree HEAD` (an unrunnable git prints
-        the determinate "the store is UNCOMMITTED" over a fully committed store), and `probe()`'s own
-        `gitAvailable` (still consumed by nothing). NO LONGER in this set: `git config --get-regexp
-        ^beads\.` (:434, exit 1 IS "no keys"), `ps -p <pid>` (:378, absent ps reads as a dead pid),
-        and `probe()`'s own `gitAvailable` (:461, still consumed by nothing). Each needs a per-site
-        judgment about which exit codes are legitimate answers, which is why they were not swept in
-        with N8. NOT in this set: `git ls-tree HEAD` (:250) already gets null-vs-false right —
-        `inHead` is `null` when there was nothing to ask — so its defect is narrower and is a PRINT
-        defect like filed-#2, namely that an unrunnable git prints the determinate "the store is
-        UNCOMMITTED". The three landed sites all took the same shape and it is worth reusing:
-        measure the real exit codes first, name which ONE of them is an answer, add a `*Error`
-        string beside the value, branch the print, then doc-grep the field NAME for consumers
-        outside the file
+        N8 LEFTOVER — REWRITTEN 2026-07-29 because the previous text CONTRADICTED ITSELF: it listed
+        `ps -p <pid>` and `gitAvailable` in both its "FOUR remain" and its "NO LONGER in this set"
+        lists, and `git ls-tree HEAD` in both "FOUR remain" and "NOT in this set". Unreadable as
+        evidence, which is how a refuted claim gets re-fixed six weeks later. The TRUE remainder is
+        THREE sites, each needing a per-site judgment about which exit codes are legitimate answers
+        — which is why they were not swept in with N8. (a) `git config --show-scope` — both
+        CONSUMERS are already correct after N5/N6 (the print has an explicit unknown branch;
+        `reArmCommand` goes null + `reArmError`), so what is left is only that `--json` gets a bare
+        `scope: null` with no reason string. Narrowest of the three. (b) `ps -p <pid>` — an absent
+        or unrunnable `ps` makes `alive: false`, i.e. a dead pid, so ownership reads "NOT proven to
+        be this target's dolt". Fails CLOSED, and the sibling `ps ax` call fires `processListError`
+        on the same page — so a signal IS printed, just attached to a different fact. (c) `git
+        ls-tree HEAD` — `inHead` correctly gets null-vs-false right when there was nothing to ask,
+        but when git RAN and failed (128) `committedFiles` is `[]` → `committed: false` → the report
+        prints the determinate "the store is UNCOMMITTED" over a possibly-committed store. A PRINT
+        defect, not a data one. NOT in this set any more: `git config --get-regexp ^beads\.` (exit 1
+        IS "no keys" — split landed) and `gitAvailable` (DELETED, see filed-#2 below). The landed
+        sites all took the same shape and it is worth reusing: measure the real exit codes first,
+        name which ONE of them is an answer, add a `*Error` string beside the value, branch the
+        print, then doc-grep the field NAME for consumers outside the file
       - >-
         N8 REACHED THE SKILL 2026-07-29 (second commit). The shape change escaped its own two files:
         `deintegrate-beads/SKILL.md` enumerates `residue.trackedCount` (workflow 5) and
@@ -1709,6 +1714,44 @@ tasks:
         authorizes a kill / misdirects a deletion): N1 > filed-#2 (`gitAvailable`) > N2 > filed-#1 >
         N3 > N5 > N4 > N8 > N6 > N7 > N10 > filed-#4a. ANNOYING-only (fails closed): filed-#3, filed-#4b,
         N11. Do N8 first in practice — it is one function and it closes the class
+      - >-
+        A NEW DEFECT, found while surveying the remainder and fixed first (`fc7b6c9`): the CLI's
+        `--json` branch wrote to stdout and then called `process.exit(0)`, which does NOT drain a
+        pending write when stdout is a PIPE — and it is always a pipe, because the skill captures
+        the output. Measured: the cut is at exactly 65536 bytes, ONE pipe buffer, not "only huge
+        payloads". Reproduced end to end with 1200 real tracked files under `.beads/dolt/noms/`
+        (Dolt's own chunk layout, an ordinary size for the repos this tool exists for): 65534 bytes
+        of stdout, `JSON.parse` throwing `Unterminated string`, and EXIT STATUS 0. `trackedFiles`
+        and `otherDoltProcesses` are unbounded arrays, so the payload is not self-limiting. Ranked
+        ANNOYING: it fails LOUD (unbalanced braces, so a caller's parse throws rather than yielding
+        a partial verdict) and a default `.beads/` does not reach it — bd's own `.beads/.gitignore`
+        ignores contents while keeping config tracked. Same family as diarie's founding bug, where
+        an `exit(2)` truncated the JSON and a broken store read as an EMPTY one. Fix: the CLI body
+        became `main()` so the branch can `return` — chosen over an `else` because it moves not one
+        line of the 118-line report. Fixture asserts it reproduced the harm (>65536 bytes) before
+        asserting the fix; both mutations redden, different assertions each way
+      - >-
+        filed-#2 CLOSED 2026-07-29 (`ff94367`) — as a DELETE, not a consumer. `gitAvailable`'s own
+        comment stated the obligation ("Say so explicitly") and nothing read it, so the
+        announcement happened nowhere. That obligation is now discharged per-fact and BY NAME at
+        `residue.trackedError`, `residue.configKeysError` and `hooks.hooksPath.error`. Measured both
+        failure modes rather than assumed: git absent from PATH fires all three; git present but
+        OUTSIDE a repo fires only two, because `git config --get` on an unset key exits 1 and the
+        split correctly reads that as an ANSWER — a wrinkle worth keeping, since it means "not a
+        repo" and "no hooksPath" are indistinguishable at that one site. Either way the flag carried
+        strictly less than the markers that replaced it. Doc-grep is what kept this a delete rather
+        than a contract change: `gitAvailable` appears in no skill, README or CLAUDE.md
+      - >-
+        STOPPING HERE, DELIBERATELY, 2026-07-29. Every DESTRUCTIVE-direction item in this row's own
+        ranking is closed, and that ranking exists precisely to say when to stop. What remains is
+        annoying-direction by the row's own classification — each fails closed, so the worst outcome
+        is a re-run or a slightly wrong sentence: N10 (the probe always exits 0), filed-#3 (diarie's
+        `warnings[]` strings are DROPPED — the real defect there, the `malformed` impact having been
+        refuted), filed-#4a (`existsSync` as determinate-absence in five places, `beadsDirExists`
+        the dangerous one), and the three sites in the rewritten N8 LEFTOVER above. Dropped high →
+        medium to reflect that. Do NOT re-derive the refuted claims: the "VERIFIED 2026-07-29" ACs
+        record four that measurement corrected, and the N8 LEFTOVER AC was itself self-contradictory
+        until rewritten
     description: >-
       Found by a pr-review-toolkit silent-failure-hunter pass over 8f80594..80b4903 (2026-07-28), all
       reproduced rather than inferred. Distinct from the diarium de-risk that prompted the review:
