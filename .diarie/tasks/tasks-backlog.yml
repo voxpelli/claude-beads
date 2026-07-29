@@ -66,11 +66,51 @@ tasks:
     updated: '2026-05-31'
   - id: vp-beads-46k
     title: '[hooks] Extract session-start.sh concerns into named shell functions'
-    status: pending
+    status: completed
     type: task
     priority: low
     labels:
       - chore
+    acceptance_criteria:
+      - >-
+        DONE 2026-07-29. Ten collectors, each appending to the global `parts` array, all called from
+        `main`. The boundaries are the SHARD destinations from vp-beads-sss, NOT the six this row
+        originally proposed — that is why the credential-key and PRIVATE-SYNERGY warnings are
+        separate functions despite both being git-leak checks: they route to different plugins
+        (diarie-adopt vs ledger), so each must move whole. Each carries its destination in a
+        `[shard destination: X]` header comment
+      - >-
+        NO BEHAVIOUR CHANGE, proved by an old-vs-new byte-diff of stdout+stderr+exit over 27
+        fixtures (compact and startup × store healthy/ENOSTORE/strict-2/absent/CLI-missing, all
+        three leak warnings, three dormancy shapes, both RETRO mod-4 branches, four gh shapes,
+        empty/garbage stdin, non-git dir). Baseline run twice first and confirmed byte-identical,
+        since `-mmin -60` is wall-clock sensitive. A `diarie` stub is on PATH — without one the
+        entire tracker-prime block never executes and the diff would be green over the largest,
+        most intricate part of the file
+      - >-
+        TWO ERREXIT RULES, measured not assumed. (1) Call every collector BARE: bash suppresses
+        errexit for a whole function body when the function is invoked in a tested context
+        (`f || true`, `if f`), which would turn every `|| fallback` guard in this file into dead
+        ceremony. (2) End every body with `return 0`: a function returns its last command's status,
+        so a body ending in a false test returns 1 and a bare call kills the hook on the
+        nothing-to-report path. Mutation-proved — the falsy-ending collector without `return 0` is
+        CAUGHT, and the same collector called `|| true` is NOT, which is the demonstration
+      - >-
+        The harness needed fixing before the refactor did. Its first version passed 4 of 5
+        mutations SILENTLY: it could not see two collectors swapped (no fixture made both emit) and
+        could not see `--strict` dropped (the stub exited 2 regardless of the flag). Both fixed,
+        then all mutations caught. A byte-diff that cannot go red is the green-check bug wearing a
+        proof's clothes
+      - >-
+        `scripts/check-hooks.mjs` gains a permanent ordering test (43 tests, was 42) — every other
+        startup test fires ONE collector, so their relative order was unobservable across the whole
+        suite, and the refactor makes a reorder a one-line edit. RED-proved twice: swapping
+        tracker_prime/check_dormancy and deleting the check_dependabot call both go red with a
+        naming message
+      - >-
+        OUT OF SCOPE deliberately, since a byte-diff IS the acceptance criterion and any behaviour
+        fix invalidates it: vp-beads-hkq's "claim above" wording (no longer at a fixed line — see
+        `collect_in_progress_claims`) and everything in vp-beads-pbr
     description: >-
       Deferred recommendation from the v0.17.0 post-review (big-picture architect). session-start.sh
       is now ~245 lines with two top-level branches (compact vs startup) and ~6 concerns

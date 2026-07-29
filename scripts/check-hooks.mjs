@@ -982,6 +982,70 @@ test('startup: a HEALTHY store is NOT accused of dropping rows', () => {
   }
 })
 
+test('startup: ALL SIX collectors fire at once, in the documented order', () => {
+  // Every other startup test fires ONE collector, so their relative ORDER is
+  // unobservable across the whole suite — swap two calls in `main` and nothing
+  // goes red. Measured: a byte-diff harness over 25 single-concern fixtures
+  // could not see `check_dormancy` and `tracker_prime` traded, because no
+  // fixture made both emit. That gap matters more since vp-beads-46k turned the
+  // startup branch into six bare calls, where a reorder is a one-line edit.
+  //
+  // Order is not cosmetic. The leak WARNINGs lead because they are the only
+  // items a session must act on before doing anything else, and the dormancy
+  // nudge deliberately precedes the trend-review reminder so a repo with no
+  // RETRO files still gets nudged (session-start.sh says so at that call).
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  const trackerStub = makeTrackerStubDir(
+    '[{"id":"backlog/T-1","title":"a claimed row"}]',
+    0,
+    '{"ready":[{"id":"backlog/R-1","priority":"high"}],"blocked":[],"needsAttention":[],"warnings":[]}'
+  )
+  const ghStub = makeGhStubDir('3')
+  try {
+    trackBeadsFile(dir, '.beads/.beads-credential-key')
+    mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
+    writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-a.yml'), 'tasks: []\n')
+    writeFileSync(join(dir, 'PRIVATE-SYNERGY-partner.md'), 'x\n')
+    spawnSync('git', ['add', 'PRIVATE-SYNERGY-partner.md'], { cwd: dir })
+    // UPSTREAM + SYNERGY with 0 commits → dormant (rev-list fails, falls back to 0).
+    writeFileSync(join(dir, 'UPSTREAM-a.md'), 'x\n')
+    writeFileSync(join(dir, 'SYNERGY-x.md'), 'x\n')
+    // 3 RETRO files → count % 4 === 3 → the "next sprint is a trend review" branch.
+    for (const n of ['01', '02', '03']) writeFileSync(join(dir, `RETRO-${n}.md`), 'x\n')
+
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), {
+      cwd: dir,
+      pathPrefix: `${trackerStub}:${ghStub}`,
+    })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 merged object, got ${count}` }
+    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+
+    const expected = [
+      ['credential key', '.beads/.beads-credential-key is tracked'],
+      ['private overlay', 'private SYNERGY overlay file(s) tracked'],
+      ['tracker prime', 'Tracker: '],
+      ['dormancy', 'Low-activity repo'],
+      ['dependabot', '[security]'],
+      ['trend review', 'Trend-review reminder'],
+    ]
+    let cursor = -1
+    for (const [label, needle] of expected) {
+      const at = ctx.indexOf(needle)
+      if (at === -1) return { ok: false, reason: `${label} did not fire: ${ctx.slice(0, 200)}` }
+      if (at < cursor) return { ok: false, reason: `${label} is out of order` }
+      cursor = at
+    }
+    return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(trackerStub, { recursive: true, force: true })
+    rmSync(ghStub, { recursive: true, force: true })
+  }
+})
+
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
 if (failed > 0) {
   process.exit(1)
