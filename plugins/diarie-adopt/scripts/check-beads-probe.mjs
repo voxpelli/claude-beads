@@ -10,11 +10,10 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync,
 } from 'node:fs'
-
-import { fileURLToPath } from 'node:url'
 
 import {
   probeDaemon, probeHooks, probeMigration, probeResidue,

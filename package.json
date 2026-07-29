@@ -19,11 +19,11 @@
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
     "check:tasks": "diarie validate",
     "check:tracked-ignored": "node scripts/check-tracked-ignored.mjs",
+    "check:type-coverage": "type-coverage --detail --strict --at-least 98",
     "check:validator": "node scripts/check-validator.mjs",
     "check:validator-plugin-fixtures": "node scripts/check-validator-plugin-fixtures.mjs",
     "check-workspaces": "npm run check --workspaces --if-present",
     "fix:ast-grep": "ast-grep scan --update-all",
-    "check:type-coverage": "type-coverage --detail --strict --at-least 98",
     "tsc": "tsc"
   },
   "devDependencies": {

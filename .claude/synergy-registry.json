@@ -26,5 +26,12 @@
     "remote": "https://github.com/voxpelli/liggare-mcp",
     "bm-entity": "engineering/agents/vp-beads-and-liggare-mcp",
     "relationship": "shared-tooling"
+  },
+  {
+    "name": "vp-routines",
+    "file": "SYNERGY-vp-routines.md",
+    "remote": "https://github.com/voxpelli/vp-routines",
+    "bm-entity": "engineering/agents/vp-beads-and-vp-routines",
+    "relationship": "shared-tooling"
   }
 ]
