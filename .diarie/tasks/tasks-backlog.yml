@@ -1583,10 +1583,26 @@ tasks:
         --get core.hooksPath` (:296, DANGEROUS — an unrunnable git reads as "no hooksPath", i.e.
         nothing to disarm), `git config --show-scope` (:306, this is N5), `git config --get-regexp
         ^beads\.` (:434, exit 1 IS "no keys"), `ps -p <pid>` (:378, absent ps reads as a dead pid),
-        `git ls-tree HEAD` (:250, reads as "the store is UNCOMMITTED" — a determinate claim), and
-        `probe()`'s own `gitAvailable` (:461, still consumed by nothing). Each needs a per-site
+        and `probe()`'s own `gitAvailable` (:461, still consumed by nothing). Each needs a per-site
         judgment about which exit codes are legitimate answers, which is why they were not swept in
-        with N8. `run()` can now express all of it; nothing yet does
+        with N8. `run()` can now express all of it; nothing yet does. NOT in this set: `git ls-tree
+        HEAD` (:250) already gets null-vs-false right — `inHead` is `null` when there was nothing to
+        ask — so its defect is narrower and is a PRINT defect like filed-#2, namely that an
+        unrunnable git prints the determinate "the store is UNCOMMITTED". Start with `:296`: it is
+        the same one-site-plus-print shape N8 just proved out, it is the DANGEROUS one, and it is
+        where `ran` finally earns its keep
+      - >-
+        N8 REACHED THE SKILL 2026-07-29 (second commit). The shape change escaped its own two files:
+        `deintegrate-beads/SKILL.md` enumerates `residue.trackedCount` (workflow 5) and
+        `daemon.otherDoltProcesses` (workflow 3), and a `null` compared with `> 0` is false — so a
+        two-branch reading files "could not determine" under "nothing tracked", silently taking the
+        exact branch the fix exists to prevent, on the JSON path rather than the human one. Both
+        enumerations now carry the third case, plus `owned.cwdError`. Lesson for the remaining
+        items: a probe field's TYPE is part of a documented contract that `check:prose-commands`
+        cannot see — it reads `diarie <sub>` and `node <path>`, never JSON field names. NOTE for
+        whoever takes N3: its wrong sentence (the rejected port-match criterion) is in the SAME
+        numbered item as the `cwdError` clause just added — workflow 3 step 1 — so it is a small
+        surgical edit, deliberately left alone here to keep one commit to one class
       - >-
         RANKING, by whether a wrong answer is dangerous in the DESTRUCTIVE direction (leaves bd armed /
         authorizes a kill / misdirects a deletion): N1 > filed-#2 (`gitAvailable`) > N2 > filed-#1 >

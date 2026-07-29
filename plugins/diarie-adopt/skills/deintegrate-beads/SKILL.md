@@ -207,6 +207,10 @@ Now that the hooks are disarmed, nothing will re-spawn it.
    _every_ repo's beads broke at once, the process most likely to have inherited a
    reused pid **is a sibling repo's dolt daemon**. If `safeToSignal` is false — including
    when there is no pid file at all — **do not signal anything**; say so and move on.
+   **`daemon.owned.cwdError` says WHY it is false**, and the two cases are not the same
+   report: `null` means ownership was examined and disproven; a string means it could not
+   be examined at all (`lsof` absent, say). Say which — "not this target's daemon" is a
+   finding about the daemon, "could not determine" is a finding about this machine.
 2. **`kill <pid>` (SIGTERM). Then poll `kill -0 <pid>` about ten times, one second
    apart.** The daemon holds `.beads/dolt/` — the entire issue history — open. **Never
    `kill -9`**: a SIGKILL can corrupt the Dolt store, destroying the very archive this
@@ -215,7 +219,11 @@ Now that the hooks are disarmed, nothing will re-spawn it.
    nuisance; a corrupt store is unrecoverable. Carry this outcome into workflow 5
    (Report what is left) — do not report "no daemon" when one is still up.
 4. **`daemon.otherDoltProcesses`** — report them with their pids and **do not touch
-   them**. They belong to other repos.
+   them**. They belong to other repos. **Check `daemon.processListError` first**: when it
+   is a string the list is a **lower bound**, not the set of other daemons — `ps` was
+   absent, or its output exceeded 1 MiB and was truncated. Report the list _and_ that it
+   is incomplete. An empty list under a `processListError` is not "no other daemons"; it
+   is "no answer", and the two look identical if you only read the array.
 
 ### 4. De-colonize the docs and Claude config
 
@@ -282,7 +290,12 @@ rides the confirmation taken in workflow 1 (Probe, verify, and confirm the whole
 ### 5. Report what is left (touch nothing)
 
 * **What `rm -rf .beads/` would actually do** — use `residue.trackedCount` from the
-  probe, which is `git ls-files .beads`. **Not** `check-ignore`: not-ignored is not the
+  probe, which is `git ls-files .beads`. **It has THREE values, not two**: a number, or
+  `null` when `residue.trackedError` is a string and the count could not be obtained at
+  all (an unrunnable `git`). Never render `null` as "nothing tracked" — and note that
+  `null > 0` is `false`, so a two-branch reading silently files it under "nothing", which
+  is the one sentence this bullet exists to prevent. Report the reason instead.
+  **Not** `check-ignore`: not-ignored is not the
   same as tracked, and bd's own `.beads/.gitignore` ignores _contents_ while leaving
   `config.yaml` and `metadata.json` **tracked**. So in a stock bd project, deleting
   `.beads/` **stages file deletions in git** — it does not merely free disk. (vp-beads
