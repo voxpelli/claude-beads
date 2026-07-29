@@ -1867,9 +1867,67 @@ tasks:
       The gap vp-beads-tpl closed by hand and could not close structurally. Filed rather than bolted
       onto that fix because the classification question is the real work and deserves its own decision.
     updated: '2026-07-29'
+  - id: vp-beads-stb
+    title: 'makeTrackerStubDir is blind to --strict — a stub that ignores a flag makes that flag untestable'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - test
+    acceptance_criteria:
+      - >-
+        `makeTrackerStubDir` in `scripts/check-hooks.mjs` dispatches on `*"--filter in_progress"*`
+        ONLY, so it exits identically with or without `--strict`. Its own docstring already states
+        the standard it fails: "THE STUB IS A DE-FACTO SPEC: if it drifts from the real CLI, these
+        tests stay green while production diverges."
+      - >-
+        NOT A LIVE GAP TODAY, which is why it is low and why it was parked rather than fixed inside
+        `vp-beads-rpf` — the compact `--strict` path is covered by the `makeRealStore(DROPPED_STORE)`
+        tests, which run against the REAL CLI. The next stub-based test of that path would be
+        vacuous, so fix it BEFORE writing one, not after.
+      - >-
+        SAME CLASS, TWICE MEASURED: the throwaway byte-diff harness had the identical defect and it
+        cost a full mutation round to find. A STUB THAT IGNORES A FLAG MAKES THAT FLAG UNTESTABLE.
+      - >-
+        Fix: dispatch on `--strict` as its own arm and make it behave differently, then RED-proof
+        by asserting the two arms differ — a stub whose arms are indistinguishable is the same bug
+        with more code.
+    description: >-
+      Split out of vp-beads-rpf 2026-07-29 when that row closed. Different file, different concern:
+      rpf was about check-rule-parity having no red-proof; this is a test stub that cannot express a
+      flag the real CLI takes.
+    updated: '2026-07-29'
+  - id: vp-beads-rpk
+    title: 'check-rule-parity dies on an uncaught ENOENT when the rules package is not installed'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        `readdirSync(PKG_RULES)` in `scripts/check-rule-parity.mjs` is unguarded. With
+        `@voxpelli/ast-grep-rules` absent — a fresh clone before `npm install`, a pruned production
+        install — the check dies on an uncaught ENOENT stack trace rather than naming the cause.
+      - >-
+        Same could-not-determine-vs-determined class the probe work spent a session on, but it is
+        NOT a `problems.push` branch, which is why it fell outside `vp-beads-rpf`'s scope rather
+        than into it.
+      - >-
+        It fails LOUD (a stack trace, non-zero exit), so this is annoying-direction: nobody gets a
+        green check over an unguarded rule set. Fix is a readdir-or-report, naming the consequence
+        per CLAUDE.md `### Reader conventions` — "the package rules could not be listed, so their
+        pairing was NOT checked" is the sentence, and it must not read as "there are none".
+      - >-
+        The fixtures harness already creates the package dir EMPTY for exactly this reason; a test
+        for this row means NOT creating it.
+    description: >-
+      Found 2026-07-29 while building the vp-beads-rpf fixture harness, which had to create an empty
+      package-rules dir to avoid tripping it.
+    updated: '2026-07-29'
   - id: vp-beads-rpf
     title: 'check-rule-parity has no test — its RED-proof lives in a commit message, not in CI'
-    status: pending
+    status: completed
     type: task
     priority: high
     labels:
@@ -1907,6 +1965,39 @@ tasks:
         the REAL CLI), but the next stub-based test of that path would be vacuous. The throwaway
         byte-diff harness had the identical defect and it cost a full mutation round to find:
         A STUB THAT IGNORES A FLAG MAKES THAT FLAG UNTESTABLE
+      - >-
+        DONE 2026-07-29 (`def4340`). `scripts/check-rule-parity-fixtures.mjs` + a
+        `check:rule-parity-fixtures` key, copying `check-validator-plugin-fixtures.mjs` exactly:
+        a `RULE_PARITY_ROOT` override mirroring `VALIDATE_PLUGIN_ROOT`, then EIGHT planted states
+        (the AC asked for six), each asserting non-zero exit AND that the problem is NAMED — id !=
+        filename stem · no string id · duplicate id across two differently-NAMED files · rule with
+        no test · test whose `id:` names another rule · test with no `invalid:` case · test naming
+        no rule · one id in both local and package dirs. The AC's six omitted the test-`id:`-
+        mismatch case, which is the checker's OWN shipped defect, so it was added.
+      - >-
+        MUTATION-PROVED THE CHECKER, not only the fixtures — the lesson `pbr` earned the same day.
+        Nine mutations, each reddening exactly the case that claims to cover it; the
+        never-exit-non-zero control reddens all eight red cases while leaving the three controls
+        green, which is what proves the harness reads the exit code rather than being always-red.
+      - >-
+        SCOPE KEPT HONEST, and the skip is ANNOUNCED. The `effectiveRuleCount` assertions cannot run
+        under a fixture root — `node_modules/.bin/ast-grep` resolves from CWD, so the probe can only
+        ever ask the REAL `sgconfig.yml` — so fixture mode skips them. A silently-skipped assertion
+        is this repo's signature bug, so the summary prints "FIXTURE MODE ... did NOT run", one case
+        asserts that announcement, and one more asserts a BARE run still reports a loaded count
+        (the dangerous direction: a leaked env var would retire the only assertion that notices a
+        SHRINKING rule set). `MIN_EFFECTIVE_RULES` deliberately untested, per the original AC.
+      - >-
+        NEW, FOUND WHILE FIXTURING, filed as `vp-beads-rpk` rather than fixed here:
+        `readdirSync(PKG_RULES)` is unguarded, so with `@voxpelli/ast-grep-rules` absent (a fresh
+        clone before install, a pruned production install) `check:rule-parity` dies on an uncaught
+        ENOENT stack trace instead of naming the cause. Not a `problems.push` branch, hence out of
+        this row's scope — but the same could-not-determine-vs-determined class.
+      - >-
+        THE PARKED SIBLING TRAP MOVED OUT to `vp-beads-stb` — `makeTrackerStubDir` in
+        check-hooks.mjs is blind to `--strict`. It is a different file and a different concern, and
+        this row's own AC already recorded it as NOT a live gap today; leaving it here would have
+        kept a closed row open.
     description: >-
       Found by a pr-test-analyzer pass over 8f80594..HEAD (2026-07-29), which reproduced the
       pre-/post-fix two-state behaviour directly. The gap is not coverage-for-its-own-sake: it is that

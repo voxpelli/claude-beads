@@ -895,6 +895,16 @@ dropped. Change _only_ the `id:` inside a test file — leave the filename corre
 `check:rule-parity` asserts all three (the file exists, its `id:` names the rule, it has an
 `invalid:` case), because a checker that pairs by _filename_ reports success over exactly this.
 
+**And `check:rule-parity-fixtures` proves it goes RED**, which it could not before `vp-beads-rpf`:
+its red-proof lived in a commit message, in a repo that already built
+`check-validator-plugin-fixtures.mjs` for exactly that reason. Eight planted states via a
+`RULE_PARITY_ROOT` override — including the filename-vs-`id:` bug the checker itself shipped with —
+each asserting a non-zero exit AND that the problem is _named_. Note what fixture mode cannot cover:
+the `effectiveRuleCount` assertions need the REAL `sgconfig.yml` (the binary resolves from CWD), so
+they are **skipped** under a fixture root, the summary says so, and one case asserts a bare run still
+reports the count. Do not silence that announcement — it is what keeps a leaked env var from
+retiring the only assertion that notices a _shrinking_ rule set.
+
 🚨 **The bare scan is bounded by `.gitignore` — and ast-grep only honours `.gitignore` INSIDE a git
 repository.** Measured: with no `.git`, an ignored file **is scanned**; after a bare `git init` (no
 commit, no `add`), it is skipped; and ast-grep **skips a TRACKED-but-ignored file**. So the root

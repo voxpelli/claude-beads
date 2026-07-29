@@ -91,6 +91,9 @@ running both validators against shared fixtures, not inferred from docs.
   cheapest to add.
   Source: `scripts/check-rule-parity.mjs` · Readiness: ready
   Effort: trivial
+  Update (2026-07-29): it now ships with `scripts/check-rule-parity-fixtures.mjs`, eight planted
+  violations behind a `RULE_PARITY_ROOT` override, mutation-proved against the checker itself. So
+  what would be adopted is a guard plus its red-proof, not a guard on trust.
   Note: it asserts three things per rule (a test file exists, its `id:` names the rule, it has an
   `invalid:` case) and prints the local-vs-package rule split rather than trusting a written-down
   count. Caveat worth passing on: it has no test of its own here (`vp-beads-rpf`), and it shipped
