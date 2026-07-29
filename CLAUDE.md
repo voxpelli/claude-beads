@@ -708,9 +708,11 @@ the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`
 `check:ast-grep` + `check:ast-grep-test`, `check:hooks`, and
 `check:tasks` (`diarie validate` — validating _this repo's own store_ via the installed
 diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces --if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
-Workspace members today: `plugins/swarm-wave` (wave orchestration) and
-`plugins/diarie-adopt` (migration tooling) — each owns its own `check:` aggregate that the root
-delegates to. **diarie is NOT a workspace** — it is an external npm dependency (`diarie@^0.2.0`)
+Workspace members today: **all four** `plugins/*` — `ledger` (relationship tracking), `swarm-wave`
+(wave orchestration), `diarie-adopt` (migration tooling) and `vp-dream` (memory consolidation). Each
+owns its own `check` aggregate that the root delegates to; `--if-present` means a workspace without
+one is skipped SILENTLY, so adding a plugin without a `check` key removes it from the gate without
+anything going red. **diarie is NOT a workspace** — it is an external npm dependency (`diarie@^0.2.0`)
 and owns all its own gates in its own repo.
 
 🚨 **`run-p check:*` does NOT match a `test` key.** A workspace's tests reach the aggregate ONLY if

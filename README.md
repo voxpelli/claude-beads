@@ -29,7 +29,7 @@ The tracker is a real CLI — **`diarie`** (`diarie ready`, `diarie stats`,
 `diarie validate`, `diarie init`, `diarie migrate`) — at
 [diarie.dev](https://diarie.dev). It lives in its own repo
 ([voxpelli/diarie](https://github.com/voxpelli/diarie)) and is **published to npm**
-(`diarie@0.2.0`) — this repo consumes it as a `^0.2.0` dependency. Skills and hooks resolve it in
+(`diarie@0.2.2` current) — this repo consumes it as a `^0.2.0` dependency. Skills and hooks resolve it in
 order: on `PATH`, else the project's `node_modules/.bin/diarie`.
 
 ## What it does
@@ -238,7 +238,7 @@ Add to `~/.claude/settings.json`:
 
 ### Required
 
-**[Node.js](https://nodejs.org)** — runs the tracker readers (`diarie ready`, `diarie validate`). No other tracker install is needed: the task store is plain YAML in the repo. A standalone `diarie` CLI is [coming](#the-tracker), but nothing depends on it yet.
+**[Node.js](https://nodejs.org)** — runs the tracker readers (`diarie ready`, `diarie validate`). No other tracker install is needed: the task store is plain YAML in the repo. The `diarie` CLI is [published](#the-tracker) and this repo depends on it (`diarie@^0.2.0`); `npm install` provides it at `node_modules/.bin/diarie`.
 
 **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** MCP server — the knowledge graph backend for writing sprint learnings:
 
