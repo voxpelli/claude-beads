@@ -488,6 +488,50 @@ console.log('\nprobeHooks (shape, ownership, and what unsetting would ARM)')
   }
 }
 {
+  // `reArmCommand` is what SKILL.md calls the guarantee of reversibility, and it was built by
+  // wrapping the value in bare single quotes. Measured: a hooksPath containing an apostrophe emits
+  // unbalanced quoting — `sh` answers "unexpected EOF while looking for matching `''" — so the one
+  // artifact promising the change is undoable does not run. `root` was unquoted entirely, so a
+  // space in the repo path did the same.
+  const dir = makeRepo()
+  try {
+    const abs = join(dir, "it's dir", '.beads', 'hooks')
+    mkdirSync(abs, { recursive: true })
+    spawnSync('git', ['-C', dir, 'config', 'core.hooksPath', abs])
+    const h = probeHooks(dir)
+    // RUN IT, do not pattern-match it. Asserting the `'\''` idiom appears would pass for a command
+    // still broken elsewhere — `root` was unquoted too, and this fixture's path also has a space.
+    // The claim being tested is "this command restores what bd set", so restore and compare.
+    spawnSync('git', ['-C', dir, 'config', '--unset', 'core.hooksPath'])
+    const rearm = spawnSync('sh', ['-c', h.reArmCommand ?? 'exit 9'], { encoding: 'utf8' })
+    const after = spawnSync('git', ['-C', dir, 'config', '--get', 'core.hooksPath'], { encoding: 'utf8' })
+    assert('the re-arm command RUNS and restores a path containing an apostrophe and a space',
+      rearm.status === 0 && (after.stdout ?? '').trim() === abs)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // RESTORING A GLOBAL hooksPath AS LOCAL UN-RESTORES EVERY OTHER REPO. The command carried no
+  // scope flag, and `git config` writes LOCAL by default — so a probe that correctly REPORTS
+  // `scope=global` handed back a command that silently moves the setting into this one repo and
+  // drops it everywhere else. GIT_CONFIG_GLOBAL keeps the real user config untouched.
+  const dir = makeRepo()
+  const fakeGlobal = join(dir, 'fake-global-config')
+  const realGlobal = process.env.GIT_CONFIG_GLOBAL
+  try {
+    const abs = join(dir, '.beads', 'hooks')
+    mkdirSync(abs, { recursive: true })
+    writeFileSync(fakeGlobal, `[core]\n\thooksPath = ${abs}\n`)
+    process.env.GIT_CONFIG_GLOBAL = fakeGlobal
+    const h = probeHooks(dir)
+    assert('a GLOBAL hooksPath re-arms at --global, not silently at local',
+      h.hooksPath.scope === 'global' && h.reArmCommand?.includes('config --global core.hooksPath') === true)
+  } finally {
+    if (realGlobal === undefined) delete process.env.GIT_CONFIG_GLOBAL
+    else process.env.GIT_CONFIG_GLOBAL = realGlobal
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
   // A repo pointing hooksPath at husky/lefthook is NOT bd's. Unsetting it would silently
   // disable THEIR tooling — collateral damage from a tool that promised to be reversible.
   const dir = makeRepo()

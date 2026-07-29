@@ -168,6 +168,35 @@ function canonical (p) {
 }
 
 /**
+ * POSIX single-quote a shell argument.
+ *
+ * `reArmCommand` is the artifact SKILL.md calls the guarantee of reversibility, and it was built
+ * as `'${value}'` with no escaping. Measured: a hooksPath containing an apostrophe emits
+ * unbalanced quoting and `sh` answers "unexpected EOF while looking for matching `''" — so the
+ * one command promising the change is undoable does not run. `root` was not quoted at all, so a
+ * space anywhere in the repo path did the same.
+ *
+ * @param {string} s
+ * @returns {string}
+ */
+function shellQuote (s) {
+  return `'${s.replaceAll("'", String.raw`'\''`)}'`
+}
+
+/**
+ * git's own scope words -> the flag that WRITES at that scope.
+ *
+ * `git config` writes LOCAL when given no scope flag, and the re-arm command gave none. So a
+ * hooksPath the probe correctly reported as `global` was handed back as a command that moves the
+ * setting into this one repo and silently drops it from every OTHER repo — the opposite of
+ * restoring. `command` scope is deliberately absent: a value from `git -c` on the command line was
+ * never persisted, so there is nothing to re-arm.
+ */
+const SCOPE_WRITE_FLAGS = new Map([
+  ['local', '--local'], ['global', '--global'], ['system', '--system'], ['worktree', '--worktree'],
+])
+
+/**
  * Which store directories actually hold a `tasks/` dir under `root`.
  *
  * Returns ALL of them, not the first: two stores present is a real state diarie itself treats as an
@@ -203,7 +232,8 @@ function trackerDirsIn (root) {
  *   shims: string[],
  *   gitHooks: { dormantBdHooks: string[], otherGitHooks: string[], unreadableGitHooks: string[] },
  *   otherHookManagers: HookManager[],
- *   reArmCommand: string | null
+ *   reArmCommand: string | null,
+ *   reArmError: string | null
  * }} HooksProbe
  */
 
@@ -466,6 +496,17 @@ export function probeHooks (root) {
   // fallback than `none`: choosing Shape B while a live hooksPath may be overriding `.git/hooks/`
   // applies the inverted remedy, the mistake this function's `otherHookManagers` comment already
   // says must not be guessed. So an undetermined hooksPath makes the whole shape undetermined.
+  const scopeFlag = scope ? SCOPE_WRITE_FLAGS.get(scope) ?? null : null
+  /** @type {string | null} */ let reArmCommand = null
+  /** @type {string | null} */ let reArmError = null
+  if (value && scopeFlag) {
+    reArmCommand = `git -C ${shellQuote(root)} config ${scopeFlag} core.hooksPath ${shellQuote(value)}`
+  } else if (value && scope === 'command') {
+    reArmError = 'the value came from `git -c` on the command line and was never persisted — there is nothing to re-arm'
+  } else if (value) {
+    reArmError = 'the config SCOPE could not be determined (`git config --show-scope` needs git >= 2.26), and re-arming at a guessed scope would write the wrong file'
+  }
+
   /** @type {'hooksPath' | 'git-hooks' | 'none' | 'unknown'} */
   let shape = 'none'
   if (hooksPathError) shape = 'unknown'
@@ -481,8 +522,11 @@ export function probeHooks (root) {
     shims,
     gitHooks: { dormantBdHooks, otherGitHooks, unreadableGitHooks },
     otherHookManagers: managers,
-    // The exact re-arm command, so nobody guesses a relative path.
-    reArmCommand: value ? `git -C ${root} config core.hooksPath '${value}'` : null,
+    // The exact re-arm command, so nobody guesses a relative path — scope-bearing and
+    // shell-escaped. `null` rather than a scope-less guess when we cannot name the scope: a
+    // command that restores at the WRONG scope is worse than none, because it looks like it worked.
+    reArmCommand,
+    reArmError,
   }
 }
 
@@ -702,8 +746,17 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   if (hooks.hooksPath.value) {
     stdout.write(`  core.hooksPath = ${hooks.hooksPath.value}\n`)
     stdout.write(`    scope=${hooks.hooksPath.scope} isBeads=${hooks.hooksPath.isBeads}\n`)
-    if (hooks.hooksPath.scope !== 'local') stdout.write('    ! not local — `git config --local --unset` CANNOT clear this\n')
-    stdout.write(`  re-arm: ${hooks.reArmCommand}\n`)
+    // `scope: null` used to take this branch and print a DETERMINATE claim about where the value
+    // lives. The scope-inference this function rejected was rejected precisely because an agent
+    // told "not local" reaches for `--global --unset` and deletes the user's unrelated global
+    // hooksPath — and the null case reintroduced exactly that. Unknown is its own branch now.
+    if (hooks.hooksPath.scope === null) {
+      stdout.write('    ! scope UNKNOWN — do NOT guess one to unset at; `--global --unset` would clear an unrelated global hooksPath\n')
+    } else if (hooks.hooksPath.scope !== 'local') {
+      stdout.write(`    ! scope is ${hooks.hooksPath.scope} — \`--local --unset\` CANNOT clear this; unset at \`--${hooks.hooksPath.scope}\`\n`)
+    }
+    if (hooks.reArmCommand) stdout.write(`  re-arm: ${hooks.reArmCommand}\n`)
+    else stdout.write(`  ! NO re-arm command — ${hooks.reArmError}\n`)
   }
   if (hooks.shims.length) stdout.write(`  shims: ${hooks.shims.join(', ')}\n`)
   if (hooks.gitHooks.dormantBdHooks.length) {

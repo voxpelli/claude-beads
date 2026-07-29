@@ -1626,6 +1626,24 @@ tasks:
         the shape branch reddens one). SKILL.md workflow 2 and the workflow 1 confirmation list both
         carry the third bucket. Reused the pattern: the field NAME was doc-grepped, not the diff read
       - >-
+        N5 + N6 DONE 2026-07-29 (seventh commit). N5 turned out SMALLER than filed: the can't-run
+        half is unreachable, because `hooksPathError` already forces `value: null` and the scope
+        line only prints under `if (hooks.hooksPath.value)` — verified against the live gitless run,
+        not reasoned about. What remained is real and is the filed hazard: `scope: null` and
+        `scope: 'global'` took the SAME print branch ("not local"), so a determinate claim was made
+        from a failed `--show-scope` (git < 2.26). Three branches now, and the unknown one says do
+        NOT guess. NO new field — a consumer branches on `scope` itself. N6 had both halves and both
+        are now round-trip-proved rather than pattern-matched: the test UNSETS, RUNS the emitted
+        command through `sh`, and compares what git got back, against a fixture path holding an
+        apostrophe AND a space (`root` was unquoted too, which the substring assertion would have
+        missed). Scope flag threaded via `SCOPE_WRITE_FLAGS`; `reArmCommand` is `null` + `reArmError`
+        when no scope can be named, since a command restoring at the WRONG scope is worse than none.
+        `GIT_CONFIG_GLOBAL` isolates the global-scope fixture — the user's real global config was
+        checked untouched. Doc-grep found the contradiction the advisor predicted: workflow 2 step 1
+        said both "must be `local`, or stop" AND "unset at the scope the probe reports", while step 3
+        hardcoded `--local`. Step 1 is now three explicit branches and step 3 says why `--local` is
+        right THERE
+      - >-
         N8 LEFTOVER — FIVE call sites remain `.ok`-checked but still AMBIGUOUS, because `ok: false`
         conflates "answered no" with "could not ask": `git config --show-scope` (:306, this is N5),
         `git config --get-regexp

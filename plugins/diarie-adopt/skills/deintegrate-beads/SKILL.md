@@ -143,7 +143,12 @@ user approves in this one.
    particular set of edits in a repo they may not even have open. Show:
    * the exact `core.hooksPath` value to be unset, its scope, and the **re-arm command**
      the probe printed (`hooks.reArmCommand`) — verbatim; bd stores an _absolute_ path
-     and a guessed relative one will not restore it
+     and a guessed relative one will not restore it. It is scope-bearing and
+     shell-escaped, so run it as given rather than retyping it. **If it is `null`,
+     `hooks.reArmError` says why** (the scope is unknown, or the value came from `git -c`
+     and was never persisted) — there is then **no proven way to undo the unset**, so show
+     that instead of improvising a command, and treat reversibility as unestablished when
+     the user decides
    * the pid to be signalled, and the `ps` line proving it is _this_ target's daemon
    * any hook files to be stripped, and the `beads.*` config keys to be cleared
    * anything the probe flagged under `hooks.otherHookManagers` or
@@ -170,12 +175,25 @@ probe somewhere `git` resolves), and re-probe. Disarm nothing.
 
 **Shape A (`hooks.shape == "hooksPath"`)** — what `bd init` does by default.
 
-1. **`hooks.hooksPath.scope` must be `local`.** If it is not, `git config --local --unset` **cannot clear it** — and `--unset` exits 5 either way, so treating exit 5
-   as a benign no-op would leave the hooks armed while reporting success. Unset at the
-   scope the probe reports, or stop and tell the user.
+1. **`hooks.hooksPath.scope` must be `local`.** If it is not, `git config --local --unset`
+   **cannot clear it** — and `--unset` exits 5 either way, so treating exit 5 as a benign
+   no-op would leave the hooks armed while reporting success. **Three cases, and only one
+   proceeds:**
+   * `local` — proceed to step 3.
+   * a named non-local scope (`global`, `system`, `worktree`) — **STOP.** Clearing it
+     changes hook behaviour for repositories this cleanup was never pointed at. Report the
+     scope and the exact command that would clear it, and let the user decide. Everything
+     destructive is gated in workflow 1 (Probe, verify, and confirm the whole plan); this
+     is not a decision to take mid-run.
+   * `null` — **STOP, and do not guess.** The scope could not be determined (the probe
+     prints why). Do **not** infer one from the path: an agent that reads "not local" and
+     reaches for `--global --unset` deletes the user's unrelated global hooksPath. That
+     hazard is exactly why the probe asks git for the scope instead of string-matching it.
 2. If `hooks.hooksPath.isBeads` is `false`, the path belongs to someone else (husky,
    lefthook, their own `hooks/`). **Leave it alone and say so.**
-3. `git -C <target> config --local --unset core.hooksPath`.
+3. `git -C <target> config --local --unset core.hooksPath`. `--local` is correct **because
+   step 1 established the scope is local** — it is not a default to carry into any other
+   case.
 4. **Re-poll and prove it.** `git -C <target> config --show-origin --get
    core.hooksPath` must now print nothing containing `.beads`. Nothing else in this
    skill proves its own effect; this does.
