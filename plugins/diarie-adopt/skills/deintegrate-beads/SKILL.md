@@ -147,7 +147,8 @@ user approves in this one.
    * the pid to be signalled, and the `ps` line proving it is _this_ target's daemon
    * any hook files to be stripped, and the `beads.*` config keys to be cleared
    * anything the probe flagged under `hooks.otherHookManagers` or
-     `hooks.gitHooks.dormantBdHooks` (see workflow 2 (Disarm the git hooks))
+     `hooks.gitHooks.dormantBdHooks` / `hooks.gitHooks.unreadableGitHooks` (see
+     workflow 2 (Disarm the git hooks))
 
 ### 2. Disarm the git hooks
 
@@ -188,6 +189,13 @@ probe somewhere `git` resolves), and re-probe. Disarm nothing.
   found it.
 * **`hooks.gitHooks.otherGitHooks`** — third-party hooks that start firing again. List
   them; that is a restoration, not a break.
+* **`hooks.gitHooks.unreadableGitHooks`** — files in `.git/hooks/` the probe could not
+  read at all (root-owned, mode-000, or a _directory_ with a hook's name). **Do not fold
+  these into either list above.** Whether they are bd's is unknown, and the one they
+  would be is `pre-commit` — which re-spawns the daemon — so treating them as
+  third-party is how a disarm ends with bd still armed. Unsetting hooksPath arms them
+  either way. Report them by name, say the read failed, and have the user resolve the
+  permission before you declare the hooks disarmed.
 * **`hooks.otherHookManagers`** — read the probe's `effect` field, because **the remedy
   inverts**:
   * `clobbered-by-bd` (**husky** — its mechanism _is_ `core.hooksPath`): bd overwrote

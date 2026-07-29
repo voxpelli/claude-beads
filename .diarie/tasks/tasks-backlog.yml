@@ -1616,6 +1616,16 @@ tasks:
         and the remedy table gained its missing `migration.committed` row. Doc-grep found both
         vocabularies confined to that one file; README's gate summary already says "committed files"
       - >-
+        filed-#1 DONE 2026-07-29 (sixth commit) — the highest-ranked DESTRUCTIVE-direction item left
+        after N1/N2. The marker test was `try { …includes(BD_MARKER) } catch { return false }`, so an
+        unreadable hook became the determinate "not bd's" and landed in `otherGitHooks`, which the
+        report prints as "(dormant, re-enabled by unset)". Now three buckets, with
+        `unreadableGitHooks` its own list and `shape: 'unknown'` when it would otherwise be `none` —
+        the hook it would be is `pre-commit`, the one that re-spawns the daemon. Mutation-proved in
+        both directions (routing unreadable into `otherGitHooks` reddens two assertions; dropping
+        the shape branch reddens one). SKILL.md workflow 2 and the workflow 1 confirmation list both
+        carry the third bucket. Reused the pattern: the field NAME was doc-grepped, not the diff read
+      - >-
         N8 LEFTOVER — FIVE call sites remain `.ok`-checked but still AMBIGUOUS, because `ok: false`
         conflates "answered no" with "could not ask": `git config --show-scope` (:306, this is N5),
         `git config --get-regexp

@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync,
+  chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync,
 } from 'node:fs'
 
 import {
@@ -513,6 +513,31 @@ console.log('\nprobeHooks (shape, ownership, and what unsetting would ARM)')
     assert('a third-party .git/hooks/ file is reported separately, not as bd\'s',
       h.gitHooks.otherGitHooks.includes('post-commit') && !h.gitHooks.dormantBdHooks.includes('post-commit'))
   } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // AN UNREADABLE HOOK WAS CLASSIFIED AS SOMEONE ELSE'S. The marker test was
+  // `try { …includes(BD_MARKER) } catch { return false }`, so "could not read" became the
+  // determinate "not bd's" — and the file then lands in `otherGitHooks`, which the report prints
+  // under "(dormant, re-enabled by unset)" and the skill calls a restoration. With no OTHER bd
+  // hook present, `shape` flips `git-hooks` → `none` and the skill concludes there is no hook
+  // machinery at all: precisely the "a naive disarm can leave bd MORE armed than it found it"
+  // outcome this module's header names as its reason for existing. Root-owned hooks,
+  // read-protected hooks and a DIRECTORY named `pre-commit` (EISDIR) all reach it.
+  const dir = makeRepo()
+  const hook = join(dir, '.git', 'hooks', 'pre-commit')
+  try {
+    writeFileSync(hook, '#!/bin/sh\n# --- BEGIN BEADS INTEGRATION v1.0.3 ---\nbd hooks run pre-commit\n')
+    chmodSync(hook, 0o000)
+    const h = probeHooks(dir)
+    assert('an UNREADABLE .git/hooks file is a third bucket, never "someone else\'s"',
+      h.gitHooks.unreadableGitHooks.includes('pre-commit') &&
+      !h.gitHooks.otherGitHooks.includes('pre-commit') &&
+      !h.gitHooks.dormantBdHooks.includes('pre-commit'))
+    assert('...and it does NOT read as "no hook machinery" — this one IS bd\'s', h.shape === 'unknown')
+  } finally {
+    try { chmodSync(hook, 0o600) } catch { /* never created */ }
+    rmSync(dir, { recursive: true, force: true })
+  }
 }
 {
   // The marker is VERSION-STAMPED, and the stamp records the version that INSTALLED the

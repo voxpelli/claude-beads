@@ -201,7 +201,7 @@ function trackerDirsIn (root) {
  *     error: string | null
  *   },
  *   shims: string[],
- *   gitHooks: { dormantBdHooks: string[], otherGitHooks: string[] },
+ *   gitHooks: { dormantBdHooks: string[], otherGitHooks: string[], unreadableGitHooks: string[] },
  *   otherHookManagers: HookManager[],
  *   reArmCommand: string | null
  * }} HooksProbe
@@ -430,10 +430,24 @@ export function probeHooks (root) {
   const gitHooks = existsSync(gitHooksDir)
     ? readdirSync(gitHooksDir).filter(f => !f.endsWith('.sample'))
     : []
-  const dormantBdHooks = gitHooks.filter(f => {
-    try { return readFileSync(join(gitHooksDir, f), 'utf8').includes(BD_MARKER) } catch { return false }
-  })
-  const otherGitHooks = gitHooks.filter(f => !dormantBdHooks.includes(f))
+  // THREE buckets, because "could not read it" is not "it is not bd's". This was
+  // `try { …includes(BD_MARKER) } catch { return false }`, so an unreadable hook — root-owned,
+  // mode-000, or a DIRECTORY named `pre-commit` (EISDIR) — was filed under `otherGitHooks`, which
+  // the report prints as "(dormant, re-enabled by unset)" and the skill treats as a restoration.
+  // With no other bd hook present, `shape` then flipped `git-hooks` → `none`: the skill concludes
+  // there is no hook machinery, and bd's own re-arming hook is left in place. That is verbatim the
+  // "a naive disarm can leave bd MORE armed than it found it" failure in this module's header.
+  /** @type {string[]} */ const dormantBdHooks = []
+  /** @type {string[]} */ const otherGitHooks = []
+  /** @type {string[]} */ const unreadableGitHooks = []
+  for (const f of gitHooks) {
+    /** @type {string | null} */
+    let body = null
+    try { body = readFileSync(join(gitHooksDir, f), 'utf8') } catch { /* third bucket, below */ }
+    if (body === null) unreadableGitHooks.push(f)
+    else if (body.includes(BD_MARKER)) dormantBdHooks.push(f)
+    else otherGitHooks.push(f)
+  }
 
   // Another hook manager? The REMEDY DIFFERS by mechanism, so do not lump them:
   //   husky      → uses core.hooksPath, so bd CLOBBERED it. Re-run their installer.
@@ -457,12 +471,15 @@ export function probeHooks (root) {
   if (hooksPathError) shape = 'unknown'
   else if (value && isBeads) shape = 'hooksPath'
   else if (dormantBdHooks.length) shape = 'git-hooks'
+  // An unreadable hook COULD be bd's — the one it would be is `pre-commit`, which re-spawns the
+  // daemon. `none` here would be a claim the read never supported.
+  else if (unreadableGitHooks.length) shape = 'unknown'
 
   return {
     shape,
     hooksPath: { value, resolved, scope, isBeads, error: hooksPathError },
     shims,
-    gitHooks: { dormantBdHooks, otherGitHooks },
+    gitHooks: { dormantBdHooks, otherGitHooks, unreadableGitHooks },
     otherHookManagers: managers,
     // The exact re-arm command, so nobody guesses a relative path.
     reArmCommand: value ? `git -C ${root} config core.hooksPath '${value}'` : null,
@@ -694,6 +711,12 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   }
   if (hooks.gitHooks.otherGitHooks.length) {
     stdout.write(`  .git/hooks/ (dormant, re-enabled by unset): ${hooks.gitHooks.otherGitHooks.join(', ')}\n`)
+  }
+  // Not listed with the others: filing these under "theirs" is what let bd's own hook pass as a
+  // third party's, and unsetting hooksPath re-enables them either way.
+  if (hooks.gitHooks.unreadableGitHooks.length) {
+    stdout.write(`  ! .git/hooks/ files that could NOT be read: ${hooks.gitHooks.unreadableGitHooks.join(', ')}\n`)
+    stdout.write('    whether these are bd\'s is UNKNOWN; unsetting hooksPath arms them regardless\n')
   }
   for (const m of hooks.otherHookManagers) {
     stdout.write(`  hook manager ${m.name} [${m.mechanism}] → ${m.effect}\n    remedy: ${m.remedy}\n`)
