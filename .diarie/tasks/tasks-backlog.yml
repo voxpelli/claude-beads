@@ -1469,11 +1469,107 @@ tasks:
         unresolvable — they would pass vacuously in that environment. Other assertions in the suite go
         red there so the suite as a whole is safe, but pin these anyway (also assert
         `verifyFailed === false`)
+      - >-
+        VERIFIED 2026-07-29 by a second silent-failure pass that RE-RAN every claim. Three of the five
+        above are wrong in part, and fixing them as written would waste cycles. (1) TEST VACUITY IS
+        REFUTED: both named assertions go RED with the CLI unresolvable (27/35 pass), because
+        `taskCount` is `null` and not `0` when the CLI does not answer — the very null-vs-0 distinction
+        this file already introduced. What IS vacuous is narrower: `check-beads-probe.mjs:84` asserts
+        only the safe direction with no positive discriminator, and the whole suite holds exactly ONE
+        assertion in the dangerous direction of the migration gate (`:115`, `trusted === true`).
+        (2) THE `statSync` MECHANISM IS REFUTED: the `catch` is dead code, because `existsSync` is
+        itself a stat and swallows the same errors to `false`, so the ternary short-circuits and `size`
+        is never `null`. The OUTCOME is real via `existsSync` — reproduced with a symlink into a
+        mode-000 dir, `beadsDirExists:false` while git reports the dir TRACKED. Generalize: `existsSync`
+        is the determinate-absence test in FIVE places, and `:323` is the dangerous one. (3) THE
+        `malformed` IMPACT IS REFUTED: SKILL.md:109 already says "Re-running /migrate-tracker cannot fix
+        this" and points at `diarie validate`, which names the exact field. Downgrade to
+        annoying-direction. The REAL defect there is that the probe DROPS diarie's `warnings[]` —
+        diarie obeys the house rule perfectly ("invalid priority `urgent` — treated as `medium`") and
+        the probe discards the string twice, so a consequence upstream stated correctly is
+        unrecoverable downstream
+      - >-
+        ALL LINE REFERENCES ABOVE ARE STALE by 20-45 lines (`:291-293`→326-328, `:415-419`→457-461,
+        `:217`→242, `:396`→438, `:366`→408, `check-beads-probe.mjs:179-180`→203-204). Cite the FUNCTION,
+        not the line — the same lesson vp-beads-46k earned
+      - >-
+        N1 — HIGHEST, and trivially reachable: `beads-probe.mjs` accepts a POSITIONAL argument and
+        SILENTLY IGNORES IT. `parseArgs({allowPositionals: true})` then `resolve(values.root ?? cwd())`.
+        Measured: `node beads-probe.mjs <other-repo>` prints `beads probe: /Users/.../vp-beads` and
+        `migration TRUSTED` — a verdict about the WRONG REPOSITORY. The agent then runs SKILL.md's
+        correctly `git -C <target>`-pinned mutations against the named target, so every mutation is
+        pinned and every DECISION came from somewhere else. Fix: `allowPositionals: false`, or treat
+        `positionals[0]` as root, or error when both are given. NOTE THIS IS A REPEAT OF A CLASS, not a
+        one-off: `validate-plugin.mjs` ignores argv the same way (see vp-beads-vgp), and it burned a
+        real measurement here the same day
+      - >-
+        N2 — `probeHooks` uses `resolve()`, not `realpathSync()`, so reaching one repo via a SYMLINK
+        flips `shape: hooksPath` → `none` and `isBeads: true` → `false`. Measured. SKILL.md:157-158 then
+        says "the path belongs to someone else — leave it alone", and bd stays fully armed. The suite
+        ALREADY learned this exact lesson (`check-beads-probe.mjs:280-283` on macOS `/var` vs
+        `/private/var`) but applied it as TEST hygiene instead of fixing the probe
+      - >-
+        N3 — SKILL.md:204-206 documents the REJECTED daemon-ownership mechanism on the sentence that
+        gates a SIGTERM: it says the port match proves ownership, but the code is
+        `alive && isDolt && cwdInTarget` and the port is explicitly "WEAK on its own". Falsified in BOTH
+        directions by measurement: no port file at all + cwd inside the target → `safeToSignal: true`;
+        perfect port match + cwd in `.beads-backup/` → `false`. A user asking why it is false gets
+        pointed at the wrong criterion, "fixes" it, and is one step from overriding the gate by hand
+      - >-
+        N4 — SKILL.md:92-97 enumerates SIX trusted-conditions and drops `committed`, splitting
+        `files.length > 0` into two to preserve the count. `migration.committed` appears nowhere in
+        either skill, and there is no remedy-table row for it — so the one condition guarding "an
+        uncommitted store is one `git clean` from gone, and bd was the only other copy" is invisible to
+        an agent reading the JSON per the enumeration
+      - >-
+        N5 — `scope: null` (when `git config --show-scope` fails) is PRINTED as the determinate claim
+        "! not local — `git config --local --unset` CANNOT clear this". The code's own comment names the
+        resulting hazard verbatim (an agent reaching for `--global --unset` and deleting the user's
+        unrelated global hooksPath), rejects string-matching to avoid it, then reintroduces it through
+        the null case. SKILL.md:154-156 supplies no branch for null
+      - >-
+        N6 — `reArmCommand` (`:350`) is the artifact SKILL.md:314-315 calls the guarantee of
+        reversibility, and it has two defects: it emits `git -C <root> config core.hooksPath <v>` with NO
+        SCOPE, which writes LOCAL — so restoring a global/system hooksPath silently un-restores every
+        other repo; and it single-quotes without escaping, so a path containing an apostrophe emits
+        unbalanced quoting
+      - >-
+        N7 — a corrupt pid/port file is dropped with no report (only a bare `?`), AND because `pid` stays
+        null the `others` filter excludes nothing — so THE TARGET'S OWN DAEMON is printed under "other
+        dolt process (do not touch)". Measured. The existing test asserts only `threw === false`, so the
+        house rule is invisible to it
+      - >-
+        N8 — ROOT CAUSE, and the fix that subsumes findings 2, 4b and N5: `run()` (`:59-62`) drops
+        `r.error` (ENOENT/ENOBUFS/EACCES), `r.stderr` and `r.signal`. So `ok: false` means
+        indistinguishably "binary absent", "killed", "output blew the buffer", and "ran fine, answered
+        no" (`git config --get` exits 1 for an unset key — a legitimate answer). Return
+        `{ok, ran, out, err, code, error}` and branch call sites on `ran`. Until then the file CANNOT
+        EXPRESS "could not determine" for any shelled-out fact, which is the one thing its own 30-line
+        header says it exists to express
+      - >-
+        N10 — the probe ALWAYS EXITS 0, including a run where `git` was stubbed to 127 AND `npx` was
+        absent, i.e. not one shelled-out fact was obtained. In a repo whose CLAUDE.md asks "what would
+        this look like if it were inspecting NOTHING?", the answer here is: exit 0, clean-looking report
+      - >-
+        LOWER: N9 — `'code' in parsed` throws `TypeError` on a JSON primitive (`JSON.parse('5')`),
+        killing the whole probe; latent and LOUD, so low. N11 — SKILL.md:69 and CLAUDE.md name a root
+        script `check:beads-probe` that DOES NOT EXIST; the tests reach CI via `check-workspaces` →
+        diarie-adopt's own `check`. The guard works, only its name is fiction, and
+        `check:prose-commands` covers `diarie <sub>`/`node <path>` invocations, not npm script keys.
+        4b (`ps ax` ENOBUFS) is CONFIRMED and worse than filed — the buffer overrun yields an EMPTY
+        "do not touch" list, not a truncated one, so it is a false all-clear about the whole machine
+      - >-
+        RANKING, by whether a wrong answer is dangerous in the DESTRUCTIVE direction (leaves bd armed /
+        authorizes a kill / misdirects a deletion): N1 > filed-#2 (`gitAvailable`) > N2 > filed-#1 >
+        N3 > N5 > N4 > N8 > N6 > N7 > N10 > filed-#4a. ANNOYING-only (fails closed): filed-#3, filed-#4b,
+        N11. Do N8 first in practice — it is one function and it closes the class
     description: >-
       Found by a pr-review-toolkit silent-failure-hunter pass over 8f80594..80b4903 (2026-07-28), all
       reproduced rather than inferred. Distinct from the diarium de-risk that prompted the review:
       every item here predates it. Common shape, and the one this repo already has a name for — a
       could-not-determine result rendered as a determinate one, on the path a human actually reads.
+      Re-verified by a second independent pass 2026-07-29 which refuted three claims in part and added
+      eleven; see the acceptance criteria from "VERIFIED 2026-07-29" onward.
     updated: '2026-07-29'
   - id: vp-beads-fgt
     title: 'nothing gates a fenced TEMPLATE that emits lint-invalid markdown'

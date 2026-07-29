@@ -472,8 +472,16 @@ export function probe (root) {
 // --- CLI -------------------------------------------------------------------
 
 if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
+  // `allowPositionals: false`. It was `true`, and NOTHING READ THE POSITIONALS — so
+  // `beads-probe.mjs <other-repo>` silently probed the CWD and printed a verdict about THIS
+  // repo under a heading naming a different one. Measured: pointed at an empty directory it
+  // announced `migration TRUSTED — 85 task(s)`. The skill's mutations are all correctly pinned
+  // with `git -C <target>`, so the hazard is not a mis-aimed write; it is that every DECISION
+  // authorising those writes came from the wrong repository. Rejecting the argument is the whole
+  // fix — a bare path is the shape every other CLI here accepts, so it must fail loudly rather
+  // than be silently reinterpreted as "no --root given".
   const { values } = parseArgs({
-    allowPositionals: true,
+    allowPositionals: false,
     options: { root: { type: 'string' }, json: { type: 'boolean', 'default': false } },
   })
   const root = resolve(values.root ?? cwd())

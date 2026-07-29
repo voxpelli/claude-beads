@@ -14,9 +14,14 @@ import {
   mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync,
 } from 'node:fs'
 
+import { fileURLToPath } from 'node:url'
+
 import {
   probeDaemon, probeHooks, probeMigration, probeResidue,
 } from './beads-probe.mjs'
+
+/** Absolute path to the probe, for the CLI-level tests at the bottom. */
+const PROBE = fileURLToPath(new URL('beads-probe.mjs', import.meta.url))
 
 let passed = 0
 let failed = 0
@@ -423,6 +428,34 @@ console.log('\nprobeResidue (what deleting .beads/ would actually do)')
     writeFileSync(join(dir, '.gitignore'), '.beads/\n')
     const r = probeResidue(dir)
     assert('a fully-gitignored .beads/ reports 0 tracked files', r.beadsDirExists === true && r.trackedCount === 0)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
+// --- CLI argument handling -------------------------------------------------
+//
+// The one CLI-level test, and it guards the worst answer this tool can give: a confident
+// verdict about the WRONG REPOSITORY. `allowPositionals` was `true` and nothing read the
+// positionals, so `beads-probe.mjs <other-repo>` probed the CWD instead — pointed at an empty
+// directory it announced `migration TRUSTED — 85 task(s)`, which is vp-beads' own store. The
+// skill's mutations are all pinned with `git -C <target>`, so the hazard is not a mis-aimed
+// write; it is that every decision authorising those writes came from somewhere else.
+//
+// Asserted in the DANGEROUS direction, per this suite's own house rule: the thing that must
+// hold is that a positional FAILS, not merely that `--root` works.
+{
+  const dir = realpathSync(makeRepo())
+  try {
+    const positional = spawnSync(process.execPath, [PROBE, dir], { encoding: 'utf8' })
+    assert('a POSITIONAL path is REJECTED, not silently reinterpreted as the cwd',
+      positional.status !== 0 && !(positional.stdout ?? '').includes('beads probe:'))
+
+    const rooted = spawnSync(process.execPath, [PROBE, '--root', dir], { encoding: 'utf8' })
+    assert('`--root <path>` still probes THAT path',
+      rooted.status === 0 && (rooted.stdout ?? '').includes(`beads probe: ${dir}`))
+
+    const bare = spawnSync(process.execPath, [PROBE], { encoding: 'utf8', cwd: dir })
+    assert('no argument still falls back to the cwd',
+      bare.status === 0 && (bare.stdout ?? '').includes(`beads probe: ${dir}`))
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
