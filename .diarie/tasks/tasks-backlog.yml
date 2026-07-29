@@ -1602,6 +1602,20 @@ tasks:
         entry taught this as TEST hygiene while the production comparison had the same bug, which is
         the actual lesson
       - >-
+        N3 + N4 DONE 2026-07-29 (fifth commit), and N3 got a TEST rather than only a prose fix.
+        Both were confirmed by reading the code beside the prose, not by trusting the ACs. N3: the
+        gate is `alive && isDolt && cwdInTarget`; SKILL.md workflow 3 step 1 credited the port
+        match, which the code rejects as WEAK (a pid and its port are freed together, so a sibling
+        can inherit both). Prose now names cwd as the proof and says outright that `portMatches` is
+        corroboration, NOT part of the gate. The new test is only the SECOND assertion in this
+        suite's dangerous direction (`safeToSignal === true`): a fake dolt whose `ps args` matches
+        and whose cwd is inside the target, with NO port file at all — so anyone who "fixes" the
+        code to match the old prose reddens it (mutation-proved; stable across 3 runs). N4: the
+        code's six conjuncts include `committedFiles.length > 0`, and the enumeration had preserved
+        the COUNT while dropping it, by splitting `files.length > 0` in two. Enumeration corrected
+        and the remedy table gained its missing `migration.committed` row. Doc-grep found both
+        vocabularies confined to that one file; README's gate summary already says "committed files"
+      - >-
         N8 LEFTOVER — FIVE call sites remain `.ok`-checked but still AMBIGUOUS, because `ok: false`
         conflates "answered no" with "could not ask": `git config --show-scope` (:306, this is N5),
         `git config --get-regexp

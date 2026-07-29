@@ -306,6 +306,35 @@ console.log('\nprobeDaemon (the function that authorizes killing a process)')
   }
 }
 {
+  // THE SECOND ASSERTION IN THIS SUITE'S DANGEROUS DIRECTION (`safeToSignal === true`), and it
+  // pins what actually authorises the SIGTERM. SKILL.md claimed the probe proves ownership "by
+  // matching `.beads/dolt-server.port` against the `-P <port>` in its args" — the criterion this
+  // code explicitly REJECTS, because a pid and its port are freed together when a daemon dies, so
+  // a sibling repo's dolt can inherit both. The real gate is `alive && isDolt && cwdInTarget`, and
+  // there is deliberately NO PORT FILE here: anyone who "fixes" the code to match that prose
+  // reddens this. A real `dolt sql-server` cannot be run in a test, so stand up a process with the
+  // only two properties the probe reads — a matching `ps args` line and a cwd inside the target.
+  const dir = realpathSync(makeRepo())
+  const binDir = mkdtempSync(join(tmpdir(), 'vp-probe-dolt-'))
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  writeFileSync(join(binDir, 'dolt'), '#!/bin/sh\nsleep 30\n', { mode: 0o755 })
+  const fake = spawn(join(binDir, 'dolt'), ['sql-server'], {
+    detached: true, stdio: 'ignore', cwd: join(dir, '.beads'),
+  })
+  fake.unref()
+  try {
+    writeFileSync(join(dir, '.beads', 'dolt-server.pid'), `${fake.pid}\n`)
+    const d = probeDaemon(dir)
+    assert('cwd inside the target authorises the signal with NO port file — the port is not the gate',
+      d.owned?.isDolt === true && d.owned.cwdInTarget === true &&
+      d.owned.portMatches === false && d.safeToSignal === true)
+  } finally {
+    if (fake.pid) { try { process.kill(fake.pid) } catch { /* already gone */ } }
+    rmSync(binDir, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
   // A half-dead daemon leaves a truncated port file. That string used to be interpolated
   // straight into `new RegExp` — `5042(6` threw "Unterminated group" and took the WHOLE
   // probe down, migration gate included, in a tool whose own header promises that a

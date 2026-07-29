@@ -90,11 +90,19 @@ user approves in this one.
    de-integrate. Without this check the whole skill runs as a chain of no-ops and
    reports a cleanup that never happened.
 3. **`migration.trusted` must be `true`, or STOP.** It is the conjunction of **six** conditions —
-   a store directory exists, it holds at least one `tasks-*.yml`, the task count is **above zero**,
-   the store is **unambiguous** (`migration.ambiguousStore` is `false`), diarie reported **no
+   a store directory exists holding at least one `tasks-*.yml` (`migration.files`), the task count
+   is **above zero**, the store is **committed** (`migration.committed` is `true`), the store is
+   **unambiguous** (`migration.ambiguousStore` is `false`), diarie reported **no
    warnings** (`migration.malformed` is `false`), and the check actually **ran**
    (`migration.verifyFailed` is `false`). Disarming bd against a store that fails any of these
    leaves the project with **neither** tracker.
+
+   **`migration.committed` is the one people drop.** This list previously named six by splitting
+   the store-file condition in two and omitting it, so the condition guarding "an uncommitted store
+   is one `git clean` from gone, and bd was the only other copy" was invisible to anyone working
+   from the enumeration. Read it from the JSON like the rest. Note it asks `git ls-tree HEAD`, not
+   `ls-files`: a staged-but-never-committed store once answered `committed: true` in a repo with no
+   commits at all.
 
    **Report EVERY reason that fires, not the first.** These are not exclusive branches — a repo can
    be ambiguous _and_ unverified. The probe's plain-text output already lists all applicable reasons;
@@ -107,6 +115,7 @@ user approves in this one.
    | `migration.verifyFailed` alone | diarie could not be _run_ at all (offline, unresolvable). Unverified, **not** a verdict on the store. | Make diarie runnable, then re-probe. |
    | `migration.ambiguousStore` | **Two** store directories on disk; `migration.storeDirs` names them. Picking one silently makes the loser a file nobody reads and everybody keeps editing. | The user decides which is live and `git rm`s the other. **Never pick for them.** |
    | `migration.malformed` | diarie READ the store and reported warnings. The store is present and parsed — this is not a migration failure. | `diarie validate` in the target, repair what it flags. **Re-running `/migrate-tracker` cannot fix this.** |
+   | `migration.committed` is `false` | The store is on disk but not in `HEAD` — one `git clean` from gone, and bd was the only other copy. `migration.files` names what is untracked. | The user commits the store. **Never disarm bd first**; this is the "left with neither tracker" outcome the gate exists for. |
    | no store, or `taskCount` 0 | Nothing was migrated, or nothing landed. | This is the one case that belongs to `/migrate-tracker`. |
 
    **`storeInvisibleToCli` points in opposite directions.** diarie's store is the pair
@@ -211,10 +220,17 @@ binary whose writes are broken to uninstall itself.
 Now that the hooks are disarmed, nothing will re-spawn it.
 
 1. **`daemon.safeToSignal` must be `true`.** The probe proves the pid is a live `dolt`
-   process **belonging to this target** by matching `.beads/dolt-server.port` against
-   the `-P <port>` in its args. A `comm`-only check is not enough: on a machine where
-   _every_ repo's beads broke at once, the process most likely to have inherited a
-   reused pid **is a sibling repo's dolt daemon**. If `safeToSignal` is false — including
+   process **belonging to this target** from the process's own **working directory**
+   (`daemon.owned.cwdInTarget`): dolt runs _inside_ `<target>/.beads/dolt`, so that is
+   direct proof rather than a correlation. A `comm`-only check is not enough: on a
+   machine where _every_ repo's beads broke at once, the process most likely to have
+   inherited a reused pid **is a sibling repo's dolt daemon**.
+   **`daemon.owned.portMatches` is corroboration and is NOT part of the gate** — do not
+   reach for it when asking why `safeToSignal` is false, and do not "fix" a mismatch.
+   A pid and its port are freed _together_ when a daemon dies, so a sibling repo's dolt
+   can inherit both, which is the very hazard being defended against; a target with no
+   port file at all is signalable on cwd alone, and a perfect port match with a cwd in
+   `.beads-backup/` is not. If `safeToSignal` is false — including
    when there is no pid file at all — **do not signal anything**; say so and move on.
    **`daemon.owned.cwdError` says WHY it is false**, and the two cases are not the same
    report: `null` means ownership was examined and disproven; a string means it could not
