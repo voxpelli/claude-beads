@@ -1066,6 +1066,11 @@ tasks:
         here and nowhere else in the repo. Adding it is not free — the file is historical by nature and
         MUST keep naming things that no longer exist. Decide deliberately; do not add the surface
         reflexively.
+      - >-
+        REFUTED, recorded so the scope does not creep: "ROADMAP.md still carries the ready-walker
+        fossil". It does NOT — its 9 `ready-walker` hits are dated historical narrative ("Phase 0
+        (SHIPPED 2026-06-10)", superseded-fork descriptions), which is what a roadmap is FOR. Only
+        the CHANGELOG half of that concern survives. Do not sweep ROADMAP.md as part of this row.
     description: >-
       Found independently by a 5-agent release-readiness pass and the branch-lifecycle-review workflow
       (both 2026-07-29); the structural claims were then re-verified directly.
@@ -1097,6 +1102,144 @@ tasks:
       Self-review finding on this session's own commit, surfaced by the branch-lifecycle-review
       workflow rather than by the commit's own mutation round — which had proved the fix, not the
       diagnosis.
+    updated: '2026-07-29'
+  - id: vp-beads-dbt
+    title: 'Six expiring-TODO tripwires drafted and anchor-validated — five ready to paste, one needs a line bump'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        The branch-lifecycle-review workflow drafted six liggare-style expiring TODOs, each validated
+        against the REAL anchor line, the real `package.json`, and liggare's condition grammar. The
+        repo currently has ZERO `TODO`/`FIXME` markers in code (grep returns 0), so this would open the
+        register rather than add to it. Full text of all six is in `BRANCH-REVIEW-2026-07-29.md` §5.
+      - >-
+        D1 `sgconfig.yml` after line 10 — `[@voxpelli/ast-grep-rules@>=0.2.0]`: lift the
+        `@ast-grep/cli: ~0.44.1` pin once the package rules survive 0.45. VALID.
+      - >-
+        D2 `.ast-grep/rules/no-hardcoded-tracker-dir.yml` after line 24 — `XXX [never]`: zero findings
+        is the CORRECT state for a preventive rule; do not narrow `files:`, do not add a whole-file
+        `ignores:`, do not delete on a dead-rule sweep. VALID, and the most valuable of the six
+        because it defends against a plausible well-intentioned edit.
+      - >-
+        D3 `hooks/session-start.sh` — `[diarie@>=0.3.0]`, the store-rename sweep. **DO NOT PASTE AS
+        DRAFTED**: the condition and the 5-literal count (lines 57, 175, 251, 256, 342) are verified
+        correct, but `afterLine` was given as 254 while the rationale anchors at 256's detection
+        predicate — it would land between a trailing comment and the `tracker_cmd=""` initializer.
+        FIX: bump `afterLine` to 255. Content overlaps `vp-beads-drn`'s hooks-blindspot AC.
+      - >-
+        D4 `plugins/diarie-adopt/scripts/beads-probe.mjs` after line 150 — `[diarie@>=0.3.0]`:
+        re-check whether `diarie stats --json` reports the store dir, the documented retirement for
+        that sanctioned hardcode. VALID.
+      - >-
+        D5 `eslint.config.js` after line 35 — `[review:2026-10-29]`: the `cliFiles` reach-in. VALID,
+        and directly tracks `vp-beads-wsx` — paste it only alongside that row's PAIRED fix, since
+        wsx records that executing its first AC alone makes things worse.
+      - >-
+        D6 `eslint.config.js` after line 9 — **NOW OBSOLETE, do not paste.** It said "the root `tsc`
+        script is deliberately NOT `check:`-prefixed ... the rename to check:tsc IS the arming". That
+        rename LANDED in `bc35520`; `check:tsc` is armed and green. The draft also quoted 128 errors
+        where the live count was 132. Recorded as a worked example of a debt marker going stale
+        between drafting and pasting.
+      - >-
+        CAVEAT ON THE REGISTER STATE: liggare's MCP tools could not be invoked from the workflow's
+        subagent context, so the live register was never queried — only a `grep` for TODO/FIXME. Run
+        `mcp__liggare__scan` then `due_todos` from the main thread BEFORE pasting, or these may
+        duplicate entries the index already holds.
+    description: >-
+      Section 5 of BRANCH-REVIEW-2026-07-29.md. Low priority because none is a defect — they are
+      tripwires for future decisions. Filed so the anchor-validation work is not redone.
+    updated: '2026-07-29'
+  - id: vp-beads-ulv
+    title: 'Fifteen unverified leads from the branch review — leads, NOT defect claims'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        THREE-STATE DISCIPLINE, and the reason this row exists rather than fifteen: each item was
+        surfaced but NOT primary-source confirmed. Absence of evidence is not confirmation. None is a
+        defect claim, and none met the bar for durable knowledge capture. Full list in
+        `BRANCH-REVIEW-2026-07-29.md` §1.4. Do NOT convert these into fix tasks without measuring
+        first — this repo has already had four review claims refuted on re-measurement in one row.
+      - >-
+        WHERE THE UNKNOWNS CLUSTER IS THE ACTIONABLE PART: three of the fifteen sit inside GUARD code
+        — `check-prose-commands`' flag oracle capturing only the first flag token per help line (so
+        short aliases are absent and produce false REDs), `audit-silent-skips.mjs`'s exemption test
+        being a loose substring in the direction a wrong answer is dangerous, and rule-parity fixture
+        case 11's conjoined exit status. That is the layer this repo's own history says it is worst
+        at. Prioritise verifying those three over the other twelve.
+      - >-
+        SEVERAL HAVE SINCE BEEN PROMOTED OR RESOLVED and should be struck when this row is worked:
+        the CHANGELOG lead is now `vp-beads-chl`; the distribution lead is on `vp-beads-mpu`; case 11
+        is `vp-beads-rpc`; the `hooks/hooks.json` phantom "BM error recovery" hook overlaps
+        `vp-beads-hkq`; the CLAUDE.md "five prose surfaces" vs the code's eight is on `vp-beads-pcb`;
+        the `check:md` workspace reach-in is on `vp-beads-wsx`; the tsc-unarmed lead is CLOSED by
+        `bc35520`.
+      - >-
+        GENUINELY UNTRACKED REMAINDER, worth a look: no `plugins/*` workspace declares `engines`, so
+        extraction yields packages with no Node floor for code using `parseArgs`/`globSync`; vp-dream
+        grants three Basic Memory tools its prose never uses while ledger silently dropped Grep;
+        README's "What it does" documents 5 of the 6 shipped skills (vp-dream appears only in the
+        directory tree); and CLAUDE.md points at a `roadmap-interpretation.md` path the swarm-wave
+        move deleted.
+    description: >-
+      Section 1.4 of BRANCH-REVIEW-2026-07-29.md, filed as ONE row on purpose — fifteen speculative
+      rows would read as fifteen defects.
+    updated: '2026-07-29'
+  - id: vp-beads-prs
+    title: 'Twenty-two knowledge-persistence proposals await per-item approval — nothing written'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - docs
+    acceptance_criteria:
+      - >-
+        The branch-lifecycle-review ran with `writeIntel: false` (deliberate: Basic Memory and
+        Raindrop writes are proposal-only pending explicit user approval), so all 22 are drafts.
+        Full text in `BRANCH-REVIEW-2026-07-29.md` §6. Each is a PER-ITEM approval unit — approve,
+        edit, or drop individually. Nothing may be written in bulk.
+      - >-
+        4 bm-capture, ALL extending existing notes (no thin new notes): a FIFTH silent-green ast-grep
+        mode (a `files:` glob selecting nothing) plus the `--inspect entity` technique and an
+        `effectiveRuleCount` naming CORRECTION; ignore-lists as unversioned negative space that fail
+        OPEN, plus SCOPES as the third companion to BITES and TRAVELS; `process.exit()` truncating
+        piped JSON and `errexit` killing a report on an empty `grep` — captured as ONE observation
+        because they are the empty-input hazard in different clothes; and generated-help-as-oracle
+        with its two-layer limitation.
+      - >-
+        4 upstream-entry — UP-1 (remark-preset ships no declarations) is ALREADY LANDED in `bc35520`.
+        UP-2 (a rule whose `files:` glob selects nothing is invisible; distinct from the existing
+        `--min-files` entry, do NOT file as a duplicate), UP-3 (npm `--workspaces --if-present` skips
+        in complete silence), UP-4 (shellcheck has no check for a no-match `grep` aborting under
+        `set -e`) — UP-3 and UP-4 need NEW files (`UPSTREAM-npm.md`, `UPSTREAM-brew--shellcheck.md`).
+      - >-
+        13 synergy-entry across vp-knowledge (6), vp-git (2), diarie (3), vp-routines (2). NOTE the
+        vp-git ones cannot be reciprocated today — that sibling's path is unresolvable (`remote` says
+        `voxpelli/claude-git`; neither `../vp-git` nor `../claude-git` exists), so a `local-path` line
+        in `.claude/synergy-registry.local.json` is a prerequisite.
+      - >-
+        1 retro-draft — a full `RETRO-17.md`. NOTE the retro-file convention: the sprint number
+        increments from the highest existing `RETRO-NN.md`, and every 4th triggers a trend review
+        bound to the RETRO FILE COUNT mod 4, not the topic number. Verify the number before writing.
+      - >-
+        2 intel drafts (`npm/diarie`, `npm/voxpelli-tsconfig`) — draft-only by the same
+        `writeIntel: false` decision.
+      - >-
+        RECORDED SO IT IS NOT RE-LITIGATED — the workflow deliberately did NOT propose BM capture
+        for: the version-staleness cluster (project-specific release hygiene), the ledger tier and
+        distribution gaps (this repo's own convention state, not cross-project knowledge), four
+        patterns already adequately stated in existing notes, and all 15 unverified leads (the bar
+        for a durable note is higher than for a code fix).
+    description: >-
+      Section 6 of BRANCH-REVIEW-2026-07-29.md. Medium rather than low because unpromoted friction
+      is invisible to sibling projects, which is the whole point of the ledger promote path.
     updated: '2026-07-29'
   - id: vp-beads-exf
     title: 'The execution floor — reachability is NOT execution; a gate can run, report success, and inspect nothing'
@@ -2485,6 +2628,20 @@ tasks:
         `node validate-plugin.mjs <fixture>` silently validates THIS REPO and prints "passed",
         which reads exactly like a fixture that passed. Every claim above was re-measured under the
         env var after that was caught. Any future fixture work must use it
+      - >-
+        C6 FROM THE BRANCH REVIEW (2026-07-29), novel half only — AC 4 above already covers the
+        tool-reference audit itself. The new part: the ledger merge (`c066fbe`) RELOCATED the logic
+        out of `validate-plugin.mjs:617`, the only file the prose audits inspect, so the audit's
+        reach shrank with no signal. A guard losing coverage because its SUBJECT moved is the
+        dissolution's characteristic risk, and it will recur at every further plugin split.
+      - >-
+        REFUTED 2026-07-29, recorded so it is NOT re-derived: "version frozen at 0.18.0 while the
+        manifest's own description was rewritten in the same commit, so update detection cannot
+        fire". The same-commit mechanism did not hold. What DOES survive, verified: the version
+        surface grew 1 -> 5 manifests (root 0.18.0 + four plugins at 0.1.0) with no coherence guard,
+        and `validate-plugin.mjs`'s only version check compares a marketplace `./` entry against
+        `plugin.json` — this repo has no `marketplace.json`, so that guard is STRUCTURALLY INERT
+        here. Same class as `vp-beads-exf`: a check that cannot fire is not a check.
     description: >-
       Found by a plugin-validator pass, 2026-07-29, each gap proven with a fixture tree under
       VALIDATE_PLUGIN_ROOT. The validator is the thing this repo would otherwise trust, so its blind
