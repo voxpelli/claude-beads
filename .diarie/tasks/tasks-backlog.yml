@@ -845,6 +845,21 @@ tasks:
       - extraction
     acceptance_criteria:
       - 'CANCELLED — same safety-guard-for-the-guard smell, non-ast-grep substrate. Its habitat is the workspace layer that does not exist yet (_placeholder carries no payload); building it now is building the discovery machinery gtd is blocked on. The `test`-key-unhooked-from-`run-p check:*` hole stays a review-discipline item until real plugins land, at which point re-open if a plugin´s `test` key silently unhooking bites.'
+      - >-
+        STILL CANCELLED 2026-07-29, but HALF THE CANCELLATION HAS EXPIRED — recorded so the next reader
+        does not re-derive it. "Real plugins" have landed: four exist under `plugins/*`, so the habitat
+        this was waiting for is here. The stated trigger has NOT fired, though — it names a plugin's
+        `test` key silently unhooking, and all four plugins currently expose a `check` key that the root
+        reaches. What WAS measured is the ADJACENT door, one step away: a `plugins/<name>/` directory
+        with NO `package.json` at all is skipped by `npm run check --workspaces --if-present` with no
+        output and exit 0 — not even an `--if-present` notice. Nothing asserts every `plugins/*` dir is a
+        declared workspace. Note the asymmetry with the converse this row already records ("an UNDECLARED
+        package.json must go red"): that catches a package outside the glob; this is a plugin dir with
+        none. Concrete exposure if it ever fires: `plugins/diarie-adopt`'s 70-assertion probe suite and
+        `plugins/vp-dream`'s shellcheck/shfmt reach the root gate ONLY through their `package.json`
+        `check` key, and `validate-plugin.mjs` errors on a `plugins/*` dir with skills but no
+        `.claude-plugin/plugin.json` while saying nothing about a missing `package.json`. REVIVE when
+        either door bites, or fold into `vp-beads-exf` (revived) if that fix is generalised.
       - "MEASURED: `run-p check:*` matches `check:flat`, does NOT match `test`, and does NOT match `check:nested:deep` — `*` matches exactly ONE section. TWO escape hatches, not one; nobody has been bitten by the second yet"
       - "The `test` hole unhooked all 228 of diarie's assertions from the local gate AND from CI (which runs only `npm run check`) in ONE line. A deliberately failing test exited 0 at the root"
       - "MEASURED: `run-p` DOES fire npm `pre`/`post` hooks, including for colon-named scripts — so lifecycle edges are real, not invented"
@@ -866,15 +881,84 @@ tasks:
       ships as the published npm dep; the live reason to build it generic now is P1.3
       `plugins/<name>/` portability — see `gtd`.) Build it generic, in the extraction wave.
     updated: '2026-07-14'
-  - id: vp-beads-exf
-    title: 'The execution floor — reachability is NOT execution; a gate can run, report success, and inspect nothing'
-    status: cancelled
+  - id: vp-beads-abp
+    title: 'vp-beads-abx rests on a premise this machine contradicts — Claude Code may npm-install plugin deps'
+    status: pending
     type: task
     priority: medium
     labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        Decision `vp-beads-abx` asserts "Claude Code does NOT npm-install git-source plugins (official
+        docs, verified)" and a great deal of shipped-script design follows from it — notably
+        `beads-probe.mjs`'s 14-line comment forbidding a `TRACKER_DIR` import, and the standing rule that
+        no shipped runtime script may resolve through `node_modules`.
+      - >-
+        MEASURED 2026-07-29, twice and independently: the installed cache at
+        `~/.claude/plugins/cache/vp-plugins/vp-beads/0.18.0/` CONTAINS `node_modules` with 479 packages,
+        including `eslint` and `remark-cli` — both DEVdependencies of the cached manifest, which
+        `npm install --production` would not add. `node_modules` and `package.json` share an mtime to the
+        minute (2026-06-04 11:13), and there is NO `.git`, so it did not come from a clone.
+      - >-
+        CHANGES NO CONCLUSION TODAY, and that is why this is medium not high: the `abx` remedy is robust
+        either way (a script importing only `node:` builtins works whether or not deps are installed), and
+        an adversarial pass separately confirmed the probe runs clean under simulated installed-cache
+        conditions — exit 0, `verifyFailed: true`, no crash. The defect is the PREMISE, not the fix.
+      - >-
+        WHY IT MATTERS ANYWAY: this repo treats an unmeasured claim as a defect, and `abx` is cited as
+        settled fact in code comments that forbid future work. A wrong premise wearing "official docs,
+        verified" is exactly the kind that compounds. It also cuts the other way — if CC does install
+        deps, some of the contortions `abx` forced may be unnecessary.
+      - >-
+        DO NOT close this by re-reading the docs. Re-MEASURE: install a git-source plugin fresh, watch
+        whether `node_modules` appears, and record the CC version. One sample ~2 months old cannot
+        exclude a manual `npm install` in the cache dir, so the honest current state is UNKNOWN, not
+        refuted — which is itself the correction, since `abx` records it as known.
+    description: >-
+      Found by an adversarial release-readiness pass 2026-07-29 and independently re-measured. Same
+      could-not-determine-vs-determined class the probe work spent a session on, one level up: a claim
+      about the environment recorded as verified when the evidence on the maintainer's own machine points
+      the other way.
+    updated: '2026-07-29'
+  - id: vp-beads-exf
+    title: 'The execution floor — reachability is NOT execution; a gate can run, report success, and inspect nothing'
+    status: pending
+    type: task
+    priority: high
+    labels:
       - feature
     acceptance_criteria:
-      - 'CANCELLED with the green-over-nothing cluster (agr/rgl/jqs/gtc) — reachability-vs-execution is the conceptual sibling of gtc; same safety-guard-for-the-guard smell, same workspace-layer habitat that does not exist yet, same blocker (gtd/P1.3). The per-gate coverage floor the repo DOES carry (scannedFileCount sanity, the diarie `test`-vs-check:* awareness in CLAUDE.md) is review discipline + doc, not a fourth meta layer. Revival trigger: a gate found green over zero inputs again.'
+      - 'CANCELLED 2026-07 with the green-over-nothing cluster (agr/rgl/jqs/gtc), with an explicit revival trigger: "a gate found green over zero inputs again."'
+      - >-
+        REVIVED 2026-07-29 — THE TRIGGER FIRED, VERBATIM, and the stated blocker expired too. Found by
+        an adversarial release-readiness pass and re-measured directly: `validate-plugin.mjs` prints
+        `Plugin validation passed.` and exits 0 against a directory containing `.claude-plugin/plugin.json`
+        and NOTHING ELSE. Byte-identical output to a run over the real repo — 6 skills, 4 manifests, 2
+        registries, the `mcp__*` prose audit, the `workflow N (Name)` audit, `auditSilentSkips`. Its five
+        discovery roots are each `existsSync`-guarded to `[]` and it reports no count, so a layout slip
+        disarms the largest gate in the repo in silence. The cancellation also rested on "the
+        workspace-layer habitat does not exist yet" — it exists now: four plugins under `plugins/*`.
+      - >-
+        THE FIX HAS THREE IN-REPO PRECEDENTS, so this is not a fourth meta layer — it is the shape every
+        SIBLING check already carries and this one does not. Measured side by side: `check:prose-commands`
+        reports "97 invocations across 29 files" and carries `EXAMINED_FLOOR = 80` plus a per-surface >=1
+        floor; `check-rule-parity` reports "7 rule(s) (4 local + 3 from ...)" and carries
+        `MIN_EFFECTIVE_RULES`; `check-tracked-ignored` reports "134 tracked files"; even `diarie validate`
+        prints "(3 file(s))" and prints "(0 file(s))" on an empty store. `validate-plugin.mjs` alone
+        reports a bare "passed" with no denominator.
+      - >-
+        DANGEROUS DIRECTION, and it is why this is high rather than medium: the dissolution
+        (`vp-beads-dis`) is actively RELOCATING skills between `skills/` and `plugins/*/skills/`, with a
+        further `plugins/*` layout change and a repo rename still ahead. This is exactly when a
+        discovery-root typo is most likely and least visible. RED-proof measured: a frontmatter-less
+        SKILL.md at `plugins/x/skill/foo/` (one-character typo) passes; the byte-identical file at
+        `plugins/x/skills/foo/` exits 1. The checker works — only its aim collapses silently.
+      - >-
+        WHEN FIXED, RED-PROOF IT IN `check-validator-plugin-fixtures.mjs`, which already has the
+        `VALIDATE_PLUGIN_ROOT` harness and a clean control. The floor must go RED over an empty corpus and
+        STAY GREEN on the existing fixture cases (each plants at least one SKILL.md). Assert the printed
+        COUNT too, not just the exit code — a floor whose number nobody reads is the same bug one layer up.
     description: >-
       The door `check:gate-coverage` (vp-beads-gtc) does NOT watch. It proves a script is REACHABLE from
       the root aggregate; it cannot prove the script INSPECTED anything. So the 228-assertion bug can
@@ -1412,6 +1496,20 @@ tasks:
         (a regex literal escaped it entirely) plus `\.?diarium`; beads-probe.mjs probes all three store
         forms, reports two-stores-present as ambiguous, and distinguishes "the CLI cannot read this
         store form" from "the store is empty"
+      - >-
+        THE RENAME GUARD DOES NOT COVER THE TWO SHIPPED HOOKS — measured 2026-07-29, and it is the
+        failure mode the guard's own comment names. `.ast-grep/rules/no-hardcoded-tracker-dir.yml` is
+        `language: javascript` with `files: ["scripts/*.mjs", "validate-plugin.mjs"]`, so
+        `ast-grep scan --inspect entity` shows it applying to exactly TWO files
+        (`scripts/audit-silent-skips.mjs`, `validate-plugin.mjs`). Live `.diarie/` literals it cannot
+        see: `hooks/post-tasks-validate.sh` 5, `hooks/session-start.sh` 5, `package.json` 2 (one is
+        `check:md-decisions`'s own glob). Both hook sites fall through to a SILENT `exit 0` on a miss —
+        `post-tasks-validate.sh:23` `case */.diarie/tasks/tasks-*.yml)` and `session-start.sh:256`
+        `compgen -G ".diarie/tasks/tasks-*.yml"` — so after the rename they stop guarding without
+        erroring, verbatim the "a literal there would not error, it would silently stop guarding"
+        hazard the rule was written for. Worse for detection: `scripts/check-hooks.mjs` plants
+        `.diarie/` fixture trees, so the hook TESTS stay green through the rename too. Sweep the hooks
+        and their fixtures as part of this row, and do not trust the ast-grep rule to find them.
     description: >-
       diarie renames its store from `.diarie/` to a PAIR — visible `diarium/` or dotted `.diarium/`,
       whichever is on disk IS the posture — and REMOVES `TRACKER_DIR` in favour of `TRACKER_DIRS` /
