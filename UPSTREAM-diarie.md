@@ -21,6 +21,23 @@
   re-discovered on 2026-07-22, four days after `diarie-dlm` was filed for it; a third rediscovery is
   the thing this cross-reference prevents.
 
+* **Task-side validation gaps: unknown keys and label values — ALREADY TRACKED UPSTREAM**
+  (2026-07-29) — _Cross-reference, deliberately NOT a new request. Same discipline as the entry
+  above._ Measured against `diarie@0.2.2` on a store with four planted defects: an invalid `type`,
+  `status` or `priority` is CAUGHT (exit 2, each named with its row), but a **misspelled key**
+  (`descrption:`) and an **unrecognised label value** both report `clean: true` at exit 0. The
+  loader drops an unknown key and validate never checks, which is silent data loss in a substrate
+  whose write side is deliberately Edit/Write — the one place a typo is most likely.
+  Upstream owners, both already filed: **"`diarie validate` should catch unknown/mistyped task keys
+  (allowlist) — decide error-vs-warning + the --strict question"** (its own ACs note that task
+  fields are a CLOSED schema, unlike open-vocabulary label VALUES, which argues for an error), and
+  **"labels values are unvalidated — a typo'd `epic` re-arms the vp-beads-epc container bug"**.
+  Ownership: upstream ([diarie](https://github.com/voxpelli/diarie)) · Workaround: none on our side
+  — a consumer cannot detect a key its reader already dropped.
+  **Do not re-file.** Recorded because the consumer-side consequence is ours to hold: a green
+  `diarie validate` means the enum fields parse, not that the store is sound, and this repo's own
+  CLAUDE.md called it "the integrity gate" until this measurement corrected it.
+
 ## Bugs
 
 _No entries yet._

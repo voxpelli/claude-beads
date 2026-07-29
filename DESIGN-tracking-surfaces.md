@@ -323,7 +323,7 @@ config/state split the diarie tool already has with, say, its slug files.)
 This is the **one category where top-level "screaming" is correct.** `VISION.md` is
 direction and voice; `ROADMAP.md` is a hand-written work plan swarm-wave reads _in its
 own idiom and never rewrites_ (the `substrate-not-opinion` principle;
-`skills/swarm-wave/references/roadmap-interpretation.md`). Both are hand-written
+`plugins/swarm-wave/skills/swarm-wave/references/roadmap-interpretation.md`). Both are hand-written
 NARRATIVE meant to be seen by a human, with no lifecycle a tool tracks entry-by-entry.
 Their visibility is a feature, not a hack.
 

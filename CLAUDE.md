@@ -183,7 +183,7 @@ lives here or in the README; it would duplicate and rot).
   uses**. swarm-wave reads it in its own idiom and **never prescribes a format
   or rewrites the file** (the `substrate-not-opinion` principle); it declines
   cleanly when the file is not a parallelizable work plan. The interpretation
-  contract lives in `skills/swarm-wave/references/roadmap-interpretation.md`.
+  contract lives in `plugins/swarm-wave/skills/swarm-wave/references/roadmap-interpretation.md`.
 * **`VISION.md`** — direction and voice, **not** a backlog. Never a work source.
 
 A manually supplied work list is the fourth, file-less option swarm-wave
@@ -539,10 +539,27 @@ diarie stats      # counts + stale claims   [--json] [--stale] [--days <n>]
 diarie validate   # the integrity gate — run after EVERY edit   [--json]
 ```
 
+🚨 **`diarie validate` is an ENUM gate, not an integrity gate — know its edges before trusting a
+green.** Measured 2026-07-29 against `diarie@0.2.2`, on a store with four planted defects:
+
+* **CAUGHT** (exit 2, each named with its row): an invalid `type`, `status`, or `priority`. So the
+  four-exclusive-types claim below IS enforced.
+* **NOT CAUGHT** — reported `clean: true`, exit 0: a **misspelled key** (`descrption:` is dropped by
+  the loader and validate never looks), an **unrecognised label** value, and an entire
+  `.diarie/decisions/*.md` with `status: banana` — decisions are outside the `tasks-*.yml` glob, so
+  they are not read at all. The `(N file(s))` count in the output is the only tell.
+
+All three gaps are **already tracked in diarie's own backlog** — see `UPSTREAM-diarie.md`, which
+exists to stop a fourth rediscovery. Do not re-file; do not "fix" them here (diarie is external).
+The consumer-side consequence is the point: a green `diarie validate` means _the enum fields parse_,
+not _the store is sound_. A typo'd key is silent data loss that no gate in this repo can see.
+
 Claim / complete by **editing the YAML directly** in `.diarie/tasks/tasks-<slug>.yml` —
-`status: in_progress` (+ `agent:`) to claim, `status: completed` to close. There is no CRUD
-helper, deliberately (substrate-not-opinion — the write side is Edit/Write). Decisions live
-as markdown in `.diarie/decisions/`.
+`status: in_progress` (+ `agent:`) to claim, `status: completed` to close. The dependency key is
+**`deps:`** (a list), not `depends_on` — the schema is the authority, and guessing that field name
+wrong is how a blocked row silently reads as ready. There is no CRUD helper, deliberately
+(substrate-not-opinion — the write side is Edit/Write). Decisions live as markdown in
+`.diarie/decisions/`.
 
 **Use Claude Code's built-in task tracker too — for the session's steps.** It and `diarie`
 are different time horizons, not rivals (decision `vp-beads-tdo`):

@@ -1,5 +1,5 @@
 {
-  "description": "Sprint workflow hooks: tracker prime + compaction-recovery + trend-review reminder at session start, task-store validation on edit, BM error recovery, shell auto-formatting.",
+  "description": "Sprint workflow hooks: tracker prime + compaction-recovery + trend-review reminder at session start, task-store validation on edit, shell auto-formatting.",
   "hooks": {
     "PostToolUse": [
       {
