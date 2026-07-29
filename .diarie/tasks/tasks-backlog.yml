@@ -1590,6 +1590,18 @@ tasks:
         split are mutation-pinned, and they redden DIFFERENT tests — misclassifying exit 1 as
         undetermined breaks the pre-existing `shape=none` case
       - >-
+        N2 DONE 2026-07-29 (fourth commit). NOT a one-line swap, and the reason is measured:
+        `realpathSync` THROWS ENOENT on a missing path, and `<root>/.beads/hooks` legitimately does
+        not exist in a Shape-B repo, a husky repo, or a repo with no hooks — a bare swap makes the
+        no-throw probe throw on three currently-green cases (mutation-proved: removing the fallback
+        crashes the husky test). Shipped `canonical()` — realpath where possible, LEXICAL otherwise,
+        which is exactly the old behaviour — so it can only make a comparison more correct, and it
+        additionally keeps a hooksPath matching a since-deleted `.beads/hooks`. NO new field and no
+        third state: `isBeads` stays a determinate boolean, so SKILL.md workflow 2 step 2 needed no
+        change (doc-grepped). Also amended CLAUDE.md `### Test conventions` — its `realpathSync`
+        entry taught this as TEST hygiene while the production comparison had the same bug, which is
+        the actual lesson
+      - >-
         N8 LEFTOVER — FIVE call sites remain `.ok`-checked but still AMBIGUOUS, because `ok: false`
         conflates "answered no" with "could not ask": `git config --show-scope` (:306, this is N5),
         `git config --get-regexp

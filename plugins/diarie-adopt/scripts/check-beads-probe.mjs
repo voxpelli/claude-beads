@@ -435,6 +435,30 @@ console.log('\nprobeHooks (shape, ownership, and what unsetting would ARM)')
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
+  // A SYMLINKED ROOT FLIPPED THE ARMED REPO TO "SOMEONE ELSE'S". bd stores a canonical absolute
+  // hooksPath, and `resolve()` only cleans a path up — it does not follow symlinks. So reaching
+  // the same repo through a symlink made the two strings differ, `isBeads` went false, `shape`
+  // went 'none', and SKILL.md workflow 2 step 2 says "the path belongs to someone else — leave it
+  // alone and say so". bd stays fully armed. This suite ALREADY learned this exact lesson on macOS
+  // (`/var` vs `/private/var`, in the daemon block) and applied it as TEST hygiene rather than
+  // fixing the probe.
+  const real = realpathSync(makeRepo())
+  const linkParent = mkdtempSync(join(tmpdir(), 'vp-probe-ln-'))
+  const link = join(linkParent, 'link')
+  try {
+    const abs = join(real, '.beads', 'hooks')
+    mkdirSync(abs, { recursive: true })
+    spawnSync('git', ['-C', real, 'config', 'core.hooksPath', abs])
+    symlinkSync(real, link)
+    const h = probeHooks(link)
+    assert('a root reached through a SYMLINK is still recognised as bd\'s',
+      h.hooksPath.isBeads === true && h.shape === 'hooksPath')
+  } finally {
+    rmSync(linkParent, { recursive: true, force: true })
+    rmSync(real, { recursive: true, force: true })
+  }
+}
+{
   // A repo pointing hooksPath at husky/lefthook is NOT bd's. Unsetting it would silently
   // disable THEIR tooling — collateral damage from a tool that promised to be reversible.
   const dir = makeRepo()

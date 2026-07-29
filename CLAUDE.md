@@ -766,6 +766,15 @@ and `git rev-parse` report `/private/var/folders/…` (`/var` is a symlink to `p
 comparing the two shares no prefix at all, so it passes for a reason unrelated to what it names — the
 sibling-directory test above did exactly that until its own RED-proof caught it.
 
+**…and then ask whether the PRODUCTION code needs it too.** This entry lived here as test hygiene
+for months while `probeHooks` compared paths with `resolve()`, which cleans a path up but does not
+follow symlinks — so a repo reached through a symlinked root reported `isBeads: false`, `shape:
+none`, and `/deintegrate-beads` left bd fully armed on a repo it had been pointed at deliberately
+(`vp-beads-pbr` N2). Learning a canonicalisation lesson in a fixture and not carrying it across is
+its own failure mode. Note the production version needs a **lexical fallback** — `realpathSync`
+throws ENOENT on a path that does not exist, and `<root>/.beads/hooks` legitimately does not in a
+Shape-B or husky repo; a bare swap makes a probe that promises never to throw, throw.
+
 **RED-proof the TEST, not only the fix.** Mutation-verified this way, several assertions across the
 probe tests, the validator tests and the rule-tests turned out to pass identically against a broken
 implementation.

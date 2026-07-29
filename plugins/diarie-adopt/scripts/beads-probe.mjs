@@ -37,7 +37,7 @@ import { join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
-  existsSync, readdirSync, readFileSync, statSync,
+  existsSync, readdirSync, readFileSync, realpathSync, statSync,
 } from 'node:fs'
 import {
   argv, cwd, exit, stdout,
@@ -148,6 +148,24 @@ function whyNot (cmd, r) {
 //
 // Ordered legacy-first so an in-place `.diarie/` still wins on a repo mid-rename.
 const TRACKER_DIRS = ['.diarie', 'diarium', '.diarium']
+
+/**
+ * Best-effort canonical path — symlinks followed where possible, lexical otherwise.
+ *
+ * `realpathSync` THROWS on a path that does not exist (measured: ENOENT), and `<root>/.beads/hooks`
+ * legitimately does not exist in a Shape-B repo, a husky repo, or a repo with no hooks at all. A
+ * bare swap would therefore turn a probe whose header promises it never throws into one that does,
+ * on three currently-green cases. The lexical fallback is exactly the old behaviour, so this can
+ * only ever make a comparison MORE correct: it fixes the symlinked-root flip, and a
+ * hooksPath still pointing at a `.beads/hooks` that has since been deleted keeps matching
+ * textually on both sides.
+ *
+ * @param {string} p
+ * @returns {string}
+ */
+function canonical (p) {
+  try { return realpathSync(p) } catch { return p }
+}
 
 /**
  * Which store directories actually hold a `tasks/` dir under `root`.
@@ -390,8 +408,17 @@ export function probeHooks (root) {
   // against `.beads/` misses the real value entirely and the skill silently skips the
   // one thing it exists to do. Compare against THIS root's .beads/hooks: a `includes()`
   // test would claim another repo's `.beads/hooks` as our own.
+  //
+  // CANONICALISE BOTH SIDES. `resolve()` only cleans a path up; it does not follow symlinks. bd
+  // writes the canonical absolute path, so reaching the same repo through a symlinked root made
+  // the two strings differ, `isBeads` go false and `shape` go 'none' — and the skill's response to
+  // `isBeads: false` is "the path belongs to someone else, leave it alone", i.e. bd stays armed on
+  // a repo the probe was pointed at deliberately. This suite already knew the lesson from macOS
+  // (`tmpdir()` is `/var/…` while `lsof` reports `/private/var/…`) and had only applied it to the
+  // TESTS. Fourth outing for this class in this file, after `includes()` on hooksPath,
+  // `startsWith(pid)`, and `startsWith(beadsDir)`.
   const resolved = value ? resolve(root, value) : null
-  const isBeads = resolved === resolve(root, '.beads', 'hooks')
+  const isBeads = resolved !== null && canonical(resolved) === canonical(resolve(root, '.beads', 'hooks'))
 
   const shimDir = join(root, '.beads', 'hooks')
   const shims = existsSync(shimDir) ? readdirSync(shimDir).filter(f => BD_HOOKS.has(f)) : []
