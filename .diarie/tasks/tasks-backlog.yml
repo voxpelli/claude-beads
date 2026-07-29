@@ -1968,12 +1968,17 @@ tasks:
       - >-
         DONE 2026-07-29 (`def4340`). `scripts/check-rule-parity-fixtures.mjs` + a
         `check:rule-parity-fixtures` key, copying `check-validator-plugin-fixtures.mjs` exactly:
-        a `RULE_PARITY_ROOT` override mirroring `VALIDATE_PLUGIN_ROOT`, then EIGHT planted states
-        (the AC asked for six), each asserting non-zero exit AND that the problem is NAMED — id !=
-        filename stem · no string id · duplicate id across two differently-NAMED files · rule with
-        no test · test whose `id:` names another rule · test with no `invalid:` case · test naming
-        no rule · one id in both local and package dirs. The AC's six omitted the test-`id:`-
-        mismatch case, which is the checker's OWN shipped defect, so it was added.
+        a `RULE_PARITY_ROOT` override mirroring `VALIDATE_PLUGIN_ROOT`, then EIGHT planted states,
+        each asserting non-zero exit AND that the problem is NAMED — id != filename stem · no string
+        id · duplicate id across two differently-NAMED files · rule with no test · test whose `id:`
+        names another rule · test with no `invalid:` case · test naming no rule · one id in both
+        local and package dirs. THIS IS EIGHT OF EIGHT, NOT OVER-DELIVERY: the AC scoped "six of the
+        seven `problems.push` branches", and that count was simply WRONG — the file has ELEVEN, of
+        which three are the count assertions (unreachable under a fixture root) and EIGHT are
+        reachable. Do NOT trim back toward six on a re-read: the two the AC's list omitted are the
+        load-bearing ones — the test-`id:`-mismatch case is the checker's OWN shipped defect, and
+        the local-vs-package collision is the one whose symptom (ast-grep exit 8, no summary) is
+        otherwise unattributable.
       - >-
         MUTATION-PROVED THE CHECKER, not only the fixtures — the lesson `pbr` earned the same day.
         Nine mutations, each reddening exactly the case that claims to cover it; the
@@ -1987,6 +1992,14 @@ tasks:
         asserts that announcement, and one more asserts a BARE run still reports a loaded count
         (the dangerous direction: a leaked env var would retire the only assertion that notices a
         SHRINKING rule set). `MIN_EFFECTIVE_RULES` deliberately untested, per the original AC.
+      - >-
+        GATE COST, measured rather than assumed: `check:rule-parity-fixtures` is 1.69s, alongside
+        `check:ast-grep` at 1.29s and under `run-p`, so it adds nothing to wall-clock. Separately,
+        the `pbr` truncation fixture (1200 real files + a commit) costs 3.3s on a probe suite that
+        was already 23s. Kept: the realism IS the argument — 1200 tracked files under
+        `.beads/dolt/noms/` is an ordinary Dolt chunk store, and a synthetic long-path fixture that
+        hit 64 KiB in 300 files would prove the same byte count while quietly dropping the claim
+        that real repos reach it.
       - >-
         NEW, FOUND WHILE FIXTURING, filed as `vp-beads-rpk` rather than fixed here:
         `readdirSync(PKG_RULES)` is unguarded, so with `@voxpelli/ast-grep-rules` absent (a fresh
