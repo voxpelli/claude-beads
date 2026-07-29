@@ -1571,6 +1571,44 @@ tasks:
       Re-verified by a second independent pass 2026-07-29 which refuted three claims in part and added
       eleven; see the acceptance criteria from "VERIFIED 2026-07-29" onward.
     updated: '2026-07-29'
+  - id: vp-beads-vda
+    title: 'vp-dream declares three Basic Memory tools it never calls'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        `plugins/vp-dream/skills/vp-dream/SKILL.md:15-17` declares
+        `mcp__basic-memory__{search_notes,read_note,build_context}`. Verified 2026-07-29: those three
+        strings appear NOWHERE else in the plugin — not in the 155-line SKILL.md body, not in either
+        `references/*.md`. An MCP tool can only be invoked by its exact name, so unlike a built-in
+        (the body says "read the file", never "use the Read tool") their absence from the prose is
+        conclusive, not a limitation of grepping for tool names
+      - >-
+        NOT a runtime bug — an unused allowlist entry is inert. It is a violation of CLAUDE.md
+        `### Skill frontmatter` ("the `allowed-tools` list is an allowlist; only include tools the
+        skill actually calls"), and the introducing commit `d53aac7` names the cause: "frontmatter
+        conformed (user-invocable + permissive allowed-tools)" — scaffolding speed, not a designed
+        capability
+      - >-
+        TWO READINGS, and the row exists because picking between them is a design call, not a lint
+        fix. (a) DEAD SCOPE — drop the three lines; narrowing an allowlist is the safe direction.
+        (b) A MISSING STEP — vp-dream's whole premise is verifying facts against primary sources
+        before pruning, and its exclude-by-derivability language (SKILL.md:97-98) says to skip
+        content "the repo/git/CLAUDE.md/Basic Memory already" carries. If BM is genuinely one of the
+        sources consulted, the step was never written down, and `ledger`'s `promote.md` shows what
+        it should look like. Decide which, then either delete or spell out the call
+      - >-
+        NOTHING GATES THIS. `validate-plugin.mjs`'s `auditToolReferences` only checks the
+        missing-from-allowlist direction; there is no reverse check for declared-but-unused, in this
+        repo or in the extracted `@voxpelli/claude-skill-validator` (see vp-beads-vgp). So this class
+        is found by reading, never by CI
+    description: >-
+      Found by a plugin-dev:plugin-validator pass, 2026-07-29, and verified independently. Predates
+      the hook-removal work it was found alongside (introduced with the plugin itself in d53aac7).
+    updated: '2026-07-29'
   - id: vp-beads-fgt
     title: 'nothing gates a fenced TEMPLATE that emits lint-invalid markdown'
     status: pending
