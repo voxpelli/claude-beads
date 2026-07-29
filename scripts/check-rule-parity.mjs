@@ -51,10 +51,24 @@ import process from 'node:process'
 
 import yaml from 'js-yaml'
 
-const RULES = '.ast-grep/rules'
-const TESTS = '.ast-grep/rule-tests'
+// RULE_PARITY_ROOT lets the fixture harness (scripts/check-rule-parity-fixtures.mjs) point the three
+// directories below at a throwaway tree, so every `problems.push` branch can be planted and watched
+// go RED. Unset in every real run — `join('.', x)` is `x`, so the default paths and every message
+// are byte-identical. Mirrors VALIDATE_PLUGIN_ROOT in validate-plugin.mjs.
+const ROOT = (process.env.RULE_PARITY_ROOT ?? '.').replace(/\/$/, '')
+
+// FIXTURE MODE DISABLES THE COUNT ASSERTIONS, and it has to. The probe below asks the REAL
+// `sgconfig.yml` (it must — `node_modules/.bin/ast-grep` is resolved from the CWD), so under a
+// fixture root it compares the fixture's rule count against this repo's loaded count and can never
+// agree. Skipping is therefore honest rather than convenient — but a skipped assertion that says
+// nothing is this repo's signature bug, so it is ANNOUNCED in the summary, and the harness pins the
+// leak directly: it asserts a BARE run still reports a loaded count.
+const FIXTURE_MODE = Boolean(process.env.RULE_PARITY_ROOT)
+
+const RULES = join(ROOT, '.ast-grep/rules')
+const TESTS = join(ROOT, '.ast-grep/rule-tests')
 // Rules consumed from node_modules.
-const PKG_RULES = 'node_modules/@voxpelli/ast-grep-rules/rules'
+const PKG_RULES = join(ROOT, 'node_modules/@voxpelli/ast-grep-rules/rules')
 
 // A HARDCODED FLOOR, and it must stay hardcoded. The first draft of this check derived the expected
 // total by counting the rule files on disk (local + package) and asserting equality — which is
@@ -220,12 +234,16 @@ const expected = allRuleIds.size
 // worse, carries an install-if-missing resolution path — a check that can silently reach the network
 // and fetch *something* is a check whose subject is not pinned. `@ast-grep/cli` is a devDependency,
 // so this path exists whenever the repo is installed at all.
-const probe = spawnSync('node_modules/.bin/ast-grep', ['scan', '--inspect', 'summary'], {
-  encoding: 'utf8', maxBuffer: Infinity,
-})
+const probe = FIXTURE_MODE
+  ? { stderr: '', error: undefined, status: undefined, signal: undefined }
+  : spawnSync('node_modules/.bin/ast-grep', ['scan', '--inspect', 'summary'], {
+    encoding: 'utf8', maxBuffer: Infinity,
+  })
 const effective = Number(/effectiveRuleCount=(\d+)/.exec(probe.stderr ?? '')?.[1])
 
-if (!Number.isInteger(effective)) {
+if (FIXTURE_MODE) {
+  // Deliberately no assertion, and deliberately not silent — see FIXTURE_MODE above.
+} else if (!Number.isInteger(effective)) {
   // Say WHY. A missing binary, a renamed `--inspect` flag, a changed output format and an ast-grep
   // crash all land here, and without the spawn's own diagnostics they are one indistinguishable
   // message — honest about not having run the assertion, useless for fixing it.
@@ -275,5 +293,7 @@ if (problems.length) {
 console.log(
   `check-rule-parity: ${allRuleIds.size} rule(s) (${ruleIds.size} local + ${pkgIds.size} from ` +
   `${PKG_RULES}/), each paired to a test by its \`id:\` field, each with an \`invalid:\` case; ` +
-  `ast-grep loaded ${effective}`
+  (FIXTURE_MODE
+    ? 'FIXTURE MODE (RULE_PARITY_ROOT set) — the loaded-count assertions did NOT run'
+    : `ast-grep loaded ${effective}`)
 )

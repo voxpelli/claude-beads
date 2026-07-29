@@ -16,6 +16,7 @@
     "check:plugin": "node validate-plugin.mjs",
     "check:prose-commands": "node scripts/check-prose-commands.mjs",
     "check:rule-parity": "node scripts/check-rule-parity.mjs",
+    "check:rule-parity-fixtures": "node scripts/check-rule-parity-fixtures.mjs",
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
     "check:tasks": "diarie validate",
     "check:tracked-ignored": "node scripts/check-tracked-ignored.mjs",
