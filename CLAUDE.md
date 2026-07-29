@@ -705,7 +705,7 @@ authoritative list is the keys in `package.json`, not this paragraph.
 **THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES.** The root's `check:*` keys cover
 the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`,
 `check:md` (remark), `check:lint` (eslint), `check:sh` (shellcheck + shfmt),
-`check:ast-grep` + `check:ast-grep-test`, `check:hooks`, `check:beads-probe`, and
+`check:ast-grep` + `check:ast-grep-test`, `check:hooks`, and
 `check:tasks` (`diarie validate` — validating _this repo's own store_ via the installed
 diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces --if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
 Workspace members today: `plugins/swarm-wave` (wave orchestration) and
