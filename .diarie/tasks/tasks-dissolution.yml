@@ -303,7 +303,7 @@ tasks:
 
   - id: vp-beads-sss
     title: 'P1.5 Shard session-start.sh across the owning plugins (B2 blocker)'
-    status: pending
+    status: deferred
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -320,11 +320,38 @@ tasks:
         the RETRO mod-4 counter is DROPPED here and rebuilt in vp-knowledge session-reflect (handoff
         #1) — it cannot survive as a file-count once RETRO dissolves into BM notes
       - 'BM-failure-classify stays vp-knowledge''s (do not duplicate vp-knowledge hooks)'
+      - >-
+        DEFERRED 2026-07-29, not dropped. Three independent reasons: an adversarial architect ruled
+        against the shard as scoped; vp-beads-46k records a PRIOR ruling against splitting this hook
+        into files (Claude Code fires one session-start.sh; a dir adds dispatch complexity at this
+        size); and `anthropics/claude-code#16538` — "Plugin SessionStart hooks don't surface
+        additionalContext" — is closed NOT PLANNED. This row's own AC concedes it cannot be verified
+        until Phase 2 exists
+      - >-
+        REVIVAL TRIGGER (both, not either): (1) Phase 2 has landed, so there is a real multi-plugin
+        install to test against, AND (2) a two-plugin experiment settles whether cross-plugin
+        SessionStart `additionalContext` actually AGGREGATES. That second one is genuinely open — a
+        claude-code-guide agent read the docs as promising it does, #16538 says otherwise, and
+        neither is primary-source proof. Shipping the shard before that is settled risks four hooks
+        where only the first is read
+      - >-
+        BLOCKED-ON, if revived: vp-beads-vgp. `validate-plugin.mjs` cannot see nested
+        `plugins/*/hooks/hooks.json` at all, and this row exists to create exactly those files —
+        so the shard would land unvalidated
+      - >-
+        SUPERSEDED IN PART by vp-beads-46k (2026-07-29), which took the composable half: the hook is
+        now ten named collectors, each carrying a `[shard destination: X]` header naming the plugin
+        it would move to. The shard is now a file-move of whole functions rather than a re-cut, so
+        deferring costs less than it did when this row was written
+      - >-
+        NOTE the third AC above ("BM-failure-classify stays vp-knowledge's") reads as routing for a
+        future shard — it is NOT. vp-beads-hkd found that duplicate hook FIRING TODAY, in the
+        released 0.18.0 cache. Fix it there, not here
     description: >-
       Plan step 1.5. The mega-hook spans ≥4 destinations; name each block's destination explicitly.
       Related but distinct from the backlog row about extracting session-start concerns into named
       functions (that refactors within one hook; this shards across plugins).
-    updated: '2026-07-18'
+    updated: '2026-07-29'
 
   - id: vp-beads-rfs
     title: 'P1.6 Enumerated reference / vocabulary sweep (S8 — doc-grep as INPUT)'
@@ -477,10 +504,13 @@ tasks:
     type: task
     priority: medium
     parent: vp-beads-dis
+    # PRUNED 2026-07-29: `rgy` and `sss` are both `deferred` with recorded revival triggers
+    # (rgy via 54c54e8 / ROADMAP §9, sss on this row). A deferred dependency never completes, so
+    # keeping them here left the merge gate blocked FOREVER — a dep list that can never be
+    # satisfied is not a gate, it is a deadlock wearing a gate's clothes. Pruned as a pair on
+    # purpose: dropping `rgy` alone would have left `mpu` blocked on `sss` and bought nothing.
     deps:
       - vp-beads-dcr
-      - vp-beads-rgy
-      - vp-beads-sss
       - vp-beads-dad
     labels:
       - chore

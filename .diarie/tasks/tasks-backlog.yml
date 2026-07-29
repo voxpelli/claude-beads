@@ -1012,7 +1012,7 @@ tasks:
     updated: '2026-07-22'
   - id: vp-beads-rlp
     title: 'no durable proof that a markdown reformat is lossless — the ad-hoc one was narrower than its claim'
-    status: pending
+    status: completed
     type: task
     priority: low
     labels:
@@ -1042,11 +1042,24 @@ tasks:
         itself and pass over anything, i.e. become the inspect-nothing guard this repo hunts. The durable
         invariant worth pinning instead is that the FORMATTER'S OPINION still matches what the 51 files
         were rewritten to (see the check-config-pinning idea in vp-beads-rpg's sibling discussion).
+      - >-
+        CLOSED 2026-07-29. Both questions this row asked are answered ABOVE, in its own ACs, and
+        neither leaves work: the losslessness claim was re-measured exhaustively (3 escapes
+        introduced, not ~7 files of damage — the adversarial reviewer inferred from current state
+        instead of diffing), and the disposition was decided (stay ad-hoc; a permanent `check:`
+        script would compare a moved ref against itself and become the inspect-nothing guard this
+        repo hunts). The row was pending only because nobody had written "done" on it
+      - >-
+        ONE IDEA DROPPED, with its trigger so it keeps a revival path: pinning the FORMATTER'S
+        OPINION (assert the remark config still produces what the 51 files were rewritten to) is the
+        durable invariant a one-shot diff cannot be. Not filed as a row — it has no owner and no
+        forcing function today. REVIVE IT the next time a remark/preset bump reformats files
+        wholesale, which is the moment it would have paid for itself
     description: >-
       Self-review finding, 2026-07-22. The claim outran the evidence: text-content equality was
       measured and structural equality was asserted. A strict AST compare flagged 3 of 51 files; those
       were dismissed as re-wrapping/escaping after a FILTERED grep, not an exhaustive read.
-    updated: '2026-07-22'
+    updated: '2026-07-29'
   - id: vp-beads-nts
     title: 'root has NO tsc — JSDoc type edits ship unverified by any type checker'
     status: pending
