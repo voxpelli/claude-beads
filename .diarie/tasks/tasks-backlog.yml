@@ -1608,6 +1608,44 @@ tasks:
         `auditToolReferences` only matches `mcp__*` (`:160`), so a skill instructing "use the Grep
         tool" with Grep absent from allowed-tools is invisible. And a skill directory name is never
         compared to its frontmatter `name` — `skills/wrongname/` declaring `name: other` passes
+      - >-
+        TWO UNCAUGHT CRASHES ON MALFORMED JSON, added + VERIFIED 2026-07-29 (not inferred). A `null`
+        element in a hooks.json event array throws `TypeError: Cannot read properties of null
+        (reading 'matcher')` and exits 1; a `null` hook DEFINITION throws the same on `'type'`. A
+        crash is not a validation failure — it exits before the summary and LOSES every finding
+        collected up to that point, and in CI it reads as "the validator is broken", not "your
+        plugin is". Same class one level out: `plugins` entries in marketplace.json. Fix is an
+        `isObject` guard per array element, turning each into a clean, positioned error
+      - >-
+        REQUIRED FIELDS ARE PRESENCE-ONLY (`:251-263` uses `field in plugin`), so a plugin.json with
+        `name: ""` and `description: ""` exits 0 "Plugin validation passed". Verified. A YAML-null
+        `name:` behaves the same. Non-empty-string is the check that was meant
+      - >-
+        A SIBLING ALREADY SOLVED HALF OF THIS, worth weighing before patching ours: vp-routines has
+        extracted `@voxpelli/claude-plugin-validator` + `@voxpelli/claude-skill-validator` (both
+        `private: true` / `0.0.0`, NOT published, so adoption today means file:/vendoring — an
+        ASK-FIRST dependency call). Measured head-to-head: it resolves relative hook paths against
+        the plugin dir and exits 2 on a missing one where ours passes silently; it guards the null
+        elements above; it catches empty-string fields and `REPLACE_ME` scaffold text; it is
+        `dir`-taking, so the nested-plugins gap dissolves by invoking it per workspace. It shares
+        the unvalidated-event-name gap, and it FALSE-POSITIVES on quoted hook paths (splits on
+        whitespace without stripping quotes) — a bug neither side has fixed
+      - >-
+        WHAT ADOPTION WOULD COST, so the decision is not made on the gains alone. Five checks have
+        NO upstream equivalent and would be lost: the naked `workflow N (Name)` audit, the
+        `auditSilentSkips` Files-availability guard, the whole PRIVATE-SYNERGY no-commit-leak
+        apparatus (base-registry guard + local-registry validation + .gitignore guard + the
+        `bm-entity` warning), and the `plugins/*`-dir-with-skills-but-no-manifest positive error
+        (vp-beads-gtd's own green-over-nothing fix). CORRECTION to an earlier assumption: the
+        `mcp__*__*` prose-vs-allowed-tools audit is NOT among the losses — upstream has it and adds
+        a bare-builtin-tool audit ours lacks. Upstream also has ~13 checks ours does not, incl. a
+        phantom-`subagent_type` reference check and an unknown-frontmatter-field typo net
+      - >-
+        METHOD NOTE, because it nearly produced a false report: `validate-plugin.mjs` IGNORES argv —
+        the root comes from `VALIDATE_PLUGIN_ROOT` or the script's own directory (`:13`). So
+        `node validate-plugin.mjs <fixture>` silently validates THIS REPO and prints "passed",
+        which reads exactly like a fixture that passed. Every claim above was re-measured under the
+        env var after that was caught. Any future fixture work must use it
     description: >-
       Found by a plugin-validator pass, 2026-07-29, each gap proven with a fixture tree under
       VALIDATE_PLUGIN_ROOT. The validator is the thing this repo would otherwise trust, so its blind
