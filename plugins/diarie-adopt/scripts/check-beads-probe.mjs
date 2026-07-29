@@ -912,5 +912,48 @@ console.log('\nreads that must not take the probe down, and the drops nobody pro
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
+// --- `--json` must not be TRUNCATED by the exit ----------------------------
+//
+// `process.exit()` does not drain a pending stdout write, and stdout is a PIPE whenever this is
+// spawned — which is always. The cut is at exactly one pipe buffer, 65536 bytes, so this is not
+// a "huge payload" edge case: `trackedFiles` and `otherDoltProcesses` are both unbounded, and a
+// `.beads/` holding a tracked Dolt chunk store reaches it at ~1200 files.
+//
+// Real files, no stub. A fake `git` would have to dispatch on `$1`/`$2` because the probe shells
+// out to it five times, and the fake-`ps` fixture already taught this suite what a stub costs.
+{
+  const dir = realpathSync(makeRepo())
+  try {
+    // Dolt's own chunk-store layout, which is why the count is realistic rather than contrived.
+    for (let i = 0; i < 1200; i++) {
+      const h = i.toString(16).padStart(32, '0')
+      const d = join(dir, '.beads', 'dolt', 'noms', h.slice(0, 2), h.slice(2, 4))
+      mkdirSync(d, { recursive: true })
+      writeFileSync(join(d, h), 'x')
+    }
+    commitAll(dir)
+
+    const r = spawnSync(process.execPath, [PROBE, '--root', dir, '--json'],
+      { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 })
+    const out = r.stdout ?? ''
+
+    // THE FIXTURE PROVES THE HARM FIRST. Without this, shrinking the payload below one pipe
+    // buffer would leave the assertion below passing for a reason unrelated to what it names —
+    // the exact vacuity the `fully-gitignored .beads/` fixture had.
+    assert('the fixture actually exceeds one pipe buffer (else the next assertion is vacuous)',
+      out.length > 65536)
+
+    let parsed
+    try { parsed = JSON.parse(out) } catch { /* asserted below */ }
+    assert('`--json` output survives the exit intact and PARSES',
+      parsed?.residue?.trackedCount === 1200)
+
+    // The other direction of the `return` that replaced `exit(0)`: it must still SKIP the human
+    // report, or `--json` emits prose after its JSON and nothing parses either.
+    assert('`--json` still suppresses the human report',
+      !out.includes('beads probe:'))
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

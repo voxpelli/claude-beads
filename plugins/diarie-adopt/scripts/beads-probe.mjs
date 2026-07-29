@@ -40,7 +40,7 @@ import {
   existsSync, readdirSync, readFileSync, realpathSync, statSync,
 } from 'node:fs'
 import {
-  argv, cwd, exit, stdout,
+  argv, cwd, stdout,
 } from 'node:process'
 
 /** Hook names bd installs. */
@@ -758,7 +758,25 @@ export function probe (root) {
 
 // --- CLI -------------------------------------------------------------------
 
-if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
+if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) main()
+
+/**
+ * The CLI. A FUNCTION, so the `--json` branch can `return` instead of `exit()`.
+ *
+ * `process.exit()` terminates without draining a pending stdout write, and stdout is a PIPE
+ * whenever this is spawned — which is always, since the skill captures the output. Measured
+ * 2026-07-29: the cut is at exactly **65536 bytes**, one pipe buffer, not "only huge payloads".
+ * Reproduced end-to-end with 1200 real tracked files under `.beads/dolt/noms/` (Dolt's own chunk
+ * layout, an entirely ordinary size for the repos this tool exists for): 65534 bytes of stdout,
+ * `JSON.parse` throwing `Unterminated string`, and **exit status 0**.
+ *
+ * `trackedFiles` and `otherDoltProcesses` are both unbounded arrays, so the payload is not
+ * self-limiting. This fails LOUD — truncated JSON has unbalanced braces, so a caller's parse
+ * throws rather than yielding a partial verdict — which is the only reason it is not ranked with
+ * the destructive-direction defects. It is still the same family as diarie's founding bug, where
+ * an `exit(2)` truncated the JSON and a broken store read as an empty one.
+ */
+function main () {
   // `allowPositionals: false`. It was `true`, and NOTHING READ THE POSITIONALS — so
   // `beads-probe.mjs <other-repo>` silently probed the CWD and printed a verdict about THIS
   // repo under a heading naming a different one. Measured: pointed at an empty directory it
@@ -776,7 +794,7 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
 
   if (values.json) {
     stdout.write(JSON.stringify(result, null, 2) + '\n')
-    exit(0)
+    return
   }
 
   const { daemon, hooks, migration, residue } = result
