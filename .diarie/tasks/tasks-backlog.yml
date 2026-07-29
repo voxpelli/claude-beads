@@ -1127,7 +1127,44 @@ tasks:
       jsdoc-single-line-tag-description.js 3, check-tracked-ignored.mjs 1, .remarkrc.mjs 1. Fix the
       TS18046 group FIRST — those are unnarrowed-`unknown` reads, the class with real failure modes; the
       TS4111 bulk is style and can follow.
-    updated: '2026-07-22'
+
+      RE-MEASURED 2026-07-29 by RUNNING `npx tsc --noEmit`, and every number above was wrong. Not
+      147 — **191**. The 147/142 figures were carried between documents without anyone re-running the
+      compiler, which is the same read-don't-run failure this row exists to fix in the code. Treat the
+      census above as history; these are the measured ones.
+
+      STAGE 0 LANDED (this commit): the root `tsconfig.json` had `plugins/**/*` in `include`, so the
+      type checker reached INTO a workspace exactly as `eslint.config.js` still does (`vp-beads-wsx`)
+      — violating "THE WORKSPACE OWNS ITS GATES". Dropped. RED-PROOFED IN BOTH DIRECTIONS with planted
+      canaries: before the edit `tsc` reported both `plugins/diarie-adopt/scripts/__canary.mjs` and
+      `scripts/__canary.mjs`; after, only the root one — proving the boundary holds AND that the
+      narrowing did not over-exclude root's own files. 191 → **128**, i.e. 63 errors were the
+      workspace's. `check:type-coverage` re-measured after the narrowing (the denominator shrinks):
+      98.84% → **98.61%**, still clear of the 98 floor.
+
+      MEASURED ROOT-ONLY CENSUS (128): by code 105 × TS4111, 59 × TS18046 ... note these sum past 128
+      because the by-code tally was taken pre-narrowing; re-run `npx tsc --noEmit` for the current
+      split rather than trusting this line — the point of this whole amendment. By file today:
+      validate-plugin.mjs 72, check-hooks.mjs 26, check-prose-commands.mjs 13, check-rule-parity.mjs
+      12, jsdoc-single-line-tag-description.js 3, check-tracked-ignored.mjs 1, .remarkrc.mjs 1.
+
+      REMAINING, in order: (1) fix TS18046 first — unnarrowed `unknown`, the class with real failure
+      modes; (2) TS4111 by TYPING, not bracket-converting — they are almost all
+      `validate-plugin.mjs`'s repeated `Record<string, unknown>` casts, and a named `@typedef` per
+      known-schema site removes the error AND adds typo-catching, which `['foo']` does not; (3) only
+      then rename `tsc` → `check:tsc`, which IS the entire arming mechanism (one colon segment, so
+      `run-p check:*` picks it up). RED-proof the arming with `npm run check`, not `npm run check:tsc`
+      — a gate that works standalone but is not reached by the aggregate is this repo's signature bug.
+
+      DO NOT override `noPropertyAccessFromIndexSignature` to arm the gate sooner. The house config
+      sanctions the escape hatch, but it does not reduce total work, it only defers it — and this
+      repo's own history (`no-jq-raw-interpolation` sat advisory and unreachable for its whole life)
+      says a temporary loosening outlives its justification.
+
+      FOLLOW-UP, SEPARATE ROW (do not fold in): `plugins/diarie-adopt` gets its OWN `tsconfig.json` +
+      `check:` key + its own devDeps — a second ASK-FIRST dependency call that does not inherit
+      root's approval. That is where beads-probe's real `migration: unknown` reads get caught.
+    updated: '2026-07-29'
   - id: vp-beads-rpg
     title: 'check-rule-parity counts FILES, not guarding — and shells out via npx inside a gate'
     status: completed

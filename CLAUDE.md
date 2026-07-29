@@ -913,9 +913,27 @@ and assuming.
 
 **A rule at `severity: warning` cannot fail the build** — `ast-grep scan` exits 0 on
 warnings-only. `no-jsdoc-any-type`, `no-jsdoc-object-typedef` and `no-jq-raw-interpolation` are
-all advisory; `no-jsdoc-any-type` is a nudge, not a gate. **And nothing else type-checks either —
-there is no `check:tsc`, no `check:type-coverage` and no root `tsconfig.json`; JSDoc types here
-are read by eslint's jsdoc rules only.** Closing that is tracked as `vp-beads-nts`.
+all advisory; `no-jsdoc-any-type` is a nudge, not a gate.
+
+**Type checking: half-armed, and the halves are not interchangeable.** A root `tsconfig.json` exists
+(extends `@voxpelli/tsconfig/node22.json`) and **`check:type-coverage` IS armed and green** — 98.61%
+against an `--at-least 98` floor. **`tsc` is NOT armed**: it is a bare `tsc` key, deliberately not
+`check:`-prefixed, so `run-p check:*` never reaches it. Running it is currently **128 errors** across
+7 root files (measured 2026-07-29; 105 are `TS4111` from `noPropertyAccessFromIndexSignature`, most
+of them `validate-plugin.mjs`'s repeated `Record<string, unknown>` casts). Arming it is
+`vp-beads-nts`; the rename to `check:tsc` IS the whole arming mechanism, so do it only once the
+errors are gone.
+
+The two measure **different axes and neither substitutes for the other**: `type-coverage` counts the
+absence of `any` and computes a percentage _regardless of how many `tsc` diagnostics exist_, so a
+file can be 100% `any`-free and still fail `tsc` on an unnarrowed `unknown`. A green
+`check:type-coverage` is therefore NOT evidence the code type-checks.
+
+**The root tsconfig must never `include` `plugins/**`.** It did until 2026-07-29, which made the
+type checker reach into a workspace exactly the way `eslint.config.js` still does (`vp-beads-wsx`) —
+63 of the then-191 errors were `plugins/diarie-adopt`'s. Dropping it is why the count above is 128.
+A workspace that wants type checking gets its own `tsconfig.json` and its own `check:` key, per
+**THE WORKSPACE OWNS ITS GATES** above.
 
 🚨 **`no-jq-raw-interpolation` guarded NOTHING until 2026-07-14.** It is `language: bash`, it
 exists _because "the hooks build jq programs"_ — and `hooks/` was not in the scan bound, while
