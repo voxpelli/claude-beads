@@ -356,46 +356,19 @@ test('no resolvable validator → silent, exit 0 (never a spam loop)', () => {
 })
 
 // =============================================================
-// post-bm-failure-classify.sh
+// PostToolUseFailure — DELIBERATELY ABSENT (vp-beads-hkd)
 // =============================================================
-
-console.log('\npost-bm-failure-classify.sh')
-
-test('exists and is readable', () => ({ ok: existsSync(join(HOOKS, 'post-bm-failure-classify.sh')) }))
-
-test('silent when no error field', () => {
-  const { status, stdout } = runHook('post-bm-failure-classify.sh', JSON.stringify({}))
-  const { count } = parseJsonObjects(stdout)
-  if (status !== 0) return { ok: false, reason: `exit ${status}` }
-  return count === 0
-    ? { ok: true }
-    : { ok: false, reason: `expected silent, got ${count} objects` }
-})
-
-/** @type {Array<[string, string]>} */
-const errorCases = [
-  ['connection refused', '[server-unavailable]'],
-  ['note does not exist', '[note-not-found]'],
-  ['missing required field', '[invalid-argument]'],
-  ['permission denied', '[permission-error]'],
-  ['something completely unexpected happened', '[unknown-error]'],
-]
-
-for (const [errorText, bracket] of errorCases) {
-  test(`classifies "${errorText}" as ${bracket}`, () => {
-    const { status, stdout } = runHook('post-bm-failure-classify.sh', JSON.stringify({
-      error: errorText,
-    }))
-    if (status !== 0) return { ok: false, reason: `exit ${status}` }
-    const { count, objects, parseError } = parseJsonObjects(stdout)
-    if (parseError) return { ok: false, reason: parseError }
-    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
-    return ctx.includes(bracket)
-      ? { ok: true }
-      : { ok: false, reason: `additionalContext missing "${bracket}": ${ctx.slice(0, 100)}` }
-  })
-}
+//
+// `post-bm-failure-classify.sh` and its 6 tests lived here until 2026-07-29.
+// It DUPLICATED vp-knowledge's hook of the same name: same event, overlapping
+// matcher, divergent advice, so both fired and contradicted each other. These
+// tests all passed the entire time — they exercised the hook in ISOLATION, and
+// no gate in either repo can see a cross-plugin duplicate. That is the lesson
+// worth leaving behind: a hook suite proves the hook works, never that it
+// should exist.
+//
+// vp-knowledge owns Basic Memory infrastructure (CLAUDE.md
+// `### Relationship to vp-knowledge`), so its copy is the one that survives.
 
 // =============================================================
 // session-start.sh — compact-source recovery (replaces the retired

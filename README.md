@@ -338,11 +338,10 @@ plugins/                                workspace plugins (own package.json + ch
 scripts/                                dev-only gates; see Validation
 eslint-local-rules/
 hooks/
-  hooks.json                            Hook definitions (3 event types)
+  hooks.json                            Hook definitions (2 event types)
   session-start.sh                      Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudges, trend-review
   post-file-edit.sh                     Auto-format hooks/*.sh with shfmt
   post-tasks-validate.sh                Validate .diarie/tasks/ on edit; silent when clean
-  post-bm-failure-classify.sh           BM error classification + recovery guidance
 ```
 
 ## How it fits together

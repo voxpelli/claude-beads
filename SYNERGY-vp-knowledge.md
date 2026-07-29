@@ -175,11 +175,18 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   Convergence path: accept-difference · Reason: Python prevention is
   vp-knowledge-specific (protects BM notes from script-based writes)
 
-* **PostToolUseFailure matcher scope** (2026-04-05) — vp-beads matches 7 BM tools
-  (write, edit, read, search, schema\_validate, schema\_diff, schema\_infer);
-  vp-knowledge matches 5 (write, edit, schema\_validate, schema\_diff, schema\_infer).
-  vp-beads covers more tools because it uses read/search more heavily in skills.
-  Convergence path: accept-difference · Reason: different tool usage profiles
+* **PostToolUseFailure matcher scope** (2026-04-05) — _(Resolved 2026-07-29 —
+  vp-beads deleted its hook; adopt-theirs)_ vp-beads matched 7 BM tools (write,
+  edit, read, search, schema\_validate, schema\_diff, schema\_infer);
+  vp-knowledge matches 5 (write, edit, schema\_validate, schema\_diff,
+  schema\_infer). This was filed as `accept-difference` on the reading that the
+  two plugins have different tool-usage profiles — **which mistook a duplicate
+  for a divergence.** Both plugins are always co-installed, so the two hooks
+  were not two profiles but one event handled twice, injecting contradictory
+  recovery advice into the same failure. The narrower matcher was also the
+  correct one: vp-knowledge excludes `read_note`/`search_notes` deliberately,
+  because a failed search is common and benign. Resolved by deleting vp-beads'
+  copy (`vp-beads-hkd`); vp-knowledge owns Basic Memory infrastructure.
 
 * **Hook type vocabulary** (2026-04-05) — v0.10.1 converged: both validators now
   accept `command`, `prompt`, `agent`, `http`. Previously vp-beads only accepted

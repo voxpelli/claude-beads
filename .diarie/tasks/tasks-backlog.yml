@@ -788,7 +788,7 @@ tasks:
       - bug
     acceptance_criteria:
       - "the compact ⚠ says `any claims listed above may be INCOMPLETE` even when the dropped row WAS the only claim and nothing is listed above it"
-      - "`INPUT=$(cat)` is a bare command substitution under `set -euo pipefail` in post-file-edit.sh:7, post-tasks-validate.sh:19, post-bm-failure-classify.sh:10. session-start.sh guards its own (`input=$(cat 2>/dev/null || echo \"\")`). Effectively safe today, inconsistent, and the errexit trap is now a known biter"
+      - "`INPUT=$(cat)` is a bare command substitution under `set -euo pipefail` in post-file-edit.sh and post-tasks-validate.sh. session-start.sh guards its own (`input=$(cat 2>/dev/null || echo \"\")`). Effectively safe today, inconsistent, and the errexit trap is now a known biter. (The third instance, post-bm-failure-classify.sh, was DELETED 2026-07-29 as a vp-knowledge duplicate — vp-beads-hkd — so the scope is 2 hooks, not 3)"
       - "AC-1's wording no longer has a fixed line: vp-beads-46k moved that block into `collect_in_progress_claims`. Cite the FUNCTION, not a line — the refactor invalidated every line reference into this file and nothing greps for those"
     description: >-
       Both from the Wave A gate. The second one matters more than it looks: `set -euo pipefail` in a
@@ -1515,7 +1515,7 @@ tasks:
     updated: '2026-07-29'
   - id: vp-beads-hkd
     title: 'vp-beads DUPLICATES vp-knowledge''s PostToolUseFailure hook — double-fire, contradictory advice'
-    status: pending
+    status: completed
     type: task
     priority: high
     labels:
@@ -1542,6 +1542,32 @@ tasks:
         cross-plugin duplicate. Note that `vp-beads-sss`'s AC says "BM-failure-classify stays
         vp-knowledge's", which reads as routing for a future shard, not as "the duplicate is firing
         today"
+      - >-
+        DONE 2026-07-29, operator-decided (delete here, carry the good line upstream). Nine surfaces,
+        enumerated by a case-insensitive doc-grep run as plan INPUT rather than as verification — the
+        list drawn from memory would have been two: `hooks/post-bm-failure-classify.sh` (deleted),
+        the `PostToolUseFailure` block in `hooks/hooks.json` (3 event types → 2), its 6 tests in
+        `check-hooks.mjs`, the CLAUDE.md and README trees (both stated "3 event types"), the
+        SYNERGY-vp-knowledge divergence row, `UPSTREAM-vp-knowledge.md`, and two task rows citing the
+        file by line
+      - >-
+        THE WORDING WORTH KEEPING is filed as a Feature Request in `UPSTREAM-vp-knowledge.md`, not
+        lost to git history. On a note-identifier miss vp-knowledge says "Use write_note to create
+        it"; the deleted vp-beads copy said "run /package-intel or /tool-intel first". For an
+        `npm/*` / `brew/*` entity miss the second is BETTER — `write_note` produces exactly the thin
+        note vp-knowledge's own standards forbid. Suggested there: branch on the identifier
+      - >-
+        THE SYNERGY ROW WAS WRONG, and its wrongness is the transferable part. "PostToolUseFailure
+        matcher scope" (2026-04-05) was filed `accept-difference · Reason: different tool usage
+        profiles` — it MISTOOK A DUPLICATE FOR A DIVERGENCE. Both plugins are always co-installed, so
+        these were never two profiles; they were one event handled twice. A convergence path of
+        `accept-difference` is only meaningful between things that can legitimately differ. Now
+        annotated resolved/adopt-theirs
+      - >-
+        LEFT AS A NOTE, not fixed: `check-hooks.mjs` still proves each hook works in isolation and
+        still cannot see a cross-plugin duplicate. No gate in either repo can. The 6 deleted tests
+        passed for the hook's entire duplicated life — a hook suite proves the hook WORKS, never that
+        it SHOULD EXIST, and that comment now stands where they used to be
     description: >-
       Found by a plugin-validator pass, 2026-07-29. Filed rather than fixed inline because deleting a
       shipped hook is a behaviour change with a released-cache blast radius, and it wants the operator's

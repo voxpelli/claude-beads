@@ -319,7 +319,7 @@ tasks:
       - >-
         the RETRO mod-4 counter is DROPPED here and rebuilt in vp-knowledge session-reflect (handoff
         #1) — it cannot survive as a file-count once RETRO dissolves into BM notes
-      - 'BM-failure-classify stays vp-knowledge''s (do not duplicate vp-knowledge hooks)'
+      - 'BM-failure-classify stays vp-knowledge''s (do not duplicate vp-knowledge hooks) — MOOT since 2026-07-29: vp-beads'' copy was deleted outright (vp-beads-hkd), so there is nothing left here to route'
       - >-
         DEFERRED 2026-07-29, not dropped. Three independent reasons: an adversarial architect ruled
         against the shard as scoped; vp-beads-46k records a PRIOR ruling against splitting this hook
@@ -499,7 +499,11 @@ tasks:
   # [vpk] vp-knowledge follow-ups and [diarie] publishing are tracked via handoffs/, not here.
 
   - id: vp-beads-mpu
-    title: 'P2.1 [us] Merge the restructure branch to main + push (B4) — GATED'
+    # Retitled 2026-07-29 (operator's call): pruning the two deferred deps made this row READY, so
+    # it can now surface on the session-start prime's one-line `next ready` display — under a
+    # standing NEVER-PUSH constraint. The gate used to live only in the first AC, which nothing
+    # reads at session start. It leads the title now.
+    title: '⛔ GATED — operator "yes" REQUIRED, NEVER push unasked · P2.1 [us] Merge the restructure branch to main (B4)'
     status: pending
     type: task
     priority: medium

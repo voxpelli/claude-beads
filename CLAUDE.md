@@ -50,13 +50,11 @@ plugins/                              # workspace-plugins (own package.json + .r
       references/                     # native-autodream-contract, synthesis-rationale
       scripts/audit-memory.sh         # descriptive memory-directory audit (pure bash)
 hooks/
-  hooks.json                          # Hook definitions (3 event types)
+  hooks.json                          # Hook definitions (2 event types)
   session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact)
                                       #   + sensitive-file warning, dormancy nudge, trend-review reminder
   post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt
   post-tasks-validate.sh              # Validate .diarie/tasks/ on edit; report errors, silent when clean
-  post-bm-failure-classify.sh         # Basic Memory error classification (DUPLICATES vp-knowledge's —
-                                      #   double-fire, see vp-beads-hkd)
 scripts/                              # dev-only gates; see ## Validation
 eslint-local-rules/
 CLAUDE.md · README.md · CHANGELOG.md

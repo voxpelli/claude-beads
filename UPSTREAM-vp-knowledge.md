@@ -49,6 +49,20 @@
   npm download stats from the registry API** — v0.21.0 added download stats
   to the package-intel pipeline.
 
+* **`[note-not-found]` should suggest enriching the entity first** (2026-07-29)
+  — vp-beads deleted its duplicate `post-bm-failure-classify.sh` (`vp-beads-hkd`),
+  and vp-knowledge's copy is the survivor. One line is worth carrying over
+  before the deleted version leaves git history. On a note-identifier miss,
+  vp-knowledge advises `"Use write_note to create it"`; vp-beads advised
+  `"run /package-intel or /tool-intel first to create the entity note, then
+  retry"`. For a `npm/*` / `brew/*` entity miss the second is better guidance —
+  `write_note` produces exactly the thin note vp-knowledge's own standards
+  forbid, whereas the intel skills produce an enriched one. Suggested shape:
+  branch on the identifier, so an ecosystem-prefixed miss routes to the intel
+  pipeline and a plain `engineering/*` miss keeps the `write_note` advice.
+  Ownership: upstream · Workaround: full — the advice is a nudge, not a gate;
+  a user who ignores it still lands on a working `write_note`.
+
 ## Bugs
 
 _No entries yet._
