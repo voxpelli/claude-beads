@@ -921,6 +921,183 @@ tasks:
       about the environment recorded as verified when the evidence on the maintainer's own machine points
       the other way.
     updated: '2026-07-29'
+  - id: vp-beads-adm
+    title: 'audit-memory.sh exits 1 and TRUNCATES its own report when MEMORY.md has no links'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        REPRODUCED EMPIRICALLY by a branch-lifecycle review 2026-07-29:
+        `plugins/vp-dream/skills/vp-dream/scripts/audit-memory.sh:76` runs a `grep` that matches
+        nothing when `MEMORY.md` carries no links. A no-match `grep` exits 1, the script runs under
+        `set -euo pipefail`, and the script dies THERE — mid-report. The user gets a partial audit
+        that looks like a complete one.
+      - >-
+        THE HOUSE SIGNATURE DEFECT, in the plugin whose entire job is memory hygiene: a tool that
+        reports success while having inspected nothing. It is the same shape as the `process.exit()`
+        JSON truncation fixed in `fc7b6c9` — the empty-input hazard in different clothes. Worth
+        capturing as ONE Basic Memory observation covering both, not two.
+      - >-
+        `shellcheck` PASSES this file. That is the second half of the finding and the more useful
+        half: SC has no check for a no-match `grep` aborting a script under `set -e`. Filed as an
+        upstream feature request candidate (`UPSTREAM-brew--shellcheck.md`, new file).
+      - >-
+        FIX: `grep ... || true` on the counting greps, PLUS a "none found" line so an empty result is
+        REPORTED rather than merely survived — per CLAUDE.md `### Reader conventions`, a guard that
+        drops a value must also report it, naming the consequence. Do NOT just add `|| true`: that
+        converts a crash into a silent zero, which is the same bug wearing the fix's clothes.
+      - >-
+        RED-PROOF IT: a fixture `MEMORY.md` with NO links must produce a complete report and exit 0,
+        and the assertion must FAIL against the current script. vp-dream has no test harness at all
+        today — its `check` is remark + shellcheck — so this needs one, however small.
+    description: >-
+      Found by the branch-lifecycle-review workflow (2026-07-29), reproduced rather than inferred.
+      Ranked its top confirmed finding of 8.
+    updated: '2026-07-29'
+  - id: vp-beads-pcb
+    title: 'check-prose-commands is structurally blind to every plugins/* script path in prose'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        `scripts/check-prose-commands.mjs:198` — the `node <path>` half of the checker skips any
+        target containing `$`, and resolves every target against the REPO ROOT. Both together mean
+        that every `$CLAUDE_PLUGIN_ROOT/scripts/...` reference in a plugin's prose is unchecked, and
+        so is any path that only exists inside a `plugins/*` workspace.
+      - >-
+        THIS IS THE GAP THAT LET THE ORIGINAL FOSSIL THROUGH, one layer over. The row that built this
+        checker (`vp-beads-vcb`) exists because Sprint 16 shipped `node scripts/ready-walker.mjs` into
+        every session after deleting the file. The checker now catches that at the root — and cannot
+        see the same class inside the four plugins, which is where the skills now live.
+      - >-
+        DIRECTLY LOAD-BEARING RIGHT NOW: `deintegrate-beads/SKILL.md:72` and `vp-dream/SKILL.md:73`
+        both invoke `$CLAUDE_PLUGIN_ROOT/...` script paths. Whether those resolve depends on an
+        unsettled distribution question (see `vp-beads-mpu`) — and the checker cannot answer it either
+        way, so nothing tells you which state you are in.
+      - >-
+        NOT the same as the SURFACES question. `plugins/*/skills/**` IS in `SURFACES` (the file scans 8
+        surfaces, though CLAUDE.md still says "five prose surfaces" — fix that line too). The blindness
+        is in the RESOLVER, not the corpus: the paths are read and then skipped.
+      - >-
+        Fix needs a per-surface root, not a global one — a path in `plugins/vp-dream/skills/...` must
+        resolve against `plugins/vp-dream/`, which is what `$CLAUDE_PLUGIN_ROOT` will mean there. RED-
+        proof by planting a dead `$CLAUDE_PLUGIN_ROOT/scripts/gone.mjs` in a plugin SKILL.md and
+        watching the check go red; it is green today.
+    description: >-
+      Found by the branch-lifecycle-review workflow (2026-07-29). Its second major confirmed finding.
+    updated: '2026-07-29'
+  - id: vp-beads-ltr
+    title: 'ledger writes to the store but declares NO availability tier and no ENOSTORE branch — and CLAUDE.md says Tier B is empty'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        `plugins/ledger/skills/ledger/references/reconcile.md:212` writes a task entry into the
+        flat-YAML store. That makes `ledger` a Tier B component by CLAUDE.md's own
+        `### Files-availability convention` — "the component operates directly on the flat-YAML store".
+        It declares no tier and carries no ENOSTORE branch.
+      - >-
+        CLAUDE.md IS NOW WRONG, and this is the part that does live damage: the convention says
+        "(Tier B is defined for reference; no active component currently occupies it — the former
+        occupant `backlog-groomer` was retired per P1.4)". There IS an occupant now. Fix the doc in
+        the same change as the skill, or the correction rots on one side.
+      - >-
+        THE CONSEQUENCE IS THE ONE ENOSTORE EXISTS TO PREVENT: pointed at a project with no
+        `.diarie/`, ledger has no branch for "this project tracks its work elsewhere" and would report
+        it the way an empty backlog reads. CLAUDE.md names that exact mistake: "Reporting an absent
+        tracker as an empty backlog is the original bug wearing a skill's clothes, and nothing fails
+        when you get it wrong — which is precisely why it must be written down."
+      - >-
+        Add the canonical inline sentence VERBATIM (CLAUDE.md gives it, change only the tier letter),
+        plus the two-outcome branch: store present but empty is an ordinary answer; store absent
+        (ENOSTORE) means REDIRECT, do not proceed.
+      - >-
+        `scripts/audit-silent-skips.mjs` did not catch this — worth checking why as part of the fix,
+        since a tier-less writer is exactly what it is supposed to notice.
+    description: >-
+      Found by the branch-lifecycle-review workflow (2026-07-29). The ledger merge (c066fbe) gave one
+      skill a store WRITE path that none of its four predecessors had.
+    updated: '2026-07-29'
+  - id: vp-beads-chl
+    title: 'CHANGELOG ## Unreleased is a self-contradicting fossil — rewrite it from git log, do not patch it'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - docs
+    acceptance_criteria:
+      - >-
+        FROZEN 2026-07-11 with ~196 commits landed since; its only later touch was a semantically-null
+        remark reformat. `.claude-plugin/plugin.json` is still `0.18.0`, so the section has never been
+        cut.
+      - >-
+        IT CONTRADICTS ITSELF. Measured: `## Unreleased` holds TWO `### Changed` blocks (L72, L117)
+        and TWO `### Fixed` blocks (L32, L137), and the OLDER copy of each contradicts the newer. The
+        worst instance: L41 announces "BREAKING — a missing store is an ERROR (`ENOSTORE`), not an
+        empty backlog" while L136 still states "Tier B no longer stops ... an absent/empty store is
+        just an empty backlog" — verbatim the conflation ENOSTORE exists to delete. A reader
+        implementing Tier B from that line ships the defect the same section leads with.
+      - >-
+        IT ASSERTS FACTS THAT ARE NOW FALSE: diarie as "an npm workspace at `diarie/`" (no such
+        directory), "built but not published, `private: true`" (published; 0.2.2 on npm), skill counts
+        running 7/8/9 (six SKILL.md on disk), an `agents/` directory (deleted), a `check:bootstrap`
+        stage (never existed), and six deleted script files.
+      - >-
+        AND IT OMITS THE HEADLINE WORK ENTIRELY. Zero mentions of: the `plugins/*` monorepo
+        dissolution, the four-skill `ledger` merge, `vp-dream`, `swarm-wave`/`diarie-adopt` becoming
+        workspaces, diarie's extraction and publication, seven new `check:` keys, or a deleted hook.
+      - >-
+        REWRITE FROM `git log v0.18.0..HEAD`, do not patch. Two independent reviews reached that
+        conclusion separately; patching leaves the duplicate-heading seam that produced the
+        contradiction. Lead with a BREAKING section naming the removed slash commands — removing 7 of
+        8 user-invocable commands is the largest change and currently appears nowhere.
+      - >-
+        THE MECHANISM, worth fixing or at least recording: `CHANGELOG.md` is in NONE of
+        `check-prose-commands.mjs`'s scanned surfaces, which is exactly why dead script names survive
+        here and nowhere else in the repo. Adding it is not free — the file is historical by nature and
+        MUST keep naming things that no longer exist. Decide deliberately; do not add the surface
+        reflexively.
+    description: >-
+      Found independently by a 5-agent release-readiness pass and the branch-lifecycle-review workflow
+      (both 2026-07-29); the structural claims were then re-verified directly.
+    updated: '2026-07-29'
+  - id: vp-beads-rpc
+    title: 'rule-parity fixture case 11 conjoins the real check exit status — a genuine failure reports as "fixture mode leaked"'
+    status: pending
+    type: task
+    priority: low
+    labels:
+      - bug
+      - test
+    acceptance_criteria:
+      - >-
+        `scripts/check-rule-parity-fixtures.mjs` case 11 asserts
+        `bare.status === 0 && /ast-grep loaded \d+/.test(bare.stdout) && !bare.stdout.includes('FIXTURE MODE')`
+        in one conjunction. So a REAL rule-parity failure (an untested rule, a shrunken rule set)
+        fails that assertion and is reported under the label "fixture mode did not leak" — a true
+        failure with a misleading diagnosis.
+      - >-
+        Introduced by `def4340` in the same commit that added the leak guard; found by the
+        branch-lifecycle-review workflow 2026-07-29. LOW because it fails in the correct DIRECTION
+        (red is red) — only the message misattributes. But a guard that names the wrong cause is this
+        repo's recurring complaint about its own tooling.
+      - >-
+        Split it: assert the leak property (`!stdout.includes('FIXTURE MODE')`) separately from the
+        real check's health (`status === 0`), so the two reasons redden independently.
+    description: >-
+      Self-review finding on this session's own commit, surfaced by the branch-lifecycle-review
+      workflow rather than by the commit's own mutation round — which had proved the fix, not the
+      diagnosis.
+    updated: '2026-07-29'
   - id: vp-beads-exf
     title: 'The execution floor — reachability is NOT execution; a gate can run, report success, and inspect nothing'
     status: pending
@@ -959,6 +1136,19 @@ tasks:
         `VALIDATE_PLUGIN_ROOT` harness and a clean control. The floor must go RED over an empty corpus and
         STAY GREEN on the existing fixture cases (each plants at least one SKILL.md). Assert the printed
         COUNT too, not just the exit code — a floor whose number nobody reads is the same bug one layer up.
+      - >-
+        A SECOND INSTANCE, same class, found the same day by the branch-lifecycle-review workflow —
+        file it here rather than separately, because one fix pattern serves both.
+        `scripts/check-hooks.mjs` is the LARGEST guard in the repo (~1000 lines) and guards the only
+        always-on runtime surface, the hooks. It has no coverage floor and no hook-inventory
+        assertion: it would print `0 tests: 0 passed, 0 failed` and exit 0. The canonical inert-green
+        shape, in the highest-consequence guard.
+      - >-
+        THE INVENTORY HALF IS THE SHARPER ONE. A coverage floor catches "the suite ran nothing"; an
+        inventory assertion catches "a hook exists that no test knows about" — which is what a
+        `hooks/hooks.json` edit or a new `hooks/*.sh` would produce. Assert against
+        `hooks/hooks.json`'s declared commands and the `hooks/*.sh` on disk, not a hardcoded list
+        (a hardcoded list is what holed check-rule-parity, per that row's own AC).
     description: >-
       The door `check:gate-coverage` (vp-beads-gtc) does NOT watch. It proves a script is REACHABLE from
       the root aggregate; it cannot prove the script INSPECTED anything. So the 228-assertion bug can
@@ -2283,6 +2473,35 @@ tasks:
         CONFIRMED FINE, do not re-investigate: `check-workspaces` calls `npm run check --workspaces
         --if-present`, which invokes each workspace's AGGREGATE `check`, so the `run-p check:*`
         single-segment-glob trap does not apply at that boundary. No workspace has a bare `test` key
+      - >-
+        THE FIX AS WRITTEN WOULD MAKE THINGS WORSE — measured 2026-07-29 by mutation, without editing
+        the file. This row's first AC cites only the `cliFiles` line, and deleting that entry alone
+        leaves `plugins/diarie-adopt/scripts/*.mjs` inside root eslint's default scope under the
+        LIBRARY ruleset: forcing that config onto the two probe scripts yields 14 errors in
+        `beads-probe.mjs` (all `n/no-sync`) and 152 in `check-beads-probe.mjs` (151 `n/no-sync` + 1
+        `unicorn/no-process-exit`). The coherent change is `ignores: ['plugins/**']` PAIRED with a
+        per-workspace eslint config + devDep — never one without the other.
+      - >-
+        AND THE BOUNDARY RULE NAMES THE WRONG BOUNDARY: `eslint.config.js:30` is
+        `ignores: ['diarie/**']`, under a 12-line comment explaining THE WORKSPACE OWNS ITS GATES.
+        `diarie/` has not existed since `85600aa` — the same commit that created `plugins/`. So the
+        only place the root enforces that invariant currently protects nothing, while all four live
+        workspaces are unignored. The dead entry is inert and can be dropped independently of the
+        paired change above.
+      - >-
+        WIDER THAN THIS ROW RECORDS: FIVE root `check:*` keys reach into `plugins/*`, not two.
+        Measured — `check:md` (23 workspace .md files), `check:lint` (9), `check:ast-grep` (7, per
+        `--inspect entity`), `check:plugin` (5 SKILL.md + all `references/` + 4 manifests), and
+        `check:prose-commands` (a floored `plugins/*/skills/**` surface). This row files eslint and
+        remark; ast-grep, validate-plugin and prose-commands are the delta. NOTE they are not all the
+        same kind: the ast-grep and validate-plugin reach-ins are arguably CORRECT under the
+        shared-root-config model (decision `vp-beads-cst`, option I) — judge each, do not sweep.
+      - >-
+        NO WORKSPACE HAS TYPE CHECKING AT ALL: `tsc --listFiles` is 12 files, all root; `git ls-files
+        | grep tsconfig` returns exactly one. `plugins/diarie-adopt/scripts/beads-probe.mjs` (927
+        lines) and its 960-line test are in neither `tsc` nor `type-coverage`, so an extracted
+        workspace arrives with zero static analysis. Already noted as a follow-up on `vp-beads-nts`;
+        recorded here because it is the same boundary.
     description: >-
       Found by a plugin-validator pass, 2026-07-29. The stated architecture is that a workspace owns
       its gates so it can be extracted cleanly; these are the places that is not yet true.

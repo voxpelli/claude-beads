@@ -526,6 +526,57 @@ tasks:
         the whole restructure lands in one merge (diarie extraction + dissolution + monorepo
         conversion); default branch moves off 0.18.0 single-plugin vp-beads
       - 'must precede any marketplace edit — the marketplace cannot cross-source ledger from a main lacking plugins/ledger'
+      - >-
+        RELEASE-READINESS AUDIT 2026-07-29 (5 agents + a 39-agent workflow) — THE PRECONDITIONS, so
+        they are decided BEFORE this gate opens rather than discovered after. Verdict from both passes
+        was DO-NOT-SHIP, on COMPLETENESS not quality: `npm run check` is green, there is no import
+        hazard, and the branch is sound. What is not ready is everything the gate does not inspect.
+      - >-
+        (1) DISTRIBUTION — the decisive one. The root `.claude-plugin/plugin.json` declares NO
+        component fields (measured: keys are exactly name, version, description, author, repository,
+        license, keywords), and the marketplace entry in `../vp-claude` is a whole-repo
+        `{source: github, repo: voxpelli/claude-beads}` with NO `path`. So `CLAUDE_PLUGIN_ROOT` is the
+        repo root and the four `plugins/*` manifests are unreachable: an installing user gets
+        `/retrospective` and nothing else, while the README documents six skills. CAVEAT ON THE
+        EVIDENCE, recorded deliberately: the claim that CC auto-discovery does not recurse into
+        `plugins/*/` rests on a DOC reading, not a measurement. The "corroboration" originally offered
+        (the 0.18.0 cache has no `plugins/` dir) proves nothing — `git ls-tree v0.18.0` shows v0.18.0
+        never had one; `plugins/` arrived in c066fbe. And `find ~/.claude/plugins/cache -type d -name
+        plugins` returns NOTHING, so no installed plugin anywhere provides a precedent either way.
+        MEASURE IT before building the remedy.
+      - >-
+        (2) NO MIGRATION PATH FOR 7 RETIRED SLASH COMMANDS. `/upstream-tracker`, `/synergy-tracker`,
+        `/vendor-sync`, `/sibling-sync` merged into `/ledger`; `/swarm-wave` moved to a workspace;
+        `/backlog-groomer` and `/harden-memories` retired outright; the `sprint-review` agent gone.
+        The marketplace `renames` field (CC v2.1.193+) is ABSENT from
+        `vp-claude/.claude-plugin/marketplace.json` — and even populated it maps PLUGINS, not skills,
+        so it structurally cannot migrate `/upstream-tracker` to `/ledger log`. Skill deletion has no
+        documented warning: the command silently stops working. The one skill that DOES ship,
+        `skills/retrospective/SKILL.md`, contains ten references to `/ledger` — all dangling.
+      - >-
+        (3) THE MARKETPLACE ENTRY IS STALE IN VERSION AND IN COPY — `0.18.0`, described as "backlog
+        grooming ... for projects using beads", naming two components retired here. It lives in a
+        SEPARATE repo this branch must not write, so any release is a two-repo coordinated act. This
+        row's own existing AC already says the merge must PRECEDE the marketplace edit.
+      - >-
+        (4) SEMVER. 0.19.0 is legal under 0.x but under-signals: removing 7 of 8 user-invocable
+        commands deserves an explicit BREAKING section, and the CHANGELOG has none for it (see
+        `vp-beads-chl`). Given Phase 2 retires this plugin's last skill (`vp-beads-drt`), the honest
+        framing is a TERMINAL POINTER release, not a feature release.
+      - >-
+        THE STRONGEST COUNTER-ARGUMENT, recorded fairly rather than dismissed: `vp-beads-cst` states
+        there are zero external users, which would reduce all of the above to a self-migration
+        checklist already encoded in `vp-beads-rmv`. The rebuttal is that "zero external users" is
+        itself an UNMEASURED claim about a plugin publicly installable from a public marketplace for
+        months — and this project treats an unmeasured impact claim as a defect. Either measure it or
+        stop leaning on it.
+      - >-
+        PURELY LOCAL PRE-MERGE WORK, needing no approval and blocking nothing: rewrite the CHANGELOG
+        (`vp-beads-chl`), bump the version, guard `jq` (`hooks/session-start.sh` and
+        `post-tasks-validate.sh` end in `jq -n` under `set -euo pipefail` with ZERO `command -v jq`
+        guards, and README's Prerequisites never mentions it — not a regression, `main` has the same
+        shape), and settle the `$CLAUDE_PLUGIN_ROOT` question BEFORE fixing discovery rather than
+        after.
     description: >-
       Plan Phase 2 step 1. First GitHub-facing step. All local Phase-1 work must be done and green.
     updated: '2026-07-18'
