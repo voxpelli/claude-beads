@@ -22,6 +22,15 @@ import {
 /** Absolute path to the probe, for the CLI-level tests at the bottom. */
 const PROBE = fileURLToPath(new URL('beads-probe.mjs', import.meta.url))
 
+// HERMETIC, or several assertions below are green for an environmental reason. Measured: a global
+// `core.hooksPath` is returned by `git config --get` in a brand-new repo (exit 0, `scope=global`),
+// and a global `init.templateDir` populates `.git/hooks/` on `git init` — so on a machine with an
+// org husky policy or shared templates, the "no hooks at all" and `.git/hooks` bucket assertions
+// change outcome. `makeRepo` already pinned `commit.gpgsign` locally, which was this same coupling
+// caught once and patched at the single symptom it showed.
+process.env.GIT_CONFIG_GLOBAL = '/dev/null'
+process.env.GIT_CONFIG_SYSTEM = '/dev/null'
+
 let passed = 0
 let failed = 0
 
@@ -276,6 +285,12 @@ console.log('\nprobeDaemon (the function that authorizes killing a process)')
     writeFileSync(join(dir, '.beads', 'dolt-server.pid'), '999999\n')
     const d = probeDaemon(dir)
     assert('a DEAD pid → not signalable', d.safeToSignal === false && d.owned?.alive === false)
+    // THE ONE CASE THAT SEPARATES `complete` FROM `ok`, and the reason `complete` exists at all.
+    // `lsof -p <dead>` exits NON-ZERO but ran perfectly and answered — so gating on `.ok` would
+    // report "the cwd probe failed" for a process that simply is not there, while `alive: false`
+    // already says so. Swapping `complete` for `ok` passed the whole suite before this line.
+    assert('lsof exiting non-zero for a dead pid is an ANSWER, not a failed cwd probe',
+      d.owned?.cwdError === null)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
@@ -347,6 +362,26 @@ console.log('\nprobeDaemon (the function that authorizes killing a process)')
     assert('cwd inside the target authorises the signal with NO port file — the port is not the gate',
       d.owned?.isDolt === true && d.owned.cwdInTarget === true &&
       d.owned.portMatches === false && d.safeToSignal === true)
+    // FOURTH OUTING FOR THE CANONICALISATION CLASS, in the one function that authorises SIGTERM.
+    // `beadsDir` was `resolve(root, '.beads')` — lexical — while `lsof` reports a REAL path, so a
+    // root reached through a symlink made `cwdInTarget` false and the daemon un-stoppable. It fails
+    // CLOSED (a missed daemon, never a wrong kill), which is why it survived `6399c26`; and both
+    // daemon fixtures call `realpathSync(makeRepo())` first, so the tests normalised away the exact
+    // condition production hits.
+    const linkParent = mkdtempSync(join(tmpdir(), 'vp-probe-dln-'))
+    const link = join(linkParent, 'link')
+    symlinkSync(dir, link)
+    const viaLink = probeDaemon(link)
+    assert('a daemon is still OWNED when the root is reached through a symlink',
+      viaLink.owned?.cwdInTarget === true && viaLink.safeToSignal === true)
+    rmSync(linkParent, { recursive: true, force: true })
+
+    // THE TARGET'S OWN DAEMON MUST NOT APPEAR IN THE "do not touch" LIST. `others` filters on the
+    // pid FIELD — `line.startsWith(pid)` once let our pid 4443 hide a different daemon at 44430 —
+    // and dropping the filter entirely passed the whole suite before this line, which would have
+    // the report tell the user their own daemon belongs to another repo.
+    assert('the target\'s OWN daemon is excluded from otherDoltProcesses',
+      d.otherDoltProcesses.every(l => (l.split(/\s+/)[0] ?? '') !== String(fake.pid)))
   } finally {
     if (fake.pid) { try { process.kill(fake.pid) } catch { /* already gone */ } }
     rmSync(binDir, { recursive: true, force: true })
@@ -695,9 +730,15 @@ console.log('\nprobeResidue (what deleting .beads/ would actually do)')
   const dir = makeRepo()
   try {
     mkdirSync(join(dir, '.beads'), { recursive: true })
+    writeFileSync(join(dir, '.beads', 'config.yaml'), 'x: 1\n')
     writeFileSync(join(dir, '.gitignore'), '.beads/\n')
+    // COMMIT, or this proves nothing: with nothing ever added, `ls-files` is empty regardless of the
+    // ignore rule, and deleting the `.gitignore` write above left the assertion green (measured).
+    // The claim is that the IGNORE keeps a real file untracked, so there has to be a real file.
+    commitAll(dir)
     const r = probeResidue(dir)
-    assert('a fully-gitignored .beads/ reports 0 tracked files', r.beadsDirExists === true && r.trackedCount === 0)
+    assert('a fully-gitignored .beads/ reports 0 tracked files even with a file in it',
+      r.beadsDirExists === true && r.trackedCount === 0 && r.trackedError === null)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
@@ -722,6 +763,125 @@ console.log('\nprobeResidue (what deleting .beads/ would actually do)')
     process.env.PATH = realPath
     rmSync(dir, { recursive: true, force: true })
   }
+}
+
+console.log('\nreads that must not take the probe down, and the drops nobody proved')
+
+{
+  // `d55ee7c` hardened `readFileSync(hook)` and left `readdirSync(gitHooksDir)` ONE LINE ABOVE
+  // unguarded — so when the permission problem is on the DIRECTORY rather than the file, the third
+  // bucket never fires and the probe dies instead, taking the migration gate with it. Four such
+  // sites were measured (EACCES on either dir, ENOTDIR when a dir is a regular file).
+  const dir = makeRepo()
+  const hooksDir = join(dir, '.git', 'hooks')
+  try {
+    chmodSync(hooksDir, 0o000)
+    let threw = false
+    let h
+    try { h = probeHooks(dir) } catch { threw = true }
+    assert('an UNLISTABLE .git/hooks/ does not crash the probe', threw === false)
+    assert('...and does not read as "no hooks" — it blocks the shape',
+      typeof h?.gitHooks.error === 'string' && h.shape === 'unknown')
+  } finally {
+    try { chmodSync(hooksDir, 0o755) } catch { /* never chmodded */ }
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
+  // Same class, and this one is the two-backlogs hazard: an unlistable `tasks/` gave `files: []`,
+  // hence `storeExists: false` — and `/migrate-tracker`'s precondition IS "no store", so it would
+  // migrate a second time over a store it could not see.
+  const dir = makeRepo()
+  const tasksDir = join(dir, '.diarie', 'tasks')
+  try {
+    mkdirSync(tasksDir, { recursive: true })
+    writeFileSync(join(tasksDir, 'tasks-x.yml'), ONE_TASK)
+    commitAll(dir)
+    chmodSync(tasksDir, 0o000)
+    let threw = false
+    let m
+    try { m = probeMigration(dir) } catch { threw = true }
+    assert('an UNLISTABLE store tasks/ does not crash the probe', threw === false)
+    assert('...and is NOT reported as an absent store', typeof m?.filesError === 'string' && m.trusted === false)
+  } finally {
+    try { chmodSync(tasksDir, 0o755) } catch { /* never chmodded */ }
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
+  // The LAST `.ok`-checked-but-ambiguous read. Measured: `--get-regexp` exits 1 for no match (a real
+  // answer) and 128 when git cannot ask — and both produced `[]`, so bd's config survived a
+  // de-integration reported as complete. Identical defect to `trackedError`, three lines below it in
+  // the same function.
+  const dir = makeRepo()
+  const realPath = process.env.PATH
+  try {
+    mkdirSync(join(dir, '.beads'), { recursive: true })
+    spawnSync('git', ['-C', dir, 'config', 'beads.role', 'maintainer'])
+    process.env.PATH = '/nonexistent'
+    const r = probeResidue(dir)
+    assert('git UNRUNNABLE → beads.* keys UNKNOWN, never "no config residue"',
+      typeof r.configKeysError === 'string')
+  } finally {
+    process.env.PATH = realPath
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
+  // THE 128 SIDE of the exit-code split, which nothing exercised — every existing case used ENOENT
+  // (`PATH=/nonexistent`), so `raw.ok || raw.ran` passed the whole suite while turning an armed repo
+  // back into a bare `shape=none`. A corrupt `.git/config` is the reachable form.
+  const dir = makeRepo()
+  try {
+    writeFileSync(join(dir, '.git', 'config'), '[core\n  this is not valid config\n')
+    const h = probeHooks(dir)
+    assert('git exiting 128 (bad config) is could-not-determine, NOT an unset key',
+      h.shape === 'unknown' && h.hooksPath.error?.includes('128') === true)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // AN ENVELOPE MUST WIN OVER A COUNT, unconditionally. The probe carries ~10 lines about a payload
+  // that produced `storeInvisibleToCli: true` AND `trusted: true` in one object — on the gate that
+  // authorises a destructive operation — and nothing tested it. `statsRunner` is injectable exactly
+  // so this is three lines. Not reachable against diarie 0.2.x; reachable the day the envelope
+  // grows a count, which is an ordinary thing to add.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, ONE_TASK)
+    commitAll(dir)
+    /* eslint-disable-next-line unicorn/no-null -- mirrors RunResult; see `cliDown` above. */
+    const both = () => ({ ok: true, ran: true, complete: true, out: '{"code":"ENOSTORE","error":"nope","total":7}', err: '', code: 0, signal: null, error: null })
+    const m = probeMigration(dir, both)
+    assert('a payload carrying BOTH a code and a total is read as the ENVELOPE, never as trusted',
+      m.trusted === false && m.taskCount === null)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // `taskCount` must be `null`, never `0`, when the CLI did not answer — 0 is the claim "the store is
+  // empty" and the human report prints it as `0 task(s)` beside a real file count. Mutating the
+  // contract to `0` passed 55/55.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, ONE_TASK)
+    commitAll(dir)
+    const cliDown = () => ({ ok: false, ran: false, complete: false, out: '', err: '', code: undefined, signal: undefined, error: 'ENOENT' })
+    const m = probeMigration(dir, cliDown)
+    assert('an unanswered CLI gives taskCount null, NOT 0 (absent is not empty)', m.taskCount === null)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // diarie's own diagnostic must survive to the caller — SKILL.md tells the agent to relay it
+  // verbatim ("diarie said: …") because for a legacy store it already names the exact `git mv`.
+  // Blanking `cliError` passed 55/55.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, ONE_TASK)
+    commitAll(dir)
+    const enostore = () => ({ ok: false, ran: true, complete: true, out: '{"code":"ENOSTORE","error":"run `git mv .diarie diarium`"}', err: '', code: 1, signal: undefined, error: undefined })
+    const m = probeMigration(dir, enostore)
+    assert('diarie\'s own error text is relayed, not swallowed',
+      m.cliError?.includes('git mv') === true && m.storeInvisibleToCli === true)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 
 // --- CLI argument handling -------------------------------------------------

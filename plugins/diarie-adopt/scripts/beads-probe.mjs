@@ -183,6 +183,22 @@ function readIfPossible (p) {
 }
 
 /**
+ * List a directory, or `null` if it cannot be listed.
+ *
+ * `existsSync` says the path is there; it does not say the directory can be READ. Four sites
+ * crashed the whole probe on this — measured: EACCES on a mode-000 `.git/hooks/` or store
+ * `tasks/`, and ENOTDIR when either path is a regular file. The hook-BODY read was hardened and
+ * this, one line above it, was not: so when the permission problem is on the directory rather than
+ * the file, the third bucket never fires and `probe()` dies instead, migration gate included.
+ *
+ * @param {string} p
+ * @returns {string[] | null}
+ */
+function readdirIfPossible (p) {
+  try { return readdirSync(p) } catch { return null }
+}
+
+/**
  * POSIX single-quote a shell argument.
  *
  * `reArmCommand` is the artifact SKILL.md calls the guarantee of reversibility, and it was built
@@ -245,7 +261,12 @@ function trackerDirsIn (root) {
  *     error: string | null
  *   },
  *   shims: string[],
- *   gitHooks: { dormantBdHooks: string[], otherGitHooks: string[], unreadableGitHooks: string[] },
+ *   gitHooks: {
+ *     dormantBdHooks: string[],
+ *     otherGitHooks: string[],
+ *     unreadableGitHooks: string[],
+ *     error: string | null
+ *   },
  *   otherHookManagers: HookManager[],
  *   reArmCommand: string | null,
  *   reArmError: string | null
@@ -282,6 +303,7 @@ function trackerDirsIn (root) {
  * @typedef {{
  *   beadsDirExists: boolean,
  *   beadsConfigKeys: string[],
+ *   configKeysError: string | null,
  *   trackedFiles: string[],
  *   trackedError: string | null,
  *   trackedCount: number | null
@@ -322,9 +344,14 @@ function trackerDirsIn (root) {
 export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-install', 'diarie', 'stats', '--json', '--root', r])) {
   const storeDirs = trackerDirsIn(root)
   const trackerDir = storeDirs[0]
-  const files = trackerDir
-    ? readdirSync(join(root, trackerDir, 'tasks')).filter(f => /^tasks-.+\.ya?ml$/.test(f))
-    : []
+  const fileEntries = trackerDir ? readdirIfPossible(join(root, trackerDir, 'tasks')) : []
+  // An unlistable `tasks/` used to give `files: []`, hence `storeExists: false` — and
+  // `/migrate-tracker`'s precondition IS "no store", so it would migrate a second time over a store
+  // nobody could see. "Could not look" is not "not there".
+  const filesError = fileEntries === null
+    ? `\`${trackerDir}/tasks\` could not be listed (permissions?) — this is NOT an absent store`
+    : null
+  const files = (fileEntries ?? []).filter(f => /^tasks-.+\.ya?ml$/.test(f))
 
   // ASK the CLI, do not re-parse the files. A store holding `tasks: []` reports total 0 (correctly
   // NOT trusted); a store with an unparseable file reports total 0 PLUS a warning (malformed → not
@@ -405,6 +432,7 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
 
   return {
     storeExists: files.length > 0,
+    filesError,
     storeDir: trackerDir ?? null,
     storeDirs,
     ambiguousStore,
@@ -476,15 +504,17 @@ export function probeHooks (root) {
   const isBeads = resolved !== null && canonical(resolved) === canonical(resolve(root, '.beads', 'hooks'))
 
   const shimDir = join(root, '.beads', 'hooks')
-  const shims = existsSync(shimDir) ? readdirSync(shimDir).filter(f => BD_HOOKS.has(f)) : []
+  const shims = (existsSync(shimDir) ? readdirIfPossible(shimDir) ?? [] : []).filter(f => BD_HOOKS.has(f))
 
   // What is sitting in .git/hooks/? Unsetting hooksPath RE-ENABLES all of it — including
   // bd's own hooks, if the repo ever ran `bd hooks install` (Shape B). Disarming Shape A
   // without checking here can leave bd MORE armed than we found it.
   const gitHooksDir = join(root, '.git', 'hooks')
-  const gitHooks = existsSync(gitHooksDir)
-    ? readdirSync(gitHooksDir).filter(f => !f.endsWith('.sample'))
-    : []
+  const gitHooksEntries = existsSync(gitHooksDir) ? readdirIfPossible(gitHooksDir) : []
+  const gitHooksError = gitHooksEntries === null
+    ? '`.git/hooks/` could not be listed (permissions?) — whether bd hooks sit there is UNKNOWN, and unsetting hooksPath would arm them'
+    : null
+  const gitHooks = (gitHooksEntries ?? []).filter(f => !f.endsWith('.sample'))
   // THREE buckets, because "could not read it" is not "it is not bd's". This was
   // `try { …includes(BD_MARKER) } catch { return false }`, so an unreadable hook — root-owned,
   // mode-000, or a DIRECTORY named `pre-commit` (EISDIR) — was filed under `otherGitHooks`, which
@@ -539,13 +569,13 @@ export function probeHooks (root) {
   else if (dormantBdHooks.length) shape = 'git-hooks'
   // An unreadable hook COULD be bd's — the one it would be is `pre-commit`, which re-spawns the
   // daemon. `none` here would be a claim the read never supported.
-  else if (unreadableGitHooks.length) shape = 'unknown'
+  else if (unreadableGitHooks.length || gitHooksError) shape = 'unknown'
 
   return {
     shape,
     hooksPath: { value, resolved, scope, isBeads, error: hooksPathError },
     shims,
-    gitHooks: { dormantBdHooks, otherGitHooks, unreadableGitHooks },
+    gitHooks: { dormantBdHooks, otherGitHooks, unreadableGitHooks, error: gitHooksError },
     otherHookManagers: managers,
     // The exact re-arm command, so nobody guesses a relative path — scope-bearing and
     // shell-escaped. `null` rather than a scope-less guess when we cannot name the scope: a
@@ -590,7 +620,12 @@ export function probeDaemon (root) {
     ? `the port file holds \`${rawPort}\`, which is not a port — corroboration unavailable (it is not the ownership test)`
     : null
 
-  const beadsDir = resolve(root, '.beads')
+  // CANONICAL, like the hooksPath comparison. `lsof` reports a REAL path while `resolve()` only
+  // cleans one up, so a root reached through a symlink made `cwdInTarget` false and the target's own
+  // daemon un-stoppable. Fourth outing for this class, and the one function that authorises SIGTERM.
+  // It fails CLOSED (a missed daemon, never a wrong kill), which is why it outlived the hooks fix —
+  // and both daemon fixtures called `realpathSync` first, normalising away the very condition.
+  const beadsDir = canonical(resolve(root, '.beads'))
 
   let owned = null
   if (pid) {
@@ -668,7 +703,12 @@ export function probeDaemon (root) {
  * @returns {ResidueProbe}
  */
 export function probeResidue (root) {
+  // The LAST `.ok`-checked-but-ambiguous read. Measured: `--get-regexp` exits 1 for no match (a
+  // real answer, and the common one) and 128 when git cannot ask — both of which produced `[]`, so
+  // bd's `beads.*` config survived a de-integration the skill reported as complete. Same split as
+  // `git config --get` above; same shape as `trackedError` three lines below.
   const cfg = run('git', ['-C', root, 'config', '--local', '--get-regexp', '^beads\\.'])
+  const configKeysError = cfg.ok || (cfg.ran && cfg.code === 1) ? null : whyNot('git config --get-regexp', cfg)
   const keys = cfg.ok && cfg.out ? cfg.out.split('\n').filter(Boolean) : []
 
   const beadsDir = join(root, '.beads')
@@ -687,6 +727,7 @@ export function probeResidue (root) {
   return {
     beadsDirExists: Boolean(size),
     beadsConfigKeys: keys,
+    configKeysError,
     trackedFiles,
     trackedError,
     // Load-bearing for the report: deleting .beads/ would stage THESE as deletions. `null`, never
@@ -774,6 +815,7 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
     if (!migration.storeDir) reasons.push('no store directory found')
     else if (!migration.files.length) reasons.push(`\`${migration.storeDir}/tasks/\` exists but holds no \`tasks-*.yml\``)
     else if (migration.taskCount === 0) reasons.push('the store is EMPTY')
+    if (migration.filesError) reasons.push(migration.filesError)
     if (migration.malformed) reasons.push('diarie read the store but reported warnings')
     if (migration.files.length && !migration.committed) reasons.push('the store is UNCOMMITTED')
     for (const r of reasons) stdout.write(`  ! ${r}\n`)
@@ -809,6 +851,7 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   }
   // Not listed with the others: filing these under "theirs" is what let bd's own hook pass as a
   // third party's, and unsetting hooksPath re-enables them either way.
+  if (hooks.gitHooks.error) stdout.write(`  ! ${hooks.gitHooks.error}\n`)
   if (hooks.gitHooks.unreadableGitHooks.length) {
     stdout.write(`  ! .git/hooks/ files that could NOT be read: ${hooks.gitHooks.unreadableGitHooks.join(', ')}\n`)
     stdout.write('    whether these are bd\'s is UNKNOWN; unsetting hooksPath arms them regardless\n')
@@ -839,6 +882,11 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
 
   stdout.write('\nresidue\n')
   for (const k of residue.beadsConfigKeys) stdout.write(`  git config: ${k}\n`)
+  // An empty list reads as "no config residue", and the skill clears exactly what is listed.
+  if (residue.configKeysError) {
+    stdout.write(`  ! beads.* git config keys UNKNOWN — ${residue.configKeysError}\n`)
+    stdout.write('    this is NOT "no config residue"; bd config may survive the de-integration\n')
+  }
   // NEVER print a bare 0 here. "0 file(s) — nothing tracked" is what an unrunnable `git` produced,
   // and it is the sentence the skill turns into "`rm -rf .beads/` merely frees disk" — the exact
   // benign-looking default `probe()`'s gitAvailable comment says must not be allowed to stand.

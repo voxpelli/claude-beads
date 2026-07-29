@@ -1644,9 +1644,44 @@ tasks:
         hardcoded `--local`. Step 1 is now three explicit branches and step 3 says why `--local` is
         right THERE
       - >-
-        N8 LEFTOVER — FIVE call sites remain `.ok`-checked but still AMBIGUOUS, because `ok: false`
+        THE FIXES WERE REAL; THE PROOFS WERE NOT. An adversarial read-only code review MUTATION-TESTED
+        the day's own work and found SIX behaviours that passed 55/55 against a broken implementation
+        — including **`complete`, the headline of the N8 commit**. Every claim re-verified here before
+        acting. What was unpinned: `complete` (swapping it for `.ok` passed everything — the only
+        discriminating case is `lsof` exiting non-zero for a DEAD pid, where it ran fine and answered);
+        the **128 side** of the exit-code split (every test used ENOENT, so `raw.ok || raw.ran` was
+        green while turning an armed repo back into `shape: none`); the own-pid exclusion from
+        `otherDoltProcesses`; "AN ENVELOPE WINS OVER A COUNT" (ten lines of comment about a payload
+        that produced `storeInvisibleToCli: true` AND `trusted: true`, with `statsRunner` injectable
+        precisely to make it a three-line test); the `taskCount` null-never-0 contract; and `cliError`
+        relay. All six now redden. 55 -> 67 tests
+      - >-
+        AND FOUR MORE CRASHES, from the same round: `readdirSync` is unguarded at FOUR sites (EACCES
+        on a mode-000 `.git/hooks/` or store `tasks/`, ENOTDIR when either is a regular file) — each
+        takes `probe()` down, migration gate included. The sting: `d55ee7c` hardened
+        `readFileSync(hook)` and left `readdirSync(gitHooksDir)` **one line above** it unguarded, so
+        when the permission problem is on the DIRECTORY the third bucket never fires and the probe
+        dies instead. `readdirIfPossible` + `gitHooks.error` + `filesError` (an unlistable `tasks/`
+        gave `files: []` -> `storeExists: false`, and `/migrate-tracker`'s precondition IS "no store").
+        Also: `probeDaemon`'s `beadsDir` was the ONE place the canonicalisation class was not swept —
+        a symlinked root made the target's own daemon un-stoppable; it fails CLOSED, and both daemon
+        fixtures called `realpathSync` first, normalising away the exact condition. And the
+        `fully-gitignored .beads/` fixture was VACUOUS: it never committed anything, so `ls-files` was
+        empty regardless of the ignore rule (deleting the `.gitignore` write left it green)
+      - >-
+        THE SUITE WAS NOT HERMETIC. `makeRepo` pinned `commit.gpgsign` locally — evidence of this
+        coupling caught once and patched at the single symptom it showed. Measured: a global
+        `core.hooksPath` is returned by `git config --get` in a brand-new repo (exit 0,
+        `scope=global`), and a global `init.templateDir` populates `.git/hooks/` on `git init`. On a
+        machine with an org husky policy or shared templates, the "no hooks at all" and `.git/hooks`
+        bucket assertions change outcome — green here for an environmental reason. Two lines at the
+        top of the suite (`GIT_CONFIG_GLOBAL` / `GIT_CONFIG_SYSTEM` -> `/dev/null`) pin it
+      - >-
+        N8 LEFTOVER — FOUR call sites remain `.ok`-checked but still AMBIGUOUS, because `ok: false`
         conflates "answered no" with "could not ask": `git config --show-scope` (:306, this is N5),
-        `git config --get-regexp
+        `ps -p <pid>` (absent ps reads as a dead pid), `git ls-tree HEAD` (an unrunnable git prints
+        the determinate "the store is UNCOMMITTED" over a fully committed store), and `probe()`'s own
+        `gitAvailable` (still consumed by nothing). NO LONGER in this set: `git config --get-regexp
         ^beads\.` (:434, exit 1 IS "no keys"), `ps -p <pid>` (:378, absent ps reads as a dead pid),
         and `probe()`'s own `gitAvailable` (:461, still consumed by nothing). Each needs a per-site
         judgment about which exit codes are legitimate answers, which is why they were not swept in
@@ -2050,11 +2085,11 @@ tasks:
         pre-commit` and re-spawns dolt, and workflow 3 (which stops the daemon) has not run yet.
         "before declaring the hooks disarmed" constrains the REPORT, not the exposure
       - >-
-        TWO PROBE SIGNALS STILL HAVE NO ERROR CHANNEL, both the same class as the four fixed in
-        vp-beads-pbr. (a) `residue.beadsConfigKeys` is `cfg.ok && cfg.out ? … : []`, so an
-        unrunnable `git config --get-regexp` is indistinguishable from "no `beads.*` keys" — and the
-        skill treats the list as authoritative twice. It also asks `--local` ONLY, so a global
-        `beads.*` key is invisible and absent from workflow 5's machine-global list. (b)
+        ONE PROBE SIGNAL STILL HAS NO ERROR CHANNEL. (a) `residue.beadsConfigKeys` — DONE
+        2026-07-29 (`configKeysError`, measured: `--get-regexp` exits 1 for no match and 128 when git
+        cannot ask, so the same exit-code split as `--get`). STILL OPEN in that half: it asks
+        `--local` ONLY, so a global `beads.*` key is invisible and absent from workflow 5's
+        machine-global list. (b)
         `probeDaemon`'s `alive` comes from `ps -p <pid>` with no error channel at all: on a machine
         with no `ps` you get `alive:false, isDolt:false, cwd:null, cwdError:null`, and the skill's
         two-case reading of `cwdError` then reports "ownership was examined and disproven" for a
