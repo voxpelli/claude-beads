@@ -76,7 +76,11 @@ function main () {
   try {
     gitignore = readFileSync('.gitignore', 'utf8')
   } catch (err) {
-    console.error(`check-tracked-ignored: could not read the root .gitignore: ${err.message}`)
+    // `catch` receives whatever was thrown, including primitives — and a property TEST is not a safe
+    // narrowing either (`'message' in 5` THROWS a TypeError), so ask `instanceof` first. `String(err)`
+    // is what the non-Error path is FOR: the old `err.message` printed a bare `undefined` there, which
+    // is a read failure reported as no reason at all.
+    console.error(`check-tracked-ignored: could not read the root .gitignore: ${err instanceof Error ? err.message : String(err)}`)
     return 1
   }
 

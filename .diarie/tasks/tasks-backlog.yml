@@ -1337,7 +1337,7 @@ tasks:
     updated: '2026-07-29'
   - id: vp-beads-nts
     title: 'root has NO tsc — JSDoc type edits ship unverified by any type checker'
-    status: pending
+    status: completed
     type: task
     priority: medium
     labels:
@@ -1373,6 +1373,54 @@ tasks:
         `typescript@5.9.3` is present in node_modules TRANSITIVELY but is NOT a declared devDep — adding
         it is an ASK-FIRST dependency decision, and relying on the transitive copy would violate the
         no-transitive-installs rule
+      - >-
+        ARMED 2026-07-29. `tsc` (bare key, unreachable by `run-p check:*`) became `check:tsc`, placed
+        alphabetically. The rename WAS the arming, so it happened only once the count hit zero — 132
+        errors across 8 root files, cleared by five file-disjoint agents in parallel.
+      - >-
+        RED-PROVEN, and the FIRST ATTEMPT DID NOT PROVE IT — worth recording, because the mistake is
+        easy and looks like success. A planted `const x = "double quoted"` reddened the gate, but via
+        **`check:lint`** (neostandard rejects double quotes), which says nothing about whether tsc runs.
+        The proof needs an error ONLY tsc can see: `/** @type {string} */ const redProof = 5` is valid,
+        neostandard-clean JS. Measured — `eslint` alone exits 0, `npm run check:tsc` reports TS2322, and
+        `npm run check` exits 1 with `ERROR: "check:tsc" exited with 2`. NAME THE CHECKER IN THE
+        FAILURE, or you have proved that A gate fired, not THE gate.
+      - >-
+        FIXED BY TYPING, NEVER BY BRACKET-CONVERTING, per this row's own constraint. 109 of the 132
+        were TS4111 from `Record<string, unknown>` casts; the fix is a real `@typedef` naming the keys,
+        with every field typed `unknown` — deciding whether `paths` is an array IS the validator's job,
+        so a stronger type would assume what the runtime guards exist to check.
+        `noPropertyAccessFromIndexSignature` was NOT overridden and must not be.
+      - >-
+        THE ONE GENUINE INDEX SIGNATURE IS `process.env`, and it has no shape to declare. Answer, used
+        at three sites across two agents independently: **destructure it** —
+        `const { PATH } = process.env`. A destructuring pattern is not a property-access expression, so
+        the rule does not flag it, and it reads the same property exactly once. For a MUTATED env,
+        type it as `NodeJS.ProcessEnv & { KEY?: string }` so that one key becomes a real named property.
+      - >-
+        TWO LATENT DEFECTS THE TYPE CHECKER SURFACED that no other gate would have. (1) An ORPHANED
+        JSDoc BLOCK in `check-hooks.mjs`: `makeGhStubDir`'s docs had drifted above `trackBeadsFile`'s,
+        so TS bound the comment to the wrong function and left the other undocumented — it read as
+        TS7006 "implicit any". (2) `@voxpelli/remark-preset@0.1.1` declares `types` and lists
+        declarations in `files` but SHIPS NONE (verified against the registry tarball) — filed to
+        `UPSTREAM-voxpelli--remark-preset.md` and handled with a self-cleaning `@ts-expect-error`
+        whose tripwire was proved to fire.
+      - >-
+        BEHAVIOUR PRESERVATION WAS PROVED, not asserted: `validate-plugin.mjs` via a 121-fixture
+        differential harness (malformed-heavy: unterminated/scalar/broken-YAML frontmatter, null
+        registry entries, `color:` as list/number/null/bool/map) byte-diffing stdout+stderr+exit
+        across HEAD vs edited — 121 identical, 0 divergent. `check-hooks.mjs` via a comment-stripped
+        byte-diff showing the ONLY runtime change in 91 diff lines was four `PATH` lines. Suites
+        unchanged throughout: 36 hook tests, 11 rule-parity fixtures, 6+6 validator, and the
+        prose-command counts (97 invocations / 29 files) identical before and after.
+      - >-
+        FOLLOW-UP, STILL OPEN: no `plugins/*` workspace has a tsconfig, so `check:tsc` and
+        `check:type-coverage` measure ROOT files only — `plugins/diarie-adopt`'s 927-line probe and its
+        960-line test are in neither. That is `vp-beads-wsx`'s boundary, recorded there. Also
+        `validate-plugin.mjs` still crashes with a TypeError on a `null` array element in 5 fixtures —
+        PRE-EXISTING and identical on both sides of the type work, deliberately not "fixed" here since
+        adding an `isRecord` guard would convert a loud crash into a silent pass. Tracked as
+        `vp-beads-vgp`.
     description: >-
       Self-review finding, 2026-07-22, validated by the test-coverage reviewer. The repo's own CLAUDE.md
       says "Write JavaScript with clear JSDoc types — tsc checks but never compiles". At root, tsc does

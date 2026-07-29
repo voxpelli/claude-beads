@@ -21,7 +21,22 @@ git history.)_
 
 ## Bugs
 
-_No entries yet._
+* **Declares `types` and lists declarations in `files`, but the published tarball ships none**
+  (2026-07-29, `@voxpelli/remark-preset@0.1.1`) \[degraded] — `package.json` sets
+  `"types": "index.d.ts"` and `"files": ["index.js", "index.d.ts", "index.d.ts.map"]`, yet
+  `tar -tzf` on the registry tarball yields only `package/LICENSE`, `package/index.js`,
+  `package/package.json`, `package/README.md`. The installed `node_modules` copy matches, so the
+  declarations are never emitted into the package — a build/publish step that does not run, not a
+  consumer misconfiguration. Consumer impact: any `tsc` run over a file importing the preset gets
+  **TS7016** (implicitly `any`), which is what blocked arming `check:tsc` here.
+  Severity: degraded · Ownership: upstream · Workaround: partial — a scoped `@ts-expect-error` on
+  the import in `.remarkrc.mjs`. Deliberately `@ts-expect-error` and NOT `@ts-ignore`, because it is
+  self-cleaning: the day this ships declarations the directive becomes an unused-directive ERROR and
+  `tsc` tells us to delete it. Verified that tripwire fires by writing a minimal `index.d.ts` into
+  the installed package and re-running `tsc` — `TS2578: Unused '@ts-expect-error' directive`. A local
+  `types/*.d.ts` shim was rejected as the alternative: this repo's tsconfig lists its program
+  explicitly with no `typeRoots`, so the shim would never load — and it would silently outlive the
+  upstream fix.
 
 ## Upstream Opportunities
 

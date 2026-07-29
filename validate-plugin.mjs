@@ -10,7 +10,11 @@ import { auditSilentSkips } from './scripts/audit-silent-skips.mjs'
 // the validator at a throwaway plugin tree without touching module resolution — the script still runs
 // from its real on-disk location, so its own imports resolve; only join(ROOT, …) file lookups redirect.
 // Unset in every real run — the default is unchanged.
-const ROOT = (process.env.VALIDATE_PLUGIN_ROOT ?? new URL('.', import.meta.url).pathname).replace(/\/$/, '')
+// Destructured rather than accessed as `process.env.VALIDATE_PLUGIN_ROOT`: `ProcessEnv` is a genuine
+// index signature (arbitrary env vars), so there is no shape to declare — and destructuring reads the
+// same property without the dot-on-index-signature that `noPropertyAccessFromIndexSignature` rejects.
+const { VALIDATE_PLUGIN_ROOT } = process.env
+const ROOT = (VALIDATE_PLUGIN_ROOT ?? new URL('.', import.meta.url).pathname).replace(/\/$/, '')
 
 /** @type {string[]} */
 const errors = []
@@ -91,14 +95,41 @@ async function pluginDirs () {
 const { all: PLUGIN_ALL_DIRS, withManifest: PLUGIN_DIRS } = await pluginDirs()
 
 /**
+ * The keys this validator reads out of a SKILL.md or an agent `.md` frontmatter block. ONE typedef
+ * covers both formats because one parser feeds both consumers; a key missing from this list is simply
+ * a key no check below reads.
+ *
+ * Every value is `unknown` deliberately: deciding whether `paths` is really an array or `color`
+ * really a string IS the work below, so this names the KEYS the two formats define and asserts
+ * nothing whatsoever about their types.
+ *
+ * @typedef {{
+ *   name?: unknown,
+ *   description?: unknown,
+ *   'user-invocable'?: unknown,
+ *   'allowed-tools'?: unknown,
+ *   paths?: unknown,
+ *   effort?: unknown,
+ *   model?: unknown,
+ *   color?: unknown,
+ *   tools?: unknown,
+ *   maxTurns?: unknown,
+ *   disallowedTools?: unknown,
+ *   skills?: unknown
+ * }} Frontmatter
+ */
+
+/**
  * @param {string} content
- * @returns {Record<string, unknown> | undefined}
+ * @returns {Frontmatter | undefined}
  */
 function extractFrontmatter (content) {
-  const match = content.match(/^---\n([\s\S]*?)\n---/)
-  if (!match) return
+  // Destructured so the capture group carries its own `string | undefined` — a no-match yields `[]`
+  // and returns exactly where `if (!match) return` used to, with no unreachable branch invented.
+  const [, body] = content.match(/^---\n([\s\S]*?)\n---/) ?? []
+  if (body === undefined) return
   try {
-    const parsed = yaml.load(match[1])
+    const parsed = yaml.load(body)
     return isRecord(parsed) ? parsed : undefined
   } catch {}
 }
@@ -248,6 +279,17 @@ function auditWorkflowReferences (file, content) {
 
 // --- plugin.json ---
 
+/**
+ * A `.claude-plugin/plugin.json` manifest — the root's and every `plugins/*` one share this shape.
+ * Values stay `unknown`; the checks below assert only that the KEYS are present.
+ *
+ * @typedef {{
+ *   name?: unknown,
+ *   version?: unknown,
+ *   description?: unknown
+ * }} PluginManifest
+ */
+
 const pluginPath = join(ROOT, '.claude-plugin', 'plugin.json')
 const plugin = await readJson(pluginPath)
 if (plugin !== undefined) {
@@ -283,17 +325,25 @@ for (const dir of PLUGIN_DIRS) {
 
 // --- marketplace.json (optional) ---
 
+/**
+ * A `marketplace.json` file and one of its `plugins[]` entries. `source` is the entry's origin
+ * (`'./'` for the local one); `version` is what the marketplace advertises.
+ *
+ * @typedef {{ plugins?: unknown }} MarketplaceFile
+ * @typedef {{ source?: unknown, version?: unknown }} MarketplaceEntry
+ */
+
 const marketplacePath = join(ROOT, '.claude-plugin', 'marketplace.json')
 if (existsSync(marketplacePath)) {
   const marketplace = await readJson(marketplacePath)
 
   // Version consistency: local ./ entry must match plugin.json version
   if (marketplace !== undefined && plugin !== undefined) {
-    const m = /** @type {Record<string, unknown>} */ (marketplace)
-    const pluginVersion = /** @type {Record<string, unknown>} */ (plugin).version
+    const m = /** @type {MarketplaceFile} */ (marketplace)
+    const pluginVersion = /** @type {PluginManifest} */ (plugin).version
     const entries = Array.isArray(m.plugins) ? m.plugins : []
     for (const entry of entries) {
-      const e = /** @type {Record<string, unknown>} */ (entry)
+      const e = /** @type {MarketplaceEntry} */ (entry)
       if (e.source === './' && e.version !== pluginVersion) {
         error(
           marketplacePath,
@@ -306,11 +356,22 @@ if (existsSync(marketplacePath)) {
 
 // --- hooks.json (optional) ---
 
+/**
+ * `hooks/hooks.json`: a top-level `hooks` map of event name → matcher entries, each carrying a
+ * `matcher` and its own list of hook definitions. The event-name map itself stays a `Record` below
+ * (Claude Code keeps adding events, so its keys are genuinely open-ended); the entries under it do
+ * have a fixed shape, and that is what these name.
+ *
+ * @typedef {{ hooks?: unknown }} HooksFile
+ * @typedef {{ matcher?: unknown, hooks?: unknown }} HookMatcherEntry
+ * @typedef {{ type?: unknown, timeout?: unknown, command?: unknown }} HookDefinition
+ */
+
 const hooksPath = join(ROOT, 'hooks', 'hooks.json')
 if (existsSync(hooksPath)) {
   const hooksData = await readJson(hooksPath)
   if (hooksData !== undefined) {
-    const h = /** @type {Record<string, unknown>} */ (hooksData)
+    const h = /** @type {HooksFile} */ (hooksData)
     if (!h.hooks || typeof h.hooks !== 'object') {
       error(hooksPath, 'Missing top-level "hooks" object')
     } else {
@@ -322,7 +383,7 @@ if (existsSync(hooksPath)) {
           continue
         }
         for (const entry of entries) {
-          const e = /** @type {Record<string, unknown>} */ (entry)
+          const e = /** @type {HookMatcherEntry} */ (entry)
           if (typeof e.matcher !== 'string') {
             error(hooksPath, `hooks.${event}: entry missing "matcher" (string)`)
           }
@@ -331,7 +392,7 @@ if (existsSync(hooksPath)) {
             continue
           }
           for (const hook of e.hooks) {
-            const hk = /** @type {Record<string, unknown>} */ (hook)
+            const hk = /** @type {HookDefinition} */ (hook)
             if (!VALID_HOOK_TYPES.has(String(hk.type))) {
               error(hooksPath, `hooks.${event}: hook type must be one of: ${[...VALID_HOOK_TYPES].join(', ')}, got "${String(hk.type)}"`)
             }
@@ -379,6 +440,20 @@ const KNOWN_RELATIONSHIPS = new Set([
   'dependency',
 ])
 
+/**
+ * A `.claude/synergy-registry.json` entry. The committed base registry and the gitignored
+ * `.local.json` override share this shape, which is why one typedef serves both blocks below.
+ * `bm-entity` is hyphenated in the file format itself, so it is read with a bracket for that
+ * reason — not to dodge a type error.
+ *
+ * @typedef {{
+ *   name?: unknown,
+ *   file?: unknown,
+ *   'bm-entity'?: unknown,
+ *   relationship?: unknown
+ * }} SynergyRegistryEntry
+ */
+
 const synergyRegistryPath = join(ROOT, '.claude', 'synergy-registry.json')
 if (existsSync(synergyRegistryPath)) {
   const synergyData = await readJson(synergyRegistryPath)
@@ -391,7 +466,7 @@ if (existsSync(synergyRegistryPath)) {
           error(synergyRegistryPath, `Entry [${i}] must be an object`)
           continue
         }
-        const e = /** @type {Record<string, unknown>} */ (entry)
+        const e = /** @type {SynergyRegistryEntry} */ (entry)
         if (typeof e.name !== 'string') {
           error(synergyRegistryPath, `Entry [${i}] missing required string field: name`)
         } else if (e.name === '') {
@@ -449,7 +524,7 @@ if (existsSync(synergyLocalRegistryPath)) {
   const baseData = existsSync(synergyRegistryPath) ? await readJson(synergyRegistryPath) : []
   const baseNames = new Set(
     Array.isArray(baseData)
-      ? baseData.map((b) => (typeof b === 'object' && b !== null ? /** @type {Record<string, unknown>} */ (b).name : undefined)).filter((n) => typeof n === 'string')
+      ? baseData.map((b) => (typeof b === 'object' && b !== null ? /** @type {SynergyRegistryEntry} */ (b).name : undefined)).filter((n) => typeof n === 'string')
       : []
   )
   if (localData !== undefined) {
@@ -461,7 +536,7 @@ if (existsSync(synergyLocalRegistryPath)) {
           error(synergyLocalRegistryPath, `Entry [${i}] must be an object`)
           continue
         }
-        const e = /** @type {Record<string, unknown>} */ (entry)
+        const e = /** @type {SynergyRegistryEntry} */ (entry)
         if (typeof e.name !== 'string' || e.name === '') {
           error(synergyLocalRegistryPath, `Entry [${i}] missing required non-empty string field: name`)
           continue
@@ -650,10 +725,14 @@ for (const file of agentFiles) {
       error(file, `Missing required frontmatter field: ${field}`)
     }
   }
-  if ('color' in fm && !VALID_AGENT_COLORS.has(fm.color)) {
+  // The `typeof … !== 'string'` arms are narrowing, not new policy: both sets hold only strings, so a
+  // non-string `color`/`model` already missed on `.has()` and already reached this same `error()`.
+  // Note they must NOT become `has(String(…))` — that would coerce a one-element list like
+  // `color: [blue]` into a passing `"blue"` and silently stop rejecting it.
+  if ('color' in fm && (typeof fm.color !== 'string' || !VALID_AGENT_COLORS.has(fm.color))) {
     error(file, `Invalid agent color "${String(fm.color)}", must be one of: ${[...VALID_AGENT_COLORS].join(', ')}`)
   }
-  if ('model' in fm && !VALID_AGENT_MODELS.has(fm.model)) {
+  if ('model' in fm && (typeof fm.model !== 'string' || !VALID_AGENT_MODELS.has(fm.model))) {
     error(file, `Invalid agent model "${String(fm.model)}", must be one of: ${[...VALID_AGENT_MODELS].join(', ')}`)
   }
   if ('tools' in fm && !Array.isArray(fm.tools)) {

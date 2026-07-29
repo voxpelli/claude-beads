@@ -936,14 +936,25 @@ and assuming.
 warnings-only. `no-jsdoc-any-type`, `no-jsdoc-object-typedef` and `no-jq-raw-interpolation` are
 all advisory; `no-jsdoc-any-type` is a nudge, not a gate.
 
-**Type checking: half-armed, and the halves are not interchangeable.** A root `tsconfig.json` exists
-(extends `@voxpelli/tsconfig/node22.json`) and **`check:type-coverage` IS armed and green** — 98.61%
-against an `--at-least 98` floor. **`tsc` is NOT armed**: it is a bare `tsc` key, deliberately not
-`check:`-prefixed, so `run-p check:*` never reaches it. Running it is currently **128 errors** across
-7 root files (measured 2026-07-29; 105 are `TS4111` from `noPropertyAccessFromIndexSignature`, most
-of them `validate-plugin.mjs`'s repeated `Record<string, unknown>` casts). Arming it is
-`vp-beads-nts`; the rename to `check:tsc` IS the whole arming mechanism, so do it only once the
-errors are gone.
+**Type checking: FULLY ARMED as of 2026-07-29 (`vp-beads-nts`).** A root `tsconfig.json` extends
+`@voxpelli/tsconfig/node22.json`; **`check:type-coverage`** is green at 98.81% against an
+`--at-least 98` floor, and **`check:tsc`** is now a `check:`-prefixed key, so `run-p check:*` reaches
+it. It was a bare `tsc` key carrying 132 errors across 8 root files; the rename WAS the arming, which
+is why it happened only once the count hit zero.
+
+RED-PROVEN, not assumed — and the first attempt did not prove it. A planted double-quoted string
+reddened the gate via **`check:lint`** (neostandard), which says nothing about `tsc`. The proof needs
+an error only `tsc` can see: `/** @type {string} */ const redProof = 5` is valid, neostandard-clean
+JS. Measured — `eslint` alone exits **0**, and `npm run check` exits 1 reporting
+`ERROR: "check:tsc" exited with 2`. Name the checker in the failure, or you have proved a gate, not
+THE gate.
+
+The 132 were fixed **by typing, never by bracket-converting** — 109 were `TS4111` from
+`Record<string, unknown>` casts, and the fix is a real `@typedef` naming the keys (all fields typed
+`unknown`, since deciding whether `paths` is an array is the validator's whole job). `process.env` is
+the one genuine index signature with no shape to declare: **destructure it**
+(`const { PATH } = process.env`), which is not a property-access expression and so is not flagged —
+no `noPropertyAccessFromIndexSignature` override needed, and that override must never be added.
 
 The two measure **different axes and neither substitutes for the other**: `type-coverage` counts the
 absence of `any` and computes a percentage _regardless of how many `tsc` diagnostics exist_, so a

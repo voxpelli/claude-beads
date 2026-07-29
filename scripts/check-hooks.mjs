@@ -30,10 +30,28 @@ let passed = 0
 let failed = 0
 
 /**
+ * The single JSON object a hook emits on stdout.
+ *
+ * Both hooks that emit anything build it the same way —
+ * `jq -n --arg msg "$message" '{"additionalContext": $msg}'` — so
+ * `additionalContext` IS the payload; a hook with nothing to say prints nothing
+ * at all rather than an object with the field missing. It stays optional here
+ * because these tests parse whatever stdout actually contained, not what it was
+ * supposed to contain: a hook that regressed into emitting a different shape has
+ * to read as an empty context, not as a type error the runtime never sees.
+ *
+ * @typedef HookOutput
+ * @property {string} [additionalContext] - Context injected into the agent
+ */
+
+/**
  * Parse stdout for JSON objects. Detects multi-object emission.
  *
+ * The objects are NOT validated against `HookOutput` — `JSON.parse` accepts any
+ * shape and this reports what it found, so every read still asserts.
+ *
  * @param {string} stdout
- * @returns {{ count: number, objects: unknown[], parseError: string | undefined }}
+ * @returns {{ count: number, objects: HookOutput[], parseError: string | undefined }}
  */
 function parseJsonObjects (stdout) {
   const trimmed = stdout.trim()
@@ -84,9 +102,10 @@ function runHook (script, stdin, opts = {}) {
   // fixture could no longer create. So drop the substring heuristic and ask the real
   // question: does this directory actually contain a `diarie` binary? That holds for
   // node_modules/.bin, a global npm prefix, an fnm/nvm shim, or a Homebrew bin alike.
+  const { PATH: inheritedPath } = process.env
   const basePath = opts.scrubValidator
-    ? (process.env.PATH ?? '').split(':').filter(p => p && !existsSync(join(p, 'diarie'))).join(':')
-    : process.env.PATH
+    ? (inheritedPath ?? '').split(':').filter(p => p && !existsSync(join(p, 'diarie'))).join(':')
+    : inheritedPath
   const path = opts.pathPrefix ? `${opts.pathPrefix}:${basePath}` : basePath
   const result = spawnSync('bash', [scriptPath, ...args], {
     input: stdin ?? '',
@@ -151,15 +170,6 @@ function makeTempGitRepo (originUrl) {
 }
 
 /**
- * Create a temp dir containing a stub `gh` script that prints the given
- * stdout and exits with the given status. Returns the dir path so callers
- * can prepend it to PATH.
- *
- * @param {string} stdout - Body to print
- * @param {number} [exitCode] - Exit status (default 0)
- * @returns {string} Temp directory path containing the stub
- */
-/**
  * Stage a file under .beads/ in a temp git repo so `git ls-files` tracks it.
  * Staging (not committing) is enough — `git ls-files --error-unmatch` reads the
  * index, and committing would need git user config in the temp repo.
@@ -174,6 +184,15 @@ function trackBeadsFile (dir, relPath) {
   spawnSync('git', ['add', relPath], { cwd: dir })
 }
 
+/**
+ * Create a temp dir containing a stub `gh` script that prints the given
+ * stdout and exits with the given status. Returns the dir path so callers
+ * can prepend it to PATH.
+ *
+ * @param {string} stdout - Body to print
+ * @param {number} [exitCode] - Exit status (default 0)
+ * @returns {string} Temp directory path containing the stub
+ */
 function makeGhStubDir (stdout, exitCode = 0) {
   const dir = mkdtempSync(join(tmpdir(), 'vp-beads-stub-'))
   // printf with JSON-stringified payload avoids heredoc-delimiter collisions
@@ -292,7 +311,7 @@ test('invalid store → reports the error as additionalContext', () => {
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     if (!ctx.includes('T-99')) return { ok: false, reason: `error not surfaced: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
@@ -407,7 +426,7 @@ test('compact source: emits 1 object listing UPSTREAM packages and SWARM file', 
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     if (!ctx.includes('Context was just compacted')) {
       return { ok: false, reason: `additionalContext missing recovery preamble: ${ctx.slice(0, 200)}` }
     }
@@ -445,7 +464,7 @@ test('zero in-progress tracker tasks: empty array → no in-progress section emi
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     if (ctx.includes('In-progress tracker task')) {
       return { ok: false, reason: `unexpected in-progress section for empty tracker array: ${ctx.slice(0, 200)}` }
     }
@@ -468,7 +487,7 @@ test('compact source: empty state still emits the capture nudge (never silent)',
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     if (!ctx.includes('Context was just compacted')) {
       return { ok: false, reason: `missing recovery preamble: ${ctx.slice(0, 120)}` }
     }
@@ -496,7 +515,7 @@ test('compact source: one in-progress tracker task → recovery section with id,
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     for (const needle of ['In-progress tracker task', 'x-1', 'Implement the feature', '.diarie/tasks/']) {
       if (!ctx.includes(needle)) return { ok: false, reason: `missing "${needle}": ${ctx.slice(0, 200)}` }
     }
@@ -531,7 +550,7 @@ test('startup: tracker prime emits counts, next-ready and claims', () => {
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     for (const needle of ['2 ready', '1 blocked', '1 in progress', 'p-1 (high)', 'Claimed work']) {
       if (!ctx.includes(needle)) return { ok: false, reason: `missing "${needle}": ${ctx.slice(0, 300)}` }
     }
@@ -557,7 +576,7 @@ test('startup: reader present but NO STORE → prime stays silent', () => {
     })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
     return ctx.includes('Tracker:')
       ? { ok: false, reason: `announced a tracker that does not exist: ${ctx.slice(0, 120)}` }
       : { ok: true }
@@ -576,7 +595,7 @@ test('startup: no tracker → prime stays silent (never a broken line)', () => {
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
     if (ctx.includes('Tracker:')) return { ok: false, reason: `emitted a tracker line with no tracker: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
@@ -623,7 +642,7 @@ test('branch isolation: compact source must NOT emit the startup tracker prime',
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
     if (ctx.includes('Tracker:') || ctx.includes('next ready:')) {
       return { ok: false, reason: `startup prime leaked into the compact branch: ${ctx.slice(0, 200)}` }
     }
@@ -644,7 +663,7 @@ test('branch isolation: startup source must NOT emit compact-branch phrases', ()
     if (parseError) return { ok: false, reason: parseError }
     const ctx = objects.length === 0
       ? ''
-      : String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+      : String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     if (ctx.includes('Context was just compacted') || ctx.includes('capture them now')) {
       return { ok: false, reason: `startup run leaked compact phrasing: ${ctx.slice(0, 200)}` }
     }
@@ -666,7 +685,7 @@ test('branch isolation: compact source must NOT emit startup-only nudges', () =>
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     for (const leak of ['Trend-review', 'Low-activity repo', '[security]']) {
       if (ctx.includes(leak)) return { ok: false, reason: `compact run leaked startup nudge "${leak}": ${ctx.slice(0, 200)}` }
     }
@@ -741,7 +760,7 @@ test('Dependabot alerts: stubbed gh returning 3 → 1 JSON object with security 
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     if (!ctx.includes('[security]')) {
       return { ok: false, reason: `additionalContext missing [security]: ${ctx.slice(0, 120)}` }
     }
@@ -771,7 +790,7 @@ test('Dependabot alerts: stubbed gh returning 0 → no security line', () => {
     if (parseError) return { ok: false, reason: parseError }
     // No RETRO/UPSTREAM/SYNERGY files in the temp dir, and 0 alerts → silent.
     if (objects.length === 0) return { ok: true }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     return ctx.includes('[security]')
       ? { ok: false, reason: `unexpected security line for 0 alerts: ${ctx.slice(0, 120)}` }
       : { ok: true }
@@ -796,7 +815,7 @@ test('Dependabot alerts: gh missing (PATH without gh) → no security line, no e
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (objects.length === 0) return { ok: true }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     return ctx.includes('[security]')
       ? { ok: false, reason: `unexpected security line without alerts: ${ctx.slice(0, 120)}` }
       : { ok: true }
@@ -814,7 +833,7 @@ test('sensitive-file: tracked .beads-credential-key → 1 clean JSON object warn
     // parseError would catch the old stdout-leak bug (bare path before JSON).
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     return ctx.includes('.beads-credential-key is tracked by git')
       ? { ok: true }
       : { ok: false, reason: `missing credential-key warning: ${ctx.slice(0, 120)}` }
@@ -832,7 +851,7 @@ test('sensitive-file: tracked interactions.jsonl is NOT flagged (intentional aud
     if (parseError) return { ok: false, reason: parseError }
     const ctx = objects.length === 0
       ? ''
-      : String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+      : String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     return ctx.includes('interactions.jsonl')
       ? { ok: false, reason: `interactions.jsonl should not be flagged: ${ctx.slice(0, 120)}` }
       : { ok: true }
@@ -851,7 +870,7 @@ test('sensitive-file: tracked PRIVATE-SYNERGY-*.md private overlay → warned', 
     if (parseError) return { ok: false, reason: parseError }
     const ctx = objects.length === 0
       ? ''
-      : String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+      : String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
     return ctx.includes('PRIVATE-SYNERGY-acme.md') && ctx.includes('private')
       ? { ok: true }
       : { ok: false, reason: `missing overlay warning: ${ctx.slice(0, 150)}` }
@@ -899,7 +918,7 @@ test('startup: a HEALTHY store DOES emit a Tracker line (the assertion this suit
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
     if (!ctx.includes('Tracker:')) return { ok: false, reason: `no Tracker line for a real store: ${ctx.slice(0, 160)}` }
     if (!/1 in progress/.test(ctx)) return { ok: false, reason: `the live claim was not counted: ${ctx.slice(0, 160)}` }
     return { ok: true }
@@ -916,7 +935,7 @@ test('startup: a DROPPED row is ANNOUNCED — the counts are incomplete and the 
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status} — the hook must DEGRADE, never abort` }
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
     if (!/loader complaint/.test(ctx)) return { ok: false, reason: `a dropped row went unannounced: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
@@ -936,7 +955,7 @@ test('compact: a DROPPED row is ANNOUNCED, and the hook still EXITS 0', () => {
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status} — errexit aborted the hook; it must degrade quietly` }
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
     if (!/NOT SOUND/.test(ctx)) return { ok: false, reason: `compact did not announce the unsound store: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
@@ -949,7 +968,7 @@ test('startup: a HEALTHY store is NOT accused of dropping rows', () => {
   try {
     const { stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
     if (/loader complaint|NOT SOUND/.test(ctx)) return { ok: false, reason: `false alarm on a clean store: ${ctx.slice(0, 160)}` }
     return { ok: true }
   } finally {
@@ -996,8 +1015,12 @@ test('startup: ALL SIX collectors fire at once, in the documented order', () => 
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 merged object, got ${count}` }
-    const ctx = String(/** @type {Record<string, unknown>} */ (objects[0]).additionalContext ?? '')
+    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
 
+    // A tuple type, not `string[][]` — the loop below destructures each row and
+    // hands `needle` straight to `indexOf`, which a plain nested array cannot
+    // promise is present.
+    /** @type {[label: string, needle: string][]} */
     const expected = [
       ['credential key', '.beads/.beads-credential-key is tracked'],
       ['private overlay', 'private SYNERGY overlay file(s) tracked'],

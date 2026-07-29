@@ -64,15 +64,27 @@ const rule = {
         for (const comment of sourceCode.getAllComments()) {
           if (comment.type !== 'Block' || !comment.value.startsWith('*')) continue
 
-          const [block] = parse(sourceCode.getText(comment))
+          // `sourceCode.getText()` takes an ESTree *node*, and a comment is not one — it
+          // is a `Comment`, which carries no `type` from the node union. Rebuilding the
+          // raw comment from its value is byte-identical: espree sets `value` to exactly
+          // the text between the opening `/*` and the closing `*/`.
+          const [block] = parse(`/*${comment.value}*/`)
           if (!block) continue
+
+          // `loc` and `range` are optional on the ESTree base node type that `Comment`
+          // extends. ESLint populates `loc` on every comment it hands to a rule, so both
+          // fallbacks are unreachable in practice — but they fall back rather than
+          // `continue`, because skipping the comment would silently drop a report that
+          // fires today, and a lint rule that quietly stops reporting is the worst of the
+          // three outcomes.
+          const commentStartLine = comment.loc?.start.line ?? (comment.range ? sourceCode.getLocFromIndex(comment.range[0]).line : 1)
 
           for (const tag of block.tags) {
             if (ignoredTags.has(tag.tag)) continue
 
             const firstSourceLine = tag.source[0]
             if (!firstSourceLine) continue
-            const reportLine = comment.loc.start.line + firstSourceLine.number
+            const reportLine = commentStartLine + firstSourceLine.number
 
             const descriptionLines = tag.source.filter(s => s.tokens.description.trim() !== '')
             if (descriptionLines.length > 1) {
@@ -83,7 +95,7 @@ const rule = {
               const descriptionLength = s.tokens.description.length
               if (descriptionLength > maxLength) {
                 context.report({
-                  loc: { line: comment.loc.start.line + s.number, column: 0 },
+                  loc: { line: commentStartLine + s.number, column: 0 },
                   messageId: 'tooLong',
                   data: { tag: tag.tag, length: String(descriptionLength), max: String(maxLength) },
                 })

@@ -71,6 +71,30 @@ const COMMAND_LANGS = new Set(['bash', 'sh', 'shell', 'console', 'shellsession']
  */
 const IGNORE_MARKER = 'prose-cmd-ignore'
 
+// --- Mandatory capture groups -----------------------------------------------------------------
+
+/**
+ * Read a capture group the pattern makes MANDATORY, as a `string`.
+ *
+ * Every call site below captures with a NON-optional group, so a successful match always defines it —
+ * but an index read is `string | undefined` to the type checker, and both easy ways to silence that
+ * are wrong here. A non-null assertion hides a later edit that makes the group optional; `?? ''` turns
+ * a could-not-read into an EMPTY candidate, which this check then classifies as "nothing to see" — the
+ * inert green it exists to prevent. So the impossible case throws and names itself, per CLAUDE.md
+ * `### Reader conventions — a guard that DROPS must also REPORT`.
+ *
+ * @param {RegExpExecArray} m
+ * @param {number} n
+ * @returns {string}
+ */
+function capture (m, n) {
+  const value = m[n]
+  if (value === undefined) {
+    throw new Error(`prose-commands: capture group ${n} of the match '${m[0]}' is undefined — that group is not optional, so a pattern edit has broken an invariant`)
+  }
+  return value
+}
+
 // --- The oracle: the real CLI, read once ------------------------------------------------------
 
 /**
@@ -93,15 +117,16 @@ function buildOracle () {
   const commandsBlock = /\n {2}Commands\n([\s\S]*?)\n {2}[A-Z]/.exec(top)
   if (!commandsBlock) throw new Error('prose-commands: could not read the Commands block from `diarie --help`')
   const subs = new Set(
-    [...commandsBlock[1].matchAll(/^ {4}([a-z][a-z-]*)\b/gm)].map(m => m[1])
+    [...capture(commandsBlock, 1).matchAll(/^ {4}([a-z][a-z-]*)\b/gm)].map(m => capture(m, 1))
   )
   if (subs.size === 0) throw new Error('prose-commands: parsed zero subcommands from `diarie --help`')
 
+  /** @type {Map<string, Set<string>>} */
   const flags = new Map()
   for (const sub of subs) {
     const h = help([sub, '--help'])
     // Every flag TOKEN the help lists — long (`--json`) and short (`-j`) — from flag-definition lines.
-    const set = new Set([...h.matchAll(/^\s+(--[a-z][a-z-]*|-[a-z])\b/gm)].map(m => m[1]))
+    const set = new Set([...h.matchAll(/^\s+(--[a-z][a-z-]*|-[a-z])\b/gm)].map(m => capture(m, 1)))
     // `--help` / `--version` are universal; migrate's hand-written USAGE omits them.
     set.add('--help').add('--version')
     flags.set(sub, set)
@@ -136,8 +161,11 @@ function tokenize (raw) {
  * @returns {boolean}
  */
 function isInvocation (raw) {
-  const tokens = tokenize(raw)
-  return tokens.length >= 2 && (tokens[0] === 'diarie' || tokens[0] === 'node' || RETIRED.has(tokens[0]))
+  // Same two-token gate as classify, written as a destructure: `tokenize` drops empty tokens, so an
+  // undefined `exe` IS the zero-token case and a non-empty `rest` IS `tokens.length >= 2`.
+  const [exe, ...rest] = tokenize(raw)
+  if (exe === undefined || rest.length === 0) return false
+  return exe === 'diarie' || exe === 'node' || RETIRED.has(exe)
 }
 
 /**
@@ -154,9 +182,10 @@ function isInvocation (raw) {
  */
 function unwrapDiarie (raw) {
   const t = tokenize(raw)
-  if (t.length === 0) return raw
-  if (/^\$\{?DIARIE\}?$/.test(t[0])) return ['diarie', ...t.slice(1)].join(' ')
-  if (t[0] === 'npx') {
+  const exe = t[0]
+  if (exe === undefined) return raw // the old `t.length === 0` — `tokenize` drops empties, so the two agree
+  if (/^\$\{?DIARIE\}?$/.test(exe)) return ['diarie', ...t.slice(1)].join(' ')
+  if (exe === 'npx') {
     let i = 1
     while (t[i]?.startsWith('-')) i++ // skip npx's own flags: -y, --no-install, …
     if (t[i] === 'diarie') return ['diarie', ...t.slice(i + 1)].join(' ')
@@ -173,20 +202,28 @@ function unwrapDiarie (raw) {
  * @returns {string | undefined}
  */
 function classify (raw, oracle) {
-  const tokens = tokenize(raw)
-  if (tokens.length < 2) return // a bare executable is a noun-mention, not an invocation
-
-  const [exe, ...rest] = tokens
+  // A bare executable is a noun-mention, not an invocation. `tokenize` drops empty tokens, so these two
+  // tests are exactly the old `tokens.length < 2` — and they are what lets tsc read `exe` as a string.
+  const [exe, ...rest] = tokenize(raw)
+  if (exe === undefined || rest.length === 0) return
 
   if (exe === 'diarie') {
-    const sub = rest[0]
-    if (sub.startsWith('-')) return // `diarie --help` / `--version` — a top-level flag, not a subcommand
+    const [sub, ...args] = rest
+    // `rest` is non-empty here, so the undefined arm is a bare `diarie` that cannot reach this line; it
+    // shares the exit with `diarie --help` because both mean "no subcommand to resolve".
+    if (sub === undefined || sub.startsWith('-')) return // `diarie --help` / `--version` — a top-level flag, not a subcommand
     if (/[<>]/.test(sub)) return // `diarie <sub>` — a doc placeholder, not a real subcommand
     if (!oracle.subs.has(sub)) return `unknown diarie subcommand '${sub}'`
     const valid = oracle.flags.get(sub)
-    for (const tok of rest.slice(1)) {
+    for (const tok of args) {
       if (!/^--?[a-z]/.test(tok)) continue // a value or positional, not a flag
-      const flag = tok.split('=')[0]
+      // Everything before the first `=`. `split('=')[0]` is always defined but reads as
+      // maybe-undefined to tsc, hence the replace. The `s` flag is load-bearing: without it `.`
+      // stops at a newline, so `a=b\nc` would yield `a\nc` instead of `a`. That cannot happen
+      // today only because `tokenize` splits on `/\s+/` — an invariant three functions away, which
+      // is too far to rely on for a silent divergence. With `s` this matches `split('=')[0]`
+      // unconditionally.
+      const flag = tok.replace(/=.*/s, '')
       if (valid && !valid.has(flag)) return `'${flag}' is not a flag of 'diarie ${sub}'`
     }
     return
@@ -232,7 +269,7 @@ function extract (text, isMarkdown) {
     if (isMarkdown) {
       const fence = /^\s*`{3,}(\w*)/.exec(line)
       if (fence) {
-        fenceLang = fenceLang === undefined ? fence[1].toLowerCase() : undefined
+        fenceLang = fenceLang === undefined ? capture(fence, 1).toLowerCase() : undefined
         continue // a fence marker is never itself a candidate
       }
     }
@@ -241,7 +278,7 @@ function extract (text, isMarkdown) {
     // what catches a fossil quoted in a RETRO template; a bash line / fence marker has no backticks,
     // so it yields nothing here and is handled below.
     for (const m of line.matchAll(/`([^`]+)`/g)) {
-      out.push({ candidate: m[1], line: lineNo })
+      out.push({ candidate: capture(m, 1), line: lineNo })
     }
 
     // A line inside a command-language fence is itself a runnable command.

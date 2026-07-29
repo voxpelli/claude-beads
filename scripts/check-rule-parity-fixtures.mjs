@@ -90,6 +90,10 @@ function buildFixture (files) {
  * @returns {{ status: number|null, stderr: string, stdout: string }}
  */
 function runChecker (root) {
+  // The intersection gives RULE_PARITY_ROOT a real named property, so setting/deleting it below
+  // is a typed property access rather than dotted access into ProcessEnv's index signature
+  // (which `noPropertyAccessFromIndexSignature` would flag as TS4111).
+  /** @type {NodeJS.ProcessEnv & { RULE_PARITY_ROOT?: string }} */
   const env = { ...process.env }
   if (root === undefined) delete env.RULE_PARITY_ROOT
   else env.RULE_PARITY_ROOT = root

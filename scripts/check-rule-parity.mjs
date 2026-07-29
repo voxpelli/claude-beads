@@ -55,7 +55,12 @@ import yaml from 'js-yaml'
 // directories below at a throwaway tree, so every `problems.push` branch can be planted and watched
 // go RED. Unset in every real run — `join('.', x)` is `x`, so the default paths and every message
 // are byte-identical. Mirrors VALIDATE_PLUGIN_ROOT in validate-plugin.mjs.
-const ROOT = (process.env.RULE_PARITY_ROOT ?? '.').replace(/\/$/, '')
+//
+// Destructured rather than read as `process.env.RULE_PARITY_ROOT` — `noPropertyAccessFromIndexSignature`
+// flags dotted access into `ProcessEnv`'s index signature (TS4111); destructuring the same index
+// signature does not trip it.
+const { RULE_PARITY_ROOT } = process.env
+const ROOT = (RULE_PARITY_ROOT ?? '.').replace(/\/$/, '')
 
 // FIXTURE MODE DISABLES THE COUNT ASSERTIONS, and it has to. The probe below asks the REAL
 // `sgconfig.yml` (it must — `node_modules/.bin/ast-grep` is resolved from the CWD), so under a
@@ -63,7 +68,7 @@ const ROOT = (process.env.RULE_PARITY_ROOT ?? '.').replace(/\/$/, '')
 // agree. Skipping is therefore honest rather than convenient — but a skipped assertion that says
 // nothing is this repo's signature bug, so it is ANNOUNCED in the summary, and the harness pins the
 // leak directly: it asserts a BARE run still reports a loaded count.
-const FIXTURE_MODE = Boolean(process.env.RULE_PARITY_ROOT)
+const FIXTURE_MODE = Boolean(RULE_PARITY_ROOT)
 
 const RULES = join(ROOT, '.ast-grep/rules')
 const TESTS = join(ROOT, '.ast-grep/rule-tests')
@@ -98,6 +103,32 @@ const testIdsIn = (dir) => new Set(
 )
 
 /**
+ * The on-disk shape of an ast-grep RULE file (`.ast-grep/rules/*.yml`, and the packaged rules
+ * consumed from `node_modules/@voxpelli/ast-grep-rules/rules`). Every field is `unknown` —
+ * these files are user-authored YAML and this checker's whole job is catching the malformed
+ * ones, so a narrower type here would assume the very well-formedness the runtime guards below
+ * exist to verify.
+ *
+ * @typedef AstGrepRuleDoc
+ * @property {unknown} [id]
+ * @property {unknown} [language]
+ * @property {unknown} [rule]
+ * @property {unknown} [files]
+ * @property {unknown} [ignores]
+ * @property {unknown} [severity]
+ */
+
+/**
+ * The on-disk shape of an ast-grep TEST file (`.ast-grep/rule-tests/*-test.yml`). Same
+ * untrusted-input reasoning as {@link AstGrepRuleDoc}.
+ *
+ * @typedef AstGrepTestDoc
+ * @property {unknown} [id]
+ * @property {unknown} [valid]
+ * @property {unknown} [invalid]
+ */
+
+/**
  * Rule ids as DECLARED INSIDE each `.yml`, mapped to the file that declares them.
  *
  * Reading the FIELD rather than the filename is the entire point, and getting it wrong here was a
@@ -117,7 +148,7 @@ const ruleIdsIn = (dir) => {
   /** @type {Map<string, string>} */
   const found = new Map()
   for (const file of readdirSync(dir).filter(f => f.endsWith('.yml'))) {
-    const doc = /** @type {Record<string, unknown>} */ (
+    const doc = /** @type {AstGrepRuleDoc} */ (
       yaml.load(readFileSync(join(dir, file), 'utf8')) ?? {}
     )
     if (typeof doc.id !== 'string' || doc.id === '') {
@@ -177,7 +208,7 @@ for (const id of [...allRuleIds].toSorted()) {
     continue
   }
 
-  const doc = /** @type {Record<string, unknown>} */ (
+  const doc = /** @type {AstGrepTestDoc} */ (
     yaml.load(readFileSync(join(TESTS, `${id}-test.yml`), 'utf8')) ?? {}
   )
 
