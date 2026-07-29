@@ -742,7 +742,8 @@ console.log('\nprobeResidue (what deleting .beads/ would actually do)')
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
-  // THE HARM `gitAvailable`'s OWN COMMENT NAMES, at the site that causes it. `ls-files` was read as
+  // THE HARM THE RETIRED `gitAvailable` FLAG ONLY NAMED, asserted at the site that causes it and
+  // now reports it. `ls-files` was read as
   // `run(...).out` with no check, so an unrunnable `git` produced `trackedCount: 0` and the report
   // line ".beads/ tracked in git: 0 file(s) — nothing tracked" — from which the skill concludes
   // `rm -rf .beads/` merely frees disk. Here the store IS tracked and would be staged as deletions.

@@ -313,7 +313,6 @@ function trackerDirsIn (root) {
 /**
  * @typedef {{
  *   root: string,
- *   gitAvailable: boolean,
  *   migration: unknown,
  *   hooks: HooksProbe,
  *   daemon: DaemonProbe,
@@ -712,11 +711,20 @@ export function probeResidue (root) {
   const keys = cfg.ok && cfg.out ? cfg.out.split('\n').filter(Boolean) : []
 
   const beadsDir = join(root, '.beads')
-  // UNCHECKED, and it caused the precise harm `probe()`'s own comment names. An unrunnable `git`
-  // gave `out: ''` → `trackedCount: 0` → the report's "nothing tracked", from which the skill
-  // concludes `rm -rf .beads/` merely frees disk — while the store may be fully tracked and the
-  // deletion would stage every file. `ok` is the right gate here: `ls-files` exits 0 with empty
-  // output when the pathspec matches nothing (a real answer) and 128 outside a repo (not one).
+  // UNCHECKED, and it caused the harm this module's git-availability check was once meant to
+  // announce: without git, every git-derived answer degrades to a benign-looking DEFAULT rather
+  // than an error. Here that was `out: ''` → `trackedCount: 0` → the report's "nothing tracked",
+  // from which the skill concludes `rm -rf .beads/` merely frees disk — while the store may be
+  // fully tracked and the deletion would stage every file. `ok` is the right gate: `ls-files`
+  // exits 0 with empty output when the pathspec matches nothing (a real answer) and 128 outside
+  // a repo (not one).
+  //
+  // This site, plus `configKeysError` above and `hooksPath.error`, is what discharged that
+  // obligation — which is why `probe()` no longer carries a `gitAvailable` flag. Measured both
+  // ways: git absent from PATH fires all three; git present outside a repo fires this one and
+  // `configKeysError` (exit 128), while `hooksPath.error` stays null because `--get` on an unset
+  // key exits 1, a legitimate answer. A whole-process flag said less than any of them and, being
+  // read by nobody, said it nowhere.
   const tracked = run('git', ['-C', root, 'ls-files', '.beads'])
   const trackedError = tracked.ok ? null : whyNot('git ls-files', tracked)
   const trackedFiles = tracked.ok && tracked.out ? tracked.out.split('\n').filter(Boolean) : []
@@ -742,13 +750,14 @@ export function probeResidue (root) {
  * @returns {Probe}
  */
 export function probe (root) {
-  // Without git, every git-derived answer below degrades to a benign-looking DEFAULT
-  // rather than an error: "nothing tracked", "no hooksPath", "not committed". The skill
-  // would then tell the user that `rm -rf .beads/` merely frees disk. Say so explicitly.
-  const gitAvailable = run('git', ['-C', root, 'rev-parse', '--git-dir']).ok
+  // NO `gitAvailable` FLAG. It was computed here to announce that without git every git-derived
+  // answer degrades to a benign-looking DEFAULT — and nothing ever read it, so the announcement
+  // never happened. The obligation is now discharged where the harm occurs, per-fact and by name:
+  // `residue.trackedError`, `residue.configKeysError`, `hooks.hooksPath.error`. Measured, both
+  // failure modes: git absent from PATH fires all three; git present outside a repo fires two.
+  // A process-wide boolean carried strictly less than the markers that replaced it.
   return {
     root,
-    gitAvailable,
     migration: probeMigration(root),
     hooks: probeHooks(root),
     daemon: probeDaemon(root),
@@ -907,7 +916,7 @@ function main () {
   }
   // NEVER print a bare 0 here. "0 file(s) — nothing tracked" is what an unrunnable `git` produced,
   // and it is the sentence the skill turns into "`rm -rf .beads/` merely frees disk" — the exact
-  // benign-looking default `probe()`'s gitAvailable comment says must not be allowed to stand.
+  // benign-looking default the per-fact `*Error` markers exist to keep off the page.
   if (residue.trackedError) {
     stdout.write(`  .beads/ tracked in git: UNKNOWN — ${residue.trackedError}\n`)
     stdout.write('    ! do NOT read this as "nothing tracked" — deleting .beads/ may stage deletions\n')
