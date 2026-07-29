@@ -50,15 +50,79 @@ const BD_HOOKS = new Set(['pre-commit', 'post-merge', 'pre-push', 'post-checkout
 const BD_MARKER = 'BEGIN BEADS INTEGRATION'
 
 /**
+ * @typedef {{
+ *   ok: boolean,
+ *   ran: boolean,
+ *   complete: boolean,
+ *   out: string,
+ *   err: string,
+ *   code: number|null,
+ *   signal: string|null,
+ *   error: string|null
+ * }} RunResult
+ */
+
+/**
  * Run a command, capturing stdout. Never throws.
+ *
+ * `ok` alone cannot carry this file's central distinction. It used to be the only signal, and
+ * `ok: false` is FOUR different situations — measured 2026-07-29, not inferred:
+ *
+ *   | situation                  | status | signal  | error   | stdout    |
+ *   | -------------------------- | ------ | ------- | ------- | --------- |
+ *   | binary absent              | null   | null    | ENOENT  | ''        |
+ *   | ran, answered no (exit 1)  | 1      | null    | —       | ''        |
+ *   | ran, failed (exit 127)     | 127    | null    | —       | ''        |
+ *   | killed by a signal         | null   | SIGTERM | —       | partial   |
+ *   | stdout > 1 MiB (ENOBUFS)   | null   | SIGTERM | ENOBUFS | TRUNCATED |
+ *
+ * Only the second is an ANSWER (`git config --get` exits 1 for an unset key). The rest are
+ * could-not-determine wearing the same `ok: false`, which is the conflation this whole module
+ * exists to delete — and it had it at its own foundation.
+ *
+ * `ran` is false only when the process never started: BOTH `status` and `signal` null with an
+ * `error` set. ENOBUFS also sets `error`, but node had to START the child in order to kill it,
+ * so `signal` is SIGTERM there and `ran` stays true.
+ *
+ * `complete` additionally means we hold ALL of its output. This is not theoretical: on overflow
+ * spawnSync returns a TRUNCATED string, not an empty one, so a caller that splits `out` into
+ * lines gets a short list with nothing marking it short.
  *
  * @param {string} cmd
  * @param {string[]} args
- * @returns {{ ok: boolean, out: string, code: number|null }}
+ * @returns {RunResult}
  */
 function run (cmd, args) {
   const r = spawnSync(cmd, args, { encoding: 'utf8' })
-  return { ok: r.status === 0, out: (r.stdout ?? '').trim(), code: r.status }
+  const ran = !(r.error && r.status === null && r.signal === null)
+  return {
+    ok: r.status === 0,
+    ran,
+    complete: ran && !r.error && r.signal === null,
+    out: (r.stdout ?? '').trim(),
+    err: (r.stderr ?? '').trim(),
+    code: r.status,
+    signal: r.signal ?? null,
+    error: r.error ? ('code' in r.error ? String(r.error.code) : r.error.message) : null,
+  }
+}
+
+/**
+ * Why a run did not yield a usable answer — the string that goes in the JSON and the report.
+ *
+ * A guard that DROPS a value must also REPORT it, naming the consequence (CLAUDE.md
+ * `### Reader conventions`). "unknown" on its own sends a user looking for a broken store; "could
+ * not run git (ENOENT)" sends them to install git.
+ *
+ * @param {string} cmd
+ * @param {RunResult} r
+ * @returns {string}
+ */
+function whyNot (cmd, r) {
+  if (!r.ran) return `could not run \`${cmd}\` (${r.error ?? 'spawn failed'})`
+  if (r.error === 'ENOBUFS') return `\`${cmd}\` produced more than 1 MiB and its output was TRUNCATED`
+  if (r.signal) return `\`${cmd}\` was killed by ${r.signal}`
+  return `\`${cmd}\` exited ${r.code}${r.err ? `: ${r.err.split('\n')[0]}` : ''}`
 }
 
 // diarie's PUBLISHED, stable store-dir contract: the store lives at `<root>/.diarie/` — which is
@@ -126,6 +190,7 @@ function trackerDirsIn (root) {
  *   alive: boolean,
  *   isDolt: boolean,
  *   cwd: string | null,
+ *   cwdError: string | null,
  *   cwdInTarget: boolean,
  *   portMatches: boolean,
  *   args: string | null
@@ -137,6 +202,7 @@ function trackerDirsIn (root) {
  *   pidFile: string | null,
  *   owned: DaemonOwner | null,
  *   safeToSignal: boolean,
+ *   processListError: string | null,
  *   otherDoltProcesses: string[]
  * }} DaemonProbe
  */
@@ -146,7 +212,8 @@ function trackerDirsIn (root) {
  *   beadsDirExists: boolean,
  *   beadsConfigKeys: string[],
  *   trackedFiles: string[],
- *   trackedCount: number
+ *   trackedError: string | null,
+ *   trackedCount: number | null
  * }} ResidueProbe
  */
 
@@ -178,7 +245,7 @@ function trackerDirsIn (root) {
  * conventions forbid. (The deliberate migrate action uses `npx -y diarie`; a read-only probe must not.)
  *
  * @param {string} root
- * @param {(root: string) => { ok: boolean, out: string, code: number|null }} [statsRunner] Injectable diarie-stats runner (default `npx --no-install diarie`); lets a test force CLI-down.
+ * @param {(root: string) => RunResult} [statsRunner] Injectable diarie-stats runner (default `npx --no-install diarie`); lets a test force CLI-down.
  * @returns {unknown}
  */
 export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-install', 'diarie', 'stats', '--json', '--root', r])) {
@@ -388,7 +455,14 @@ export function probeDaemon (root) {
     //  2. the port, as corroboration only. It is WEAK on its own: a pid and its port are
     //     freed together when a daemon dies, so a sibling repo's dolt can inherit BOTH —
     //     which is precisely the pid-reuse hazard we are defending against.
-    const cwdOut = run('lsof', ['-p', pid, '-a', '-d', 'cwd', '-Fn']).out
+    // UNCHECKED, and it read as a determination. `lsof` absent produced `out: ''` → `cwd: null` →
+    // `cwdInTarget: false` → the report's "NOT proven to be this target's dolt", which is the same
+    // sentence a process PROVEN to live elsewhere gets. It fails in the safe direction, which is
+    // exactly why it survived — but the one predicate authorising a SIGTERM must be able to say it
+    // could not look. `complete`, not `ok`: lsof legitimately exits non-zero for a dead pid.
+    const cwdRun = run('lsof', ['-p', pid, '-a', '-d', 'cwd', '-Fn'])
+    const cwdError = cwdRun.complete ? null : whyNot('lsof', cwdRun)
+    const cwdOut = cwdRun.complete ? cwdRun.out : ''
     const cwdLine = cwdOut.split('\n').find(l => l.startsWith('n'))?.slice(1) ?? null
     // BOUNDARY-ANCHORED, and it must be. A bare `startsWith(beadsDir)` also matched
     // `.beads-backup/`, `.beads2/` and `.beadsX/` — measured — so a daemon belonging to a SIBLING
@@ -400,12 +474,18 @@ export function probeDaemon (root) {
     const cwdInTarget = Boolean(cwd && (cwd === beadsDir || cwd.startsWith(beadsDir + sep)))
     const portMatches = Boolean(port && new RegExp(String.raw`-P\s+${port}\b`).test(args.out))
 
-    owned = { pid, port, alive, isDolt, cwd: cwdLine, cwdInTarget, portMatches, args: alive ? args.out : null }
+    owned = { pid, port, alive, isDolt, cwd: cwdLine, cwdError, cwdInTarget, portMatches, args: alive ? args.out : null }
   }
 
   // Parse the pid FIELD; `line.startsWith(pid)` was a prefix match, so our pid 4443
   // silently hid a genuinely different daemon at 44430 from the do-not-touch list.
-  const all = run('ps', ['ax', '-o', 'pid=,args=']).out.split('\n')
+  //
+  // ALSO UNCHECKED, and this one fails OPEN: a truncated or absent `ps` yields a SHORT
+  // "do not touch" list presented as the complete one — a false all-clear about the whole
+  // machine, on the list whose entire purpose is to stop someone killing a stranger's daemon.
+  const psRun = run('ps', ['ax', '-o', 'pid=,args='])
+  const processListError = psRun.ok ? null : whyNot('ps ax', psRun)
+  const all = psRun.out.split('\n')
     .map(l => l.trim())
     .filter(l => /dolt\s+sql-server/i.test(l))
   const others = all.filter(l => (l.split(/\s+/)[0] ?? '') !== pid)
@@ -413,6 +493,9 @@ export function probeDaemon (root) {
   return {
     pidFile: existsSync(pidFile) ? pidFile : null,
     owned,
+    // Whatever we DID see is still reported — a partial list is useful, a partial list
+    // silently labelled complete is not.
+    processListError,
     // Signal ONLY on proof: a live `dolt sql-server` whose cwd is inside THIS target's
     // .beads/. Falling closed costs an orphaned daemon; falling open kills someone else's.
     safeToSignal: Boolean(owned?.alive && owned.isDolt && owned.cwdInTarget),
@@ -435,8 +518,14 @@ export function probeResidue (root) {
   const keys = cfg.ok && cfg.out ? cfg.out.split('\n').filter(Boolean) : []
 
   const beadsDir = join(root, '.beads')
-  const tracked = run('git', ['-C', root, 'ls-files', '.beads']).out
-  const trackedFiles = tracked ? tracked.split('\n').filter(Boolean) : []
+  // UNCHECKED, and it caused the precise harm `probe()`'s own comment names. An unrunnable `git`
+  // gave `out: ''` → `trackedCount: 0` → the report's "nothing tracked", from which the skill
+  // concludes `rm -rf .beads/` merely frees disk — while the store may be fully tracked and the
+  // deletion would stage every file. `ok` is the right gate here: `ls-files` exits 0 with empty
+  // output when the pathspec matches nothing (a real answer) and 128 outside a repo (not one).
+  const tracked = run('git', ['-C', root, 'ls-files', '.beads'])
+  const trackedError = tracked.ok ? null : whyNot('git ls-files', tracked)
+  const trackedFiles = tracked.ok && tracked.out ? tracked.out.split('\n').filter(Boolean) : []
 
   let size = null
   try { size = existsSync(beadsDir) ? statSync(beadsDir).isDirectory() : false } catch { /* ignore */ }
@@ -445,8 +534,11 @@ export function probeResidue (root) {
     beadsDirExists: Boolean(size),
     beadsConfigKeys: keys,
     trackedFiles,
-    // Load-bearing for the report: deleting .beads/ would stage THESE as deletions.
-    trackedCount: trackedFiles.length,
+    trackedError,
+    // Load-bearing for the report: deleting .beads/ would stage THESE as deletions. `null`, never
+    // 0, when we could not ask — same contract as `taskCount` above, for the same reason: 0 is a
+    // claim ("nothing is tracked") and this path has no basis for making it.
+    trackedCount: trackedError ? null : trackedFiles.length,
   }
 }
 
@@ -555,10 +647,27 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   if (!daemon.pidFile) stdout.write('  no .beads/dolt-server.pid — nothing to stop from a pid file\n')
   else if (daemon.safeToSignal) stdout.write(`  pid ${daemon.owned.pid} — cwd is ${daemon.owned.cwd} → this target's dolt, safe to SIGTERM\n`)
   else stdout.write(`  pid ${daemon.owned?.pid ?? '?'} NOT proven to be this target's dolt — do NOT signal it\n`)
+  // "could not look" and "looked, it lives elsewhere" both reach the line above. Only one of them
+  // is a finding about the daemon; the other is a finding about this machine.
+  if (daemon.owned?.cwdError) stdout.write(`    ! ownership UNDETERMINED, not disproven — ${daemon.owned.cwdError}\n`)
   for (const o of daemon.otherDoltProcesses) stdout.write(`  other dolt process (do not touch): ${o}\n`)
+  // An absent warning here would mean "no other dolt daemons on this machine" — which is exactly
+  // what a truncated or unrunnable `ps` looks like.
+  if (daemon.processListError) {
+    stdout.write(`  ! the other-dolt-process list is INCOMPLETE — ${daemon.processListError}\n`)
+    stdout.write('    treat the list above as a lower bound; another repo\'s daemon may be running\n')
+  }
 
   stdout.write('\nresidue\n')
   for (const k of residue.beadsConfigKeys) stdout.write(`  git config: ${k}\n`)
-  stdout.write(`  .beads/ tracked in git: ${residue.trackedCount} file(s)`)
-  stdout.write(residue.trackedCount ? ' — deleting .beads/ would stage these as deletions\n' : ' — nothing tracked\n')
+  // NEVER print a bare 0 here. "0 file(s) — nothing tracked" is what an unrunnable `git` produced,
+  // and it is the sentence the skill turns into "`rm -rf .beads/` merely frees disk" — the exact
+  // benign-looking default `probe()`'s gitAvailable comment says must not be allowed to stand.
+  if (residue.trackedError) {
+    stdout.write(`  .beads/ tracked in git: UNKNOWN — ${residue.trackedError}\n`)
+    stdout.write('    ! do NOT read this as "nothing tracked" — deleting .beads/ may stage deletions\n')
+  } else {
+    stdout.write(`  .beads/ tracked in git: ${residue.trackedCount} file(s)`)
+    stdout.write(residue.trackedCount ? ' — deleting .beads/ would stage these as deletions\n' : ' — nothing tracked\n')
+  }
 }

@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync,
+  mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync,
 } from 'node:fs'
 
 import {
@@ -226,7 +226,12 @@ for (const form of ['diarium', '.diarium']) {
   try {
     writeStore(dir, 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: real\n    status: pending\n    type: task\n')
     commitAll(dir)
-    const cliDown = () => ({ ok: false, out: '', code: 1 })
+    // Spelled out in full rather than leaning on `undefined` for the new fields: omitting them
+    // makes them falsy, which happens to be what this test wants — a pass for an accidental reason.
+    /* eslint-disable-next-line unicorn/no-null -- mirrors RunResult, whose `null`s are the
+       probe's JSON contract (see the module-level disable in beads-probe.mjs); `undefined` would
+       drop the keys and stop this stub from standing in for a real run. */
+    const cliDown = () => ({ ok: false, ran: false, complete: false, out: '', err: '', code: null, signal: null, error: 'ENOENT' })
     const m = probeMigration(dir, cliDown)
     assert('diarie NOT runnable → verifyFailed, NOT malformed, NOT trusted',
       m.verifyFailed === true && m.malformed === false && m.trusted === false)
@@ -314,6 +319,70 @@ console.log('\nprobeDaemon (the function that authorizes killing a process)')
     try { probeDaemon(dir) } catch { threw = true }
     assert('a CORRUPT port file does not crash the probe', threw === false)
   } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // A FALSE ALL-CLEAR ABOUT THE WHOLE MACHINE. `ps ax` was read as `run(...).out` with no check,
+  // under spawnSync's 1 MiB default maxBuffer. Measured 2026-07-29: on overflow node SIGTERMs the
+  // child and hands back a TRUNCATED stdout (1,114,112 bytes) with `error: ENOBUFS` — not an empty
+  // one — so every `dolt sql-server` past the cut vanishes from the "do not touch" list while the
+  // report presents it as complete. The stub emits padding past the buffer and puts the dolt line
+  // AFTER it, so the loss is the thing being asserted, not merely the flag.
+  const dir = makeRepo()
+  const binDir = mkdtempSync(join(tmpdir(), 'vp-probe-bin-'))
+  const realPath = process.env.PATH
+  try {
+    mkdirSync(join(dir, '.beads'), { recursive: true })
+    writeFileSync(
+      join(binDir, 'ps'),
+      // PATH is stripped to `binDir` below so the probe finds THIS `ps`; the stub therefore has to
+      // restore a PATH for its own `awk`. Without this the stub emitted only the echo, no overflow
+      // happened, and the test failed for a reason unrelated to the bug — caught by the second
+      // assertion, which is there to prove the fixture reproduces the harm.
+      '#!/bin/sh\nPATH=/usr/bin:/bin\n' +
+      'awk \'BEGIN{for(i=0;i<40000;i++) printf "%d /usr/bin/pad-%030d\\n", 90000+i, i}\'\n' +
+      'echo "99999 /usr/local/bin/dolt sql-server --beyond-the-buffer"\n',
+      { mode: 0o755 }
+    )
+    process.env.PATH = binDir
+    const d = probeDaemon(dir)
+    assert('a `ps` list truncated by ENOBUFS is reported as INCOMPLETE, not as a clean machine',
+      typeof d.processListError === 'string' && d.processListError.includes('TRUNCATED'))
+    assert('...and the truncation really does lose a dolt process (the fixture proves the harm)',
+      d.otherDoltProcesses.every(l => !l.includes('beyond-the-buffer')))
+  } finally {
+    process.env.PATH = realPath
+    rmSync(binDir, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
+  // `lsof` ABSENT reads exactly like "the process was proven to live somewhere else". Both give
+  // `cwd: null`, `cwdInTarget: false`, and the report line "NOT proven to be this target's dolt" —
+  // a determination, where the truth is that ownership could not be examined at all. It fails in
+  // the SAFE direction, which is why it survived; it is still a could-not-determine rendered as
+  // determined, on the function that authorises a SIGTERM.
+  const dir = realpathSync(makeRepo())
+  const binDir = mkdtempSync(join(tmpdir(), 'vp-probe-bin-'))
+  const realPath = process.env.PATH
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  const proc = spawn('sleep', ['30'], { detached: true, stdio: 'ignore', cwd: join(dir, '.beads') })
+  proc.unref()
+  try {
+    writeFileSync(join(dir, '.beads', 'dolt-server.pid'), `${proc.pid}\n`)
+    // `ps` must still resolve — only `lsof` goes missing, so this isolates the one call.
+    symlinkSync('/bin/ps', join(binDir, 'ps'))
+    process.env.PATH = binDir
+    const d = probeDaemon(dir)
+    assert('`lsof` MISSING → cwd UNKNOWN, distinct from a cwd proven to be elsewhere',
+      d.owned?.alive === true && d.owned.cwd === null &&
+      d.owned.cwdError?.includes('could not run `lsof`') === true)
+    assert('an undetermined cwd still never authorises a signal', d.safeToSignal === false)
+  } finally {
+    process.env.PATH = realPath
+    if (proc.pid) { try { process.kill(proc.pid) } catch { /* already gone */ } }
+    rmSync(binDir, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true })
+  }
 }
 
 console.log('\nprobeHooks (shape, ownership, and what unsetting would ARM)')
@@ -428,6 +497,29 @@ console.log('\nprobeResidue (what deleting .beads/ would actually do)')
     const r = probeResidue(dir)
     assert('a fully-gitignored .beads/ reports 0 tracked files', r.beadsDirExists === true && r.trackedCount === 0)
   } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // THE HARM `gitAvailable`'s OWN COMMENT NAMES, at the site that causes it. `ls-files` was read as
+  // `run(...).out` with no check, so an unrunnable `git` produced `trackedCount: 0` and the report
+  // line ".beads/ tracked in git: 0 file(s) — nothing tracked" — from which the skill concludes
+  // `rm -rf .beads/` merely frees disk. Here the store IS tracked and would be staged as deletions.
+  // Asserted in the dangerous direction: what must hold is that 0 is NOT claimed.
+  const dir = makeRepo()
+  const realPath = process.env.PATH
+  try {
+    mkdirSync(join(dir, '.beads'), { recursive: true })
+    writeFileSync(join(dir, '.beads', 'config.yaml'), 'x: 1\n')
+    commitAll(dir)
+    // A bare command name resolves through PATH, so this is ENOENT on every shelled-out fact —
+    // measured, and the same shape as `git` genuinely not being installed.
+    process.env.PATH = '/nonexistent'
+    const r = probeResidue(dir)
+    assert('git UNRUNNABLE → tracked files UNKNOWN, never "nothing tracked"',
+      r.trackedCount === null && r.trackedError?.includes('could not run `git ls-files`') === true)
+  } finally {
+    process.env.PATH = realPath
+    rmSync(dir, { recursive: true, force: true })
+  }
 }
 
 // --- CLI argument handling -------------------------------------------------
