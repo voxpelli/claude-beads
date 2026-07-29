@@ -2007,3 +2007,83 @@ tasks:
       Found by a plugin-validator pass, 2026-07-29. The stated architecture is that a workspace owns
       its gates so it can be extracted cleanly; these are the places that is not yet true.
     updated: '2026-07-29'
+  - id: vp-beads-dcz
+    title: 'deintegrate-beads: five gaps a two-reviewer round found that are DESIGN, not prose'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        WORKFLOW 4 IS NOT GATED, while the skill's headline says it is. `## 1.` opens "Everything
+        destructive is gated here. The later workflows only EXECUTE what the user approves", and
+        workflow 4 (De-colonize) says it "rides the confirmation taken in workflow 1". But the
+        `Probe` typedef has NO field for `CLAUDE.md`/`AGENTS.md` markers or `.claude/settings*.json`
+        hook entries — those are DISCOVERED by a grep inside workflow 4, after consent. So an agent
+        following the text edits another repo's operating instructions under a confirmation that
+        never displayed them, while step 6 of that same workflow warns that "a skill that silently
+        rewrites a user's operating instructions is doing the very thing it was invoked to undo".
+        Fix is one of two: probe those surfaces so workflow 1 can show them, or give workflow 4 its
+        own gate. The first is better — it keeps ONE confirmation, which is the skill's architecture
+      - >-
+        THE `.diarie` REMEDY IS VERSION-CONTINGENT AND CURRENTLY UNREACHABLE, and its remedy is
+        destructive if the version guess is wrong. VERIFIED 2026-07-29 against the installed package,
+        not inferred: `node_modules/diarie@0.2.2/lib/schema.js` exports `TRACKER_DIR = '.diarie'` and
+        has NO `LEGACY_TRACKER_DIRS`. The rename is implemented in the diarie working tree but
+        UNPUBLISHED. So SKILL.md's "diarie's store is the pair `diarium/` | `.diarium/`; `.diarie/`
+        is its legacy name" is false against every published diarie, and the `.diarie` row labelled
+        "the DEFAULT case for this skill" can never fire — while its remedy (`git mv .diarie
+        diarium`) is exactly what makes a working store invisible to a 0.2.x CLI. Worse, WHICH CLI
+        answers is an accident of location: the skill itself notes the probe resolves `npx
+        --no-install diarie` from the agent's cwd, not `<target>`. Version-gate the prose ("from
+        diarie 0.3.0 — the published 0.2.x still calls `.diarie/` the store") and drop "the default
+        case". Gated with vp-beads-drn; do NOT adopt the rename early. ALSO: the claim that
+        `cliError` "already includes the exact `git mv` to run" is true only of the unpublished read
+        path, and the skill gives no branch for a `cliError` carrying no command
+      - >-
+        THE PRESCRIBED ORDER OPENS AN ARMED WINDOW. Shape A unsets `core.hooksPath` (step 3) and
+        proves it (step 4) BEFORE the "Then handle what the unset just re-enabled →
+        `dormantBdHooks` … Unsetting ARMS them" bullet. `dormantBdHooks` is known from workflow 1,
+        before any mutation, so nothing forces this order — strip first, unset second, and there is
+        no window at all. As written, any commit landing in that window runs `bd hooks run
+        pre-commit` and re-spawns dolt, and workflow 3 (which stops the daemon) has not run yet.
+        "before declaring the hooks disarmed" constrains the REPORT, not the exposure
+      - >-
+        TWO PROBE SIGNALS STILL HAVE NO ERROR CHANNEL, both the same class as the four fixed in
+        vp-beads-pbr. (a) `residue.beadsConfigKeys` is `cfg.ok && cfg.out ? … : []`, so an
+        unrunnable `git config --get-regexp` is indistinguishable from "no `beads.*` keys" — and the
+        skill treats the list as authoritative twice. It also asks `--local` ONLY, so a global
+        `beads.*` key is invisible and absent from workflow 5's machine-global list. (b)
+        `probeDaemon`'s `alive` comes from `ps -p <pid>` with no error channel at all: on a machine
+        with no `ps` you get `alive:false, isDolt:false, cwd:null, cwdError:null`, and the skill's
+        two-case reading of `cwdError` then reports "ownership was examined and disproven" for a
+        machine where no process could be inspected. Related: `cwdError: null` covers THREE
+        situations, not two — cwd proven elsewhere, cwd inside the target, and lsof running fine but
+        emitting no `n` line (dead pid, or another user's process). `owned.cwd === null` alongside
+        `cwdError === null` is the discriminator, and the skill never mentions `owned.cwd`
+      - >-
+        SMALLER, same round: `gitAvailable` is STILL consumed by nothing (this is filed-#2's
+        residue — its harm was fixed at the `ls-files` site, but the flag itself remains unread by
+        both the skill and the probe's own human output, and a `gitAvailable === false` stop in
+        workflow 1 would give one root cause instead of three downstream symptoms); workflow 4 step
+        2 creates `<file>.bak` and nothing ever removes or reports it, so a skill contracted to
+        "leave every byte where it is" leaves two new untracked files in the target's `.claude/`;
+        and Shape A step 4's proof-poll should say exit 1 is the EXPECTED answer, since the skill
+        makes exactly that point in the Shape UNKNOWN paragraph and then omits it at the one place
+        an agent reads an exit code to confirm success
+      - >-
+        PROVENANCE, because it matters for how much to trust these: found by a four-agent round
+        (constructive + adversarial skill review, constructive + adversarial read-only code review)
+        over the 2026-07-29 commits. The two skill reviewers CONVERGED on the `.diarie` version
+        claim, the `verifyFailed` conflation, the missing `shape: "none"` branch, the
+        `beadsConfigKeys` key-value trap and the migrate-tracker empty-store contradiction — all of
+        which are FIXED in `9e3b5ca`. The items above are what remains because they need a design
+        decision, not a rewording. Two of the adversarial reviewer's "criticals" were STALE (it had
+        no Bash tool and read a mid-flight tree; `865393e` had already fixed both) — a reminder that
+        a reviewer's state snapshot is itself an instrument worth checking
+    description: >-
+      Filed 2026-07-29 from a two-reviewer round over the vp-beads-pbr work. Everything here was
+      verified against the code or the installed package before filing; nothing is carried on a
+      reviewer's assertion alone. The prose-level findings from the same round shipped in `9e3b5ca`.
+    updated: '2026-07-29'
