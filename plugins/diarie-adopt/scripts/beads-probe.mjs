@@ -168,6 +168,21 @@ function canonical (p) {
 }
 
 /**
+ * Read a small state file, or `null` if it cannot be read for ANY reason.
+ *
+ * `existsSync` answers "is it there", not "can I read it" — and a bare `readFileSync` behind it
+ * meant a root-owned or mode-000 pid file threw EACCES out of `probeDaemon` and took `probe()`
+ * with it, MIGRATION GATE INCLUDED (measured). A reconnaissance tool for a destructive operation
+ * must not die on a file it merely wanted to look at.
+ *
+ * @param {string} p
+ * @returns {string | null}
+ */
+function readIfPossible (p) {
+  try { return readFileSync(p, 'utf8').trim() } catch { return null }
+}
+
+/**
  * POSIX single-quote a shell argument.
  *
  * `reArmCommand` is the artifact SKILL.md calls the guarantee of reversibility, and it was built
@@ -254,6 +269,8 @@ function trackerDirsIn (root) {
 /**
  * @typedef {{
  *   pidFile: string | null,
+ *   pidError: string | null,
+ *   portError: string | null,
  *   owned: DaemonOwner | null,
  *   safeToSignal: boolean,
  *   processListError: string | null,
@@ -321,7 +338,15 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
   // narrow `total` away instead of leaving both readable.
   /** @type {{ error: string, code: string } | { total: number, warnings?: string[] } | null} */
   let parsed = null
-  try { parsed = stats.out ? JSON.parse(stats.out) : null } catch { parsed = null }
+  try {
+    const raw = stats.out ? JSON.parse(stats.out) : null
+    // `in` THROWS on a primitive (measured: `'code' in 5` -> TypeError) and BOTH reads below use
+    // it — so a CLI that ever printed a bare JSON scalar would take the whole probe down, the same
+    // class as the `5042(6` port file. Not reachable against diarie 0.2.x; reachable the day the
+    // output shape changes, which is the reasoning the envelope-vs-count note below already
+    // applies. Arrays are unaffected: `typeof [] === 'object'` and `'code' in []` is false.
+    parsed = raw !== null && typeof raw === 'object' ? raw : null
+  } catch { parsed = null }
   const envelope = parsed && 'code' in parsed ? parsed : null
   const statsResult = parsed && 'total' in parsed && !envelope ? parsed : null
 
@@ -542,13 +567,28 @@ export function probeHooks (root) {
 export function probeDaemon (root) {
   const pidFile = join(root, '.beads', 'dolt-server.pid')
   const portFile = join(root, '.beads', 'dolt-server.port')
-  const rawPid = existsSync(pidFile) ? readFileSync(pidFile, 'utf8').trim() : null
-  const rawPort = existsSync(portFile) ? readFileSync(portFile, 'utf8').trim() : null
+  const pidFilePresent = existsSync(pidFile)
+  const rawPid = pidFilePresent ? readIfPossible(pidFile) : null
+  const rawPort = existsSync(portFile) ? readIfPossible(portFile) : null
   // Only ever trust digits. A half-dead daemon can leave a truncated port file, and that
   // string used to be interpolated straight into `new RegExp` — `5042(6` threw
   // "Unterminated group" and took the WHOLE probe down, migration gate and all.
   const pid = rawPid && /^\d+$/.test(rawPid) ? rawPid : null
   const port = rawPort && /^\d+$/.test(rawPort) ? rawPort : null
+  // REPORT WHAT WAS DROPPED, naming the consequence — the house rule every other drop in this
+  // file now follows. A bare `pid ?` in the report was the whole diagnosis. And the consequence
+  // is not cosmetic: with `pid` null the `others` filter below excludes nothing, so THE TARGET'S
+  // OWN DAEMON gets printed under "other dolt process (do not touch)".
+  /** @type {string | null} */
+  let pidError = null
+  if (pidFilePresent && rawPid === null) {
+    pidError = 'the pid file exists but could not be read (permissions?) — no daemon can be identified from it'
+  } else if (pidFilePresent && pid === null) {
+    pidError = `the pid file holds \`${rawPid}\`, which is not a pid — no daemon can be identified from it`
+  }
+  const portError = rawPort !== null && port === null
+    ? `the port file holds \`${rawPort}\`, which is not a port — corroboration unavailable (it is not the ownership test)`
+    : null
 
   const beadsDir = resolve(root, '.beads')
 
@@ -603,7 +643,9 @@ export function probeDaemon (root) {
   const others = all.filter(l => (l.split(/\s+/)[0] ?? '') !== pid)
 
   return {
-    pidFile: existsSync(pidFile) ? pidFile : null,
+    pidFile: pidFilePresent ? pidFile : null,
+    pidError,
+    portError,
     owned,
     // Whatever we DID see is still reported — a partial list is useful, a partial list
     // silently labelled complete is not.
@@ -779,6 +821,11 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   if (!daemon.pidFile) stdout.write('  no .beads/dolt-server.pid — nothing to stop from a pid file\n')
   else if (daemon.safeToSignal) stdout.write(`  pid ${daemon.owned.pid} — cwd is ${daemon.owned.cwd} → this target's dolt, safe to SIGTERM\n`)
   else stdout.write(`  pid ${daemon.owned?.pid ?? '?'} NOT proven to be this target's dolt — do NOT signal it\n`)
+  if (daemon.pidError) {
+    stdout.write(`  ! ${daemon.pidError}\n`)
+    stdout.write('    so the list below cannot exclude it: one of those may be THIS target\'s daemon\n')
+  }
+  if (daemon.portError) stdout.write(`  ! ${daemon.portError}\n`)
   // "could not look" and "looked, it lives elsewhere" both reach the line above. Only one of them
   // is a finding about the daemon; the other is a finding about this machine.
   if (daemon.owned?.cwdError) stdout.write(`    ! ownership UNDETERMINED, not disproven — ${daemon.owned.cwdError}\n`)

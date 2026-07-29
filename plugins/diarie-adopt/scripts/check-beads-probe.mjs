@@ -237,6 +237,25 @@ for (const form of ['diarium', '.diarium']) {
       m.verifyFailed === true && m.malformed === false && m.trusted === false)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
+{
+  // `'code' in parsed` THROWS on a JSON primitive — measured: `'code' in 5` is a TypeError, and
+  // BOTH envelope reads use `in`. So a CLI that ever printed a bare scalar on stdout took the whole
+  // probe down, migration gate included. Injected because diarie 0.2.x never emits one; the point
+  // is that a reconnaissance tool must not be one output-shape change away from crashing.
+  const dir = makeRepo()
+  try {
+    writeStore(dir, ONE_TASK)
+    commitAll(dir)
+    /* eslint-disable-next-line unicorn/no-null -- mirrors RunResult; see the note on `cliDown` above. */
+    const scalar = () => ({ ok: true, ran: true, complete: true, out: '5', err: '', code: 0, signal: null, error: null })
+    let threw = false
+    let m
+    try { m = probeMigration(dir, scalar) } catch { threw = true }
+    assert('a bare JSON SCALAR from the CLI does not crash the probe', threw === false)
+    assert('...and reads as could-not-verify, never as a verdict on the store',
+      m?.verifyFailed === true && m.malformed === false && m.trusted === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+}
 
 console.log('\nprobeDaemon (the function that authorizes killing a process)')
 
@@ -333,6 +352,43 @@ console.log('\nprobeDaemon (the function that authorizes killing a process)')
     rmSync(binDir, { recursive: true, force: true })
     rmSync(dir, { recursive: true, force: true })
   }
+}
+{
+  // AN UNREADABLE PID FILE TOOK DOWN THE WHOLE PROBE — measured: `probe()` throws EACCES, so the
+  // MIGRATION GATE never runs either. `readFileSync` was called bare behind an `existsSync`, which
+  // answers "is it there", not "can I read it". Same class as the corrupt port file pinned below,
+  // and the same class `d55ee7c` fixed one level down for `.git/hooks/*` bodies — the hook bodies
+  // got a guarded read, the pid file did not.
+  const dir = makeRepo()
+  const pidFile = join(dir, '.beads', 'dolt-server.pid')
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  try {
+    writeFileSync(pidFile, '12345\n')
+    chmodSync(pidFile, 0o000)
+    let threw = false
+    let d
+    try { d = probeDaemon(dir) } catch { threw = true }
+    assert('an UNREADABLE pid file does not crash the probe', threw === false)
+    assert('...and is reported rather than read as "no daemon recorded"',
+      d?.pidError?.includes('could not be read') === true && d.owned === null)
+  } finally {
+    try { chmodSync(pidFile, 0o600) } catch { /* never created */ }
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+{
+  // A CORRUPT pid was dropped with NO report — the human line printed a bare `pid ?`. Worse, `pid`
+  // stays null so the `others` filter excludes nothing, and THE TARGET'S OWN DAEMON gets listed
+  // under "other dolt process (do not touch)". A guard that drops a value must name the
+  // consequence (CLAUDE.md `### Reader conventions`); every other drop in this file now does.
+  const dir = makeRepo()
+  mkdirSync(join(dir, '.beads'), { recursive: true })
+  try {
+    writeFileSync(join(dir, '.beads', 'dolt-server.pid'), 'not-a-pid\n')
+    const d = probeDaemon(dir)
+    assert('a NON-NUMERIC pid is reported, not silently dropped',
+      d.pidError?.includes('not-a-pid') === true && d.safeToSignal === false)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 {
   // A half-dead daemon leaves a truncated port file. That string used to be interpolated
