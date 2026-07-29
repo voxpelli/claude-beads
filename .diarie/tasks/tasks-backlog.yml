@@ -788,7 +788,8 @@ tasks:
       - bug
     acceptance_criteria:
       - "the compact ⚠ says `any claims listed above may be INCOMPLETE` even when the dropped row WAS the only claim and nothing is listed above it"
-      - "`INPUT=$(cat)` is a bare command substitution under `set -euo pipefail` in post-file-edit.sh:7, post-tasks-validate.sh:19, post-bm-failure-classify.sh:10. session-start.sh:62 guards its own (`cat 2>/dev/null || echo \"\"`). Effectively safe today, inconsistent, and the errexit trap is now a known biter"
+      - "`INPUT=$(cat)` is a bare command substitution under `set -euo pipefail` in post-file-edit.sh:7, post-tasks-validate.sh:19, post-bm-failure-classify.sh:10. session-start.sh guards its own (`input=$(cat 2>/dev/null || echo \"\")`). Effectively safe today, inconsistent, and the errexit trap is now a known biter"
+      - "AC-1's wording no longer has a fixed line: vp-beads-46k moved that block into `collect_in_progress_claims`. Cite the FUNCTION, not a line — the refactor invalidated every line reference into this file and nothing greps for those"
     description: >-
       Both from the Wave A gate. The second one matters more than it looks: `set -euo pipefail` in a
       hook already turned one fix into a hook that emitted NOTHING and exited 2 (see vp-beads-flt).
@@ -1497,6 +1498,16 @@ tasks:
         run against a fixture sgconfig.yml) or the probe-failure branch. Six of the seven
         `problems.push` branches is the right stopping point. Do NOT test the MIN_EFFECTIVE_RULES
         floor — three lines of comparison whose whole design point is that it is edited deliberately
+      - >-
+        SIBLING TRAP, same class, found 2026-07-29 while proving vp-beads-46k and parked here rather
+        than fixed: `makeTrackerStubDir` in check-hooks.mjs dispatches on `*"--filter in_progress"*`
+        ONLY, so it is blind to `--strict` and would exit the same with or without it. Its own
+        docstring already states the standard it fails — "THE STUB IS A DE-FACTO SPEC: if it drifts
+        from the real CLI, these tests stay green while production diverges". NOT a live gap today
+        (the compact `--strict` path is covered by the `makeRealStore(DROPPED_STORE)` tests against
+        the REAL CLI), but the next stub-based test of that path would be vacuous. The throwaway
+        byte-diff harness had the identical defect and it cost a full mutation round to find:
+        A STUB THAT IGNORES A FLAG MAKES THAT FLAG UNTESTABLE
     description: >-
       Found by a pr-test-analyzer pass over 8f80594..HEAD (2026-07-29), which reproduced the
       pre-/post-fix two-state behaviour directly. The gap is not coverage-for-its-own-sake: it is that

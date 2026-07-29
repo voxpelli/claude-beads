@@ -952,7 +952,9 @@ test('startup: a DROPPED row is ANNOUNCED — the counts are incomplete and the 
 })
 
 test('compact: a DROPPED row is ANNOUNCED, and the hook still EXITS 0', () => {
-  // `set -euo pipefail` (session-start.sh:24) means a bare `x=$(cmd)` whose command exits non-zero
+  // `set -euo pipefail` in session-start.sh means a bare `x=$(cmd)` whose command exits non-zero
+  // (cite the CONSTRUCT, never a line number — this said `session-start.sh:24` until vp-beads-46k
+  // grew the header and moved it to 49, and no gate can see a stale line reference)
   // ABORTS THE HOOK. `--filter --strict` exits 2 by design on a broken store — so the first draft
   // of this fix made the hook emit NOTHING and exit 2 exactly when the store was broken: strictly
   // worse than the silent claim-loss it replaced. Only running the hook found it. This pins it.
