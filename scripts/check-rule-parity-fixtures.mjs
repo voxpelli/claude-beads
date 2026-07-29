@@ -48,12 +48,16 @@ function assert (name, cond) {
   }
 }
 
-/** @param {string} id */
+/**
+ * @param {string} id
+ * @returns {string} a minimal rule file — only `id:` is read by the checker
+ */
 const rule = id => `id: ${id}\nlanguage: js\nrule:\n  pattern: nothing_$X\n`
 
 /**
  * @param {string} id
  * @param {boolean} [withInvalid]
+ * @returns {string} a test file; omitting `invalid:` is itself one of the planted states
  */
 const test = (id, withInvalid = true) =>
   `id: ${id}\nvalid:\n  - "ok"\n` + (withInvalid ? 'invalid:\n  - "nothing_x"\n' : '')
