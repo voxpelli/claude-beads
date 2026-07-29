@@ -1578,19 +1578,31 @@ tasks:
         exactly one. The fixture's own second assertion caught the fixture (the fake `ps` inherited
         the stripped PATH, so `awk` never resolved and nothing overflowed)
       - >-
-        N8 LEFTOVER, and it is the larger half — SIX call sites are `.ok`-checked but still
-        AMBIGUOUS, because `ok: false` conflates "answered no" with "could not ask": `git config
-        --get core.hooksPath` (:296, DANGEROUS — an unrunnable git reads as "no hooksPath", i.e.
-        nothing to disarm), `git config --show-scope` (:306, this is N5), `git config --get-regexp
+        `:296` DONE 2026-07-29 (third commit) — the most dangerous of the leftovers, and the one
+        that finally uses `ran`. `git config --get core.hooksPath` exits **1** for an unset key (a
+        real answer, and the common one), **128** for a repo git cannot enter, and ENOENT/null for
+        an absent binary — measured. Reading it as `raw.ok ? raw.out : null` collapsed all three
+        into `shape: 'none'`: a clean bill of health on a repo where bd's hooksPath is live and
+        stays armed. Now `hooksPath.error` + `shape: 'unknown'` (the A-vs-B dispatch hangs entirely
+        on this answer, so `git-hooks` would be no safer a fallback than `none` — it applies the
+        inverted remedy), with a `Shape UNKNOWN → STOP` branch in SKILL.md workflow 2 and a
+        doc-grep confirming that file is the union's only consumer. BOTH halves of the exit-code
+        split are mutation-pinned, and they redden DIFFERENT tests — misclassifying exit 1 as
+        undetermined breaks the pre-existing `shape=none` case
+      - >-
+        N8 LEFTOVER — FIVE call sites remain `.ok`-checked but still AMBIGUOUS, because `ok: false`
+        conflates "answered no" with "could not ask": `git config --show-scope` (:306, this is N5),
+        `git config --get-regexp
         ^beads\.` (:434, exit 1 IS "no keys"), `ps -p <pid>` (:378, absent ps reads as a dead pid),
         and `probe()`'s own `gitAvailable` (:461, still consumed by nothing). Each needs a per-site
         judgment about which exit codes are legitimate answers, which is why they were not swept in
-        with N8. `run()` can now express all of it; nothing yet does. NOT in this set: `git ls-tree
-        HEAD` (:250) already gets null-vs-false right — `inHead` is `null` when there was nothing to
-        ask — so its defect is narrower and is a PRINT defect like filed-#2, namely that an
-        unrunnable git prints the determinate "the store is UNCOMMITTED". Start with `:296`: it is
-        the same one-site-plus-print shape N8 just proved out, it is the DANGEROUS one, and it is
-        where `ran` finally earns its keep
+        with N8. NOT in this set: `git ls-tree HEAD` (:250) already gets null-vs-false right —
+        `inHead` is `null` when there was nothing to ask — so its defect is narrower and is a PRINT
+        defect like filed-#2, namely that an unrunnable git prints the determinate "the store is
+        UNCOMMITTED". The three landed sites all took the same shape and it is worth reusing:
+        measure the real exit codes first, name which ONE of them is an answer, add a `*Error`
+        string beside the value, branch the print, then doc-grep the field NAME for consumers
+        outside the file
       - >-
         N8 REACHED THE SKILL 2026-07-29 (second commit). The shape change escaped its own two files:
         `deintegrate-beads/SKILL.md` enumerates `residue.trackedCount` (workflow 5) and

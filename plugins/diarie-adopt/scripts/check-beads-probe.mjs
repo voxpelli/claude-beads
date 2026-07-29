@@ -388,11 +388,35 @@ console.log('\nprobeDaemon (the function that authorizes killing a process)')
 console.log('\nprobeHooks (shape, ownership, and what unsetting would ARM)')
 
 {
+  // Also pins the OTHER side of the exit-code split below: an unset key really does exit 1, and
+  // that is a determinate answer. If `none` ever collapsed into `unknown`, this goes red.
   const dir = makeRepo()
   try {
     const h = probeHooks(dir)
     assert('no hooks at all → shape=none, nothing to re-arm', h.shape === 'none' && h.reArmCommand === null)
   } finally { rmSync(dir, { recursive: true, force: true }) }
+}
+{
+  // THE DANGEROUS DIRECTION FOR HOOKS, and the reason `ran` exists. `git config --get` was read as
+  // `raw.ok ? raw.out : null`, and `ok: false` covers BOTH "the key is unset" (exit 1 — a real
+  // answer, and the common one) and "git could not be asked at all". So an unrunnable git produced
+  // `value: null` → `shape: 'none'`, from which the skill concludes there is no hook machinery to
+  // disarm — while bd's hooksPath is set here and would stay fully armed. Measured: unset is 1, a
+  // broken repo is 128, an absent binary is ENOENT with a null status.
+  const dir = makeRepo()
+  const realPath = process.env.PATH
+  try {
+    const abs = join(dir, '.beads', 'hooks')
+    mkdirSync(abs, { recursive: true })
+    spawnSync('git', ['-C', dir, 'config', 'core.hooksPath', abs])
+    process.env.PATH = '/nonexistent'
+    const h = probeHooks(dir)
+    assert('git UNRUNNABLE with bd hooksPath SET → shape UNKNOWN, never the determinate "none"',
+      h.shape === 'unknown' && h.hooksPath.error?.includes('could not run `git config`') === true)
+  } finally {
+    process.env.PATH = realPath
+    rmSync(dir, { recursive: true, force: true })
+  }
 }
 {
   // Shape A. bd stores an ABSOLUTE path — a relative-prefix check would silently miss it,

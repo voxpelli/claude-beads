@@ -149,6 +149,15 @@ commit, including the one recording this cleanup.
 
 Act on `hooks` from the probe.
 
+**Shape UNKNOWN (`hooks.shape == "unknown"`) — STOP, and do not read it as Shape B.**
+`hooks.hooksPath.error` is a string: `git config --get core.hooksPath` could not be
+asked, so whether bd owns the hooks is not known. Note what this is _not_ — an unset
+key exits 1 and is a determinate `none`; this is the other kind of non-zero (git absent,
+or a repo git cannot enter), and the probe prints the reason. **Every branch below
+depends on that answer**, and guessing Shape B while a live hooksPath may be overriding
+`.git/hooks/` applies the inverted remedy. Report the reason, fix it (usually: run the
+probe somewhere `git` resolves), and re-probe. Disarm nothing.
+
 **Shape A (`hooks.shape == "hooksPath"`)** — what `bd init` does by default.
 
 1. **`hooks.hooksPath.scope` must be `local`.** If it is not, `git config --local --unset` **cannot clear it** — and `--unset` exits 5 either way, so treating exit 5

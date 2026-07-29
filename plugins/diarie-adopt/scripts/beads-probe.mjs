@@ -174,8 +174,14 @@ function trackerDirsIn (root) {
 
 /**
  * @typedef {{
- *   shape: 'hooksPath' | 'git-hooks' | 'none',
- *   hooksPath: { value: string | null, resolved: string | null, scope: string | null, isBeads: boolean },
+ *   shape: 'hooksPath' | 'git-hooks' | 'none' | 'unknown',
+ *   hooksPath: {
+ *     value: string | null,
+ *     resolved: string | null,
+ *     scope: string | null,
+ *     isBeads: boolean,
+ *     error: string | null
+ *   },
  *   shims: string[],
  *   gitHooks: { dormantBdHooks: string[], otherGitHooks: string[] },
  *   otherHookManagers: HookManager[],
@@ -360,7 +366,14 @@ export function probeMigration (root, statsRunner = (r) => run('npx', ['--no-ins
  * @returns {HooksProbe}
  */
 export function probeHooks (root) {
+  // `ok: false` HERE IS TWO OPPOSITE THINGS, and this is the site where that mattered most.
+  // Measured: `--get` on an unset key exits **1** (a real answer, and the common one), a repo git
+  // cannot enter exits **128**, and an absent binary is ENOENT with a null status. Reading it as
+  // `raw.ok ? raw.out : null` collapsed all three into `value: null` → `shape: 'none'` → the skill
+  // concludes there is no hook machinery to disarm, on a repo where bd's hooksPath is set and
+  // stays fully armed. Exit 1 is the ONLY non-zero code that answers the question.
   const raw = run('git', ['-C', root, 'config', '--get', 'core.hooksPath'])
+  const hooksPathError = raw.ok || (raw.ran && raw.code === 1) ? null : whyNot('git config', raw)
   const value = raw.ok ? raw.out : null
 
   // `--show-scope` (git >= 2.26) returns git's OWN answer: local | global | system |
@@ -407,9 +420,20 @@ export function probeHooks (root) {
     }
   }
 
+  // `none` is a CLAIM — "there is no hook machinery here" — and the A-vs-B dispatch downstream
+  // hangs entirely on the hooksPath answer. With that answer missing, `git-hooks` is no safer a
+  // fallback than `none`: choosing Shape B while a live hooksPath may be overriding `.git/hooks/`
+  // applies the inverted remedy, the mistake this function's `otherHookManagers` comment already
+  // says must not be guessed. So an undetermined hooksPath makes the whole shape undetermined.
+  /** @type {'hooksPath' | 'git-hooks' | 'none' | 'unknown'} */
+  let shape = 'none'
+  if (hooksPathError) shape = 'unknown'
+  else if (value && isBeads) shape = 'hooksPath'
+  else if (dormantBdHooks.length) shape = 'git-hooks'
+
   return {
-    shape: value && isBeads ? 'hooksPath' : (dormantBdHooks.length ? 'git-hooks' : 'none'),
-    hooksPath: { value, resolved, scope, isBeads },
+    shape,
+    hooksPath: { value, resolved, scope, isBeads, error: hooksPathError },
     shims,
     gitHooks: { dormantBdHooks, otherGitHooks },
     otherHookManagers: managers,
@@ -626,6 +650,11 @@ if (argv[1] && fileURLToPath(import.meta.url) === argv[1]) {
   }
 
   stdout.write(`\nhooks: shape=${hooks.shape}\n`)
+  // `shape=none` prints as reassurance; `shape=unknown` must not be allowed to read the same way.
+  if (hooks.hooksPath.error) {
+    stdout.write(`  ! core.hooksPath UNDETERMINED — ${hooks.hooksPath.error}\n`)
+    stdout.write('    this is NOT "no hook machinery": bd may be armed via hooksPath and would stay armed\n')
+  }
   if (hooks.hooksPath.value) {
     stdout.write(`  core.hooksPath = ${hooks.hooksPath.value}\n`)
     stdout.write(`    scope=${hooks.hooksPath.scope} isBeads=${hooks.hooksPath.isBeads}\n`)
