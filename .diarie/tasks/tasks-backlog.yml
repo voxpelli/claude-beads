@@ -1571,6 +1571,45 @@ tasks:
       Re-verified by a second independent pass 2026-07-29 which refuted three claims in part and added
       eleven; see the acceptance criteria from "VERIFIED 2026-07-29" onward.
     updated: '2026-07-29'
+  - id: vp-beads-tar
+    title: 'KNOWN_RELATIONSHIPS gained `template-ancestor` — requested by two siblings independently'
+    status: completed
+    type: task
+    priority: low
+    labels:
+      - feature
+    acceptance_criteria:
+      - >-
+        DONE 2026-07-29. Surfaced by a `/ledger reconcile` (cached skill: `/sibling-sync`) Mode-B
+        pass as finding (e): unresolved friction a sibling tracks AGAINST us. liggare-mcp's
+        `UPSTREAM-vp-beads.md` (2026-05-29, `Ownership: upstream`) asked for a relationship value
+        meaning "scaffolded from a template", and records that brewfile-curate filed the same
+        request independently. Both had settled on `fork` and both said it overstates the coupling:
+        a fork is a divergent copy tracked for ongoing cherry-picks; template ancestry is one-time
+        and implies no continuing sync
+      - >-
+        RED-PROOFED three ways rather than assumed, because the point of the enum is the warning:
+        `template-ancestor` now passes with no warning; an unknown value (`totally-made-up`) STILL
+        warns and names the full new set — so the guard is alive, not widened into silence; and an
+        existing value (`shared-tooling`) still passes. The check is advisory (`warn`, not `error`)
+        by design, which is why growing the vocabulary is cheap
+      - >-
+        THREE DOC SURFACES, not one. This was characterised to the operator as a one-line code
+        change and it was not — the doc-grep found `synergy-entry-format.md`'s vocabulary list AND
+        its registry-schema table AND `log.md`'s "the six-value KNOWN_RELATIONSHIPS" in the guided
+        registry-bootstrap prose. CHANGELOG hits are historical and were left. Doc-grep as INPUT
+        keeps earning its place
+      - >-
+        NOT DONE, and it is the sibling's to do: liggare-mcp's entry stays unresolved on their side
+        until they annotate it. Finding (e) will therefore re-fire on every future reconcile run —
+        expected behaviour per the skill, which maintains no already-filed cache. Annotating their
+        file is a write into a repo we do not own
+    description: >-
+      Filed and closed in the same pass — the fix was one set member plus its doc surfaces. Recorded
+      because the PROVENANCE is the durable part: this is the first finding to reach vp-beads from a
+      sibling's UPSTREAM file rather than from our own review, and it had been sitting there since
+      2026-05-29.
+    updated: '2026-07-29'
   - id: vp-beads-vda
     title: 'vp-dream declares three Basic Memory tools it never calls'
     status: pending

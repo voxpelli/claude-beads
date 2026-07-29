@@ -361,10 +361,19 @@ if (existsSync(hooksPath)) {
 
 // --- .claude/synergy-registry.json (optional) ---
 
+// Advisory (a warn, not an error) — an unknown value passes validation with a nudge, because this
+// vocabulary describes real relationships between real repos and will keep growing.
+//
+// `template-ancestor` was requested by TWO sibling projects independently — liggare-mcp and
+// brewfile-curate, each in their own `UPSTREAM-vp-beads.md`. Both had settled on `fork` as the
+// closest fit and both said the same thing about it: a fork is a divergent copy tracked for
+// cherry-picks, whereas being SCAFFOLDED FROM a template is a one-time ancestry that never
+// implies ongoing sync. Calling that `fork` overstates the coupling.
 const KNOWN_RELATIONSHIPS = new Set([
   'sibling-plugin',
   'shared-tooling',
   'fork',
+  'template-ancestor',
   'consumer',
   'coordinated-release',
   'dependency',

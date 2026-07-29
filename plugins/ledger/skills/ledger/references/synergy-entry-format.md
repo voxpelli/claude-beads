@@ -183,7 +183,7 @@ projects have active synergy tracking relationships.
 | `file`         | yes      | Exact filename of the SYNERGY tracking file                                                                                                                                                                                                                                       |
 | `remote`       | no       | Canonical URL for the related project                                                                                                                                                                                                                                             |
 | `bm-entity`    | no       | Basic Memory entity path — consumed by the ledger `promote` (sibling) mode                                                                                                                                                                                                        |
-| `relationship` | no       | One of: `sibling-plugin`, `shared-tooling`, `fork`, `consumer`, `coordinated-release`, `dependency`. See `validate-plugin.mjs` `KNOWN_RELATIONSHIPS` for the canonical set; values outside it emit a validator warning.                                                           |
+| `relationship` | no       | One of: `sibling-plugin`, `shared-tooling`, `fork`, `template-ancestor`, `consumer`, `coordinated-release`, `dependency`. See `validate-plugin.mjs` `KNOWN_RELATIONSHIPS` for the canonical set; values outside it emit a validator warning.                                      |
 | `local-path`   | no       | On-disk path to the sibling checkout (relative paths resolve from this project root). When absent, skills fall back to `../<name>/`. Prefer leaving this out of the committed registry and recording machine-specific paths in `.claude/synergy-registry.local.json` (see below). |
 
 A **private sibling** is registered by setting `file` to a `PRIVATE-SYNERGY-<name>.md`
@@ -203,11 +203,15 @@ sibling entries" below.
 
 ### Relationship vocabulary
 
-The six recognized values describe sibling shape, not engineering relationships in Basic Memory:
+The seven recognized values describe sibling shape, not engineering relationships in Basic Memory:
 
 * `sibling-plugin` — peer Claude Code plugin under the same maintainer (default for vp-\* plugins).
 * `shared-tooling` — peer that shares build/lint/test tooling but ships independently.
 * `fork` — divergent fork tracked for cherry-picks.
+* `template-ancestor` — the repo this one was SCAFFOLDED FROM. Distinct from `fork`: a fork is a
+  divergent copy tracked for ongoing cherry-picks, whereas template ancestry is one-time and
+  implies no continuing sync. Requested independently by two sibling projects that had both
+  settled on `fork` and both found it overstated the coupling.
 * `consumer` — downstream project that depends on this one.
 * `coordinated-release` — peer that releases in lockstep (shared version cadence).
 * `dependency` — upstream this project consumes directly (rare for sibling-tracking; usually belongs in `vendor-registry.json`).

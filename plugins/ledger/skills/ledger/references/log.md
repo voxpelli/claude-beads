@@ -130,7 +130,7 @@ capability gap between this project and a sibling.
      `.claude/synergy-registry.local.json` only with `file: PRIVATE-SYNERGY-<sibling>.md`,
      omit `bm-entity`, create the gitignored `PRIVATE-SYNERGY-<sibling>.md`, verify both it
      and the `PRIVATE-SYNERGY-*.md` wildcard are gitignored, **never** add a per-name
-     `.gitignore` line; `header: "Relationship"` — the six-value `KNOWN_RELATIONSHIPS`
+     `.gitignore` line; `header: "Relationship"` — the seven-value `KNOWN_RELATIONSHIPS`
      vocabulary, surface the top four + auto "Other"; `header: "Local path"` only when
      `../<sibling>/` is inaccessible → `.local.json`). Preview both files (schema + worked
      substitution, annotate auto-derived fields with their source) before writing; on `yes`

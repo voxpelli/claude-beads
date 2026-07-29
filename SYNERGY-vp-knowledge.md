@@ -10,17 +10,23 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 
 * **ast-grep structural-lint suite** (2026-07-11) — Adopted from vp-knowledge, which
   had it first: `sgconfig.yml` → `.ast-grep/rules/` + `.ast-grep/rule-tests/`
-  (snapshot-tested via `ast-grep test`), a `scripts/check-ast-grep.mjs` runner that
-  switches to `--format github` under CI, `check:ast-grep` + `check:ast-grep-test`
-  stages, and a pinned `@ast-grep/cli` devDep. vp-beads copied the layout verbatim and
-  seeded it with one rule of its own — `no-hardcoded-tracker-dir`, which enforces that
-  no tool re-forks the `.diarie` path segment now that `TRACKER_DIR` centralizes it.
-  vp-knowledge's rule set is broader (7 rules: CommonJS, JSDoc `any`, `set -euo
-  pipefail`, jq interpolation, identifier shadowing, …); several are project-agnostic
-  and are adoption candidates here.
-  Status: aligned · Last verified: 2026-07-11
-  Note: the runner and config are byte-similar, so they are a convergence-drift risk
-  like `validate-plugin.mjs` above — keep them in sync.
+  (snapshot-tested via `ast-grep test`), `check:ast-grep` + `check:ast-grep-test`
+  stages, and a pinned `@ast-grep/cli` devDep. vp-beads copied the layout and seeded
+  it with rules of its own, notably `no-hardcoded-tracker-dir`.
+  Status: drifting · Last verified: 2026-07-29
+  Note: **this row said `aligned` while describing two things that no longer exist on
+  this side**, and was caught at a reciprocation gate — where copying it would have
+  exported the staleness into vp-claude's repo. Corrected: (1) vp-beads no longer has a
+  `scripts/check-ast-grep.mjs` runner. `check:ast-grep` is a bare `ast-grep scan`, the
+  wrapper + path list + file-count floor having been dissolved in `56740fb` on the
+  steer "why are we special?" — so the `--format github` CI switch and the
+  "byte-similar runner" drift risk are both gone with it. vp-knowledge still runs a
+  runner script; that is now the divergence, not the shared part. (2) `TRACKER_DIR` no
+  longer centralizes the store path — diarie is replacing it with `TRACKER_DIRS` /
+  `trackerDirIn(root)` because the store is becoming a pair (`diarium/` | `.diarium/`),
+  and nothing here imports it at all. `no-hardcoded-tracker-dir` is now PREVENTIVE and
+  correctly finds nothing. The shared half that remains genuinely aligned is the config
+  LAYOUT and the rule-test convention, not the invocation.
 
 * **validate-plugin.mjs tool-reference audit** (2026-03-28) — Both plugins maintain a
   `validate-plugin.mjs` that audits `mcp__*__*` tool patterns mentioned in skill/agent
