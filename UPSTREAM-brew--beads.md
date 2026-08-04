@@ -1,5 +1,21 @@
 # UPSTREAM-brew--beads
 
+> **ARCHIVE — beads is a RETIRED dependency of this project. Nothing here is actionable.**
+>
+> This project migrated off `bd` onto the `diarie` flat-YAML tracker; `bd`'s **writes are dead**
+> (the 1.1.0 migrate-gate panics on every write in every repo using the global binary), and
+> `.beads/` survives here only as a frozen, readable export. The entries below were real friction
+> when they were logged and are kept as provenance — do **not** work them, escalate them, or
+> promote them to Basic Memory as live upstream friction.
+>
+> **Why this file still exists at all:** the upstream-tracking convention deletes an ephemeral
+> non-vendor file once its entries resolve. These never resolved — they were _abandoned_ when the
+> dependency was dropped, which is a different state, and deleting the file would erase the record
+> of what the migration was escaping. Kept deliberately, marked so no reader mistakes it for live.
+>
+> _Trigger to revive: beads regains a working write path AND this project reconsiders it as a
+> dependency. Neither is expected._
+
 Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `bd` CLI). Repo transferred from `steveyegge/beads` to `gastownhall/beads` during the v1.0.0 cycle (2026-04-03); old URL still redirects, but the Homebrew formula `homepage` field still references the old URL as of 2026-05.
 
 ## Feature Requests

@@ -379,7 +379,7 @@ tasks:
     updated: '2026-05-08'
   - id: vp-beads-yjp
     title: bd close persistence broken when .beads/ is gitignored
-    status: pending
+    status: cancelled
     type: task
     priority: medium
     acceptance_criteria:
@@ -388,6 +388,18 @@ tasks:
         workaround)
       - Workaround documented or upstream issue filed with beads
       - False-positive `IN_PROGRESS` entries in `bd stats` eliminated
+      - >-
+        CANCELLED 2026-08-04 — STRUCTURALLY UNFIXABLE, not deprioritised. This row is about `bd
+        close`, i.e. bd's WRITE path, and bd 1.1.0's schema-migration gate panics on every write in
+        every repo using the global binary. There is no state in which the described bug can be
+        observed, reproduced, or fixed from here. This project also no longer uses bd for anything:
+        its work lives in `.diarie/`, and `.beads/` is a frozen readable archive.
+      - >-
+        REVIVAL TRIGGER — beads regains a working write path AND this project reconsiders it as a
+        tracker. Both are required; neither is expected. Recording the trigger rather than deleting
+        the row, because a cancellation without a revival path is accidental debt (plan hygiene) —
+        and unlike `vp-beads-arc`, which was on the same kill list and turned out to have a live
+        subject, this one's subject really is gone.
     description: |-
       Regular `bd close <id>` reports `✓ Closed` success but state reverts to
       `IN_PROGRESS` on next `bd show`/`bd stats`/`bd blocked`. Auto-export step emits
@@ -445,7 +457,7 @@ tasks:
     updated: '2026-07-11'
   - id: vp-beads-arc
     title: Mark UPSTREAM-brew--beads.md as an archive of a RETIRED dependency
-    status: pending
+    status: completed
     type: task
     priority: low
     labels:
@@ -454,6 +466,20 @@ tasks:
       - the file states at the top that bd is retired here and the entries are historical, not actionable
       - /deintegrate-beads still resolves its citations (the 15 entries describe the machinery it disarms)
       - a future trend review does not re-triage entries nobody will ever act on
+      - >-
+        DONE 2026-08-04. A blockquote banner at the top states bd is retired here, that the entries
+        are provenance rather than work, and that they must not be promoted to Basic Memory as live
+        friction. It also answers the question the convention would otherwise raise — why an
+        ephemeral non-vendor file was not deleted: these entries never RESOLVED, they were
+        ABANDONED when the dependency was dropped, which is a different state, and deleting the
+        file would erase the record of what the migration was escaping.
+      - >-
+        NOTE — this row was on a kill list and the kill was WRONG. The 2026-08-04 review round
+        proposed cancelling it as "bd-era", which read the row's subject as dead. The FILE is live
+        and was unmarked: a reader landing on it would see an active-looking UPSTREAM ledger for a
+        dependency this project no longer has. Cancelling would have preserved exactly the confusion
+        the row exists to remove, for a two-minute fix. Checked the subject before dropping it —
+        that is the only reason this was caught.
     description: >-
       15 entries, 0 resolved, and the dependency is gone — the Sprint 16 trend review had to
       decide what to do with the largest UPSTREAM surface in the repo when the tool it tracks
@@ -1340,6 +1366,45 @@ tasks:
         — which CLAUDE.md ALREADY does in one place and is the pattern to generalize); (c) never
         write a back-reference to a figure ("the count above"), only to a relationship. DECIDE
         deliberately; do not adopt all three.
+      - >-
+        🚨 THE STATED MECHANISM IS REFUTED (2026-08-04), by a 34-item back-reference audit of
+        CLAUDE.md. "Measurements and decisions share a sentence shape, and a measurement's half-life
+        shortens the more precisely it is stated" does NOT separate survivors from casualties: bare
+        measurements in decision-shaped sentences — `98.81%`, `4 local + 3 from the package`,
+        `2 event types`, `all four plugins/*`, `zero .sh files` — ALL HOLD. 20 of 34 references were
+        fine; 5 were false. Precision is not the risk. `98.81%` is the most precise figure in the
+        document and the most durable, because a gate recomputes it on every run.
+      - >-
+        WHAT THE 5 CASUALTIES ACTUALLY SHARE: the figure is derived from a set another commit can
+        change, and the sentence restates the DERIVED FIGURE instead of the derivation. What the
+        survivors share: A LIVE ORACLE PRINTS THEM. CLAUDE.md already discovered this fix and
+        applied it to exactly one number ("`check:rule-parity` prints that split on every run rather
+        than trusting a count written down here"). So option (b) is the answer and options (a) and
+        (c) are not — (a) adds a marker nothing maintains, (c) is a special case of (b).
+      - >-
+        AND A SECOND MECHANISM THIS ROW CANNOT REACH — the COVERAGE-BOUNDED NEGATIVE CLAIM, whose
+        signature is that RE-MEASURING KEEPS CONFIRMING THE STALE CLAIM, FOREVER. CLAUDE.md's
+        "nothing here imports the store dir at all, so it finds nothing" is still literally true:
+        `ast-grep scan` exits 0 every time, because the rule's `files:` bound excludes `plugins/`.
+        What rotted is the INFERENCE — an instrument reading ("the rule matches nothing") converted
+        into a claim about the world ("nothing imports it"), which holds only while the instrument's
+        coverage equals the world. The dissolution moved code INTO `plugins/`, outside the bound,
+        and the instrument kept agreeing. A half-life model files this under decay and prescribes
+        re-measurement, which is the one remedy that cannot work here.
+      - >-
+        REPLACEMENT FRAMING, two clauses, to rewrite this row around (or close it and file them
+        separately): (1) A RESTATED FIGURE IS A CACHE WITH NO INVALIDATION — cite the command that
+        recomputes it, or state the relationship instead of the figure. (2) A CLAIM IS ONLY AS
+        UNIVERSAL AS ITS INSTRUMENT'S BOUND — a negative claim from a scoped instrument (`files:`,
+        a tsconfig `include`, a glob, a test corpus) must carry that bound IN THE SENTENCE. The
+        antidote to (2) is already three paragraphs away in CLAUDE.md and unapplied: "ASK ast-grep
+        which files a rule reached — `--inspect entity` prints `appliedRuleCount` per file — rather
+        than reading the globs and assuming." Applied: 2 of 24 scanned files, 0 in `plugins/`.
+      - >-
+        NOTE the row's own title says "eight separate doc-rot findings" while the working plan
+        derived from it said five. The finding about restated counts has a restated count that has
+        already drifted. Left in place deliberately as the cheapest possible demonstration of
+        clause 1.
     description: >-
       Found by the long-horizon-steward pass of a pluralistic review round, 2026-07-29, and verified
       directly. It names the single cause behind findings this session had been filing individually.
@@ -1440,7 +1505,7 @@ tasks:
     updated: '2026-07-29'
   - id: vp-beads-exf
     title: 'The execution floor — reachability is NOT execution; a gate can run, report success, and inspect nothing'
-    status: pending
+    status: completed
     type: task
     priority: high
     labels:
@@ -1489,6 +1554,31 @@ tasks:
         `hooks/hooks.json` edit or a new `hooks/*.sh` would produce. Assert against
         `hooks/hooks.json`'s declared commands and the `hooks/*.sh` on disk, not a hardcoded list
         (a hardcoded list is what holed check-rule-parity, per that row's own AC).
+      - >-
+        DONE 2026-08-04 (e2baa19) — BOTH halves, but NOT as specified, and the deviation is the point.
+        validate-plugin now prints what it audited BY NAME (`6 skill(s), 18 reference file(s), 0
+        agent(s)` + the skill list) and says `NONE FOUND — every skill check above was vacuously
+        satisfied` over an empty corpus. Deliberately NOT a numeric floor, against this row's own AC:
+        the dissolution is relocating skills between `skills/` and `plugins/*/skills/` right now, so
+        any threshold would false-red mid-move — and a count cannot see a SWAP (drop one real skill,
+        add one stub, same number, guard silent). Names can.
+      - >-
+        The check-hooks half shipped as the INVENTORY ONLY, and the count floor was dropped on
+        purpose: "the suite ran nothing" prints a literal `0 tests` that a human reads, so that
+        failure is already LOUD; "a hook exists that no test knows about" is the silent one. Wired
+        list read from `hooks.json`, tested list read from the suite's own source — never a second
+        hardcoded list. RED-proved both directions (a new `hooks/*.sh`, and a phantom `hooks.json`
+        entry) and both name the offending script.
+      - >-
+        RED-PROOF, measured: restoring the bare `Plugin validation passed.` takes
+        `check-validator-plugin-fixtures.mjs` to `6 passed, 2 failed`. The new vacuity case ships with
+        a CONTROL (a populated tree must NOT claim zero) — without it the vacuity case would pass
+        against a validator that printed `NONE FOUND` unconditionally.
+      - >-
+        Worth recording because it is this row's own thesis eating itself: the new inventory check
+        went red on FIRST run against a phantom `x.sh` — an example runHook call written in its own
+        explanatory COMMENT, which the scan reads because it reads its own source. That is why the
+        orphan branch exists, and there is now a comment warning the next person off it.
     description: >-
       The door `check:gate-coverage` (vp-beads-gtc) does NOT watch. It proves a script is REACHABLE from
       the root aggregate; it cannot prove the script INSPECTED anything. So the 228-assertion bug can
