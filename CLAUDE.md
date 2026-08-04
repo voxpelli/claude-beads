@@ -344,8 +344,19 @@ Classify by **what consumes the fence**, never by filename pattern — missing t
 * Package name derived from `package` field: slashes → `--`, drop leading `@`
 * Vendor packages: permanent files, always exist (even when empty)
 * Non-vendor packages: ephemeral files, delete when all entries are resolved
-* Vendor packages declared in `.claude/vendor-registry.json` (preferred) or
-  inferred from `workspaces` in `package.json`
+* Vendor packages are declared in `.claude/vendor-registry.json` — the **sole** source.
+  `workspaces` in `package.json` is **never** a vendor signal, and the fallback that once
+  said so is deleted. `workspaces` names monorepo members, which are at least as often
+  **first-party**: this repo's own `"workspaces": ["plugins/*"]` is the proof, and following
+  the old rule would have mandated permanent `UPSTREAM-vp-skills--ledger.md` and three
+  siblings — friction ledgers for code we own, whose friction can never resolve upstream,
+  plus Basic Memory queries for packages that were never published. It never fired only
+  because no `UPSTREAM-*.md` happened to carry those names. This project vendors by
+  `git subtree` into `vendor/`, which is exactly what the registry's own `prefix` field
+  models. `ledger pull` already took this position (_"Registry-FIRST, refuse-to-guess"_);
+  the other modes now agree with it.
+  _(The word `workspaces` never changed — only what it refers to. A rename-grep could not
+  have caught this; see `### Doc-grep the VOCABULARY, not just the command name`.)_
 
 ### Synergy tracking convention
 
@@ -721,8 +732,26 @@ the expensive workspace suite ("own gates before children"). Do NOT "fix" it int
 nothing broken ships, so that is a preference (comprehensive CI reporting), not a bug. The
 authoritative list is the keys in `package.json`, not this paragraph.
 
-**THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES.** The root's `check:*` keys cover
-the **plugin only** — `check:plugin` (validate-plugin.mjs) + `check:validator`,
+**GATE OWNERSHIP SPLITS BY CLASS — the root owns AUDIT, the workspace owns LINT/TEST/TYPE**
+(decision `vp-beads-gow`). The universal form of _"the workspace owns its gates"_ was
+**false**, and each fix filed under it strengthened a principle the biggest gate breaks:
+
+* **Root-owned (audit, and deliberately reaches into `plugins/*`)** — `validate-plugin.mjs`
+  (frontmatter, `allowed-tools`, the `mcp__*` tool-reference audit, the naked
+  `workflow N (Name)` audit, registry validation, the PRIVATE-SYNERGY no-commit-leak guards)
+  and `check-prose-commands.mjs`. Audits compare a manifest against a skill against a
+  registry against a `hooks.json` — they are **cross-plugin by nature**, so they are
+  structurally root-shaped. Measured: **no workspace runs any of them**, which means a
+  `git subtree split --prefix=plugins/ledger` today takes ten documents and leaves behind
+  every gate that ever caught a bug in them. That is a re-acquisition cost at extraction,
+  not a bug to fix by copying the checker four times.
+* **Workspace-owned (lint/test/type)** — `check:md`, `check:sh`, `check:lint`, `check:tsc`,
+  `check:type-coverage`, `check:test`. These are about **one package's own source**, so they
+  travel with it. A root that lints a workspace is a workspace that cannot be extracted
+  cleanly; that warning is correct **for lint** and was never true for audit.
+
+The root's remaining `check:*` keys cover the **plugin only** —
+`check:plugin` (validate-plugin.mjs) + `check:validator`,
 `check:md` (remark), `check:lint` (eslint), `check:sh` (shellcheck + shfmt),
 `check:ast-grep` + `check:ast-grep-test`, `check:hooks`, and
 `check:tasks` (`diarie validate` — validating _this repo's own store_ via the installed
@@ -987,8 +1016,12 @@ count to the figure the arming later cleared. _(That sentence used to end "…is
 128" — a BACK-REFERENCE to a number rewritten 24 lines up, in the same commit, the same day. It was
 true when written and false one edit later. No gate can see a numeral referring to a nearby
 paragraph; the only defence is to describe the relationship instead of restating the figure.)_
-A workspace that wants type checking gets its own `tsconfig.json` and its own `check:` key, per
-**THE WORKSPACE OWNS ITS GATES** above.
+A workspace that wants type checking gets its own `tsconfig.json` and its own `check:` key —
+type checking is workspace-owned per decision `vp-beads-gow`, so this is the correct direction,
+not a reach-in. **It must `extends` `@voxpelli/tsconfig/node22.json`**:
+a hand-rolled `"strict": true` silently drops every `TS4111`, because
+`noPropertyAccessFromIndexSignature` comes from the shared base and is **not** implied by
+`--strict`. Measured on `plugins/diarie-adopt`: 98 errors with the shared base, 77 without.
 
 🚨 **`no-jq-raw-interpolation` guarded NOTHING until 2026-07-14.** It is `language: bash`, it
 exists _because "the hooks build jq programs"_ — and `hooks/` was not in the scan bound, while

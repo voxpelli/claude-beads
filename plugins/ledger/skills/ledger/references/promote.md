@@ -56,8 +56,11 @@ The inverse of `promote` (upstream): discover friction already known in BM for t
 dependencies but not tracked locally. Pull-based, never automatic — invoke at sprint start,
 on onboarding, or for cross-project awareness.
 
-1. **Identify dependencies.** Read `package.json` (npm deps + workspaces) and
-   `.claude/vendor-registry.json` (vendor packages) → a list to check.
+1. **Identify dependencies.** Read `package.json` (`dependencies` + `devDependencies` only)
+   and `.claude/vendor-registry.json` (vendor packages) → a list to check.
+   **Do NOT include `workspaces`** — those are the project's own first-party members, and
+   querying Basic Memory for `npm/<workspace-name>` asks about packages that were never
+   published. `.claude/vendor-registry.json` is the sole vendor source.
 2. **Query BM.** For each, `search_notes` the name; filter to notes with an
    `## Upstream Friction` section carrying active (non-resolved) entries.
 3. **Cross-reference** each BM friction entry against local `UPSTREAM-*.md` files.

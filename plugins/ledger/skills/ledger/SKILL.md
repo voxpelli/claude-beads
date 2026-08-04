@@ -93,11 +93,14 @@ on the merge — collapsing four hand-synced copies into one.
 * **UPSTREAM files** — `UPSTREAM-<package-name>.md`, slashes → `--`, drop leading `@`
   (`@voxpelli/typed-utils` → `UPSTREAM-voxpelli--typed-utils.md`). Non-npm tools carry a
   type prefix: `brew:`/`cask:`/`action:`/`docker:`/`vscode:`
-  (`UPSTREAM-action--actions--checkout.md`). **Lifecycle:** vendor packages (declared in
-  `.claude/vendor-registry.json`, or listed under `package.json` workspaces) get
-  **permanent** files that persist even when empty (restore the `_No entries yet._`
-  placeholder); non-vendor deps and tools get **ephemeral** files — `git rm` the whole
-  file once all entries resolve.
+  (`UPSTREAM-action--actions--checkout.md`). **Lifecycle:** vendor packages — declared in
+  `.claude/vendor-registry.json`, the **sole** source — get **permanent** files that persist
+  even when empty (restore the `_No entries yet._` placeholder); non-vendor deps and tools
+  get **ephemeral** files — `git rm` the whole file once all entries resolve.
+  **`package.json` `workspaces` is never a vendor signal** — it names monorepo members,
+  which are as often first-party, so inferring from it creates permanent friction ledgers
+  for code the project owns. No registry means no vendor packages, which is the honest
+  answer; `pull` has always refused to guess here and the other modes now match it.
 * **SYNERGY files** — `SYNERGY-<project-name>.md`, same normalization. **Permanent**
   fixtures — never deleted, even when empty (restore `_No entries yet._`). Four sections:
   **Shared Patterns · Divergences · Extraction Candidates · They Have / We Don't**.
