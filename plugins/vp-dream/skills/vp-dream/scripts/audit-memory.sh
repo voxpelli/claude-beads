@@ -73,9 +73,33 @@ echo
 # --- Index integrity: entries pointing at missing files ---
 if [ -f "$index" ]; then
 	echo "=== DANGLING INDEX ENTRIES (link target missing) ==="
-	grep -oE '\(([A-Za-z0-9._-]+\.md)\)' "$index" | tr -d '()' | while read -r target; do
-		[ -f "$dir/$target" ] || echo "- MISSING: $target"
-	done
+	# A no-match `grep` exits 1, and under `set -euo pipefail` that KILLED THE SCRIPT here —
+	# after the header above and before END AUDIT — so a link-free MEMORY.md produced a
+	# truncated report that reads exactly like a complete one with a clean section. Measured.
+	# (Lines 45-52 above already carry `|| true` for the same reason; this site was missed.)
+	#
+	# `|| true` ALONE IS NOT THE FIX. It converts the crash into a silent zero, and an empty
+	# section under this header is what a reader turns into "no dangling entries" — the same
+	# false all-clear, just quieter. So: name which of the three states this is.
+	targets="$(grep -oE '\(([A-Za-z0-9._-]+\.md)\)' "$index" | tr -d '()' || true)"
+	if [ -z "$targets" ]; then
+		echo "- NOT CHECKED: MEMORY.md contains no \`(file.md)\` links, so nothing was verified."
+		echo "  This is NOT a clean bill of health — an index that links nothing cannot dangle."
+	else
+		missing=0
+		total=0
+		while read -r target; do
+			[ -n "$target" ] || continue
+			total=$((total + 1))
+			if [ ! -f "$dir/$target" ]; then
+				echo "- MISSING: $target"
+				missing=$((missing + 1))
+			fi
+		done <<<"$targets"
+		if [ "$missing" -eq 0 ]; then
+			echo "- none — all $total link target(s) resolve"
+		fi
+	fi
 	echo
 fi
 

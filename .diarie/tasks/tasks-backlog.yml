@@ -923,7 +923,7 @@ tasks:
     updated: '2026-07-29'
   - id: vp-beads-adm
     title: 'audit-memory.sh exits 1 and TRUNCATES its own report when MEMORY.md has no links'
-    status: pending
+    status: completed
     type: task
     priority: high
     labels:
@@ -953,6 +953,41 @@ tasks:
         RED-PROOF IT: a fixture `MEMORY.md` with NO links must produce a complete report and exit 0,
         and the assertion must FAIL against the current script. vp-dream has no test harness at all
         today — its `check` is remark + shellcheck — so this needs one, however small.
+      - >-
+        DONE 2026-07-29. Reproduced first: a link-free `MEMORY.md` printed the
+        `=== DANGLING INDEX ENTRIES ===` header and then DIED, exit 1, never reaching
+        `=== END AUDIT ===`. The shape of the harm is that a reader sees an empty section under
+        that header and turns it into "no dangling entries" — a false all-clear, not a visible
+        crash. Lines 45-52 of the same file already carried `|| true` for exactly this reason; this
+        one site was missed.
+      - >-
+        FIXED WITH THREE DISTINGUISHABLE STATES, not with `|| true`. This row's own AC predicted the
+        trap and it is real: a bare `|| true` survives the crash but leaves an EMPTY section, which
+        is the same false all-clear one notch quieter. So the section now reports (a) "NOT CHECKED
+        ... this is NOT a clean bill of health" when the index links nothing, (b) "none — all N link
+        target(s) resolve" when it checked and found nothing wrong, and (c) the named missing files.
+        (a) and (b) were previously indistinguishable; that separation IS the fix.
+      - >-
+        AND vp-DREAM GAINED ITS FIRST TEST HARNESS — `plugins/vp-dream/scripts/check-audit-memory.sh`,
+        10 assertions, wired as `check:test` so `run-p check:*` reaches it. Ordered by the direction
+        a wrong answer is dangerous: the empty-input case is asserted FIRST, because the failure mode
+        is a false all-clear rather than a crash.
+      - >-
+        MUTATION-PROVED IN BOTH DIRECTIONS, and the second is the one that matters. Against the
+        ORIGINAL script: 5 of 10 red, including the exit code and the reaches-END-AUDIT assertion.
+        Against the TEMPTING WRONG FIX (a bare `|| true` appended to the pipeline): 3 red — the
+        script survives but cannot say which state it is in. That second mutation is the fix a
+        maintainer would actually reach for, so catching it is what makes this suite worth having.
+      - >-
+        ROOT-GATE REACH PROVED, per CLAUDE.md's rule that a new workspace test must be shown to
+        redden the ROOT: planted a failing assertion and `npm run check` exited 1 with
+        `ERROR: "check:test" exited with 1` then `ERROR: "check-workspaces" exited with 1`. It names
+        the checker, which is the property the tsc arming earlier today established as the bar.
+        `check:sh` was widened to cover the new `scripts/` dir so the test itself is linted.
+      - >-
+        UPSTREAM half filed separately: shellcheck 0.11.0 has NO check for this class — verified,
+        silent by default and even under `-o all` (see `UPSTREAM-brew--shellcheck.md`). That is why
+        the defect survived a green `check:sh` for its whole life.
     description: >-
       Found by the branch-lifecycle-review workflow (2026-07-29), reproduced rather than inferred.
       Ranked its top confirmed finding of 8.
@@ -1237,6 +1272,22 @@ tasks:
         distribution gaps (this repo's own convention state, not cross-project knowledge), four
         patterns already adequately stated in existing notes, and all 15 unverified leads (the bar
         for a durable note is higher than for a code fix).
+      - >-
+        TWO PROPOSALS WENT STALE DURING THE SESSION THAT PRODUCED THEM — check before pasting any of
+        the 22. SY-10 and SY-13 both propose carrying `check:tracked-ignored`'s
+        `git check-ignore --no-index` gotcha to siblings, but that script was rewritten off
+        `git check-ignore` onto the same `ignore` npm package remark uses (because git and remark
+        disagree on `core.ignorecase`, nested `.gitignore` files, and `.git/info/exclude` — the
+        original bug was caught on macOS and MISSED IN CI). Pasting them would export a gotcha about
+        code that no longer exists. The REPLACEMENT insight is better anyway and worth proposing
+        instead: **the oracle must be the protected tool, not a third party that mostly agrees.**
+      - >-
+        WHICH ARGUES FOR TAKING THE TWO STATUS DOWNGRADES FIRST and deferring the rest: SY-11
+        (`aligned` -> `drifting`) and SY-12 are the only proposals that CHANGE A DECISION rather than
+        add a row — a partial adoption recorded as `aligned` exports a false all-clear to a sibling,
+        which is this repo's own defect class pointed outward. Meanwhile `SYNERGY-vp-knowledge.md` is
+        already at 33 entries and two trend-review cycles overdue (`vp-beads-syn`); adding 13 rows to
+        a file nobody is reviewing is filing, not knowing.
     description: >-
       Section 6 of BRANCH-REVIEW-2026-07-29.md. Medium rather than low because unpromoted friction
       is invisible to sibling projects, which is the whole point of the ledger promote path.
@@ -1339,6 +1390,53 @@ tasks:
     description: >-
       Found by the long-horizon-steward pass, 2026-07-29; every line count independently re-measured
       before filing. Companion to vp-beads-msr — both are "the practice outgrew its mechanism".
+    updated: '2026-07-29'
+  - id: vp-beads-dur
+    title: 'The green-check taxonomy — this project''s most portable idea — exists ONLY in an untracked auto-memory file'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - docs
+    acceptance_criteria:
+      - >-
+        VERIFIED 2026-07-29. `green_check_taxonomy.md` — nine measured faces of "a check that passes
+        while inspecting nothing", each with a reproduction and an exit code — lives at
+        `~/.claude/projects/-Users-pelle-Sites-ai-vp-beads/memory/`. `git ls-files` returns NOTHING
+        for it. No git history, no backup, no audience. It is the single most generalizable artifact
+        this project has produced and it is in the least durable store it owns.
+      - >-
+        THE STORE IS KEYED ON THE ABSOLUTE PATH — confirmed: the directory is literally
+        `-Users-pelle-Sites-ai-vp-beads`. A rename of the local checkout re-keys it and orphans the
+        whole memory dir. `vp-beads-rnm` is a GitHub repo rename, so it does NOT by itself move the
+        local directory — but a rename usually travels with one, and nothing currently notices if it
+        does. State the risk precisely; do not overstate it into a certainty.
+      - >-
+        THE IRONY IS LOAD-BEARING, not decoration: `vp-dream` — a plugin shipped FROM THIS REPO —
+        exists to prune that exact directory, and `/RETRO-*.md` is gitignored (`.gitignore:15`), so
+        the retrospectives that GENERATE these lessons are non-durable too. The project built a
+        pruner for the folder holding its own crown jewels.
+      - >-
+        THE PROJECT'S OWN RULE ALREADY ANSWERS THIS: "build the guard where it will still be
+        standing" — the reason two guards were deleted unbuilt during the diarie extraction. That
+        rule has been applied rigorously to CODE and never once to KNOWLEDGE. Applying it is the
+        whole task.
+      - >-
+        NOT a proposal to commit the memory dir (it is Claude Code's, and correctly per-machine).
+        The options worth weighing: promote the taxonomy to a Basic Memory note (cross-project,
+        already the designated home for generalizable engineering knowledge — this is what
+        `vp-beads-prs`'s BM-3 partially does); OR write it up as a public artifact, which is the
+        only option whose value is not capped by whether this branch merges; OR track a copy in-repo
+        as a design doc. DECIDE deliberately — the first is cheapest, the second is highest value.
+      - >-
+        SECOND INSTANCE, same class, decide together: `BRANCH-REVIEW-2026-07-29.md` and
+        `BRANCH-REVIEW-latest.html` are UNTRACKED and NOT gitignored — unlike the `/RETRO-*.md` and
+        `/SWARM-*.md` convention which anchors and ignores them. They are currently in neither
+        state, which is the one state with no defined meaning.
+    description: >-
+      Found by the generative-optimist pass of a pluralistic review round, 2026-07-29; every claim
+      re-verified directly. Companion to vp-beads-msr and vp-beads-gsr — all three are "the practice
+      outgrew its mechanism", this one on the knowledge axis rather than the docs or guard axis.
     updated: '2026-07-29'
   - id: vp-beads-exf
     title: 'The execution floor — reachability is NOT execution; a gate can run, report success, and inspect nothing'

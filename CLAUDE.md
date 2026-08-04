@@ -49,6 +49,8 @@ plugins/                              # workspace-plugins (own package.json + .r
       SKILL.md                        # Claude file-memory consolidation (verify + approval-gated)
       references/                     # native-autodream-contract, synthesis-rationale
       scripts/audit-memory.sh         # descriptive memory-directory audit (pure bash)
+    scripts/
+      check-audit-memory.sh           # Tests for the audit — wired in as vp-dream's `check:test`
 hooks/
   hooks.json                          # Hook definitions (2 event types)
   session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact)

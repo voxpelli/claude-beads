@@ -577,6 +577,39 @@ tasks:
         guards, and README's Prerequisites never mentions it — not a regression, `main` has the same
         shape), and settle the `$CLAUDE_PLUGIN_ROOT` question BEFORE fixing discovery rather than
         after.
+      - >-
+        (1) IS NOW MEASURED, 2026-07-29 — the AC above asked for it and a user-advocate pass
+        delivered it. The answer is NOT contested: Anthropic's own plugin-dev docs, on disk at
+        `~/.claude/plugins/cache/claude-plugins-official/plugin-dev/`, state the discovery rule
+        ("Skills: Scans `skills/` for subdirectories containing `SKILL.md`"; "All component
+        directories ... MUST be at plugin root level"), and its `manifest-reference.md` defines
+        custom-path fields for EXACTLY FOUR components — `commands`, `agents`, `hooks`,
+        `mcpServers`. I verified the enumeration directly: **there is no `skills` path field.** So a
+        root manifest structurally CANNOT point at `plugins/*/skills/`, and the five skills there
+        are unreachable by any install path. Not a doc-reading inference any more.
+      - >-
+        THE EVIDENCE THAT WAS REFUTED STAYS REFUTED, so nobody re-runs it: the 0.18.0 cache having
+        no `plugins/` dir proves nothing (v0.18.0 never had one; `plugins/` arrived in c066fbe), and
+        no installed plugin on this machine ships a nested `plugins/` dir, so there is no empirical
+        precedent either way. The MANIFEST SCHEMA is what settles it, not the cache.
+      - >-
+        THE REMEDY IS A MARKETPLACE-SIDE SHAPE, not a repo change: four entries in
+        `vp-claude/.claude-plugin/marketplace.json`, each addressing a subdirectory, plus a version
+        bump. VERIFY THE EXACT SOURCE SHAPE BEFORE RELYING ON IT — the `git-subdir` form was
+        proposed from memory and does NOT appear in the plugin-dev docs on this machine, and no
+        marketplace here uses it; `handoffs/HANDOFF-vp-knowledge.md` flags the same uncertainty. So
+        the DIAGNOSIS is settled and the PRESCRIPTION is not. Confirm the schema against current
+        Claude Code docs first.
+      - >-
+        AND THE NEXT THREE PROBLEMS ARE ALREADY VISIBLE, which is the argument FOR doing this rather
+        than against: fixing distribution immediately exposes that (a) `diarie` is not installed for
+        users — skills emit bare `diarie ready` while README says no tracker install is needed, and
+        it only works here because of a global install recorded nowhere; (b) `/ledger` has no defined
+        empty state — its router offers "the modes whose object is present", and on a fresh project
+        no object is present; (c) `/swarm-wave`'s post-wave gate hard-requires `npm run check` with
+        no conditional, in the skill whose entire premise is substrate-neutrality — while
+        `retrospective/SKILL.md` hedges the same call correctly with "if a `check` script exists".
+        These are invisible today ONLY because nobody can reach the code that has them.
     description: >-
       Plan Phase 2 step 1. First GitHub-facing step. All local Phase-1 work must be done and green.
     updated: '2026-07-18'
