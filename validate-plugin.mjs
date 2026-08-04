@@ -801,5 +801,30 @@ if (errors.length > 0) {
   console.error(`\n${errors.length} error(s) found.`)
   process.exit(1)
 } else {
-  console.log('Plugin validation passed.')
+  // The bare `Plugin validation passed.` was BYTE-IDENTICAL over a real run and over a
+  // directory holding nothing but a manifest — measured. Every check here is `existsSync`-
+  // gated or a `for` over a discovered list, so an empty tree satisfies all of them
+  // vacuously, and the output gave a reader no way to tell the two apart.
+  //
+  // Print the NAMES, not a count. A count survives a shrink to zero but not a SWAP: drop
+  // one real skill and add one stub and the count is unchanged while the guard has gone
+  // quiet. Names make a swap visible on read. This is the same reasoning as
+  // `check-prose-commands`'s per-surface floors and `check-tracked-ignored`'s refusal to
+  // pass over zero tracked files ("a green here would mean nothing").
+  //
+  // Deliberately NOT floored on a hardcoded minimum: skills are relocating between
+  // `skills/` and `plugins/*/skills/` for the dissolution, so any threshold would false-red
+  // mid-move. Report what was inspected; let the reader judge.
+  const skillNames = skillFiles.map((f) => relative(ROOT, f).replace(/\/SKILL\.md$/, '')).toSorted()
+  const inventory = [
+    `${skillNames.length} skill(s)`,
+    `${referenceFiles.length} reference file(s)`,
+    `${agentFiles.length} agent(s)`,
+  ].join(', ')
+  console.log(`Plugin validation passed — audited ${inventory}.`)
+  if (skillNames.length > 0) {
+    console.log(`  skills: ${skillNames.join(', ')}`)
+  } else {
+    console.log('  skills: NONE FOUND — every skill check above was vacuously satisfied.')
+  }
 }

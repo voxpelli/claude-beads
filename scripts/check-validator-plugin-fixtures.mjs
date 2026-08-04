@@ -168,5 +168,35 @@ runCase(
   (r) => r.status === 0 && r.stdout.includes('Plugin validation passed')
 )
 
+// 7. THE VACUITY CASE — the one this harness could not see.
+//
+// Every case above plants a violation and asserts a RED. None asserted anything about what a
+// GREEN means. Measured before the fix: `Plugin validation passed.` over a directory holding
+// nothing but a manifest was BYTE-IDENTICAL to the real run over 6 skills and 18 reference
+// files, because every check is `existsSync`-gated or a `for` over a discovered list, and an
+// empty tree satisfies all of them vacuously.
+//
+// This is `vp-beads-exf`, which was CANCELLED with a recorded trigger — "a gate found green
+// over zero inputs again" — and the trigger then fired verbatim on this very validator.
+runCase(
+  'manifest-only tree → still exit 0, but the output SAYS it audited nothing',
+  { 'plugins/hollow/.claude-plugin/plugin.json': manifest({ name: 'hollow', version: '0.0.0', description: 'no skills at all' }) },
+  (r) => r.status === 0 && r.stdout.includes('0 skill(s)') && r.stdout.includes('NONE FOUND')
+)
+
+// 8. …and the control that makes case 7 mean something: a populated tree must NOT claim zero.
+// Without this pair, case 7 would pass against a validator that printed "NONE FOUND" always.
+runCase(
+  'populated tree → names the skill it audited, never the vacuity wording',
+  {
+    'plugins/populated/.claude-plugin/plugin.json': manifest({ name: 'populated', version: '0.0.0', description: 'has a skill' }),
+    'plugins/populated/skills/demo/SKILL.md': validSkill(),
+  },
+  (r) => r.status === 0 &&
+    r.stdout.includes('1 skill(s)') &&
+    r.stdout.includes('plugins/populated/skills/demo') &&
+    !r.stdout.includes('NONE FOUND')
+)
+
 console.log(`\n${passed + failed} fixture cases: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

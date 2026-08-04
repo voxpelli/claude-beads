@@ -10,7 +10,7 @@ import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync,
+  chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync,
 } from 'node:fs'
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
@@ -586,12 +586,21 @@ test('startup: reader present but NO STORE → prime stays silent', () => {
   }
 })
 
-test('startup: no tracker → prime stays silent (never a broken line)', () => {
-  // Hooks are exempt from the silent-skip rule. With no `diarie` on PATH and no
-  // in-repo reader, the prime must emit nothing rather than a half-built line.
+test('startup: STORE present but NO reader → prime stays silent (never a broken line)', () => {
+  // The canonical predicate needs BOTH a `.diarie/tasks/tasks-*.yml` AND a runnable
+  // reader. This pins the READER half — and it needs `scrubValidator` to exist at all.
+  //
+  // It used to omit that flag while its own comment claimed "no `diarie` on PATH", over an
+  // EMPTY dir. So it actually exercised the STORE half and passed for a reason unrelated to
+  // what it names: under `npm run check`, `node_modules/.bin` is on PATH and `diarie`
+  // resolves fine, making the stated premise impossible to reach. A test that cannot create
+  // its own premise is not testing anything — the same defect `5163a6a` fixed in the
+  // sibling test and did not carry across.
   const dir = makeTempDirWithRetros(0)
+  mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
+  writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-x.yml'), 'tasks: []\n')
   try {
-    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir, scrubValidator: true })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
@@ -1053,6 +1062,72 @@ test('startup: ALL SIX collectors fire at once, in the documented order', () => 
     rmSync(trackerStub, { recursive: true, force: true })
     rmSync(ghStub, { recursive: true, force: true })
   }
+})
+
+// ============================================================================
+// Inventory — the direction this suite could not see
+// ============================================================================
+//
+// Every test above hardcodes a script name behind its own `existsSync` gate, so a DELETED
+// hook goes red. The reverse was unasserted: a hook ADDED to hooks.json, or a new
+// `hooks/*.sh` on disk, got zero tests here with nothing going red — and hooks are the
+// plugin's only always-on surface.
+//
+// Deliberately an INVENTORY, not a count floor. "The suite ran nothing" prints a literal
+// `0 tests` that a human sees — that failure is already loud. "A hook exists that no test
+// knows about" is silent, which is the one worth a guard. And a count cannot see a SWAP.
+//
+// The wired list is read from hooks.json, never hardcoded — a second hardcoded list would
+// be a second model of the same config, which is the failure `check-prose-commands` exists
+// to prevent. The tested list is read from this file's own source: a runHook call naming a
+// script IS what "there is a test for that script" means here.
+//
+// Do NOT write an example runHook call in a comment above — the scan reads this file, so a
+// prose illustration becomes a phantom entry in the tested set. That happened on the first
+// run of this very check, and it is the reason the orphan branch below exists at all.
+
+console.log('\nhook inventory')
+
+test('every hooks.json-wired script and every hooks/*.sh has at least one test here', () => {
+  /** @type {unknown} */
+  let parsed
+  try {
+    parsed = JSON.parse(readFileSync(join(HOOKS, 'hooks.json'), 'utf8'))
+  } catch (err) {
+    return { ok: false, reason: `could not read hooks/hooks.json: ${err instanceof Error ? err.message : String(err)}` }
+  }
+
+  // Pull every `.../hooks/<name>.sh` out of the declared commands, whatever the nesting.
+  const commands = JSON.stringify(parsed).match(/hooks\/[\w.-]+\.sh/g) ?? []
+  const wired = new Set(commands.map((c) => c.replace(/^hooks\//, '')))
+  if (wired.size === 0) {
+    return { ok: false, reason: 'hooks.json declares no hook scripts — that is not a green, it is an empty read' }
+  }
+
+  const onDisk = new Set(readdirSync(HOOKS).filter((f) => f.endsWith('.sh')))
+  const self = readFileSync(new URL(import.meta.url).pathname, 'utf8')
+  const tested = new Set((self.match(/runHook\('([\w.-]+\.sh)'/g) ?? [])
+    .map((m) => m.replace(/^runHook\('/, '').replace(/'$/, '')))
+
+  const untested = [...new Set([...wired, ...onDisk])].filter((s) => !tested.has(s)).toSorted()
+  if (untested.length > 0) {
+    return { ok: false, reason: `wired or on-disk but never exercised by runHook(): ${untested.join(', ')}` }
+  }
+
+  // The other direction: a test naming a script that is neither wired nor on disk is a
+  // fossil, and would otherwise sit here passing forever against nothing.
+  const orphaned = [...tested].filter((s) => !wired.has(s) && !onDisk.has(s)).toSorted()
+  if (orphaned.length > 0) {
+    return { ok: false, reason: `tested but neither wired in hooks.json nor present on disk: ${orphaned.join(', ')}` }
+  }
+
+  const unwired = [...onDisk].filter((s) => !wired.has(s)).toSorted()
+  if (unwired.length > 0) {
+    return { ok: false, reason: `on disk but not wired in hooks.json: ${unwired.join(', ')}` }
+  }
+
+  console.log(`    (${wired.size} wired, ${onDisk.size} on disk, ${tested.size} tested — all three agree)`)
+  return { ok: true }
 })
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed\n`)
