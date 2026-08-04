@@ -92,7 +92,7 @@ collect_open_upstream_files() {
 
 	if [ -n "$upstream_pkgs" ]; then
 		# shellcheck disable=SC2016
-		parts+=("Open UPSTREAM tracking files: ${upstream_pkgs}. Use \`/ledger review\` to inspect entries.")
+		parts+=("Open UPSTREAM tracking files: ${upstream_pkgs}. If the \`ledger\` plugin is installed, \`/ledger review\` inspects entries; otherwise read the files directly.")
 	fi
 	return 0
 }
@@ -191,7 +191,7 @@ Read the task row in \`.diarie/tasks/\` to recover full context for any claim ab
 # [shard destination: ledger]
 collect_capture_nudge() {
 	# shellcheck disable=SC2016
-	parts+=("If the compacted conversation produced un-captured sprint insights — upstream friction, technical decisions, vendor issues, resolved UPSTREAM entries, or cross-project extraction opportunities — capture them now via \`/ledger log\` (or \`/ledger resolve\` for a fixed entry), or Basic Memory (search first, then edit/write). Keep it concise: capture the insight, not the conversation.")
+	parts+=("If the compacted conversation produced un-captured sprint insights — upstream friction, technical decisions, vendor issues, resolved UPSTREAM entries, or cross-project extraction opportunities — capture them now — via \`/ledger log\` (or \`/ledger resolve\` for a fixed entry) if the \`ledger\` plugin is installed, else straight into the UPSTREAM/SYNERGY files — or Basic Memory (search first, then edit/write). Keep it concise: capture the insight, not the conversation.")
 	return 0
 }
 
@@ -240,13 +240,16 @@ check_private_overlays() {
 # so every session begins blind to the backlog.
 #
 # Hooks are exempt from the silent-skip rule (this is orientation plumbing, not a
-# user-facing workflow step) — silent when there is no tracker. Prefer the `diarie`
-# CLI when installed; else the in-repo reader.
+# user-facing workflow step) — silent when there is no tracker. Resolution is
+# `diarie_ready_cmd`'s two rungs: PATH, then `node_modules/.bin`. There is no
+# vendored in-repo reader any more — it left with diarie's extraction.
 # [shard destination: diarie-adopt]
 tracker_prime() {
 	# Two reads, ~0.2s total against a 5s timeout: the queue (counts AND titles) and
-	# the in-progress claims. `--stats` is not enough — it returns counts without
-	# titles. Ids come back namespaced as `<slug>/<id>`; strip the slug for display.
+	# the in-progress claims. `diarie stats` is not enough — it returns counts without
+	# titles. (It is a SUBCOMMAND, not a `ready` flag; this comment said `--stats` for
+	# months, which is a flag that has never existed.)
+	# Ids come back namespaced as `<slug>/<id>`; strip the slug for display.
 	# Gate on the STORE, not just the reader. The canonical predicate (CLAUDE.md
 	# `### Files-availability convention`) is a `.diarie/tasks/tasks-*.yml` AND a runnable
 	# reader — gating on the reader alone made the prime announce
@@ -359,13 +362,13 @@ check_dormancy() {
 		if [ "$recent" -le 4 ]; then
 			if [ "$upstream_count" -gt 0 ] && [ "$synergy_count" -gt 0 ]; then
 				# shellcheck disable=SC2016
-				parts+=("Low-activity repo: ${upstream_count} UPSTREAM and ${synergy_count} SYNERGY tracking file(s). Entries and extraction candidates in dormant repos can stay trapped locally for months. Consider \`/ledger review\` or \`/ledger promote\` to surface them and advance ready candidates.")
+				parts+=("Low-activity repo: ${upstream_count} UPSTREAM and ${synergy_count} SYNERGY tracking file(s). Entries and extraction candidates in dormant repos can stay trapped locally for months. If the \`ledger\` plugin is installed, \`/ledger review\` or \`/ledger promote\` surfaces them and advances ready candidates.")
 			elif [ "$upstream_count" -gt 0 ]; then
 				# shellcheck disable=SC2016
-				parts+=("Low-activity repo with ${upstream_count} UPSTREAM tracking file(s). Entries in dormant repos can stay trapped locally for months. Consider \`/ledger review\` or \`/ledger promote\` so friction is discoverable from other projects.")
+				parts+=("Low-activity repo with ${upstream_count} UPSTREAM tracking file(s). Entries in dormant repos can stay trapped locally for months. If the \`ledger\` plugin is installed, \`/ledger review\` or \`/ledger promote\` makes that friction discoverable from other projects.")
 			else
 				# shellcheck disable=SC2016
-				parts+=("Low-activity repo with ${synergy_count} SYNERGY tracking file(s). Extraction candidates in dormant repos can stay unacted on for months. Consider \`/ledger review\` to review and advance ready candidates.")
+				parts+=("Low-activity repo with ${synergy_count} SYNERGY tracking file(s). Extraction candidates in dormant repos can stay unacted on for months. If the \`ledger\` plugin is installed, \`/ledger review\` advances ready candidates.")
 			fi
 		fi
 	fi
@@ -430,12 +433,16 @@ check_trend_review() {
 
 	if [ "$count" -gt 0 ]; then
 		mod=$((count % 4))
+		# ONE branch, deliberately. There was a `mod -eq 0` branch announcing
+		# "Sprint N+1 IS a trend-review sprint" — wrong by a full cycle: at 16 RETRO
+		# files it named sprint 17, and 17 % 4 == 1. It also fired one RETRO after the
+		# reminder below had already announced the same cycle, so every cycle produced
+		# two announcements naming different sprints. Deleted rather than repaired:
+		# the surviving branch fires while the trend-review sprint is IN PROGRESS,
+		# which is the only moment "plan for a longer session" is actionable.
 		if [ "$mod" -eq 3 ]; then
 			next=$((count + 1))
-			parts+=("Trend-review reminder: Sprint ${next} will be a trend-review sprint. When you close this sprint, /retrospective will also run the full UPSTREAM trend review, tracker health audit (validate-tasks, --stats, stale tasks, blocked tasks), and Basic Memory graph audit (schema validation, drift detection, duplicate audit). Plan for a longer retrospective session.")
-		elif [ "$mod" -eq 0 ]; then
-			current=$((count + 1))
-			parts+=("Trend-review sprint: Sprint ${current} is a trend-review sprint. Running /retrospective will perform the full UPSTREAM trend review, tracker health audit, and Basic Memory graph audit in addition to the standard retrospective. Plan for a longer session.")
+			parts+=("Trend-review reminder: Sprint ${next} will be a trend-review sprint. When you close this sprint, /retrospective will also run the full UPSTREAM trend review, tracker health audit (\`diarie validate\`, \`diarie stats --stale\`, \`diarie ready --blocked\`), and Basic Memory graph audit (schema validation, drift detection, duplicate audit). Plan for a longer retrospective session.")
 		fi
 	fi
 	return 0

@@ -734,15 +734,26 @@ test('with 3 RETRO files, emits 1 object', () => {
   }
 })
 
-test('with 4 RETRO files (trend review), emits 1 object', () => {
+test('with 4 RETRO files (mod 0), NO trend-review text — the deleted branch stays deleted', () => {
+  // This test used to assert `count <= 1`, which ZERO objects satisfy — so it was
+  // named for a branch it could never observe, and its own comment conceded the
+  // count "may be 0". Deleting the entire `mod -eq 0` branch left it green.
+  //
+  // That branch was wrong by a full cycle: at 16 RETRO files it announced sprint 17,
+  // and 17 % 4 == 1. It also fired one RETRO after the `mod -eq 3` reminder had
+  // already announced the same cycle, so every cycle produced two announcements
+  // naming different sprints. The surviving branch is pinned by literal string AND
+  // ordinal position in the ALL-SIX test below; this one pins the boundary ALL-SIX
+  // never reaches. Assert CONTENT, not a count — that is the whole lesson here.
   const dir = makeTempDirWithRetros(4)
   try {
     const { stdout } = runHook('session-start.sh', '', { cwd: dir })
-    const { count, parseError } = parseJsonObjects(stdout)
+    const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    return count <= 1
-      ? { ok: true }
-      : { ok: false, reason: `expected 0 or 1 objects, got ${count}` }
+    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    return ctx.includes('Trend-review')
+      ? { ok: false, reason: `mod==0 announced a trend-review sprint: ${ctx.slice(0, 160)}` }
+      : { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

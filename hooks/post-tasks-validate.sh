@@ -30,9 +30,14 @@ esac
 PROJECT_ROOT="${FILE_PATH%/.diarie/tasks/*}"
 [ -n "$PROJECT_ROOT" ] && [ -d "$PROJECT_ROOT/.diarie/tasks" ] || exit 0
 
-# Resolve a validator. Four rungs, and the LAST one is the only one a real consumer
-# ever reaches: these are the plugin's hooks, so they run inside someone else's
-# project, where `diarie` is not on PATH and there is no `diarie/` in their tree.
+# Resolve a validator. TWO rungs, and the last is the one a real consumer reaches:
+# these are the plugin's hooks, so they run inside someone else's project, where
+# `diarie` may not be on PATH. (The two vendored in-repo rungs died with diarie's
+# extraction — there is no `diarie/` workspace to fall back to any more.)
+#
+# The FIRST rung is `command -v diarie`, so the binary that actually runs is whatever
+# is globally installed — unpinned, unmanaged, and invisible to `package.json`. It
+# agrees with `check:tasks` today only because the versions happen to match.
 #
 # Every rung passes --root "$PROJECT_ROOT" explicitly. That is not belt-and-braces:
 # `.diarie/` is COMMITTED, so a plugin release ships vp-beads' OWN backlog inside the
@@ -59,11 +64,11 @@ clean=$(printf '%s' "$result" | jq -r '.clean | tostring' 2>/dev/null || true)
 errors=$(printf '%s' "$result" | jq -r '(.errors // [])[] | "  - \(.)"' 2>/dev/null || true)
 [ -n "$errors" ] || exit 0
 
-msg="The task store is invalid after that edit (validate-tasks):
+msg="The task store is invalid after that edit (\`diarie validate\`):
 
 ${errors}
 
-Fix the YAML in \`.diarie/tasks/\` before continuing — a dangling dep or bad enum silently distorts what \`ready-walker\` reports as workable."
+Fix the YAML in \`.diarie/tasks/\` before continuing — a dangling dep or bad enum silently distorts what \`diarie ready\` reports as workable."
 
 jq -n --arg msg "$msg" '{"additionalContext": $msg}'
 exit 0
