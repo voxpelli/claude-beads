@@ -980,7 +980,11 @@ file can be 100% `any`-free and still fail `tsc` on an unnarrowed `unknown`. A g
 
 **The root tsconfig must never `include` `plugins/**`.** It did until 2026-07-29, which made the
 type checker reach into a workspace exactly the way `eslint.config.js` still does (`vp-beads-wsx`) —
-63 of the then-191 errors were `plugins/diarie-adopt`'s. Dropping it is why the count above is 128.
+63 of the then-191 errors were `plugins/diarie-adopt`'s, and dropping it is what reduced the root
+count to the figure the arming later cleared. _(That sentence used to end "…is why the count above is
+128" — a BACK-REFERENCE to a number rewritten 24 lines up, in the same commit, the same day. It was
+true when written and false one edit later. No gate can see a numeral referring to a nearby
+paragraph; the only defence is to describe the relationship instead of restating the figure.)_
 A workspace that wants type checking gets its own `tsconfig.json` and its own `check:` key, per
 **THE WORKSPACE OWNS ITS GATES** above.
 

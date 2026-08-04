@@ -1241,6 +1241,105 @@ tasks:
       Section 6 of BRANCH-REVIEW-2026-07-29.md. Medium rather than low because unpromoted friction
       is invisible to sibling projects, which is the whole point of the ledger promote path.
     updated: '2026-07-29'
+  - id: vp-beads-msr
+    title: 'CLAUDE.md interleaves MEASUREMENTS with DECISIONS at equal weight — the one cause behind eight separate doc-rot findings'
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - docs
+    acceptance_criteria:
+      - >-
+        THE STRUCTURAL DIAGNOSIS, and it is not carelessness — this repo is meticulously maintained.
+        CLAUDE.md gives a DECISION ("a missing store is an ERROR, not an empty backlog" — permanent)
+        and a MEASUREMENT ("128 errors across 7 root files", "seven rules load — 4 local + 3 from the
+        package", "five prose surfaces") the same typographic weight and the same sentence shape. A
+        measurement has a HALF-LIFE, and the more precisely it is stated the shorter that half-life
+        is. No reader — human or agent — can tell which sentences need re-verification, so all of
+        them do, over 1010 lines and 9095 words loaded into every single session.
+      - >-
+        THE PROOF IS THIS SESSION'S OWN COMMIT. `bc35520` armed `check:tsc` and rewrote the count to
+        132. Twenty-four lines below, in the SAME SECTION and the SAME COMMIT, a back-reference still
+        read "Dropping it is why the count above is 128." It was TRUE when written and FALSE one edit
+        later, because the edit changed its antecedent. The commit that closed a doc-rot finding
+        opened a fresh instance of the same finding, the same day. Fixed in the follow-up by
+        DESCRIBING the relationship instead of restating the figure — which is the generalizable
+        remedy, not the individual fix.
+      - >-
+        FOUR MORE LIVE INSTANCES, all measured, all the same shape (each already filed separately —
+        listed here to establish that they are ONE class, not four bugs): CLAUDE.md says "five prose
+        surfaces" while `check-prose-commands.mjs` enumerates EIGHT (`vp-beads-pcb`); it says Tier B
+        has "no active component" while ledger's `reconcile.md` writes to the store (`vp-beads-ltr`);
+        `eslint.config.js` ignores `diarie/**`, a directory deleted in the same commit that created
+        `plugins/` (`vp-beads-wsx`); and `hooks/hooks.json` advertised a deleted hook (fixed
+        `9a40da6`). Fixing them one at a time is treating symptoms.
+      - >-
+        WHY THE EXISTING REMEDY CANNOT HOLD: `check:prose-commands` is this repo's own diagnosis of
+        exactly this problem, applied to the ONE class of assertion that happened to have a free
+        oracle (`<cli> --help`). Every other self-measurement has none. The prescribed remedy for the
+        rest — CLAUDE.md `### Doc-grep the VOCABULARY` — is a DISCIPLINE, a human obligation across
+        68 root markdown files, and that section OPENS by conceding a sweep "described in its own
+        commit as complete" missed half its targets. A mechanism failure answered with more diligence
+        does not survive to 2028.
+      - >-
+        THE FIX IS NOT ANOTHER GUARD — it is a convention change, and it should be cheap. Options to
+        weigh: (a) mark volatile figures with a visible marker (a `[measured YYYY-MM-DD]` tag) so a
+        reader can see at a glance which sentences are perishable; (b) stop stating counts that a
+        command already prints, and cite the command instead ("`check:rule-parity` prints the split"
+        — which CLAUDE.md ALREADY does in one place and is the pattern to generalize); (c) never
+        write a back-reference to a figure ("the count above"), only to a relationship. DECIDE
+        deliberately; do not adopt all three.
+    description: >-
+      Found by the long-horizon-steward pass of a pluralistic review round, 2026-07-29, and verified
+      directly. It names the single cause behind findings this session had been filing individually.
+    updated: '2026-07-29'
+  - id: vp-beads-gsr
+    title: 'The guard layer has no STOPPING RULE — 788 lines guard the guards, and 4 local ast-grep rules find nothing'
+    status: pending
+    type: task
+    priority: medium
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        MEASURED 2026-07-29, all figures re-verified: **3475 lines** of guard and dev tooling
+        (`scripts/*.mjs` 2559 + `validate-plugin.mjs` 805 + `eslint-local-rules/` 111) against
+        **5240 lines** of shipped artifact (4640 of skill markdown incl. `references/`, 600 of
+        hooks). Two-thirds of a line of guard per line of deliverable, for a plugin whose deliverable
+        is prose.
+      - >-
+        THE META-LAYER IS 788 LINES — 23% of the guard layer — and its SUBJECT IS THE GUARD LAYER:
+        `check-rule-parity.mjs` (330) + `check-rule-parity-fixtures.mjs` (211) +
+        `check-validator.mjs` (75) + `check-validator-plugin-fixtures.mjs` (172). They protect four
+        local ast-grep rules which, measured just now, report ZERO findings across the whole repo.
+        That is ~135 lines of guard per rule, existing to prove a zero is a real zero rather than an
+        accidental one.
+      - >-
+        THE RECURSION DOES NOT TERMINATE BY CONSTRUCTION. "What would this look like if it were
+        inspecting NOTHING?" applies to every guard INCLUDING the guards, and the answer keeps being
+        another layer. Meanwhile the LARGEST guard — `check-hooks.mjs`, 1050 lines over 600 lines of
+        shell — has no coverage floor at all (`vp-beads-exf`). The layer is becoming the thing that
+        needs guarding.
+      - >-
+        THE PROPOSED STOPPING RULE, which this repo already half-practises: **a guard must have a
+        REAL CATCH in its history, or it is a hypothesis.** `check-tracked-ignored.mjs` (110 lines,
+        born RED on a real tracked-and-ignored file) and `check-prose-commands.mjs` (caught a dead
+        `ready-walker.mjs` invocation shipping into every session) both pass. Apply it honestly to
+        the meta-layer and to `no-hardcoded-tracker-dir` — noting that rule is PREVENTIVE by design
+        and zero findings IS its correct state, so the rule must not be applied mechanically.
+      - >-
+        AND THE PRECEDENT IS ALREADY IN THIS REPO'S HISTORY: `56740fb` dissolved a bespoke ast-grep
+        wrapper (path list + existence guard + `scannedFileCount` floor) down to a bare
+        `ast-grep scan` on the operator steer "why are we special?". That instinct is the direct
+        antidote here. The question to ask of each meta-guard is the same one.
+      - >-
+        SECOND-ORDER COST, which is the real reason this is filed: each guard carries a 20-40 line
+        epistemological header. That makes it UNDELETABLE by anyone who has not read the whole
+        taxonomy — the comments that make the code trustworthy also make it immovable.
+    description: >-
+      Found by the long-horizon-steward pass, 2026-07-29; every line count independently re-measured
+      before filing. Companion to vp-beads-msr — both are "the practice outgrew its mechanism".
+    updated: '2026-07-29'
   - id: vp-beads-exf
     title: 'The execution floor — reachability is NOT execution; a gate can run, report success, and inspect nothing'
     status: pending
