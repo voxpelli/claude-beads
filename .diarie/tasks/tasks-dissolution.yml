@@ -688,8 +688,25 @@ tasks:
       - >-
         must follow the [vpk] marketplace re-source so their marketplace entries never 404 (B3) —
         confirm the vp-skills sources are live before archiving
-    description: 'Plan Phase 2 step 5. Ordering-gated on the [vpk] marketplace bridge landing first.'
-    updated: '2026-07-18'
+      - >-
+        DEADLOCKED, not merely blocked — recorded 2026-08-05 so the dep chain stops reading as live.
+        The `deps: [vp-beads-rnm]` edge resolves through pending rows, so every tool here reports this
+        as ordinary blocked work. But its PREMISE is `vp-beads-vga` ("bring vp-git + vp-astgrep in as
+        workspaces"), which is DEFERRED indefinitely: there is nothing to archive until those two repos
+        have actually been brought in, and the parenthetical in AC-1 ("files already brought in during
+        P1.3d") assumes a step that has not happened
+      - >-
+        THE RULE THIS INSTANCE ESTABLISHED: a dep on a `pending` row is a gate; a dep on a `deferred`
+        row is a deadlock. Only the first will clear on its own. Where a row's stated deps and its real
+        premise disagree, the premise wins — and the disagreement has to be written down, because no
+        gate can see it
+      - >-
+        REVIVAL TRIGGER: vp-beads-vga leaves `deferred`. Do not work this row before then; archiving
+        repos whose content has not been absorbed is the one direction that is expensive to undo
+    description: >-
+      Plan Phase 2 step 5. Ordering-gated on the [vpk] marketplace bridge landing first, and premise-gated
+      on vga, which is the binding constraint.
+    updated: '2026-08-05'
 
   - id: vp-beads-swd
     title: 'P2.5 [us] Swap the vendored diarie/ subtree for the published npm dep — publish-gate satisfied'
@@ -1015,8 +1032,8 @@ tasks:
     updated: '2026-08-05'
 
   - id: vp-beads-hkp
-    title: 'Prove hook delivery with the @skills-dir loader probe'
-    status: pending
+    title: 'Prove hook delivery — PASSED, and the probe is far simpler than planned'
+    status: completed
     type: task
     priority: high
     parent: vp-beads-dis
@@ -1026,26 +1043,43 @@ tasks:
       - chore
     acceptance_criteria:
       - >-
-        THE TRAP THIS ROW EXISTS FOR: the cache runs, the working tree does not. Fixing the tree and
-        restarting still executes the stale 0.18.0 cache, so a persisting drop would read as "the envelope
-        fix didn't work" and #16538's wrong conclusion gets re-derived from the evidence that refuted it
+        PASSED 2026-08-05. The envelope DELIVERS. `post-tasks-validate.sh`'s payload arrived as
+        `PostToolUse:Write hook additional context`, and the transcript confirms it independently:
+        `hook_additional_context` went 3 → 4 with the vp-beads marker at 1 delivered, alongside the
+        envelope-shaped Anthropic control. So the envelope is not merely NECESSARY (which the 42/21
+        control already showed) but SUFFICIENT
       - >-
-        METHOD: symlink this repo into `~/.claude/skills/` — a folder there carrying
-        `.claude-plugin/plugin.json` loads as `<name>@skills-dir` and is DISCOVERED IN PLACE, not copied
-        to the cache. Disable the installed vp-beads first to avoid double-fire
+        THE PROBE IS MUCH CHEAPER THAN THIS ROW ORIGINALLY SPECIFIED, and the saving is worth keeping.
+        Planned: disable the installed plugin, symlink the repo into `~/.claude/skills/` for
+        `@skills-dir` in-place discovery, restart the session, grep the transcript, undo all of it.
+        Actual: register the working-tree hook in the gitignored `.claude/settings.local.json`, make one
+        real `Write` to a throwaway `.diarie/tasks/` store, read the delivered text inline
       - >-
-        PASS CRITERION: the marker appears in `hook_additional_context` in the transcript, per hook.
-        Read the transcript — never ask the model, and never accept "we switched to the envelope" as the
-        proof. Anthropic's own hooks measured 42 emitted / 21 delivered, so the envelope is NECESSARY and
-        not yet demonstrated SUFFICIENT
-      - 'IF IT STILL DROPS: stop. Do not shard (vp-beads-sss). The shard multiplies an unverified emitter by four'
+        THE FACT THAT COLLAPSES THE PROCEDURE: hooks are NOT snapshotted at session start. A hook added
+        to `.claude/settings.local.json` mid-session fires on the very next matching tool call. The
+        restart-and-archaeology dance was built on the opposite assumption, which was never measured
       - >-
-        SECOND YIELD: the same probe shows whether the loader registers manifest-declared skills. Only
-        `validate-plugin`/`claude plugin validate` has shown that so far, and validate is explicitly NOT
-        the loader — it passed a leaf-form `skills` array that would silently miss any skill added later
+        EXPERIMENTAL HYGIENE THAT MADE THE RESULT READABLE: run the hook standalone FIRST and confirm it
+        SPEAKS, before testing whether it is DELIVERED. Otherwise silence has two explanations and the
+        probe cannot distinguish them. Point it at a THROWAWAY store rather than this repo's, so a
+        deliberately-invalid fixture never touches the real one — the hook derives its project root from
+        the edited file's path, so this costs nothing
+      - >-
+        SHARPER THAN THE ORIGINAL FINDING: the installed 0.18.0 cache contains no `post-tasks-validate.sh`
+        AT ALL (`hooks.json`, `post-bm-failure-classify.sh`, `post-file-edit.sh`, `session-start.sh` only).
+        So edit-time store validation was not "delivered but discarded" for released users — it was never
+        shipped. The shape defect bit only those running from source
+      - >-
+        CONSEQUENCE FOR vp-beads-sss: the "if it still drops, do not shard" stop-check is CLEARED. The
+        shard is now gated only on its real dependency, backlog/vp-beads-vgp
+      - >-
+        NOT PROVEN HERE, deliberately: whether the LOADER registers manifest-declared skills. That was
+        this row's second yield under the `@skills-dir` method and does not come free with the cheap
+        probe. It belongs to whoever needs it (vp-beads-rrp / the W4 bridge branch), and
+        `claude plugin validate` does NOT answer it — validate is not the loader
     description: >-
-      The verification half of vp-beads-hkx, split out because it needs a real session restart and
-      therefore cannot complete inside the run that made the fix.
+      The verification half of vp-beads-hkx. Split out on the assumption it needed a session restart;
+      it did not. Recorded in full because the cheap method is reusable for every future hook change.
     updated: '2026-08-05'
 
   - id: vp-beads-rpl

@@ -1027,6 +1027,18 @@ tasks:
       - bug
     acceptance_criteria:
       - >-
+        INHERITED from `vp-beads-chl` when that row closed (2026-08-05), because it is the same decision
+        surface — what should this checker scan? SHOULD `CHANGELOG.md` become a scanned surface? It is in
+        none of them today, which is exactly why dead script names survive there and nowhere else in the
+        repo. But the tradeoff is real and cuts the other way: a changelog is HISTORICAL by nature and
+        must keep naming commands that no longer exist, so adding the surface would either redden the
+        gate permanently or require blanket `prose-cmd-ignore` markers that defeat it. Decide
+        deliberately; do not add the surface reflexively, and record the reasoning either way
+      - >-
+        RELATED, already shipped and not to be redone: `plugins/*/hooks/**` IS scanned (added before this
+        row) but is NOT in `POPULATED_SURFACES`, so it can silently empty. Flooring it is
+        `dissolution/vp-beads-sss`'s job, since that is the row that first puts files there
+      - >-
         `scripts/check-prose-commands.mjs:198` — the `node <path>` half of the checker skips any
         target containing `$`, and resolves every target against the REPO ROOT. Both together mean
         that every `$CLAUDE_PLUGIN_ROOT/scripts/...` reference in a plugin's prose is unchecked, and
@@ -1090,16 +1102,35 @@ tasks:
     updated: '2026-07-29'
   - id: vp-beads-chl
     title: 'CHANGELOG ## Unreleased is a self-contradicting fossil — rewrite it from git log, do not patch it'
-    status: pending
+    status: completed
     type: task
     priority: medium
     labels:
       - docs
     acceptance_criteria:
       - >-
+        DONE in `7674ffa` (2026-07-11 → 2026-08-04), rewritten from git log as AC-5 required rather than
+        patched. Re-measured 2026-08-05 against the current file, claim by claim: `## Unreleased` now
+        holds exactly ONE each of `### Added` / `### Changed` / `### Fixed` / `### Removed` (the
+        duplicate-heading seam that produced the self-contradiction is gone); zero hits for the stale
+        assertions this row enumerated — "npm workspace at `diarie/`", `private: true`, `check:bootstrap`,
+        an `agents/` directory, `ready-walker`, `validate-tasks`; and it now LEADS with `### Removed`
+        naming the seven retired slash commands and the agent. `.claude-plugin/plugin.json` is `0.19.0`
+      - >-
+        RESIDUE 1, rehomed to `dissolution/vp-beads-rpl` — do not re-open this row for it. The rewrite
+        introduced a NEW false section, `### Not yet installable`, asserting "there is no `skills` field,
+        and `skills/` is scanned from the plugin root". That claim is refuted (the live manifest reference
+        documents a `skills` field that ADDS to the default scan); it came from a third-party plugin's
+        cached teaching doc
+      - >-
+        RESIDUE 2, rehomed to `vp-beads-pcb` — the AC-6 question of whether `CHANGELOG.md` should join
+        `check-prose-commands.mjs`'s scanned surfaces is still genuinely UNDECIDED, and its tradeoff is
+        real: a changelog is historical by nature and MUST keep naming things that no longer exist.
+        Closing this row does not decide it
+      - >-
         FROZEN 2026-07-11 with ~196 commits landed since; its only later touch was a semantically-null
         remark reformat. `.claude-plugin/plugin.json` is still `0.18.0`, so the section has never been
-        cut.
+        cut. (The state that motivated the row; both halves changed in 7674ffa.)
       - >-
         IT CONTRADICTS ITSELF. Measured: `## Unreleased` holds TWO `### Changed` blocks (L72, L117)
         and TWO `### Fixed` blocks (L32, L137), and the OLDER copy of each contradicts the newer. The
@@ -2846,13 +2877,28 @@ tasks:
     title: 'validate-plugin gaps: nested hooks.json unread, quoted/relative hook paths unchecked, event names unvalidated'
     status: pending
     type: task
-    priority: medium
+    priority: high
     labels:
       - bug
     acceptance_criteria:
       - >-
-        NESTED hooks.json IS NEVER READ. `validate-plugin.mjs:309` hardcodes `join(ROOT, 'hooks',
-        'hooks.json')`. Proven with a byte-identical garbage file: at `plugins/nested/hooks/` it exits
+        ON THE CRITICAL PATH as of 2026-08-05, which is why this is now `high` and not `medium`. The
+        nested-hooks.json half is the sole remaining blocker on `dissolution/vp-beads-sss` (shard the
+        session-start hook across the owning plugins), which in turn blocks `vp-beads-rrp` (retire the
+        root plugin). sss creates exactly the nested `plugins/*/hooks/hooks.json` files this validator
+        cannot see, so shipping it first lands them unvalidated
+      - >-
+        The other two halves (quoted/relative hook paths, unvalidated event names) are NOT on that path
+        and can ship separately. Note the event-name half gained a consumer-side precedent meanwhile:
+        `check-hooks.mjs` now asserts each hook emits the `hookEventName` matching the event it is wired
+        to, after a wrong-but-valid name was measured to fail exactly 1 test of 38
+      - >-
+        NESTED hooks.json IS NEVER READ. `validate-plugin.mjs`'s `hooksPath` const — the one guarded by
+        the `existsSync(hooksPath)` block under the `--- hooks.json (optional) ---` banner — hardcodes
+        `join(ROOT, 'hooks', 'hooks.json')`. (Cited by CONST rather than by line: this AC said `:309`,
+        the same code was at `:370` by 2026-08-05, and nothing greps a stale numeral. The repo's own
+        convention already says cite the function; a bare line number in an AC is the same rot.)
+        Proven with a byte-identical garbage file: at `plugins/nested/hooks/` it exits
         0 "validation passed"; at `hooks/` it exits 1 "Invalid JSON". A fuller nested fixture (missing
         matcher, a `type: prompt` hook, a bogus type, missing timeouts, dangling script path) produced
         ZERO errors. `scripts/check-hooks.mjs:17` has the identical blind spot. This matters NOW —
