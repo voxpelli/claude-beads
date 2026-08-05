@@ -50,6 +50,16 @@ the contents silently.
 
 ### Changed
 
+* **BREAKING — the session hooks now ship from the plugin that owns each one.** The
+  root plugin's single `session-start.sh` is gone; its collectors moved whole to
+  `ledger` (open UPSTREAM files, capture nudge, tracked-private-overlay warning,
+  dormancy nudge), `swarm-wave` (recently-touched SWARM/RETRO files), `diarie-adopt`
+  (tracked beads-credential-key warning) and the new `diarie` plugin (the tracker
+  prime and in-progress-claim recovery). Installing one plugin now gets you that
+  plugin's hook and nothing else, and each labels its own compaction output. Every
+  copy of the output contract is checked against the event key it is wired under —
+  a `hookEventName` that disagrees with `hooks.json` is dropped silently at runtime,
+  so nothing else could have caught it.
 * **BREAKING — the tracker is `diarie`, not beads.** Work lives in
   `.diarie/tasks/tasks-<slug>.yml`, read by `diarie ready` and validated by
   `diarie validate`. beads 1.1.0's schema-migration gate panics on every write, so
@@ -65,6 +75,16 @@ the contents silently.
   and degrade along it; silently skipping a tracker step is treated as a bug.
 * `/retrospective` and `/swarm-wave` announce cross-plugin handoffs they cannot make,
   rather than dead-ending, when a sibling plugin is not installed.
+
+### Removed
+
+* **The trend-review reminder.** It counted `RETRO-*.md` files on disk to decide when a
+  sprint was a trend-review sprint. RETRO files are dissolving into Basic Memory notes,
+  so a file count cannot survive as the trigger; the cadence is rebuilt in vp-knowledge's
+  `/session-reflect` instead of being carried forward broken.
+* **The Dependabot alert check.** No plugin here owns it, it duplicates a signal GitHub
+  already surfaces at push time and in the Security tab, and it was the most fragile
+  collector in the hook (an external `gh api` call with a `per_page` cap).
 
 ### Fixed
 

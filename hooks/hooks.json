@@ -1,5 +1,5 @@
 {
-  "description": "Sprint workflow hooks: tracker prime + compaction-recovery + trend-review reminder at session start, shell auto-formatting on edit.",
+  "description": "Shell auto-formatting on edit. The session-start collectors now live in the plugin that owns each one — see plugins/*/hooks/.",
   "hooks": {
     "PostToolUse": [
       {
@@ -8,18 +8,6 @@
           {
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-file-edit.sh ${CLAUDE_PLUGIN_ROOT}",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
             "timeout": 5
           }
         ]

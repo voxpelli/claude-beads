@@ -1,0 +1,17 @@
+{
+  "description": "ledger: name open UPSTREAM files and nudge for un-captured friction after a compaction; warn about tracked private overlays and nudge dormant ledgers at session start.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

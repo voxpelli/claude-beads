@@ -523,7 +523,11 @@ if (examined < EXAMINED_FLOOR) {
 // empty LIVE result is real emptiness, not a broken pattern. When a populated surface legitimately
 // empties (e.g. migrate-tracker moves out of `plugins/*/skills`), update this set — the forced edit IS
 // the signal that coverage shifted.
-const POPULATED_SURFACES = ['CLAUDE.md', 'README.md', 'skills/**', 'plugins/*/skills/**']
+// `hooks/**` is deliberately absent: the root plugin's hooks are moving out to the
+// plugins that own them, so that surface is expected to empty. `plugins/*/hooks/**`
+// is where they land, and it carries real `diarie` invocations — floor it there, or
+// the shard could silently un-scan itself the same way.
+const POPULATED_SURFACES = ['CLAUDE.md', 'README.md', 'skills/**', 'plugins/*/skills/**', 'plugins/*/hooks/**']
 for (const label of POPULATED_SURFACES) {
   if ((bySurface.get(label) ?? 0) < 1) {
     console.error(`check:prose-commands — surface '${label}' examined 0 invocations (expected ≥1); its glob has likely regressed while the total stayed healthy.`)

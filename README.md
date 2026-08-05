@@ -314,7 +314,7 @@ File naming examples:
 
 ### Private SYNERGY overlays
 
-For cross-project notes that must stay out of a public repo (a proprietary sibling's internal paths, client names, unreleased plans), add a **gitignored** `PRIVATE-SYNERGY-<project>.md` companion alongside the committed `SYNERGY-<project>.md`. It holds extra private entries under the same four section headings. The `PRIVATE-` prefix is the safety mechanism: it keeps the overlay **outside the `SYNERGY-*.md` glob namespace**, so every public consumer (retrospective, promotion, reciprocation, the session-start hook) structurally cannot read it — **private entries are never promoted to Basic Memory or reciprocated to a sibling**, by construction rather than by per-consumer discipline. Only `ledger review`'s local-only sibling pass deliberately reads both files. Gitignored via the `PRIVATE-SYNERGY-*.md` rule; the session-start hook warns if any is accidentally tracked.
+For cross-project notes that must stay out of a public repo (a proprietary sibling's internal paths, client names, unreleased plans), add a **gitignored** `PRIVATE-SYNERGY-<project>.md` companion alongside the committed `SYNERGY-<project>.md`. It holds extra private entries under the same four section headings. The `PRIVATE-` prefix is the safety mechanism: it keeps the overlay **outside the `SYNERGY-*.md` glob namespace**, so every public consumer (retrospective, promotion, reciprocation, ledger's session-start hook) structurally cannot read it — **private entries are never promoted to Basic Memory or reciprocated to a sibling**, by construction rather than by per-consumer discipline. Only `ledger review`'s local-only sibling pass deliberately reads both files. Gitignored via the `PRIVATE-SYNERGY-*.md` rule; ledger's session-start hook warns if any is accidentally tracked.
 
 ## Plugin structure
 
@@ -332,19 +332,25 @@ plugins/                                workspace plugins (own package.json + ch
                                         synergy-bm-format,
                                         basic-memory-friction-format,
                                         project-name-derivation
+    hooks/session-start.sh              compact: open UPSTREAM files + capture nudge; startup: private-overlay warning, dormancy nudge
+    scripts/check-hooks.mjs
   swarm-wave/
     skills/swarm-wave/
       SKILL.md                          Multi-agent wave orchestration
       references/                       wave-planning, contention, review-gate,
                                         concurrency, command-patterns,
                                         roadmap-interpretation
+    hooks/session-start.sh              compact: SWARM/RETRO files touched in the last hour
+    scripts/check-hooks.mjs
   diarie-adopt/
     skills/
       migrate-tracker/SKILL.md          Guided bd → flat-YAML tracker cutover
       deintegrate-beads/SKILL.md        Disarm bd's machinery after migration
+    hooks/session-start.sh              startup: tracked beads-credential-key warning
     scripts/
       beads-probe.mjs                   Read-only beads reconnaissance probe
       check-beads-probe.mjs             Unit tests for the probe
+      check-hooks.mjs
   vp-dream/
     skills/vp-dream/
       SKILL.md                          Claude file-memory consolidation
@@ -353,15 +359,14 @@ plugins/                                workspace plugins (own package.json + ch
       scripts/audit-memory.sh           Descriptive memory-dir audit (pure bash)
   diarie/                               Hooks only, no skills
     hooks/
-      hooks.json
+      session-start.sh                  startup: tracker prime; compact: in-progress claims
       post-tasks-validate.sh            Validate .diarie/tasks/ on edit; silent when clean
     scripts/check-hooks.mjs             Its own hook suite
 scripts/                                dev-only gates; see Validation
 eslint-local-rules/
 hooks/
-  hooks.json                            Hook definitions (2 event types)
-  session-start.sh                      Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudges, trend-review
-  post-file-edit.sh                     Auto-format hooks/*.sh with shfmt
+  hooks.json
+  post-file-edit.sh                     Auto-format hooks/*.sh with shfmt (repo dev tooling)
 ```
 
 ## How it fits together

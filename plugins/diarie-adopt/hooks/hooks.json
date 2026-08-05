@@ -1,0 +1,17 @@
+{
+  "description": "diarie-adopt: warn at session start if beads' per-machine credential key is committed to git — an irreversible leak in a repo that still carries .beads/.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

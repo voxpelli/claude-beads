@@ -284,7 +284,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 
 * **wc -l portability guard pattern** (2026-03-28) — Safe integer counting in
   shell hooks. Non-obvious, easy to get wrong, needed by any Claude plugin.
-  Source: hooks/session-start.sh · Readiness: ready
+  Source: plugins/ledger/hooks/session-start.sh · Readiness: ready
   Effort: trivial
 
 * **Paired bundle: `@voxpelli/claude-plugin-tools` shared package** (2026-05-04) —

@@ -32,18 +32,25 @@ plugins/                              # workspace-plugins (own package.json + .r
       references/                     # log, review, resolve, promote, pull, reconcile,
                                       #   synergy-entry-format, synergy-bm-format,
                                       #   basic-memory-friction-format, project-name-derivation
+    hooks/session-start.sh            # compact: open UPSTREAM files + capture nudge
+                                      # startup: tracked-private-overlay warning, dormancy nudge
+    scripts/check-hooks.mjs
   swarm-wave/
     skills/swarm-wave/
       SKILL.md                        # Multi-agent wave orchestration
       references/                     # wave-planning, contention, review-gate, concurrency,
                                       #   command-patterns, roadmap-interpretation
+    hooks/session-start.sh            # compact: SWARM/RETRO files touched in the last hour
+    scripts/check-hooks.mjs
   diarie-adopt/
     skills/
       migrate-tracker/SKILL.md        # Guided bd → flat-YAML cutover (for other repos)
       deintegrate-beads/SKILL.md      # Disarm bd's machinery post-migration (never deletes data)
+    hooks/session-start.sh            # startup: tracked beads-credential-key warning
     scripts/
       beads-probe.mjs                 # Read-only beads reconnaissance probe
       check-beads-probe.mjs           # Unit tests for the probe
+      check-hooks.mjs
   vp-dream/
     skills/vp-dream/
       SKILL.md                        # Claude file-memory consolidation (verify + approval-gated)
@@ -54,23 +61,24 @@ plugins/                              # workspace-plugins (own package.json + .r
   diarie/                             # HOOKS ONLY, no skills — and shaped to LEAVE (see below)
     README.md
     hooks/
-      hooks.json
+      session-start.sh                # startup: TRACKER PRIME · compact: in-progress claims
       post-tasks-validate.sh          # Validate .diarie/tasks/ on edit; report errors, silent when clean
-    scripts/
-      check-hooks.mjs                 # Its own hook suite — wired in as diarie's `check:test`
-hooks/                                # the ROOT plugin's hooks; emptying as vp-beads-sss proceeds
-  hooks.json                          # Hook definitions (2 event types)
-  session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact)
-                                      #   + sensitive-file warning, dormancy nudge, trend-review reminder
-  post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt
+    scripts/check-hooks.mjs
+hooks/                                # the ROOT plugin's remaining hook
+  hooks.json
+  post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt (repo dev tooling)
 scripts/                              # dev-only gates; see ## Validation
 eslint-local-rules/
 CLAUDE.md · README.md · CHANGELOG.md
 ```
 
+Every `plugins/*` directory carries its own `.claude-plugin/plugin.json`, and each one that ships a
+hook carries its own `hooks/hooks.json` — the validator reads all of them.
+
 There is **no `agents/` directory** — the `sprint-review` agent was retired with `backlog-groomer`
 (`vp-beads-rt2`). Skills are markdown; `diarie-adopt` and `vp-dream` additionally ship small scripts.
-Hooks are shell scripts. Everything under `scripts/` is dev tooling, reached only by `npm run check`.
+Hooks are shell scripts. Everything under `scripts/` is dev tooling, reached only by `npm run check` —
+except `plugins/*/scripts/check-hooks.mjs`, which is each plugin's own hook suite.
 
 ## Components
 
@@ -220,7 +228,7 @@ like "W3" or "W6" — the codebase spells it out.
 vp-beads must **not force its flat-YAML tracker**. Every skill detects
 availability and degrade along a defined tier — **silently skipping a tracker step
 is a bug**: it makes a project that tracks its work elsewhere look like a broken
-one. Hooks are **exempt** — a hook's silent fallback (e.g. `session-start.sh`
+one. Hooks are **exempt** — a hook's silent fallback (e.g. `diarie`'s `session-start.sh`
 omitting the in-progress claim from its compaction-recovery snapshot when no
 tracker files exist) is recovery plumbing, not a user-facing workflow step.
 
@@ -422,11 +430,12 @@ Classify by **what consumes the fence**, never by filename pattern — missing t
   that must stay out of a public repo (a proprietary sibling's internal paths,
   client names, unreleased plans). **The `PRIVATE-` prefix is load-bearing: it
   keeps the overlay OUTSIDE the `SYNERGY-*.md` glob namespace, so every public
-  consumer (`/retrospective`, `session-start`, promotion,
+  consumer (`/retrospective`, `ledger`'s `session-start`, promotion,
   reciprocation) structurally cannot read it** — the privacy invariant is a
   filesystem fact, not a per-consumer exclusion rule. Gitignored via the
   explicit `PRIVATE-SYNERGY-*.md` line (prefix-namespaced like `RETRO-*` /
-  `SWARM-*`); `session-start.sh` warns if any `PRIVATE-SYNERGY-*.md` is tracked.
+  `SWARM-*`); `ledger`'s `session-start.sh` warns if any `PRIVATE-SYNERGY-*.md` is
+  tracked.
   Merge semantics: the overlay holds additional private entries under the same
   four section headings. Only a deliberate _local-only_ read (`ledger review`,
   sibling object) globs BOTH `SYNERGY-*.md` and `PRIVATE-SYNERGY-*.md` to
@@ -698,8 +707,10 @@ older versions — a managed block into `CLAUDE.md`. That is precisely the
 colonization `/deintegrate-beads` exists to _undo_. Do not re-invite it.
 
 It is also pointless now: `bd`'s writes are dead (the 1.1.0 migrate gate) and this
-repo's tracker is flat-YAML. The orientation `bd prime` used to give is now
-`hooks/session-start.sh`'s **tracker prime**, which reads `.diarie/` directly.
+repo's tracker is flat-YAML. The orientation `bd prime` used to give is now the
+**tracker prime** in `plugins/diarie/hooks/session-start.sh`, which reads `.diarie/`
+directly — and which reaches the model only since the envelope fix (`vp-beads-hkx`),
+so it is a live replacement rather than a planned one.
 
 _(Historical correction, since this section was wrong for a while and the wrongness
 was load-bearing: the \~1.5k-token `bd prime` injection came from the **external
@@ -866,10 +877,14 @@ This plugin is mostly prose, and its prose is executable instructions; nothing v
 commands exist, so Sprint 16 shipped a dead one into every session (`node
 scripts/ready-walker.mjs`, deleted two commits earlier) green the whole way.
 `scripts/check-prose-commands.mjs` (`check:prose-commands`) closes that gap: it pulls every
-`diarie <sub> [--flags]` and `node <path>` invocation out of the five prose surfaces (`hooks/`,
-`skills/`, `agents/`, `CLAUDE.md`, `README.md` — **not** `scripts/`) and resolves each against the
-**real binary** — subcommands from `diarie --help`, flags from `diarie <sub> --help`. There is no
-hardcoded flag table; a second model of the CLI is the exact failure this check exists to prevent.
+`diarie <sub> [--flags]` and `node <path>` invocation out of every prose surface and resolves each
+against the **real binary** — subcommands from `diarie --help`, flags from `diarie <sub> --help`.
+There is no hardcoded flag table; a second model of the CLI is the exact failure this check exists
+to prevent. `SURFACES` in the script is the authority on which surfaces those are (root `hooks/`,
+`skills/`, `agents/` and their `plugins/*` counterparts, plus `CLAUDE.md` and `README.md` — **not**
+`scripts/`); restating the list here is how it went stale before. A subset of them is additionally
+**floored** by `POPULATED_SURFACES`, so a surface whose glob regresses to zero goes red instead of
+riding on a healthy total.
 
 **Imperative vs mention** is the hard half, and three rules do it: (1) _span-atomicity_ — each inline
 code span and each fenced/heredoc command line is one atomic candidate, so ``(`ready-walker`, `--format json`)`` is two spans, the `ready-walker` one bare; (2) _first-token executable_ — in

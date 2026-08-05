@@ -303,7 +303,8 @@ tasks:
 
   - id: vp-beads-sss
     title: 'P1.5 Shard session-start.sh across the owning plugins (B2 blocker)'
-    status: pending
+    status: in_progress
+    agent: claude
     type: task
     priority: medium
     parent: vp-beads-dis

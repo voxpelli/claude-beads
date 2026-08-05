@@ -1,5 +1,5 @@
 {
-  "description": "diarie tracker hooks: validate the flat-YAML task store immediately after an agent edits it.",
+  "description": "diarie tracker hooks: prime the session with what is ready, blocked and claimed; recover in-progress claims after a compaction; validate the flat-YAML task store the moment a row is edited.",
   "hooks": {
     "PostToolUse": [
       {
@@ -9,6 +9,18 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-tasks-validate.sh",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+            "timeout": 5
           }
         ]
       }

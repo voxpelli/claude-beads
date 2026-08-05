@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync,
+  chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync,
 } from 'node:fs'
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '')
@@ -118,7 +118,7 @@ function deliveredContext (objects) {
  *
  * @param {string} script - Filename in hooks/
  * @param {string} [stdin] - Stdin content
- * @param {{ cwd?: string, scrubValidator?: boolean }} [opts]
+ * @param {{ cwd?: string, pathPrefix?: string, scrubValidator?: boolean }} [opts]
  * @returns {{ stdout: string, stderr: string, status: number | null }}
  */
 function runHook (script, stdin, opts = {}) {
@@ -128,9 +128,10 @@ function runHook (script, stdin, opts = {}) {
   // binary, not by matching a path substring. A test that cannot create its own
   // premise is not testing anything.
   const { PATH: inheritedPath } = process.env
-  const path = opts.scrubValidator
+  const basePath = opts.scrubValidator
     ? (inheritedPath ?? '').split(':').filter(p => p && !existsSync(join(p, 'diarie'))).join(':')
     : inheritedPath
+  const path = opts.pathPrefix ? `${opts.pathPrefix}:${basePath}` : basePath
   const result = spawnSync('bash', [join(HOOKS, script)], {
     input: stdin ?? '',
     cwd: opts.cwd ?? ROOT,
@@ -192,6 +193,62 @@ const DANGLING_DEP = 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: a\n    s
 function editEvent (filePath) {
   return JSON.stringify({ tool_input: { file_path: filePath } })
 }
+
+/**
+ * A temp project whose `.diarie/tasks/` exists — enough to satisfy the prime's
+ * store half of the canonical availability predicate.
+ *
+ * @returns {string} Temp directory path
+ */
+function makeStoreDir () {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-diarie-store-'))
+  mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
+  writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-x.yml'), VALID_TASK)
+  return dir
+}
+
+/**
+ * A temp dir containing a stub `diarie`, without needing a real store.
+ *
+ * The stub DISPATCHES ON ARGS, because the two branches call the reader differently
+ * and expect different shapes: `ready --filter in_progress --json` returns a flat
+ * ARRAY of claims (what the compact branch recovers), while a bare `ready --json`
+ * returns the `{ready, blocked, needsAttention}` OBJECT (what the startup prime
+ * reads). A stub that echoed one payload for every invocation would make the prime's
+ * tests pass against data the real reader never emits.
+ *
+ * THE STUB IS A DE-FACTO SPEC: if it drifts from the real CLI these tests stay green
+ * while production diverges, so its description has to stay true.
+ *
+ * @param {string} inProgressJson - printed for `--filter in_progress` (e.g. '[]')
+ * @param {number} [exitCode]
+ * @param {string} [queueJson] - printed otherwise; omit to leave the queue read empty
+ * @returns {string} Temp directory path containing the stub
+ */
+function makeTrackerStubDir (inProgressJson, exitCode = 0, queueJson = '') {
+  const dir = mkdtempSync(join(tmpdir(), 'vp-diarie-stub-'))
+  const script = [
+    '#!/bin/bash',
+    'case "$*" in',
+    `  *"--filter in_progress"*) printf '%s\\n' ${JSON.stringify(inProgressJson)} ;;`,
+    `  *) printf '%s' ${JSON.stringify(queueJson)} ;;`,
+    'esac',
+    `exit ${exitCode}`,
+    '',
+  ].join('\n')
+  const cliPath = join(dir, 'diarie')
+  writeFileSync(cliPath, script)
+  chmodSync(cliPath, 0o755)
+  return dir
+}
+
+const ONE_CLAIM = '[{"id":"slug/T-7","title":"a claimed row","status":"in_progress"}]'
+const HEALTHY_QUEUE = '{"ready":[{"id":"slug/T-1","priority":"high"}],"blocked":[],"needsAttention":[],"warnings":[]}'
+
+/** @type {string} A compaction event payload */
+const COMPACT = JSON.stringify({ source: 'compact' })
+/** @type {string} A startup event payload */
+const STARTUP = JSON.stringify({ source: 'startup' })
 
 // =============================================================
 // post-tasks-validate.sh
@@ -266,6 +323,156 @@ test('no resolvable validator → silent, exit 0 (never a spam loop)', () => {
 })
 
 // =============================================================
+// session-start.sh
+// =============================================================
+
+console.log('\nsession-start.sh')
+
+test('exists and is readable', () => ({ ok: existsSync(join(HOOKS, 'session-start.sh')) }))
+
+test('compact: a live claim is recovered with id and title', () => {
+  // What the hook exists for. A summarised conversation forgets the claim; silence
+  // here is how a claimed row gets abandoned mid-flight.
+  const stub = makeTrackerStubDir(ONE_CLAIM)
+  try {
+    const { status, stdout } = runHook('session-start.sh', COMPACT, { pathPrefix: stub })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { count, objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
+    const ctx = deliveredContext(objects)
+    if (!ctx.includes('T-7')) return { ok: false, reason: `claim id missing: ${ctx.slice(0, 200)}` }
+    if (!ctx.includes('a claimed row')) return { ok: false, reason: 'claim title missing' }
+    if (!ctx.includes('tracker state')) return { ok: false, reason: 'output is not labelled with the owning plugin' }
+    return { ok: true }
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+  }
+})
+
+test('compact: zero claims → silent (no line saying there is nothing to say)', () => {
+  const stub = makeTrackerStubDir('[]')
+  try {
+    const { status, stdout } = runHook('session-start.sh', COMPACT, { pathPrefix: stub })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `expected silence, got: ${stdout.slice(0, 120)}` }
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+  }
+})
+
+test('compact: a DROPPED row is ANNOUNCED, and the hook still EXITS 0', () => {
+  // `--strict` exits 2 when the loader threw a row away. The list is then INCOMPLETE
+  // and must say so — and the hook must survive it. Under errexit a bare assignment
+  // from an exit-2 command kills the hook, which would emit NOTHING precisely when
+  // the store is broken: strictly worse than the silent loss it replaced.
+  const stub = makeTrackerStubDir(ONE_CLAIM, 2)
+  try {
+    const { status, stdout } = runHook('session-start.sh', COMPACT, { pathPrefix: stub })
+    if (status !== 0) return { ok: false, reason: `hook exited ${status} — errexit killed it` }
+    const ctx = deliveredContext(parseJsonObjects(stdout).objects)
+    return ctx.includes('NOT SOUND')
+      ? { ok: true }
+      : { ok: false, reason: `incompleteness not announced: ${ctx.slice(0, 200) || '(silent)'}` }
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+  }
+})
+
+test('startup: a HEALTHY store emits a Tracker line with counts and next-ready', () => {
+  const stub = makeTrackerStubDir(ONE_CLAIM, 0, HEALTHY_QUEUE)
+  const dir = makeStoreDir()
+  try {
+    const { status, stdout } = runHook('session-start.sh', STARTUP, { cwd: dir, pathPrefix: stub })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const ctx = deliveredContext(parseJsonObjects(stdout).objects)
+    if (!ctx.includes('Tracker: 1 ready')) return { ok: false, reason: `counts missing: ${ctx.slice(0, 200)}` }
+    if (!ctx.includes('next ready: T-1')) return { ok: false, reason: 'next-ready line missing' }
+    return { ok: true }
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('startup: reader present but NO STORE → prime stays silent', () => {
+  // Gating on the reader alone made the prime announce "Tracker: 0 ready · 0 blocked"
+  // in a repo with no tracker at all. That is not a silent skip, it is a confident
+  // false report — worse. The predicate needs BOTH halves.
+  const stub = makeTrackerStubDir('[]', 0, HEALTHY_QUEUE)
+  const dir = mkdtempSync(join(tmpdir(), 'vp-diarie-nostore-'))
+  try {
+    const { status, stdout } = runHook('session-start.sh', STARTUP, { cwd: dir, pathPrefix: stub })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `invented a backlog: ${stdout.slice(0, 160)}` }
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('startup: STORE present but NO reader → silent (never a broken line)', () => {
+  const dir = makeStoreDir()
+  try {
+    const { status, stdout } = runHook('session-start.sh', STARTUP, { cwd: dir, scrubValidator: true })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `unexpected output: ${stdout.slice(0, 160)}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('startup: an ENOSTORE error payload is NOT rendered as an empty backlog', () => {
+  // `null | length` is 0 — a number, which sails straight through a numeric guard and
+  // prints a confident "Tracker: 0 ready · 0 blocked" reconstructed out of an error
+  // message. `has("ready")` is what stops it; `jq -e` would not, since 0 is not falsy.
+  const stub = makeTrackerStubDir('[]', 0, '{"error":"no store here","code":"ENOSTORE"}')
+  const dir = makeStoreDir()
+  try {
+    const { status, stdout } = runHook('session-start.sh', STARTUP, { cwd: dir, pathPrefix: stub })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    return stdout.includes('Tracker:')
+      ? { ok: false, reason: `rendered an error payload as counts: ${stdout.slice(0, 200)}` }
+      : { ok: true }
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('branch isolation: compact must NOT emit the startup tracker prime', () => {
+  const stub = makeTrackerStubDir(ONE_CLAIM, 0, HEALTHY_QUEUE)
+  const dir = makeStoreDir()
+  try {
+    const ctx = deliveredContext(
+      parseJsonObjects(runHook('session-start.sh', COMPACT, { cwd: dir, pathPrefix: stub }).stdout).objects
+    )
+    return ctx.includes('Tracker:')
+      ? { ok: false, reason: `startup prime leaked into compact: ${ctx.slice(0, 200)}` }
+      : { ok: true }
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('branch isolation: startup must NOT emit the compact preamble', () => {
+  const stub = makeTrackerStubDir(ONE_CLAIM, 0, HEALTHY_QUEUE)
+  const dir = makeStoreDir()
+  try {
+    const ctx = deliveredContext(
+      parseJsonObjects(runHook('session-start.sh', STARTUP, { cwd: dir, pathPrefix: stub }).stdout).objects
+    )
+    return ctx.includes('just compacted')
+      ? { ok: false, reason: `compact preamble leaked into startup: ${ctx.slice(0, 200)}` }
+      : { ok: true }
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// =============================================================
 // wiring: the emitted event name must match the event it is REGISTERED under
 // =============================================================
 //
@@ -286,12 +493,20 @@ test('no resolvable validator → silent, exit 0 (never a spam loop)', () => {
  * The payload has to be one the hook actually acts on: a hook driven by a stimulus
  * it ignores stays silent, and silence would pass an event-name check vacuously.
  *
- * @type {Record<string, () => { cleanup?: () => void, stdin: string }>}
+ * @type {Record<string, () => { cleanup?: () => void, opts?: { cwd?: string, pathPrefix?: string }, stdin: string }>}
  */
 const STIMULI = {
   'post-tasks-validate.sh': () => {
     const { dir, file } = makeTaskStore(DANGLING_DEP)
     return { cleanup: () => rmSync(dir, { recursive: true, force: true }), stdin: editEvent(file) }
+  },
+  'session-start.sh': () => {
+    const stub = makeTrackerStubDir(ONE_CLAIM)
+    return {
+      cleanup: () => rmSync(stub, { recursive: true, force: true }),
+      opts: { pathPrefix: stub },
+      stdin: COMPACT,
+    }
   },
 }
 
@@ -333,9 +548,9 @@ for (const { event, script } of wiring) {
     if (!stimulus) {
       return { ok: false, reason: 'no stimulus registered in STIMULI — this hook is wired but never exercised' }
     }
-    const { stdin, cleanup } = stimulus()
+    const { cleanup, opts, stdin } = stimulus()
     try {
-      const { stdout } = runHook(script, stdin)
+      const { stdout } = runHook(script, stdin, opts)
       const { objects, parseError } = parseJsonObjects(stdout)
       if (parseError) return { ok: false, reason: parseError }
       if (objects.length === 0) {
