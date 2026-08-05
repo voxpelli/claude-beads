@@ -1,0 +1,1287 @@
+meta:
+  slug: dissolution
+  title: vp-beads dissolution → the vp-skills workspace-monorepo constellation
+tasks:
+  - id: vp-beads-dis
+    title: vp-beads dissolution → vp-skills monorepo constellation (epic)
+    status: pending
+    type: task
+    priority: high
+    labels:
+      - epic
+    description: >-
+      Parent epic for dissolving vp-beads — the only plugin organised by a PROCESS (the sprint)
+      rather than a SUBSTRATE — into the approved two-repo-plus-diarie constellation. Governed by
+      decision `vp-beads-cst` (supersedes `vp-beads-lgr` own-repo verdict; overrides DESIGN §4 /
+      `vp-beads-ski`; specifies `vp-beads-dep`'s execution trigger). Full staged plan:
+      `~/.claude/plans/eager-jingling-scone.md`.
+
+
+      Target topology: `voxpelli/vp-skills` (this repo `claude-beads` renamed — an npm-workspaces
+      MAINTENANCE monorepo: root owns only shared lint/tooling, each plugin a self-contained
+      workspace, zero cross-plugin refs; distribution stays decoupled, exit preserved) holding
+      plugins `ledger` (upstream+synergy+vendor+sibling merged), `swarm-wave`, `diarie-adopt`
+      (migrate+deintegrate), plus `vp-git` + `vp-astgrep` brought in; `voxpelli/vp-knowledge`
+      (`vp-claude` renamed — own repo/marketplace, absorbs `retrospective`→`session-reflect`);
+      `voxpelli/diarie` (already extracted, publishes on its own track).
+
+
+      Phase 0 is DONE (committed 62d274b): the `cst` decision, `SYNERGY-diarie.md` + registry entry,
+      the two `handoffs/*.md`, and the marketplace-mechanics BM note. This epic tracks Phase 1 (the
+      local monorepo conversion — the bulk) and Phase 2 (the GitHub-facing, per-step-gated cutover).
+      Cross-actor work owned by other repos ([vpk] vp-knowledge follow-ups, [diarie] publishing) is
+      tracked via the two handoff docs, not by rows here.
+    updated: '2026-07-18'
+
+  # ---- Phase 1 — the monorepo conversion (local, publish-independent; the BULK) ----
+
+  - id: vp-beads-wsk
+    title: 'P1.1 Stand up the npm-workspace skeleton (plugins/* + two manifests each)'
+    status: completed
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        Root package.json declares `workspaces: ["plugins/*"]` (diarie was externalized to a
+        `file:../diarie` dependency in 85600aa — it is NOT a workspace; later flipped to the
+        published npm `^0.2.0` dep)
+      - >-
+        Layout per anthropics/claude-code: each plugin at `plugins/<name>/` with
+        `.claude-plugin/plugin.json` + root-level `skills/ agents/ hooks/`
+      - >-
+        Each plugin carries TWO manifests — package.json (workspace member; owns the `check:`
+        script the root delegates to; kept `private`/no-version) and .claude-plugin/plugin.json
+        (Claude manifest; its `version` is authoritative — never also set in the marketplace entry)
+        — proven when the first real plugin lands (`_placeholder` has no `.claude-plugin/plugin.json`)
+      - '`npm run check` green; `npm run check --workspaces --if-present` delegates cleanly'
+    description: >-
+      SKELETON DONE: `workspaces: ["plugins/*"]` declared, `check-workspaces` delegates, and
+      `plugins/_placeholder/` keeps the glob non-empty (delete when the first real plugin lands).
+      REMAINING folds into P1.3 — the two-manifest pattern (`.claude-plugin/plugin.json` + workspace
+      `package.json`) and the `plugins/<name>/` layout are PROVEN by the first real plugin landing,
+      not by the placeholder (which carries no plugin payload). This row stays `in_progress` until
+      then.
+      Foundational: nothing else in Phase 1 can move until the workspace exists. Plan step 1.1;
+      generalises the existing "THE WORKSPACE OWNS ITS GATES; THE ROOT DELEGATES" pattern (today one
+      diarie workspace) to N plugin-workspaces. See `~/.claude/plans/eager-jingling-scone.md` Phase 1.
+    updated: '2026-07-18'
+
+  - id: vp-beads-gtp
+    title: 'P1.2 Generalise the shared gate tooling to be path-taking (B1 blocker) + prove RED'
+    status: completed
+    agent: claude
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-wsk
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        ast-grep path-list wrapper (scripts/ast-grep-paths.mjs) + the check-ast-grep existence-guard
+        DISSOLVED → standard `ast-grep scan` (56740fb) — no wrapper; the scannedFileCount FLOOR was
+        DROPPED, not ported (a blindable ignore-bound accepted at parity with check:md)
+      - >-
+        the bare scan auto-covers hooks/*.sh, so no-jq-raw-interpolation finally sees real bash
+        (closes the aim half of agr)
+      - >-
+        check-rule-parity STAYS bespoke — 2-reviewer round (code-simplifier + silent-failure-hunter)
+        both said KEEP; premise re-verified (detach a test → `ast-grep test` 5/6 green, exit 0;
+        ast-grep has no native rule-test-coverage)
+      - >-
+        ast-grep test/scan exit-code gaps logged to UPSTREAM-ast-grep--cli.md (5411e23) + promoted
+        to BM brew-ast-grep
+    description: >-
+      RECONSIDERED 2026-07-18 (see plan Status + decision vp-beads-cst option I): mostly SUBTRACTIVE,
+      not "generalize wrappers". Dissolve the ast-grep path-list wrapper (ast-grep-paths.mjs + the
+      check-ast-grep existence-guard) → standard `ast-grep scan` (no wrapper; floor DROPPED, NOT
+      ported — a blindable ignore-bound is accepted at parity with check:md, user steer 2026-07-18);
+      broaden check:sh; LEAVE the already-native checks; convert only the genuinely-bespoke checks
+      (validate-plugin, prose-commands, check-hooks) from root-hardcoded to plugin-DISCOVERY (glob
+      plugins/*), never enumeration. check-rule-parity STAYS bespoke (research-confirmed: ast-grep has
+      no native rule-test-coverage). Already reduced rule-parity to single-tree + externalized diarie
+      (85600aa), which removed the diarie-exclusion blocker for the shared bare-scan. Keeps
+      `npm run check` green per atomic commit. Fold generic ready-queue hardening (agr/gtc/rgl/exf) in
+      opportunistically.
+      DONE 2026-07-18 (56740fb): ast-grep wrapper + floor DISSOLVED → bare `ast-grep scan`; the bare
+      scan auto-covers hooks/*.sh so no-jq-raw-interpolation finally sees real bash (closes agr). A
+      2-reviewer round (code-simplifier + silent-failure-hunter) both said KEEP check-rule-parity;
+      premise re-verified (detach a test → `ast-grep test` 5/6 green, exit 0). ast-grep test/scan
+      exit-code gaps logged to UPSTREAM-ast-grep--cli.md (5411e23) + promoted to BM brew-ast-grep.
+      REMAINING: broaden check:sh; convert validate-plugin/prose-commands/check-hooks to plugin-
+      DISCOVERY + prove RED — deferred until the first real plugin lands (placeholder has no hooks or
+      skills to discover).
+      CLOSED 2026-07-18: the subtractive core above is complete; the discovery-conversion tail carved
+      to `vp-beads-gtd` (post-first-plugin). This row tracks only the done core.
+    updated: '2026-07-18'
+
+  - id: vp-beads-gtd
+    title: 'P1.2-tail — convert validate-plugin/prose-commands/check-hooks to plugin-DISCOVERY + prove RED; broaden check:sh'
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        DONE via swm (P1.3b): validate-plugin.mjs and check:prose-commands converted to plugin
+        DISCOVERY (glob `plugins/*`). CORRECTION (vp-beads-vph, 2026-07-21): the "Proven RED on
+        planted violations" claim originally here was FALSE — no such proof existed
+        (check-validator.mjs only unit-tested auditSilentSkips). The discovery was correct but
+        UNVERIFIED. The real RED-proof was built by vp-beads-vph:
+        scripts/check-validator-plugin-fixtures.mjs (6 fixture cases — 5 planted-RED + a clean
+        control), each proven red against pre-fix code.
+      - >-
+        REDIRECTED: check:portability + check:pi-load → vp-beads-pc1 (pi compatibility epic),
+        where the full phased plan lives.
+      - >-
+        REMAINING as standalone work (not blocking dissolution): broaden check:sh across plugin
+        workspaces; convert check-hooks.mjs to DISCOVERY; fold swc consumer-half in.
+      - >-
+        §G-DEFER (vp-beads-vph review, 2026-07-21): per-plugin OWN eslint/remark config + devDeps so a
+        plugin's gates TRAVEL when it is extracted. YAGNI now (adversarial-architect verdict): swarm-wave
+        has no code to lint, nothing is marketplace-listed, and vp-dream/diarie-adopt/swarm-wave rely on
+        root-hoisted lint tooling today. Revival trigger: a plugin is actually `git subtree split` out
+        (P2/vga era). The runtime-dep half of this class was the CRITICAL, already fixed under vp-beads-abx.
+      - >-
+        gtd's BLOCKER (needs a real plugin to discover against) was lifted by swm — the core
+        conversion landed with the swarm-wave workspace move.
+    description: >-
+      The deferred tail of `vp-beads-gtp`. Core work (validator + prose-commands discovery
+      conversion) delivered via `vp-beads-swm` (P1.3b), which provided the first real plugin to
+      discover against — but the "proved RED" claim was FALSE (see the AC correction; the real
+      RED-proof was built later by `vp-beads-vph`). Remaining items (check-hooks discovery, check:sh broaden,
+      swc fold) are standalone post-dissolution work, not gating the dissolution. Pi portability
+      AC redirected to the dedicated `vp-beads-pcp` epic.
+    updated: '2026-07-20'
+
+  - id: vp-beads-ldg
+    title: 'P1.3a Merge upstream/synergy/vendor/sibling-tracker → the `ledger` plugin (biggest transformation)'
+    status: completed
+    agent: claude
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - feature
+    acceptance_criteria:
+      - >-
+        One `ledger` skill, skills-first + mode-routed (the wave3 / `/intel` precedent), merging
+        upstream-tracker + synergy-tracker + vendor-sync + sibling-sync
+      - >-
+        Chesterton's-Fence pass: every earned behaviour preserved verbatim — the Files-availability
+        tiers, sibling-sync Mode-A/B reciprocal-gap detection, private-sibling/overlay invariants,
+        BM section-ownership — ENUMERATED before merging
+      - 'Re-unioned `allowed-tools` across the four; description ≤1024 chars (agentskills limit) and triggers cleanly'
+      - >-
+        `.ledger/` store migration explicitly DEFERRED — ledger v1 operates on existing
+        SYNERGY-*.md / UPSTREAM-*.md markdown (do NOT drag the store rebuild into the merge)
+    description: >-
+      The single biggest unit in the plan — treat as its own scoped effort, not a bullet. A harder
+      merge than PR #8's 2-way `/intel` (four intricate skills incl. sibling-sync's bilateral logic
+      + private-sibling handling). Plan step 1.3 (ledger bullet). Store migration tracked separately
+      under Deferred (trigger: ledger v1 stable). Unblocked by `gtp`-core completion (the ast-grep
+      dissolution removed the diarie-exclusion blocker for the shared bare-scan); discovery hardening
+      is `gtd`, post-landing.
+    updated: '2026-07-18'
+
+  - id: vp-beads-swm
+    title: 'P1.3b Move swarm-wave into its plugin workspace + resolve dangling edges'
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - feature
+    acceptance_criteria:
+      - swarm-wave relocated to `plugins/swarm-wave/` (pure — no diarie dependency)
+      - >-
+        research-wave's post-backlog-groomer behaviour decided (recommend: write task rows directly
+        to `.diarie/`) since backlog-groomer is retiring
+      - >-
+        internal refs to `/retrospective` and the `sprint-review` agent retargeted (both leaving) —
+        `claude-only: true` retained (Task-tool fan-out needs plugin runtime)
+    description: >-
+      Plan step 1.3 (swarm-wave bullet). Resolves the S7 dangling edges left by retiring
+      backlog-groomer + sprint-review. Unblocked by `gtp`-core completion; discovery hardening is
+      `gtd`, post-landing.
+    updated: '2026-07-18'
+
+  - id: vp-beads-dad
+    title: 'P1.3c Move migrate-tracker + deintegrate-beads → the `diarie-adopt` plugin (+ trace bd-map)'
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - feature
+    acceptance_criteria:
+      - migrate-tracker + deintegrate-beads relocated to `plugins/diarie-adopt/`
+      - >-
+        bd-map coupling TRACED: scripts/bootstrap-tasks.mjs was extracted to diarie as
+        lib/migrate/bootstrap.js; the skill uses $DIARIE migrate CLI (npx diarie migrate), not the
+        script directly. bd-map.js is referenced only in prose (SKILL.md line 314, telling the user
+        to edit STATUS_MAP) — no code-level import. Published diarie's exports omit ./migrate, but
+        no import depends on it. Both references are human-readable paths that resolve from any
+        project with diarie in node_modules.
+    description: >-
+      Plan step 1.3 (diarie-adopt bullet). Overrides DESIGN §4 / `vp-beads-ski` ("ship the adoption
+      pair WITH diarie") per `vp-beads-cst` — the pair goes to vp-skills to decouple it from
+      diarie's publish timeline.
+
+      Delivered: both skills moved to `plugins/diarie-adopt/skills/`, both scripts
+      (beads-probe.mjs + check-beads-probe.mjs) moved to `plugins/diarie-adopt/scripts/`,
+      eslint config cliFiles updated, CLAUDE.md/README.md file trees and descriptions updated,
+      placeholder workspace deleted (finally committed). All checks green.
+    updated: '2026-07-20'
+
+  - id: vp-beads-vga
+    title: 'P1.3d Bring vp-git + vp-astgrep in as workspaces (workspace-ification, not file-move)'
+    status: deferred
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - feature
+    acceptance_criteria:
+      - >-
+        each fetched into `plugins/<name>/` (git subtree), its check suite reconciled into the
+        shared/delegated model, its version preserved
+      - >-
+        vp-astgrep's special shape respected — it is a runtime LSP-shim server (Node ≥20 +
+        node_modules), so its workspace keeps its own runtime deps and is `claude-only`
+      - 'archiving the source repos claude-git/claude-astgrep is NOT here — that is Phase 2'
+    description: >-
+      Plan step 1.3 (vp-git/astgrep bullet). These are the least substrate-aligned members,
+      consolidated for solo bus-factor per `vp-beads-cst`'s recorded trade (revival trigger: external
+      users, or a plugin outgrows the shared repo). Unblocked by `gtp`-core completion; discovery
+      hardening is `gtd`, post-landing.
+
+
+      DEFERRED INDEFINITELY 2026-07-22 (user): ship the current 4-plugin monorepo shape first;
+      the bring-in carries real reconciliation cost (each source ships its own validate-plugin gate
+      tooling; vp-astgrep ships its own sgconfig.yml + .ast-grep that collide with the root's bare
+      ast-grep scan) that does not block shipping. Revival trigger + rationale recorded in
+      ROADMAP.md Section 9. Downstream `rgy` deferred with it.
+    updated: '2026-07-22'
+
+  - id: vp-beads-rt2
+    title: 'P1.4 Retire the sprint-review agent + the backlog-groomer skill'
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-wsk
+    labels:
+      - chore
+    agent: claude
+    acceptance_criteria:
+      - >-
+        sprint-review and backlog-groomer deleted per decision `vp-beads-dep`.
+        doc-grep done before removal: all references retargeted across CLAUDE.md,
+        README.md, swarm-wave/retrospective/synergy-tracker/migrate-tracker SKILL.md,
+        SYNERGY-vp-knowledge.md, .claude/settings.local.json.
+      - >-
+        Tier-B slot emptied with explanatory note referencing P1.4.
+        sprint-review de-referenced from the sprint-cycle diagram.
+        "npm run check" green.
+      - >-
+        backlog-health-heuristics.md reviewed: not vital — priority enums and
+        duplicate-resolution patterns are diarie substrate conventions, not
+        vp-beads-specific knowledge.
+    description: >-
+      Plan step 1.4; executes decision `vp-beads-dep` (usage evidence + operator testimony:
+      sprint-review never fired, backlog-groomer barely used). A doc-and-reference sweep, not a bare
+      delete.
+    updated: '2026-07-18'
+
+  - id: vp-beads-sss
+    title: 'P1.5 Shard session-start.sh across the owning plugins (B2 blocker)'
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-wsk
+      - backlog/vp-beads-vhn
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        each block routed to its owning plugin's hooks/ — tracker_prime, collect_in_progress_claims,
+        diarie_ready_cmd and post-tasks-validate.sh → a NEW `plugins/diarie` plugin;
+        check_beads_credential_key → diarie-adopt; collect_open_upstream_files, collect_capture_nudge,
+        check_private_overlays and check_dormancy → ledger; collect_recent_sprint_files → swarm-wave
+      - >-
+        `plugins/diarie` is a fifth workspace built HERE but shaped to LEAVE — destined for
+        `voxpelli/diarie-skills` on the `ast-grep/agent-skill` pattern, extracted later via
+        `git subtree split` (row vp-beads-dsx). Self-containment is the acceptance criterion:
+        every gate that touches it must be local and travel with it
+      - >-
+        `emit_context` is COPIED into each shard, never re-hand-rolled — it is the output contract,
+        and a shard that writes its own jq re-opens the dropped-payload hole. Each shard also needs
+        its own hookEventName test; `deliveredContext` cannot know which event a given hook is wired to
+      - >-
+        each shard LABELS ITS OWN compaction output rather than one plugin owning a shared preamble,
+        so a user who installs only one plugin still gets framed output
+      - >-
+        check_dependabot is DROPPED, not routed (vp-beads-hkx) — no clean owner, duplicates a signal
+        GitHub already surfaces at push time, and its own comment concedes it is not authoritative
+      - >-
+        the RETRO mod-4 counter is DROPPED here and rebuilt in vp-knowledge session-reflect (handoff
+        #1) — it cannot survive as a file-count once RETRO dissolves into BM notes
+      - 'BM-failure-classify stays vp-knowledge''s (do not duplicate vp-knowledge hooks) — MOOT since 2026-07-29: vp-beads'' copy was deleted outright (vp-beads-hkd), so there is nothing left here to route'
+      - >-
+        REVIVED 2026-08-05. Both deferral premises are settled and the third is withdrawn.
+        (1) `anthropics/claude-code#16538` is NOT evidence for anything here — vp-beads-hkx measured
+        the real discriminator, and it is ENVELOPE SHAPE, not the plugin boundary: every hook in this
+        repo emitted a bare `{"additionalContext": …}`, which Claude Code discards, while Anthropic's
+        own envelope-shaped hooks delivered in the same transcripts. Cross-plugin aggregation is
+        confirmed, so the "four hooks where only the first is read" risk does not exist.
+        (2) vp-beads-46k is the WRONG CITATION — it ruled against splitting ONE plugin's hook into
+        several files, which is the opposite structure from each plugin owning one.
+        (3) The adversarial architect's objection was "don't shard a broken emitter"; hkx fixed and
+        RED-proved the emitter first, which dissolves it
+      - >-
+        BLOCKED-ON: vp-beads-vgp (now a real dep, not a note). `validate-plugin.mjs` reads exactly
+        `join(ROOT, 'hooks', 'hooks.json')`, so the nested `plugins/*/hooks/hooks.json` this row
+        creates would land unvalidated
+      - >-
+        root-scoped gates that go RED when `hooks/` empties, and must be retargeted with a RED-proof
+        in the new location: `check:sh` (`shellcheck hooks/*.sh`) and check-hooks.mjs's
+        `const HOOKS = join(ROOT, 'hooks')`. Also add `plugins/*/hooks/**` to POPULATED_SURFACES in
+        check-prose-commands.mjs — that surface is scanned but not floored, so it can silently empty
+      - >-
+        SUPERSEDED IN PART by vp-beads-46k (2026-07-29), which took the composable half: the hook is
+        now ten named collectors, each carrying a `[shard destination: X]` header naming the plugin
+        it would move to. The shard is now a file-move of whole functions rather than a re-cut, so
+        deferring costs less than it did when this row was written
+      - >-
+        NOTE the third AC above ("BM-failure-classify stays vp-knowledge's") reads as routing for a
+        future shard — it is NOT. vp-beads-hkd found that duplicate hook FIRING TODAY, in the
+        released 0.18.0 cache. Fix it there, not here
+      - >-
+        DONE 2026-08-05 across three commits (e9d9f15, 370ed22, and this one). The root `hooks/`
+        directory is GONE, not merely thinned: every shipped hook belongs to a `plugins/*` workspace,
+        and `post-file-edit.sh` left the plugin entirely to become `scripts/format-shell-on-edit.sh`
+        registered in a committed `.claude/settings.json`
+      - >-
+        THE ONE THING THIS ROW DID NOT ANTICIPATE, and it is the shard's real risk: `deliveredContext`
+        asserts an envelope exists and names SOME event, but nothing knew WHICH event a hook was wired
+        to. One hook could not get that wrong; five copies of `emit_context` across five hooks.json
+        files can, and a SessionStart emitter pasted into a PostToolUse hook satisfies every other
+        assertion while Claude Code drops it silently. Each plugin suite now drives every wired script
+        from its OWN hooks.json and compares the emitted `hookEventName` to the key it sits under.
+        A wired script with NO stimulus is a FAILURE, never a skip — which is how the newly-sharded
+        session-start.sh announced itself before it had tests
+      - >-
+        RED-PROVED, each mutation printed as a diff before the exit code was read: wrong event name ·
+        the bare `{"additionalContext"}` shape · a hook wired with no stimulus · a planted workspace
+        failure reddening the ROOT (naming `check:test` → `check-workspaces`) · the new
+        `plugins/*/hooks/**` floor in POPULATED_SURFACES · and both directions of the format hook's
+        path bound, with DISJOINT failures
+      - >-
+        A RED FROM THE WRONG GATE PROVES NOTHING. The first attempt at the POPULATED_SURFACES proof
+        typo'd the glob — which trips `check-prose-commands`' own ground-truth self-test before the
+        corpus scan runs, so it exited 1 for an unrelated reason. The honest proof was to move the
+        real `plugins/*/hooks/*.sh` files aside and watch the floor name the surface
+      - >-
+        GATE OWNERSHIP: root `check:hooks` is retired; `check:sh` retargets to `scripts/` (the only
+        shell left at the root) and `check:format-shell` tests the settings.json formatter. That
+        formatter's OLD suite had two assertions and both were negative — it could see a hook that
+        spoke when it should not and was blind to one that never formatted anything. Both directions
+        are asserted now, and the positive one caught that a directory allow-list would have silently
+        stopped matching the sharded plugin hooks
+    description: >-
+      Plan step 1.5. The mega-hook spans ≥4 destinations; name each block's destination explicitly.
+      Related but distinct from the backlog row about extracting session-start concerns into named
+      functions (that refactors within one hook; this shards across plugins).
+    updated: '2026-08-05'
+
+  - id: vp-beads-rfs
+    title: 'P1.6 Enumerated reference / vocabulary sweep (S8 — doc-grep as INPUT)'
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-ldg
+      - vp-beads-swm
+      - vp-beads-rt2
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        every cross-skill ref enumerated BEFORE editing (~55 /synergy-tracker, 39 /sibling-sync, 32
+        /upstream-tracker, 22 /retrospective, 9 /backlog-groomer, 5 /vp-beads:* namespaced)
+      - >-
+        the 4-way ledger merge turns cross-skill refs into intra-ledger MODE refs;
+        validate-plugin.mjs auditWorkflowReferences updated accordingly
+      - zero dangling `/vp-beads:*` or `workflow N` refs after the sweep
+      - >-
+        DONE 2026-07-29. The grep corrected the plan's edit list in BOTH directions, which is the
+        rule working: `synergy-entry-format.md` was line 120 not 113, and `retrospective/SKILL.md`
+        held NINE refs not eight (line 476 `Division of labor with upstream-tracker and
+        synergy-tracker` is a bare-name heading that a slash-prefixed grep cannot see). Fixed:
+        9 in retrospective/SKILL.md + validate-plugin.mjs:404 (comment path) + pull.md:82
+        (the BM annotation string it WRITES) + synergy-entry-format.md:120 + post-bm-failure-classify.sh:20
+      - >-
+        AC-2 needed NO code change, and that was verified rather than assumed: `auditWorkflowReferences`
+        checks for a naked `workflow N` missing its `(Name)` parenthetical, which is skill-name-agnostic
+        and survives the merge unchanged. RED-proofed by planting `workflow 9` in
+        `plugins/ledger/skills/ledger/references/reconcile.md` — the validator named the file and line,
+        proving it reaches `references/` (the tool audit does not; that gap is `vp-beads-vgp`)
+      - >-
+        `reconcile.md`'s `workflow 2 (Sync sibling SYNERGY)` / `workflow 4 (Apply reciprocation batch)`
+        refs are NOT dangling — the file numbers its own sections `## 1.`-`## 4.`, so they resolve
+        intra-document. LEFT deliberately, with the other two survivors: ledger `plugin.json:11`'s
+        `sibling-sync` keyword and `ledger/SKILL.md:181`'s merge history
+    description: >-
+      Plan step 1.6. Grep is the authority, not the plan's edit list (global doc-grep rule). Blocked
+      on the skill moves + the retirement landing first.
+    updated: '2026-07-29'
+
+  - id: vp-beads-rgy
+    title: 'P1.7 Update registries + sibling back-pointers (S9)'
+    status: deferred
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-vga
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        synergy-registry.json stale `remote`s fixed post-rename; vp-git becomes a CO-LOCATED plugin
+        not a cross-repo sibling — retire/rewrite SYNERGY-vp-git.md's premise + its
+        `relationship: sibling-plugin`
+      - >-
+        sibling back-pointers (`../vp-git/SYNERGY-vp-beads.md`) noted as going stale on the
+        vp-beads→ledger rename; state that vendor-registry.json does not exist (moot)
+    description: >-
+      Plan step 1.7. Depends on vp-git being brought in-repo (P1.3d).
+
+
+      DEFERRED 2026-07-22 (user) alongside `vga`: its primary premise (vp-git becomes a co-located
+      plugin) is gone while `vga` is deferred — vp-git stays a cross-repo sibling and the
+      synergy-registry entry remains valid as-is. The residual rename-related back-pointer notes are
+      Phase-2-rename-gated (`rnm`/`dcr`) anyway. See ROADMAP.md Section 9.
+    updated: '2026-07-22'
+
+  - id: vp-beads-dcr
+    title: 'P1.8 Doc rewrites — counts, manifests, vocabulary (N14)'
+    status: completed
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    deps: []
+    labels:
+      - docs
+    acceptance_criteria:
+      - >-
+        CLAUDE.md / README.md / MEMORY.md "9 skills, 1 agent" counts corrected; package.json +
+        plugin.json name/repository/description updated; the marketplace description no longer says
+        "beads"
+      - doc-grep the VOCABULARY (not just command names) per the global rule
+      - >-
+        doc-rot folded in from vp-beads-tda (tda-vetted, 2 false positives already rejected —
+        manifest keyword scoping is deliberate, repository field stays until the gated rename):
+        (1) regenerate BOTH Plugin Layout trees (CLAUDE.md AND README) from the actual on-disk
+        layout as part of the 6-skill/ledger rewrite — they diverge from each other and from disk:
+        CLAUDE.md's synergy-tracker/references/ omits synergy-bm-format.md + project-name-derivation.md,
+        and README's swarm-wave drops the real skills/swarm-wave/ nesting layer; do NOT merely
+        "match README", which is the LESS-accurate tree for swarm-wave (the tda AC's original
+        "un-nest synergy-tracker / drop duplicate swarm-wave" wording was a misread — corrected
+        2026-07-22 after reading README). Those two divergences are ILLUSTRATIVE, not an exhaustive
+        diff: BOTH trees also predate the ledger merge (they still list synergy/upstream/vendor/
+        sibling-tracker as separate top-level skills, now merged into plugins/ledger/) and README's
+        tree omits vp-dream entirely — so the instruction is "regenerate from disk", not "reconcile
+        these two named deltas";
+        (2) package.json description drops "an agent" (none since sprint-review retired,
+        vp-beads-dep) and "the diarie CLI workspace" (diarie is an external ^0.2.0 dep, not a
+        workspace); (3) plugin.json description drops "backlog grooming" (backlog-groomer retired,
+        vp-beads-dep); (4) the check-prose-commands "five prose surfaces" description understates
+        coverage now that pch added the plugins/* surfaces; (5) residual .mjs comment rot
+      - >-
+        doc the check:md exclusions as DELIBERATE in the ## Validation section (folded from vp-beads-imd,
+        2026-07-22, wording CORRECTED after audit — state the MEASURED coverage map, not the original
+        wrong reason): `--ignore-pattern .diarie/` is intentional, but NOT because "diarie validate covers
+        it" — diarie's loader globs only `tasks-*.yml` and never opens `.diarie/decisions/`. Decision-doc
+        BODIES are covered by this repo's own sibling script `check:md-decisions`; decision-doc FRONTMATTER
+        is covered by NOTHING (upstream `diarie-dlm`); `.diarie/tasks/*.yml` by `diarie validate`
+        (`check:tasks`); `.diarie/_archive/**` + `RESEARCH-*.md` by nothing, deliberately (frozen
+        provenance). Note the two residuals: `check:tracked-ignored` is structurally blind to CLI-flag
+        exclusions (its own header already says "a FLOOR, NOT A FENCE"; broader guard deferred as
+        vp-beads-vgd), and `check:md-decisions` has no coverage floor (vp-beads-mdf)
+      - >-
+        MORE CLAUDE.md drift found 2026-07-28 (comment-accuracy reviewer), in the `### ast-grep structural
+        lint` / Plugin Layout areas: (a) "The plugin's rules (6)" still lists `no-jsdoc-any-type` +
+        `no-jsdoc-object-typedef`, which MOVED to `@voxpelli/ast-grep-rules` in 9946aa2 — it is now 4 local
+        + 3 package = 7, and the package is not mentioned in CLAUDE.md at all (`grep -c ast-grep-rules
+        CLAUDE.md` = 0); (b) the Plugin Layout tree and the vp-dream bullet both say `.remarkrc`, but all
+        five are `.remarkrc.mjs` now AND are one-line re-exports of a SHARED dep, so "ships its own" is
+        inverted by 2c3b1cf; (c) `## Validation` prose lists a root `check:beads-probe` key that does not
+        exist (it is inline in plugins/diarie-adopt's `check`) and names 2 workspace members when there are
+        4. The "all advisory" claim survives — verified, all three package rules are `severity: warning`.
+        Also add the now-armed `check:type-coverage` and the deliberately-unarmed bare `tsc` (vp-beads-nts)
+    description: >-
+      Plan step 1.8; the last local capstone. Enumerate every doc surface via grep — do not trust
+      the plan's edit list.
+      PARTIAL 2026-07-18 (cd63bcc): the CLAUDE.md diarie-workspace-staleness portion is DONE, pulled
+      forward via a claude-md-improver audit. The externalization (85600aa) had left CLAUDE.md
+      actively misdirecting every session ("two stores", "--root diarie", rejoined subtree "remains
+      here", check:tasks-diarie, diarie/lib+test refs, deleted check-ast-grep.mjs) — worse than this
+      row's original "deferred, not check-breaking" framing, so it was fixed now. diarie INTERNALS
+      (reader guards, type schema, bd-map) repointed to voxpelli/diarie. MEMORY.md consolidation
+      handled by a background agent same session. REMAINING: README.md counts/vocabulary; package.json
+      + plugin.json name/repository/description; marketplace description still says "beads"; the
+      "9 skills, 1 agent" counts across surfaces; plus the 5-item doc-rot list folded from tda (see
+      the 3rd acceptance criterion, 2026-07-22).
+    updated: '2026-07-22'
+
+  # ---- Phase 2 — GitHub-facing (each step gated on an explicit per-step "yes"; [us] steps only) ----
+  # [vpk] vp-knowledge follow-ups and [diarie] publishing are tracked via handoffs/, not here.
+
+  - id: vp-beads-mpu
+    # Retitled 2026-07-29 (operator's call): pruning the two deferred deps made this row READY, so
+    # it can now surface on the session-start prime's one-line `next ready` display — under a
+    # standing NEVER-PUSH constraint. The gate used to live only in the first AC, which nothing
+    # reads at session start. It leads the title now.
+    title: '⛔ GATED — operator "yes" REQUIRED, NEVER push unasked · P2.1 [us] Merge the restructure branch to main (B4)'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    # PRUNED 2026-07-29: `rgy` and `sss` are both `deferred` with recorded revival triggers
+    # (rgy via 54c54e8 / ROADMAP §9, sss on this row). A deferred dependency never completes, so
+    # keeping them here left the merge gate blocked FOREVER — a dep list that can never be
+    # satisfied is not a gate, it is a deadlock wearing a gate's clothes. Pruned as a pair on
+    # purpose: dropping `rgy` alone would have left `mpu` blocked on `sss` and bought nothing.
+    deps:
+      - vp-beads-dcr
+      - vp-beads-dad
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        explicit per-step operator "yes" obtained (branch feat/tracker-design-exploration is
+        local-only by user choice; NEVER push without approval)
+      - >-
+        the whole restructure lands in one merge (diarie extraction + dissolution + monorepo
+        conversion); default branch moves off 0.18.0 single-plugin vp-beads
+      - 'must precede any marketplace edit — the marketplace cannot cross-source ledger from a main lacking plugins/ledger'
+      - >-
+        RELEASE-READINESS AUDIT 2026-07-29 (5 agents + a 39-agent workflow) — THE PRECONDITIONS, so
+        they are decided BEFORE this gate opens rather than discovered after. Verdict from both passes
+        was DO-NOT-SHIP, on COMPLETENESS not quality: `npm run check` is green, there is no import
+        hazard, and the branch is sound. What is not ready is everything the gate does not inspect.
+      - >-
+        (1) DISTRIBUTION — the decisive one. The root `.claude-plugin/plugin.json` declares NO
+        component fields (measured: keys are exactly name, version, description, author, repository,
+        license, keywords), and the marketplace entry in `../vp-claude` is a whole-repo
+        `{source: github, repo: voxpelli/claude-beads}` with NO `path`. So `CLAUDE_PLUGIN_ROOT` is the
+        repo root and the four `plugins/*` manifests are unreachable: an installing user gets
+        `/retrospective` and nothing else, while the README documents six skills. CAVEAT ON THE
+        EVIDENCE, recorded deliberately: the claim that CC auto-discovery does not recurse into
+        `plugins/*/` rests on a DOC reading, not a measurement. The "corroboration" originally offered
+        (the 0.18.0 cache has no `plugins/` dir) proves nothing — `git ls-tree v0.18.0` shows v0.18.0
+        never had one; `plugins/` arrived in c066fbe. And `find ~/.claude/plugins/cache -type d -name
+        plugins` returns NOTHING, so no installed plugin anywhere provides a precedent either way.
+        MEASURE IT before building the remedy.
+      - >-
+        (2) NO MIGRATION PATH FOR 7 RETIRED SLASH COMMANDS. `/upstream-tracker`, `/synergy-tracker`,
+        `/vendor-sync`, `/sibling-sync` merged into `/ledger`; `/swarm-wave` moved to a workspace;
+        `/backlog-groomer` and `/harden-memories` retired outright; the `sprint-review` agent gone.
+        The marketplace `renames` field (CC v2.1.193+) is ABSENT from
+        `vp-claude/.claude-plugin/marketplace.json` — and even populated it maps PLUGINS, not skills,
+        so it structurally cannot migrate `/upstream-tracker` to `/ledger log`. Skill deletion has no
+        documented warning: the command silently stops working. The one skill that DOES ship,
+        `skills/retrospective/SKILL.md`, contains ten references to `/ledger` — all dangling.
+      - >-
+        (3) THE MARKETPLACE ENTRY IS STALE IN VERSION AND IN COPY — `0.18.0`, described as "backlog
+        grooming ... for projects using beads", naming two components retired here. It lives in a
+        SEPARATE repo this branch must not write, so any release is a two-repo coordinated act. This
+        row's own existing AC already says the merge must PRECEDE the marketplace edit.
+      - >-
+        (4) SEMVER. 0.19.0 is legal under 0.x but under-signals: removing 7 of 8 user-invocable
+        commands deserves an explicit BREAKING section, and the CHANGELOG has none for it (see
+        `vp-beads-chl`). Given Phase 2 retires this plugin's last skill (`vp-beads-drt`), the honest
+        framing is a TERMINAL POINTER release, not a feature release.
+      - >-
+        THE STRONGEST COUNTER-ARGUMENT, recorded fairly rather than dismissed: `vp-beads-cst` states
+        there are zero external users, which would reduce all of the above to a self-migration
+        checklist already encoded in `vp-beads-rmv`. The rebuttal is that "zero external users" is
+        itself an UNMEASURED claim about a plugin publicly installable from a public marketplace for
+        months — and this project treats an unmeasured impact claim as a defect. Either measure it or
+        stop leaning on it.
+      - >-
+        PURELY LOCAL PRE-MERGE WORK, needing no approval and blocking nothing: rewrite the CHANGELOG
+        (`vp-beads-chl`), bump the version, guard `jq` (`hooks/session-start.sh` and
+        `post-tasks-validate.sh` end in `jq -n` under `set -euo pipefail` with ZERO `command -v jq`
+        guards, and README's Prerequisites never mentions it — not a regression, `main` has the same
+        shape), and settle the `$CLAUDE_PLUGIN_ROOT` question BEFORE fixing discovery rather than
+        after.
+      - >-
+        (1) IS NOW MEASURED, 2026-07-29 — the AC above asked for it and a user-advocate pass
+        delivered it. The answer is NOT contested: Anthropic's own plugin-dev docs, on disk at
+        `~/.claude/plugins/cache/claude-plugins-official/plugin-dev/`, state the discovery rule
+        ("Skills: Scans `skills/` for subdirectories containing `SKILL.md`"; "All component
+        directories ... MUST be at plugin root level"), and its `manifest-reference.md` defines
+        custom-path fields for EXACTLY FOUR components — `commands`, `agents`, `hooks`,
+        `mcpServers`. I verified the enumeration directly: **there is no `skills` path field.** So a
+        root manifest structurally CANNOT point at `plugins/*/skills/`, and the five skills there
+        are unreachable by any install path. Not a doc-reading inference any more.
+      - >-
+        THE EVIDENCE THAT WAS REFUTED STAYS REFUTED, so nobody re-runs it: the 0.18.0 cache having
+        no `plugins/` dir proves nothing (v0.18.0 never had one; `plugins/` arrived in c066fbe), and
+        no installed plugin on this machine ships a nested `plugins/` dir, so there is no empirical
+        precedent either way. The MANIFEST SCHEMA is what settles it, not the cache.
+      - >-
+        THE REMEDY IS A MARKETPLACE-SIDE SHAPE, not a repo change: four entries in
+        `vp-claude/.claude-plugin/marketplace.json`, each addressing a subdirectory, plus a version
+        bump. VERIFY THE EXACT SOURCE SHAPE BEFORE RELYING ON IT — the `git-subdir` form was
+        proposed from memory and does NOT appear in the plugin-dev docs on this machine, and no
+        marketplace here uses it; `handoffs/HANDOFF-vp-knowledge.md` flags the same uncertainty. So
+        the DIAGNOSIS is settled and the PRESCRIPTION is not. Confirm the schema against current
+        Claude Code docs first.
+      - >-
+        AND THE NEXT THREE PROBLEMS ARE ALREADY VISIBLE, which is the argument FOR doing this rather
+        than against: fixing distribution immediately exposes that (a) `diarie` is not installed for
+        users — skills emit bare `diarie ready` while README says no tracker install is needed, and
+        it only works here because of a global install recorded nowhere; (b) `/ledger` has no defined
+        empty state — its router offers "the modes whose object is present", and on a fresh project
+        no object is present; (c) `/swarm-wave`'s post-wave gate hard-requires `npm run check` with
+        no conditional, in the skill whose entire premise is substrate-neutrality — while
+        `retrospective/SKILL.md` hedges the same call correctly with "if a `check` script exists".
+        These are invisible today ONLY because nobody can reach the code that has them.
+    description: >-
+      Plan Phase 2 step 1. First GitHub-facing step. All local Phase-1 work must be done and green.
+    updated: '2026-07-18'
+
+  - id: vp-beads-rnm
+    title: 'P2.2 [us] Rename repo claude-beads → vp-skills (gh repo rename) — GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-mpu
+    labels:
+      - chore
+    acceptance_criteria:
+      - '`gh repo rename` performed only with explicit operator approval; GitHub 301-redirects old URLs'
+      - 'after rename, `git remote` + `/plugin marketplace add` still resolve via the 301'
+    description: >-
+      Plan Phase 2 step 2 ([us] half). vp-claude→vp-knowledge is the [vpk] half, tracked in
+      handoffs/HANDOFF-vp-knowledge.md (sequenced after PR #8 merges).
+    updated: '2026-07-18'
+
+  - id: vp-beads-drt
+    title: 'P2.3 [us] Drop retrospective from vp-skills — ONLY after vp-knowledge absorbs it — GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-mpu
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        the ordering guard holds — retrospective stays (or leaves a stub pointer) in vp-skills until
+        vp-knowledge's session-reflect absorption has LANDED (handoff #1 signals back)
+      - 'removed only after the [vpk] "done" signal — dropping it before then leaves it homeless'
+    description: >-
+      Plan Phase 2 step 4. The cross-repo coordination point: vp-knowledge (handoff #1 Part 2c) owns
+      the absorption + the rebuilt trend-review cadence; this row waits on its completion.
+    updated: '2026-07-18'
+
+  - id: vp-beads-arv
+    title: 'P2.4 [us] Archive (not delete) claude-git + claude-astgrep — GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-rnm
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        ARCHIVE, never delete — archive preserves the GitHub 301 redirect; delete does not (files
+        already brought in during P1.3d)
+      - >-
+        must follow the [vpk] marketplace re-source so their marketplace entries never 404 (B3) —
+        confirm the vp-skills sources are live before archiving
+      - >-
+        DEADLOCKED, not merely blocked — recorded 2026-08-05 so the dep chain stops reading as live.
+        The `deps: [vp-beads-rnm]` edge resolves through pending rows, so every tool here reports this
+        as ordinary blocked work. But its PREMISE is `vp-beads-vga` ("bring vp-git + vp-astgrep in as
+        workspaces"), which is DEFERRED indefinitely: there is nothing to archive until those two repos
+        have actually been brought in, and the parenthetical in AC-1 ("files already brought in during
+        P1.3d") assumes a step that has not happened
+      - >-
+        THE RULE THIS INSTANCE ESTABLISHED: a dep on a `pending` row is a gate; a dep on a `deferred`
+        row is a deadlock. Only the first will clear on its own. Where a row's stated deps and its real
+        premise disagree, the premise wins — and the disagreement has to be written down, because no
+        gate can see it
+      - >-
+        REVIVAL TRIGGER: vp-beads-vga leaves `deferred`. Do not work this row before then; archiving
+        repos whose content has not been absorbed is the one direction that is expensive to undo
+    description: >-
+      Plan Phase 2 step 5. Ordering-gated on the [vpk] marketplace bridge landing first, and premise-gated
+      on vga, which is the binding constraint.
+    updated: '2026-08-05'
+
+  - id: vp-beads-swd
+    title: 'P2.5 [us] Swap the vendored diarie/ subtree for the published npm dep — publish-gate satisfied'
+    status: completed
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        publish gate SATISFIED — `npm view diarie` resolves to 0.1.0 + 0.2.0 (latest 0.2.0, both
+        published 2026-07-18); the `file:../diarie` → published `^0.2.0` flip is executed on the
+        feature branch ahead of the `mpu` merge by operator choice (the flip is recorded
+        on this row; the publish handoff retired its §4 once the flip landed)
+      - >-
+        vp-skills drops the `file:../diarie` dependency, depends on `diarie: "^0.2.0"`, and its
+        store-reading skills shell out to the installed binary instead of `node diarie/cli.js`
+      - '`--root` / nearest-wins + the ENOSTORE contract remain stable across the swap'
+    description: >-
+      PUBLISH GATE SATISFIED 2026-07-18: `npm view diarie` → 0.1.0 + 0.2.0 (latest 0.2.0). The handoff
+      doc + an earlier draft of this row said "`npm view diarie` still 404 / built but not published"
+      — stale, written the same day just before publish.
+      PARTIALLY DONE 2026-07-18 (85600aa): the vendored diarie/ workspace → `file:../diarie` dependency
+      swap is already done locally (it unblocked the option-I shared bare-scan). REMAINING — the
+      `file:../diarie` → published `^0.2.0` flip — is NO LONGER publish-gated (diarie is on npm); it is
+      executed now on the feature branch by operator choice, ahead of the strict P2.1 (`mpu`) merge
+      ordering. The one genuinely publish-gated step in the whole dissolution is therefore cleared.
+      Keep --root / ENOSTORE stable across the flip.
+      DONE 2026-07-18 (c964995): the `file:../diarie` → `^0.2.0` flip landed; `package-lock.json`
+      resolves from the registry (diarie-0.2.0.tgz, integrity set); `import('diarie/schema')`
+      resolves (`TRACKER_DIR = .diarie`); `diarie validate` and `npm run check` green against the
+      registry-resolved package (42 tests, prose-commands re-verified). The `mpu` dep was dropped:
+      the flip was executed on the feature branch ahead of the merge by operator choice, so it no
+      longer waits on `mpu`. The one genuinely publish-gated step in the dissolution is cleared.
+    updated: '2026-07-18'
+
+  - id: vp-beads-rmv
+    title: 'P2.6 [us] Re-add marketplaces / reinstall on own machines / verify end-to-end — GATED'
+    status: pending
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-rnm
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        a real `/plugin update` migrates vp-beads → ledger with the one-time notice; the other
+        successors install from vp-skills
+      - 'the trend-review cadence fires once from session-reflect; installed plugins reflect the new versions'
+    description: >-
+      Plan Phase 2 step 7. Final verification. Depends on the [vpk] marketplace bridge (handoff #1)
+      being live for the migration notice to fire.
+    updated: '2026-07-18'
+
+  # ---- Remediation of the 07-20/07-21 conversion work (multi-agent adversarial review, 2026-07-21) ----
+  # New plugin add + fixes for defects the review found. "-tail" rows under vp-beads-dis per the gtp→gtd
+  # precedent. Full analysis: plan `## ACTIVE EXECUTION (reconciled 2026-07-21)` Part 1 + Part 2.
+
+  - id: vp-beads-vpd
+    title: 'Add vp-dream as plugin #3 (Claude file-memory consolidation; LIGHT template)'
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - feature
+    acceptance_criteria:
+      - >-
+        plugins/vp-dream/ created from ~/Downloads/vp-dream (plugin.json name vp-dream v0.1.0; package.json
+        @vp-skills/vp-dream, no version, own .remarkrc + check:md + check:sh; skills/vp-dream/SKILL.md +
+        2 references + scripts/audit-memory.sh)
+      - >-
+        SKILL.md frontmatter conformed — user-invocable: true, permissive allowed-tools, version dropped;
+        validated automatically by the existing plugins/* discovery in validate-plugin.mjs
+      - >-
+        RED-proven twice (drop allowed-tools → check:plugin errors naming the plugin; plant a shellcheck
+        violation → npm run check reddens via the workspace check); reverted
+      - 'root names plugins/vp-dream/* NOWHERE (grep-proven); CLAUDE.md Plugin Layout + Skills(8)→(9) updated'
+    description: >-
+      Plan Part 1. vp-dream is its OWN plugin (NOT vp-knowledge — that owns Basic Memory; this is Claude
+      file-based auto-memory, a different subsystem). SAFE by construction: audit-memory.sh is pure bash,
+      zero npm imports, so it is immune to the §A runtime bug — hence the light template (no own-eslint).
+      Structure-only this pass: no marketplace.json, so /vp-dream is not live from the working tree (frozen
+      cache); the ~/.claude/skills/vp-dream/ prototype stays usable. IP ToS/reverse-engineering question
+      on references/native-autodream-contract.md stays OPEN for any eventual Phase-2 push.
+    updated: '2026-07-21'
+
+  - id: vp-beads-abx
+    title: 'CRITICAL: deintegrate-beads unrunnable when installed — shell beads-probe out to the diarie CLI (+ prose)'
+    status: completed
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        probeMigration (plugins/diarie-adopt/scripts/beads-probe.mjs) no longer imports diarie/schema or
+        js-yaml — it shells out to `diarie stats --json` in the target for store presence/task count; the
+        committed-vs-staged git ls-tree check sources the tracker-dir name from the CLI (or a param), not
+        a re-import. hooks/daemon probes unchanged.
+      - >-
+        move `check:beads-probe` out of root package.json into diarie-adopt's own `check` aggregate (drop
+        the root reach-in so the test travels on extraction) — §G-cheap
+      - >-
+        prose dead-ends fixed (§B): migrate-tracker :82 "plugin's own diarie CLI" (→ npx), :102-103/:305
+        dead npm-install-prefix preflight, :304-311 published/unpublished contradiction, :312-315 in-repo
+        bd-map path (→ voxpelli/diarie, never hand-edit node_modules), :279-281 + deintegrate :235-236
+        "this plugin's own .diarie/decisions/" (ships none), :295-299 README ref (plugin ships none → inline)
+      - >-
+        PROVEN with the isolated-copy method — rsync plugins/diarie-adopt without node_modules, npm install,
+        run the probe → must emit JSON, not ERR_MODULE_NOT_FOUND (root check:beads-probe never exercises
+        this; hoisting masks it)
+    description: >-
+      Plan Part 2 §A+§B+§G-cheap — the ONE Phase-2 ship-blocker (must precede vp-beads-mpu). Root cause:
+      Claude Code does NOT npm-install git-source plugins (official docs, verified), so a plugin `node`
+      script importing an npm package fails at runtime when installed; deintegrate-beads delegates ALL
+      detection to beads-probe.mjs, which imports diarie/schema + js-yaml — undeclared, resolved only by
+      monorepo hoisting. Declaring the deps does NOT fix it (overruled by the docs). CORRECTS vp-beads-dad's
+      under-verified AC (which claimed "no import depends on bd-map / resolves from any project with diarie
+      in node_modules" — missed this code-level import and the no-node_modules install reality).
+    updated: '2026-07-21'
+
+  - id: vp-beads-swh
+    title: 'swarm-wave: cross-plugin handoff degrade-guard + fix dangling /session-reflect + garbled line'
+    status: completed
+    agent: claude
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        wave-planning-checklist.md:76-80 /session-reflect (does not exist) → /retrospective (the rename is
+        gated behind vp-knowledge's absorption; do not pre-rename)
+      - >-
+        new `## Cross-plugin skill handoffs (degrade-and-announce)` section INSIDE the SKILL.md (installed
+        plugins never receive root docs) so /retrospective + /upstream-tracker handoffs degrade-and-announce
+        instead of hard-failing when the sibling plugin is not installed
+      - 'garbled SKILL.md:339 "Run edit `.diarie/tasks/`" line fixed'
+    description: >-
+      Plan Part 2 §C. swarm-wave is now its own plugin but hands off via the Skill tool to skills in OTHER
+      plugins with no guard; the monorepo goal is zero cross-plugin refs. Mirror CLAUDE.md's Files-availability
+      Tier C idiom, but the guard text must live in the shipped SKILL.md, not root CLAUDE.md.
+      DONE (2026-07-22): added the `## Cross-plugin skill handoffs (degrade-and-announce)` section to
+      SKILL.md; fixed the garbled L339 "Run edit `.diarie/tasks/`" line; rewrote the dangling
+      `/upstream-tracker workflow 1` → `/ledger log` (upstream-tracker merged into ledger). AC1 (the
+      `/session-reflect` → `/retrospective` swap in wave-planning-checklist) was DELIBERATELY SKIPPED —
+      premise FALSE: `/session-reflect` DOES exist (vp-knowledge 0.33.0, confirmed live this session) and
+      is the forward-looking home for the retrospective role, so leaving it is correct; swapping to the
+      about-to-be-retired `/retrospective` would be wrong. `npm run check` green.
+    updated: '2026-07-22'
+
+  - id: vp-beads-vph
+    title: 'validate-plugin hardening (isRecord + manifest-less flag + fixture RED-test) + correct gtd''s false claim'
+    status: completed
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        shared isRecord guard added; the per-plugin AND root manifest loops use it — a non-object plugin.json
+        now produces a clean error() instead of a TypeError crash
+      - >-
+        manifest-less positive flag: discover skills under ANY plugins/*/skills (not gated on the manifest),
+        and separately error if a dir has skills/agents but no .claude-plugin/plugin.json (_placeholder-safe:
+        only content-bearing dirs flagged)
+      - >-
+        scripts/check-validator-plugin-fixtures.mjs added (VALIDATE_PLUGIN_ROOT override + spawnSync, ~7
+        planted cases incl. a clean control), wired as a check:-prefixed key; each case proven RED against
+        pre-fix code then GREEN after
+      - >-
+        agent-validation block: keep the frame + a fixture case; DELETE only the foreign knowledge-gardener
+        special case (can never fire here)
+      - >-
+        vp-beads-gtd's acceptance criterion "Proven RED on planted violations" corrected — it was asserted
+        but never built (this row builds it)
+    description: >-
+      Plan Part 2 §D. The plugins/* generalization is functionally correct + genuinely exercised (verified),
+      but had NO RED-proof and two real robustness holes. Two reviewers independently flagged gtd's false
+      "Proven RED" completion note — the repo's own signature bug, in its own tracker.
+    updated: '2026-07-21'
+
+  - id: vp-beads-pch
+    title: 'check-prose-commands hardening — path normalization + per-surface floor + $DIARIE alias + self-test'
+    status: completed
+    agent: claude
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        corpus paths normalized to one convention (glob results → absolute via join(ROOT,p); display via
+        relative(ROOT,file)) — fixes the file.slice() mangling of every non-root finding location + the
+        cwd-dependence; scanCorpus takes a root param
+      - >-
+        fixture self-test plants a fossil in a NON-root file and asserts the emitted file path (RED against
+        pre-fix code); pattern-syntax proven per surface (the 3 legitimately-empty surfaces via fixture, NOT
+        a blanket live floor); per-surface CONDITIONAL floor added
+      - 'narrow $DIARIE/$VAR-alias resolver so migrate-tracker''s `$DIARIE migrate …` primary command surface is actually checked'
+      - 'stale comments fixed: ~105→90 examined count; phantom check-prose-commands2.mjs reference dropped'
+    description: >-
+      Plan Part 2 §E. globSync({cwd:ROOT}) refactor returned relative paths mixed with absolute literals;
+      MEDIUM (detection intact — gate still exits 1 — but the reported location is garbled, defeating the
+      gate when it finally fires). A blanket per-surface ≥1 floor would false-RED the build today (3 surfaces
+      are legitimately empty).
+      PARTIAL (2026-07-21): the M1 path-mangling fix (all corpus paths → absolute + relative(root,file)
+      display, killing the file.slice mangle + the cwd-dependence) + a fixture self-test (scanCorpus pointed
+      at a throwaway tree, asserting the emitted path; RED-proven against the old slice) + comment rot
+      (file:../diarie→npm ^0.2.0, ~105→90, phantom check-prose-commands2.mjs ref removed) are DONE.
+      REMAINING: the $DIARIE/$VAR-alias resolver (migrate-tracker's `$DIARIE migrate …` primary command
+      surface — which the §B/npx-flag work EXPANDED — is still unchecked; all its flags were hand-verified
+      valid, so latent not live) + the per-surface CONDITIONAL floor.
+      DONE (2026-07-22): `unwrapDiarie` (SIMPLIFIED from per-file alias detection per review — hardcodes
+      the one `DIARIE` alias + unwraps `npx … diarie`, taking examined 90→95) + a per-surface conditional
+      floor (the populated 4 surfaces, each ≥1) + a per-surface fixture proving every glob extracts even
+      the 3 empty-today ones; all four guards RED-proofed (broken glob, no-op unwrap, empty-surface floor,
+      live bad `$DIARIE`); `npm run check` green.
+    updated: '2026-07-22'
+
+  - id: vp-beads-tda
+    title: 'Author the missing .diarie/decisions/vp-beads-tdo.md + fold doc-rot into dcr'
+    status: completed
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    labels:
+      - docs
+    acceptance_criteria:
+      - >-
+        .diarie/decisions/vp-beads-tdo.md authored (the ephemeral-todo-vs-diarie decision cited by CLAUDE.md:559,
+        migrate-tracker, deintegrate-beads, and MEMORY.md but never formalized)
+      - >-
+        doc-rot folded into vp-beads-dcr's AC (NOT a new row): CLAUDE.md Plugin Layout tree corrected to match
+        README (un-nest synergy-tracker, drop the duplicate swarm-wave), package.json:7 "diarie CLI workspace"/"an
+        agent" + plugin.json:4 "backlog grooming" stale descriptions, CLAUDE.md:759 "five prose surfaces"
+        understatement (+plugins/*), the .mjs comment rot
+        — CORRECTION (2026-07-22, post-gate): the "match README / un-nest synergy-tracker / drop duplicate
+        swarm-wave" phrasing above was a MISREAD (both trees nest synergy-tracker; the doubled swarm-wave is
+        the real plugin-dir/skill-dir path convention; README is the LESS-accurate tree). The authoritative,
+        corrected fold lives in dcr AC3 — regenerate BOTH trees from the on-disk layout, do not "match README".
+    description: >-
+      Plan Part 2 §F. Doc-rot has zero new rows — it folds into the already-pending dcr (P1.8). This row
+      covers only the one genuinely-new artifact: authoring the tdo decision record. Review rejected 2 false
+      positives (manifest scoping is deliberate; the repository field is correct until the gated rename).
+      DONE (2026-07-22): vp-beads-tdo.md authored (Decision/Rationale/Alternatives/Execution/Affects, house
+      style) — verify-before-persisting caught the wrong SHA: MEMORY.md's history note pinned the ban-lift to
+      a453143 (test relocation), but `git log -S "ONLY home of a commitment"` proves it shipped in 6dd4795
+      (2026-07-11); the record cites the verified SHA. Doc-rot items grep-confirmed before folding into dcr's
+      AC3 (2 false positives left out per prior review); item (1) reworded after actually reading README —
+      the tda AC's "un-nest synergy-tracker / drop duplicate swarm-wave / match README" was a misread (both
+      trees nest synergy-tracker; the doubled swarm-wave is the real path convention; README is the LESS
+      accurate tree). `diarie validate` clean.
+    updated: '2026-07-22'
+
+  # ---- The hook-delivery correction and the root retirement (2026-08-05) ----
+
+  - id: vp-beads-hkx
+    title: 'Hooks never delivered anything — wrap every emit in hookSpecificOutput'
+    status: completed
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        MEASURED, not inferred. Session transcripts distinguish `hook_success` (what a hook printed)
+        from `hook_additional_context` (what reached the model). Across them: vp-beads' "Open UPSTREAM
+        tracking file" 25 emitted / 0 delivered, "Dependabot alert" 4/0, vp-knowledge's "Knowledge graph
+        context" 29/0 — all bare-shaped; Anthropic's own envelope-shaped hooks 42 emitted / 21 delivered
+        in the same transcripts. So the tracker prime, compaction recovery, both leak guards, the
+        dormancy nudge and edit-time store validation had never reached the model in any released version
+      - >-
+        MECHANISM: bare JSON falls between the two documented paths. The docs say "any NON-JSON text
+        written to stdout is added as context", so raw text is injected — but bare JSON is valid JSON,
+        takes the JSON branch, is parsed as a hook payload, and an unrecognised top-level key is
+        discarded. Exit stays 0 and nothing reports the loss
+      - >-
+        DONE — all three emit sites wrapped. session-start.sh's two now route through a single
+        `emit_context`; post-tasks-validate.sh emits hookEventName "PostToolUse" (no fallback exists
+        there at all — plain stdout on PostToolUse is debug-log only)
+      - >-
+        DONE — check-hooks.mjs no longer encodes the defect as its specification. Its typedef claimed
+        "`additionalContext` IS the payload" and 23 sites read it, so ~15 assertions checked the contents
+        of a string nobody received. Replaced with `deliveredContext`, which reads ONLY through the
+        envelope and THROWS on any other shape, so a regression fails BY NAME at every call site
+      - >-
+        DONE — RED-proved four ways, each planted and run, not argued: (a) fixing the hooks first turned
+        the un-fixed gate RED at 12 sites, which is the coupling demonstrated; (b) planting the bare form
+        named it at every site; (c) planting an envelope with no hookEventName named that instead;
+        (d) planting a WRONG-but-valid hookEventName failed exactly 1 test of 38 — proof the other 37
+        could not see it, which is why the event-name assertions were added
+      - >-
+        DONE — validate-plugin.mjs's prompt-hook warning was itself dispensing the defect: it told plugin
+        authors to "use type: command with additionalContext". Now names the full envelope
+      - >-
+        DONE — check_dependabot dropped entirely (function, call site, 3 tests, the gh stub helper).
+        check_dormancy's fabricated positive fixed: `git rev-list ... || echo "0"` turned a FAILED
+        measurement into the strongest possible evidence for the claim it failed to support, so the nudge
+        fired on every repo with no commits and outside git entirely. An unmeasurable repo is now silent
+      - >-
+        The collector had exactly ONE assertion and it asserted the fabricated positive — the combined
+        test's own fixture read "0 commits → dormant (rev-list fails, falls back to 0)". Two focused tests
+        added, including the unmeasurable-is-not-dormant direction, and the fixture now backdates a real
+        commit so it tests a genuinely dormant repo
+      - >-
+        NOT A ROW HERE: vp-knowledge has the identical bug (29 emitted / 0 delivered). It is a separate
+        repo — UPSTREAM entry plus a handoff line, same rule that keeps drt out of our hands
+      - 'STILL OPEN: the delivery itself is unproven until vp-beads-hkp runs the loader probe. Every measurement above was of the CACHED 0.18.0 hook, not the working tree'
+    description: >-
+      The finding that reordered the whole merge sequence. Found while re-checking a DIFFERENT claim
+      (vp-beads-mpu's "no skills manifest field"), which was itself false. Gates vp-beads-sss and the
+      root retirement: sharding an unverified emitter multiplies it by four.
+    updated: '2026-08-05'
+
+  - id: vp-beads-hkp
+    title: 'Prove hook delivery — PASSED, and the probe is far simpler than planned'
+    status: completed
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-hkx
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        PASSED 2026-08-05. The envelope DELIVERS. `post-tasks-validate.sh`'s payload arrived as
+        `PostToolUse:Write hook additional context`, and the transcript confirms it independently:
+        `hook_additional_context` went 3 → 4 with the vp-beads marker at 1 delivered, alongside the
+        envelope-shaped Anthropic control. So the envelope is not merely NECESSARY (which the 42/21
+        control already showed) but SUFFICIENT
+      - >-
+        THE PROBE IS MUCH CHEAPER THAN THIS ROW ORIGINALLY SPECIFIED, and the saving is worth keeping.
+        Planned: disable the installed plugin, symlink the repo into `~/.claude/skills/` for
+        `@skills-dir` in-place discovery, restart the session, grep the transcript, undo all of it.
+        Actual: register the working-tree hook in the gitignored `.claude/settings.local.json`, make one
+        real `Write` to a throwaway `.diarie/tasks/` store, read the delivered text inline
+      - >-
+        THE FACT THAT COLLAPSES THE PROCEDURE: hooks are NOT snapshotted at session start. A hook added
+        to `.claude/settings.local.json` mid-session fires on the very next matching tool call. The
+        restart-and-archaeology dance was built on the opposite assumption, which was never measured
+      - >-
+        EXPERIMENTAL HYGIENE THAT MADE THE RESULT READABLE: run the hook standalone FIRST and confirm it
+        SPEAKS, before testing whether it is DELIVERED. Otherwise silence has two explanations and the
+        probe cannot distinguish them. Point it at a THROWAWAY store rather than this repo's, so a
+        deliberately-invalid fixture never touches the real one — the hook derives its project root from
+        the edited file's path, so this costs nothing
+      - >-
+        SHARPER THAN THE ORIGINAL FINDING: the installed 0.18.0 cache contains no `post-tasks-validate.sh`
+        AT ALL (`hooks.json`, `post-bm-failure-classify.sh`, `post-file-edit.sh`, `session-start.sh` only).
+        So edit-time store validation was not "delivered but discarded" for released users — it was never
+        shipped. The shape defect bit only those running from source
+      - >-
+        CONSEQUENCE FOR vp-beads-sss: the "if it still drops, do not shard" stop-check is CLEARED. The
+        shard is now gated only on its real dependency, backlog/vp-beads-vgp
+      - >-
+        NOT PROVEN HERE, deliberately: whether the LOADER registers manifest-declared skills. That was
+        this row's second yield under the `@skills-dir` method and does not come free with the cheap
+        probe. It belongs to whoever needs it (vp-beads-rrp / the W4 bridge branch), and
+        `claude plugin validate` does NOT answer it — validate is not the loader
+    description: >-
+      The verification half of vp-beads-hkx. Split out on the assumption it needed a session restart;
+      it did not. Recorded in full because the cheap method is reusable for every future hook change.
+    updated: '2026-08-05'
+
+  - id: vp-beads-rpl
+    title: 'Correct the record: the refuted distribution finding and the tracker-prime claim'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-hkx
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        CHANGELOG.md — the copy that SHIPS. Its `### Not yet installable` states "there is no `skills`
+        field, and `skills/` is scanned from the plugin root" as fact. That is the refuted claim, in
+        committed HEAD, in the file users read. Its `### Fixed` also says the hooks' dead command names
+        were "injected into every session" — nothing was injected
+      - >-
+        vp-beads-mpu — mark the DISTRIBUTION finding REFUTED. The live reference documents a `skills`
+        field that ADDS to the default scan; the claim came from a third-party plugin's CACHED teaching
+        doc, and four agents "verified" it against that same file. Keep the provenance lesson: mpu's own
+        earlier caveat said the claim "rests on a DOC reading, not a measurement", and the follow-up
+        declared "IS NOW MEASURED" on the strength of a SECOND doc reading. Reading another document is
+        not measuring
+      - >-
+        CLAUDE.md — the claim that the tracker prime now gives what `bd prime` gave was FALSE when
+        written (nothing was delivered) and becomes TRUE only once hkx ships and hkp confirms it. Also
+        the stale "local-only, don't push" line (this branch has been in draft PR #16 since 2026-07-21),
+        and "the five prose surfaces" — check-prose-commands.mjs's SURFACES has seven
+      - 'MEMORY.md — the same stale local-only claim'
+      - >-
+        Basic Memory `engineering/tooling/claude-code-plugin-mechanics` — its observation "[pattern] Bare
+        {additionalContext} is valid hook stdout per docs" is a FABRICATED CITATION. Propose the
+        correction with the two-branch mechanism from hkx (BM writes are approval-gated). It is why the
+        blog posts are right about plain stdout and the note is wrong about JSON
+    description: >-
+      A false measurement recorded as settled is what stopped the re-check. Fix it where it executes,
+      not only in a review artifact.
+    updated: '2026-08-05'
+
+  - id: vp-beads-adp
+    title: 'BLOCKER before any push to a new public remote: the native-autodream-contract reference'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        `plugins/vp-dream/skills/vp-dream/references/native-autodream-contract.md` reconstructs Claude
+        Code's native `autoDream` behaviour and has only ever existed in an unpublished branch.
+        Decision `vp-beads-top` chose the NEW-REPO path, which makes pushing it a FRESH ACT OF
+        PUBLICATION — the question is now live rather than hypothetical
+      - >-
+        WHY THIS ROW EXISTS AT ALL: the IP / ToS / reverse-engineering question was recorded only in
+        the DESCRIPTION of `vp-beads-vpd`, which is `completed`. A closed row is not a home for an
+        open question — nothing surfaces it, `diarie ready` cannot see it, and the plan referenced it
+        by an id that reads as done. It is the same failure class as a deferred plan section with no
+        revival trigger
+      - >-
+        RESOLUTION IS THE USER'S, not mine: keep as-is, rewrite as behaviour-observed-from-outside
+        rather than contract-reconstructed, or drop the reference and let the SKILL.md stand alone.
+        Do NOT decide this by inference from the fact that it already sits in a pushed branch —
+        `feat/tracker-design-exploration` is on an existing repo whose visibility was already settled
+      - >-
+        BLOCKS the first push to `voxpelli/vp-skills`, NOT `rrp` — `rrp` is a local manifest change
+        and can land on this branch either way
+    description: >-
+      Extracted from vp-beads-vpd's description on 2026-08-05 when decision vp-beads-top selected the
+      new-repo topology and turned a deferred question into a precondition.
+    updated: '2026-08-05'
+
+  - id: vp-beads-rrp
+    title: 'Retire the root plugin: manifest becomes a marketplace'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-sss
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        UNBLOCKED BY DECISION 2026-08-05 (`vp-beads-top`): main is frozen and this becomes
+        `voxpelli/vp-skills`, so there is no bridge release and no root plugin to preserve. The
+        first AC below ("NO self-entry") was mutually exclusive with the bridge option, which is
+        what forced the topology fork to be answered before this row could start
+      - >-
+        NOT gated on `vp-beads-adp` — that blocks the first PUSH to a new remote, not this local
+        manifest change
+      - >-
+        `.claude-plugin/plugin.json` → `.claude-plugin/marketplace.json`. The root stops being a thing you
+        install and becomes the list of things you install. NO self-entry — there is no root plugin left
+      - >-
+        MEASURED against `ast-grep/agent-skill`, which is exactly this topology: root marketplace.json,
+        plugin in a subdirectory with its own plugin.json, skills at `<plugin>/skills/<name>/SKILL.md` —
+        the DEFAULT scan, so no `skills` manifest field is needed anywhere. Its entry uses a plain
+        relative `"source": "./ast-grep"`, so `metadata.pluginRoot` is a convenience, not a requirement
+      - >-
+        Do NOT duplicate `version` into the entries the way that exemplar does — `plugin.json` wins
+        silently, so a stale entry version misleads without failing
+      - >-
+        Deleting the root manifest must FAIL CLEANLY, not crash: validate-plugin.mjs's root-manifest
+        readJson is unguarded while its marketplace and hooks reads are existsSync-guarded, so removing it
+        throws ENOENT with a stack trace and no summary. Make "no root plugin" a declared state
+      - >-
+        `skills/retrospective/` stops shipping when the manifest goes. The directory stays until
+        vp-beads-drt; record it in the CHANGELOG as a real removal, not a footnote
+      - >-
+        Do NOT add `deps: [vp-beads-sss]`-style cycles: sss's own revival trigger names "Phase 2 has
+        landed" and this retirement is a PRECONDITION of Phase 2. The dep above is the shard only
+    description: >-
+      Merges what an earlier draft split across two ideas — the root ceasing to be a plugin and the
+      marketplace appearing are the same change seen twice.
+    updated: '2026-08-05'
+
+  - id: vp-beads-dsx
+    title: 'Extract plugins/diarie → voxpelli/diarie-skills'
+    status: deferred
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-sss
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        GATED on the repo existing. Creating a GitHub repo is an outward-facing act in the same class as
+        opening a PR — explicit in-the-moment approval required, and it is not mine to do unasked
+      - >-
+        PATTERN: `ast-grep/agent-skill` — a skills repo adjacent to the tool it serves. Root
+        marketplace.json, plugin subdir, skills at the default scan path. It carries NO package.json at
+        all; diarie-skills needs one for the hook test, so it is that pattern plus a gate
+      - >-
+        HISTORY IS NOT PRESERVED the way diarie's own extraction was. `diarie/` had accumulated real
+        history under its own prefix before splitting; `plugins/diarie/` is new, so
+        `git subtree split --prefix=plugins/diarie` carries only the move commit onward. The hooks' prior
+        history stays in this repo. Do not promise the extracted repo a past it will not have
+      - >-
+        PRECONDITION from sss: `plugins/diarie` must already be self-contained. Prove it by MEASURING —
+        every gate that touches it invocable from inside the directory — not by asserting it
+    description: >-
+      diarie's everyday hooks belong beside diarie, not inside a plugin named for migrating off beads.
+      Built in this repo first (vp-beads-sss) so the work is executable today with no GitHub write.
+    updated: '2026-08-05'
+
+  - id: vp-beads-dab
+    title: 'Decide whether diarie-adopt follows to diarie-skills'
+    status: deferred
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-dsx
+    labels:
+      - spike
+    acceptance_criteria:
+      - 'REVIVAL TRIGGER: vp-beads-dsx lands and the boundary is felt in practice. Deliberately not settled in advance'
+      - >-
+        THE TENSION: diarie-adopt ships real tested code (beads-probe.mjs + check-beads-probe.mjs), which
+        pulls toward the monorepo's gate tooling; against that, "everything diarie in one home" pulls the
+        other way. Both are real, which is why this is a decision row and not a chore
+      - >-
+        Whichever way it goes, `check_beads_credential_key` follows diarie-adopt — it exists because
+        `.beads/` is present, which is adoption's concern, not everyday tracker use
+    description: >-
+      Deferred by explicit choice rather than left as an open question in prose. If it moves, vp-skills
+      ends as ledger + swarm-wave + vp-dream.
+    updated: '2026-08-05'

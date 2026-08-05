@@ -1,0 +1,7 @@
+id: no-commonjs-require
+valid:
+- "import fs from 'node:fs'"
+- "import { readFile } from 'node:fs/promises'"
+invalid:
+- "const fs = require('fs')"
+- "const { readFile } = require('node:fs/promises')"

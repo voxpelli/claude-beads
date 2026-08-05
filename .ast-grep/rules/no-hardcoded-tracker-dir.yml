@@ -1,0 +1,52 @@
+id: no-hardcoded-tracker-dir
+language: javascript
+message: >-
+  Don't hardcode the tracker directory — resolve it from `diarie/schema` and
+  build the path from what it returns. The whole point is that renaming the
+  store is a one-line change; a literal re-forks it. This bites hardest in
+  *guard* code — a refuse-to-write check is a safety net, so a literal there
+  would not error after a rename, it would silently stop guarding. Do not name
+  the export here: diarie is replacing the singular `TRACKER_DIR` with
+  `TRACKER_DIRS` / `trackerDirIn(root)` because the store is becoming a PAIR
+  (`diarium/` or `.diarium/`), and a message pinned to one constant becomes
+  wrong guidance the day that lands. The legacy `backlog/` segment (renamed to
+  `.diarie/` 2026-07-11) is flagged too; the bare `backlog` PRIORITY value is
+  not a path and is left alone.
+severity: error
+# THE PLUGIN'S HALF of a cross-boundary rule. Its twin lives in diarie's own repo and guards its
+# `lib/**`. The rule could not "move" with diarie; had it, the plugin's own tooling would have been
+# free to re-fork the store path the day diarie left.
+#
+# It is PREVENTIVE, and currently finds nothing: as of 2026-07-28 no file here imports the store dir
+# at all (`audit-silent-skips.mjs` was the last importer and now matches a vocabulary regex instead,
+# because it does prose matching rather than path construction). Zero findings is the correct state
+# for a rule like this — do not read it as the rule being dead, and do not narrow its `files:` bound
+# on that basis.
+files:
+  - "scripts/*.mjs"
+  - "validate-plugin.mjs"
+ignores:
+  # Test fixtures must state the literal: check-validator.mjs feeds planted prose to
+  # auditSilentSkips, and check-hooks.mjs asserts on the path session-start.sh prints. Building
+  # either from the resolver would make the assertion tautological — it would prove only that the
+  # constant equals itself.
+  - "scripts/check-*.mjs"
+  # NOTE — do NOT add `scripts/audit-silent-skips.mjs` here. It was added 2026-07-28 as insurance for
+  # a vocabulary regex that does not match this pattern anyway, and measured cost exceeded zero
+  # benefit: `scripts/` holds 7 files, 6 match the `check-*` line above, so exempting the 7th left
+  # this rule applying to `validate-plugin.mjs` ALONE (`ast-grep scan --inspect entity`:
+  # appliedRuleCount=6 on exactly one file). A whole-file exemption to pre-empt a hypothetical is how
+  # a guard's bound quietly collapses. If a real vocabulary literal ever trips this, suppress that
+  # LINE instead, with ast-grep's own inline ignore comment naming this rule id — it is rule-id-scoped
+  # (verified on 0.44.1) and greppable, the same pressure-valve shape as `prose-cmd-ignore`.
+  # (Spelling the directive out here would BE one — ast-grep reads its own rule files.)
+rule:
+  any:
+    - kind: string
+    - kind: template_string
+    # A regex literal is neither a string nor a template_string, so without this a hardcoded segment
+    # smuggled into a regex walked straight past the rule — the guard's own blind spot.
+    - kind: regex
+  # `.diarie` was always dotted. `diarium` comes as a PAIR — visible `diarium/` or dotted
+  # `.diarium/` — so the leading dot is optional for it and required for the old name.
+  regex: '\.diarie|\.?diarium|backlog/'

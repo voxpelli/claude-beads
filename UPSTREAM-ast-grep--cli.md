@@ -1,0 +1,39 @@
+## Feature Requests
+
+* **`ast-grep test` has no coverage / `--strict` mode — an untested rule is silently skipped** (2026-07-18) — `ast-grep test` discovers test files and replays them, so a rule with no test is not _failing_, it is _invisible_. Measured on 0.44.1: with 6 rules and one rule's test file removed, it prints `ok. 5 passed; 0 failed` and exits 0, never naming the untested rule. Pairing is by the test's internal `id:` field, not the filename — flipping only the `id:` to a non-matching value prints `Configuration not found! <id>` but STILL exits 0, and that rule is now untested. A rule with a typo'd pattern (matching nothing) then passes every gate: unpaired, so `ast-grep test` skips it; matching nothing, so `ast-grep scan` exits 0. A `--strict`/coverage mode that fails (or at least lists) rules lacking a test would let CI catch a rule that has silently detached from its test.
+  Ownership: upstream · Workaround: full — we maintain `scripts/check-rule-parity.mjs` (asserts every rule has a test whose `id:` names it, with an `invalid:` case).
+
+* **A rule whose `files:` glob resolves to NOTHING still loads, and is counted as live** (2026-07-29,
+  0.44.1) — this is the RULE-level twin of the `--min-files` request below, and it is not the same
+  gap: that one is about the scan seeing no FILES, this is about one rule reaching no files while
+  the scan is otherwise healthy. Typo a rule's `files:` (`sripts/*.mjs` for `scripts/*.mjs`) and
+  every signal stays green — `ast-grep scan` exits 0, `ast-grep test` passes its inline fixtures
+  (they are synthetic snippets, so a rule's real reach is never exercised), and the rule still
+  counts toward `effectiveRuleCount`, so a rule-count parity checker cannot see it either. `ignores:`
+  has the same arithmetic in reverse: one added exemption can collapse a rule's reach to a single
+  remaining file. The only available signal is `ast-grep scan --inspect entity`, which prints
+  `appliedRuleCount` per file — that separates "the rule loaded" from "the rule was applied to
+  something", and nothing surfaces it in a normal run. Desired: a warning (or an opt-in failure)
+  when a loaded rule matches zero files.
+  Ownership: upstream · Workaround: partial — `--inspect entity` can be parsed, but per-file
+  `appliedRuleCount` does not name WHICH rules applied, so a specific rule's reach still cannot be
+  asserted directly.
+
+* **`ast-grep scan` has no `--min-files` / `--error-on-empty` — a broad ignore silently shrinks coverage to nothing** (2026-07-18) — a bare `ast-grep scan` is bounded by `.gitignore` and exits 0 over an empty file set. One over-broad ignore line (`dist/`, `lib/generated/`) drops coverage with nothing going red — the green-over-nothing an empty scan should be able to flag itself. A flag to fail below a file-count floor (or on zero matched files) would turn a blinded scan red. Same "gitignore silently reduces coverage" family as [#2803](https://github.com/ast-grep/ast-grep/issues/2803) below, which is its RULE-side counterpart.
+  Ownership: upstream · Workaround: partial — `ast-grep scan --inspect entity` exposes `scannedFileCount`, which a wrapper can floor (diarie does in its own repo); otherwise we accept the risk at parity with every other ignore-bounded gate (`remark --ignore-path .gitignore`).
+
+## Bugs
+
+* **`ast-grep scan` on a non-existent path prints an error but exits 0** (2026-07-18) \[minor] — `ast-grep scan /does/not/exist` prints `ERROR: /does/not/exist: No such file or directory (os error 2)` to stderr and exits 0 (measured, 0.44.1). Any runner that forwards ast-grep's status treats a typo'd or renamed scan-path argument as success over nothing. Expected: a non-zero exit on an unreadable path argument. Low-impact for us now — we dropped the path list, and a bare scan takes no path arguments — but it is precisely why a path-list wrapper needed its own existence-guard.
+  Severity: minor · Ownership: upstream · Workaround: full — pass no path arguments (a bare scan walks the gitignore-bounded tree).
+
+## Upstream Opportunities
+
+* **`check-rule-parity.mjs` — a filesystem-parity proof of the `ast-grep test` coverage gap** (2026-07-18) — a \~40-line check that closes the untested-rule hole above by asserting, per rule, that a test file exists, its internal `id:` names the rule, and it carries an `invalid:` case. Demonstrates the shape a native `ast-grep test --strict`/coverage mode could take: it hardcodes no rule names and parses only the one YAML field ast-grep itself pairs on.
+  Source: `scripts/check-rule-parity.mjs` · Merge readiness: proof-of-concept — the concept (fail on an untested rule) is library-worthy; the filesystem-glob implementation is not. Ownership: us · Workaround: full — runs in `npm run check` as `check:rule-parity`.
+
+## Notes
+
+* **These are exit-code gaps, NOT the "ast-grep fails silently" claim** — each is measured on 0.44.1 and is specifically about the process exit status of `test`/`scan`. ast-grep does correctly _report_ rule-**load** errors (on `window/showMessage` + `window/logMessage`); a broad "silently ignores invalid rules" claim was retracted in `voxpelli/claude-astgrep` v0.4.2 — the LSP _client_ discards those reports, which is a separate, client-side problem. See BM `plugins/plugin-voxpelli-claude-astgrep` and `brew-ast-grep`.
+* **By design, do NOT re-file:** `ast-grep scan` exits non-zero ONLY when ≥1 **error-severity** rule matches; `warning`/`info`/`hint` never change the exit code, and `--format github` does not alter it. A `severity: warning` rule is advisory on purpose (BM `engineering/tooling/ast-grep-rule-creation-tips-and-gotchas-for-structural-code-search`).
+* **Cross-project convergence before filing:** `voxpelli/claude-astgrep` (vp-astgrep, folding into vp-skills per decision `vp-beads-cst`) already tracks [#2803](https://github.com/ast-grep/ast-grep/issues/2803) and a related "warn when `ruleDirs` load zero rules or resolve under an ignored path" backlog item. When any of the above is filed upstream, coordinate so the CLI-side (`test`/`scan` exit codes) and the LSP/rule-load side are not filed as duplicates. **Nothing is filed upstream yet.**

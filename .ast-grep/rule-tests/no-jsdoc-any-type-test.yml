@@ -1,0 +1,15 @@
+# Tests a rule this repo CONSUMES from `@voxpelli/ast-grep-rules`, not one it owns. ast-grep pairs a
+# test to a rule by the `id:` field, wherever the rule was loaded from — including a `ruleDirs` entry
+# inside `node_modules` — so this file is what makes a neutered upstream pattern go RED here.
+id: no-jsdoc-any-type
+valid:
+- "/** @param {unknown} x */"
+- "/** @returns {string} */"
+invalid:
+# All FOUR tags the rule matches. With only @param and @returns pinned, narrowing the upstream regex
+# to `@(param|returns)` passed 7/7 — measured — so @type and @property guarding could be dropped by a
+# minor bump (the package is pinned `^0.1.0`) with every gate green.
+- "/** @param {any} x */"
+- "/** @returns {any} */"
+- "/** @type {any} */"
+- "/** @property {any} a */"

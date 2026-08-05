@@ -1,0 +1,17 @@
+{
+  "name": "@vp-skills/ledger",
+  "private": true,
+  "type": "module",
+  "description": "Cross-project relationship ledger plugin (upstream friction + sibling synergy).",
+  "scripts": {
+    "check": "run-p check:*",
+    "check:md": "remark skills/ --quiet --frail",
+    "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/",
+    "check:test": "node scripts/check-hooks.mjs"
+  },
+  "devDependencies": {
+    "@voxpelli/remark-preset": "^0.1.1",
+    "npm-run-all2": "^7.0.0",
+    "remark-cli": "^12.0.1"
+  }
+}

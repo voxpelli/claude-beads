@@ -1,0 +1,12 @@
+{
+  "name": "diarie-adopt",
+  "version": "0.1.0",
+  "description": "Adoption tooling for migrating projects off beads (bd) onto the flat-YAML diarie tracker. Two skills: migrate-tracker (guided bd → flat-YAML cutover) and deintegrate-beads (disarm bd's machinery post-migration). For projects still on beads — requires a .beads/ directory and the bd CLI.",
+  "author": {
+    "name": "Pelle Wessman",
+    "url": "https://github.com/voxpelli"
+  },
+  "repository": "https://github.com/voxpelli/claude-beads",
+  "license": "MIT",
+  "keywords": ["bd", "beads", "migration", "diarie", "tracker", "adoption"]
+}

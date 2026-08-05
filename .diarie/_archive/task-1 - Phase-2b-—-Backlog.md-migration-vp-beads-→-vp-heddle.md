@@ -1,0 +1,161 @@
+---
+id: TASK-1
+title: Phase 2b — Backlog.md migration (vp-beads → vp-heddle)
+status: To Do
+assignee: []
+created_date: '2026-05-18 20:51'
+updated_date: '2026-05-18 21:04'
+labels:
+  - epic
+  - phase-2b
+  - tracker-migration
+dependencies: []
+priority: high
+ordinal: 1000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+**⚠️ SUPERSEDED (2026-06-09) — dogfood concluded. Verdict: Option C (lean flat-YAML +
+ready-walker), NOT Backlog.md.** A 12-agent research round overturned the Phase-2a MIXED
+verdict: Backlog.md is declined (another daemon/vendor; can't reproduce `ready`). This
+Backlog.md-format dogfood served its purpose (it surfaced bd's write-drop/throttle pain) and
+is now wound down — these `backlog/tasks/*.md` files are kept as historical provenance, not
+edited further. Going-forward migration work is tracked in **bd epic `vp-beads-l9i`** (the
+live tracker until execution flips the substrate). See
+`RESEARCH-tracker-migration-synthesis-2026-06.md` and `DESIGN-tracker-exploration.md` v3.
+
+Parent task for all Phase 2b work migrating vp-beads from bd to Backlog.md. Verdict from Phase 2a spike (bd vp-beads-l9i.2): MIXED — adopt Backlog.md + layer vp-beads-side supplements. Synthesis: SPIKE-MIG.1.md at project root. ~680-860 LOC budget, ~4 sprints estimated. Tracking switched to Backlog.md for this branch as a dogfood experiment — bd holds spike history (vp-beads-l9i.* closed).
+<!-- SECTION:DESCRIPTION:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+## Revised LOC budget (post substrate-not-opinion doctrine, 2026-05-18)
+
+| Component | Original (from SPIKE-MIG.1.md) | Revised (substrate-not-opinion) | Rationale |
+|---|---:|---:|---|
+| Skill rework (3 substantive + 1 hook) | 410–485 | **200–300** | Skills wrap substrate primitives but supply their own workflow; no absorption of Backlog.md's plan-approve-execute-finalize loop or DoD/AC distinction |
+| vp-heddle shim (ready/blocked/stale/stats/dedup) | ~150 | ~150 | Unchanged — primitive ops missing from Backlog.md surface |
+| Claim-guard wrapper | ~30 | ~30 | Unchanged — defense-in-depth around last-write-wins fingerprint |
+| Constitutional Guardrail PreToolUse hook | 60–75 | **70–90** | Slight bump: Agent E's response-side wrapping needs add ~10–15 LOC |
+| Migration script | 80–120 | 80–120 | Unchanged — substrate concern |
+| Sub-agent sandbox workarounds | — | 0–50 | New: TASK-1.9 investigation may produce small reusable workaround code |
+| **Total** | **~680–860** | **~530–740** | ~25% smaller |
+
+## Execution sequence (precondition → security → migration → adoption)
+
+**Wave 1 (preconditions, sequential):**
+1. TASK-1.1 — gh api verification pass (~30 min, closes evidence-quality caveats from Wave 1+2 sub-agent sandbox blocks; gates Guardrail design)
+2. TASK-1.9 — sub-agent sandbox investigation (informs all future swarm-wave usage including the Constitutional Guardrail itself; can run parallel with 1.1 once main-thread)
+
+**Wave 2 (security, ships first per spike recommendation):**
+3. TASK-1.2 — Constitutional Guardrail PreToolUse hook (~75–90 LOC)
+   - TASK-2.1 — onStatusChange Clinejection vector (HIGH net-new)
+   - TASK-2.2 — Response-side wrapping
+4. TASK-1.5 — Backlog.md integrity check (composable with Guardrail or standalone pre-commit hook)
+
+**Wave 3 (migration, sequential after Wave 2):**
+5. TASK-1.3 — Migration script scripts/migrate-from-bd.mjs
+   - TASK-5.1 — id-map.json emitter + _Original ID:_ embedding (HIGH identity break)
+   - TASK-5.2 — AC double-source detect-and-pick (HIGH 37/102 silent loss)
+
+**Wave 4 (adoption, parallel-able where file-disjoint):**
+6. TASK-1.6 — vp-heddle shim
+7. TASK-1.7 — Skill rework: text-rename pass (wave-able)
+8. TASK-1.4 — Claim-guard wrapper
+
+**Wave 5 (substantive rework, sequential):**
+9. TASK-1.8 — Skill rework: substantive (backlog-groomer + retrospective + swarm-wave)
+
+## Cutover gates
+
+- Wave 2 must complete before Wave 3 (migration script depends on Guardrail being in place for safe operation)
+- Wave 3 must complete before Wave 4 (skill rework targets the migrated state)
+- After Wave 5: cut v1.0.0 release (M2 milestone — substrate migration complete)
+- Rename to vp-heddle (or vp-warp per Tier 2) at M4 (external user adoption signal), NOT at M2
+
+## Why substrate-not-opinion changes the budget
+
+Original estimate assumed skills would translate Backlog.md's workflow into vp-heddle's workflow — that's a 1:1 absorption. Under substrate-not-opinion (ROADMAP §6 "no workflow-prescribing tool"), skills wrap Backlog.md's CRUD primitives but supply vp-heddle's own workflow. The translation layer disappears; only the primitive-call substitution remains. Hence ~30% reduction in skill-rework LOC.
+
+This is doc-level estimation. Per [[doc-alignment-vs-operational-alignment]] feedback memory, the real number lands after Wave 5 execution. Treat ~530–740 as a planning ceiling; recalibrate after each wave.
+
+## Post-v0.17.0 reconciliation (2026-06-03)
+
+This branch merged current `main` (v0.17.0). Two scope deltas:
+
+- **Counts: 7 → 8 skills, 4 → 3 hooks.** v0.17.0 added the `harden-memories`
+  skill and retired `precompact.sh` + `post-compact.sh` (folded into
+  `session-start.sh`'s `source=compact` branch). TASK-1.7's mechanical rename
+  pass is **7 bd-shell-out skills + 3 hooks**.
+- **RESOLVED (2026-06-03, validated by a 4-agent primary-source battery) —
+  `harden-memories` is DROPPED at migration**, not renamed, not repurposed. It is
+  not a general memory-hygiene tool; it exists *only* to counter a footgun
+  **generated by `bd remember` itself**: `bd prime` re-injects **every** memory in
+  full at SessionStart — uncapped, linear in entry count, and (verified) inherited
+  by **every subagent dispatch**, so in a swarm the tax multiplies by agent count;
+  upstream FR `gastownhall/beads`#3961 confirms no built-in cap/TTL/dedup. *(F1
+  correction: injection is at SessionStart only — including the post-compaction
+  `source=compact` SessionStart — NOT a separate PreCompact event; same correction
+  as decision 48f. An earlier draft saying "SessionStart and PreCompact" was wrong.)*
+  harden-memories is the **only** consumer of `bd remember` in `skills/`, and no
+  swarm-wave agent writes `bd remember` mid-wave — so once the store is dismantled
+  the skill is dead code.
+- **Why auto-memory doesn't recreate the tax (mechanism corrected by validation).**
+  The **Memory migration** step moves entries to auto-memory `MEMORY.md` + CLAUDE.md
+  and drops `bd prime`. Auto-memory avoids bd's failure mode **not** via a
+  relevance-recall engine (there is none — Claude Code reads topic files on demand
+  with the ordinary file tool, navigated from the `MEMORY.md` index) but via a
+  **first-200-line / 25 KB truncation cap on `MEMORY.md` + a topic-file split**.
+  Load-bearing implication: migrated entries must be **split into topic files with
+  one-line `MEMORY.md` pointers, not dumped inline** (an inline dump re-creates a
+  per-session tax capped at 200 lines, silently dropping the rest), keeping a **lean
+  single-sentence recovery-trigger core inline** (per MemGPT/Letta a *small*
+  always-in-context core is correct; abolishing the always-injected tier entirely
+  trades the token tax for retrieval-miss on recovery-critical facts). See DESIGN
+  §Phase 2b "Memory migration".
+- **Why not repurpose to "audit `MEMORY.md`" (justification corrected).** The
+  earlier "that niche is already owned" claim was **wrong**: vp-knowledge's
+  memory-defrag / memory-lifecycle curate the **Basic Memory graph**, not auto-memory
+  `MEMORY.md`; and Anthropic's Auto Dream (`/dream`), which *does* target `MEMORY.md`,
+  is **not GA** (server flag-gated, default-off as of 2026-03). So the residual
+  `MEMORY.md`-curation niche is currently ~unowned — but it is a **platform concern**
+  Anthropic is actively building for, and standing up a vp-beads auditor over a Claude
+  Code platform store violates platform-proximity. Drop, and let the platform own it;
+  the skill's reusable triage logic (3-question taxonomy + bloat categories) already
+  lives in BM `engineering/agents/three-memory-systems-taxonomy-and-graduation`, so
+  deletion loses no knowledge.
+  Net: TASK-1.7 renames the 7 bd-shell-out skills; harden-memories is **removed
+  in the same wave as the Memory-migration step** (a patch for a substrate
+  misfeature becomes dead code once you leave the substrate).
+- **DECISION-POINT TRIGGER (formalized + self-surfacing) — re-check drop-vs-repurpose.**
+  The DROP above assumes the platform (Auto Dream / `/dream`) will own `MEMORY.md`
+  curation. As of 2026-06-03 that assumption is **false in practice**: Auto Dream is
+  server-flag-gated (`tengu_onyx_plover`), default-off, **absent in this install**, with
+  open data-loss (#47959) + mid-run-deadlock (#50694) issues and a "3 gaps" issue
+  (#38493) closed *as not planned*. A passive "revisit if it's unreliable someday"
+  trigger would never fire — nobody checks it. So it is bound to **two gates that fire
+  on their own**, with a deterministic check and a binary rule:
+  - **HARD GATE (cannot be skipped) — Memory-migration Step 0.** The wave that removes
+    harden-memories MUST run the *Auto Dream coverage check* (below) and record the
+    result in its wave log **before** the drop-vs-repurpose choice; the choice is
+    *blocked* until it does. The decision therefore cannot be made blind — this is the
+    "we can't not know" guarantee.
+  - **EARLY WARNING (recurring) — every-4th-sprint trend review.** Add a line to the
+    retrospective trend-review checklist: run the coverage check, record the result.
+    Surfaces the signal sprints before migration so it is never a surprise at Step 0.
+  - **Coverage check (deterministic — one command + one measure):** run `/memory` and
+    record `Auto-dream = on | off | absent`; then `wc -l` the auto-memory `MEMORY.md`
+    against the 200-line cap and note rot (duplicate entries, unresolved relative dates).
+  - **Decision rule (objective thresholds → binary action):**
+    - Auto-dream **`on`** → platform owns curation → **DROP** (original decision stands).
+    - Auto-dream **`off`/`absent`** AND `MEMORY.md` ≥ 160 lines (80% of the cap) OR showing
+      rot → the curation niche is *unowned and the gap is real* → **REPURPOSE**
+      harden-memories into a self-hosted memory-gardener (4-phase dream cycle + a
+      `git`-backed audit-log and undo — fixing Auto Dream's own worst defects; seed from
+      its 3-question taxonomy + bloat categories; cf. community `grandamenium/dream-skill`).
+    - Auto-dream **`off`/`absent`** but `MEMORY.md` healthy (< 160 lines, curated) →
+      **DROP**, lean on the quarterly human audit; re-check next trend review.
+<!-- SECTION:PLAN:END -->

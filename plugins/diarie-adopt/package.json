@@ -1,0 +1,18 @@
+{
+  "name": "@vp-skills/diarie-adopt",
+  "private": true,
+  "type": "module",
+  "description": "Beads-to-diarie adoption tooling plugin.",
+  "scripts": {
+    "check": "run-p check:*",
+    "check:hooks": "node scripts/check-hooks.mjs",
+    "check:md": "remark skills/ --quiet --frail",
+    "check:probe": "node scripts/check-beads-probe.mjs",
+    "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/"
+  },
+  "devDependencies": {
+    "@voxpelli/remark-preset": "^0.1.1",
+    "npm-run-all2": "^7.0.0",
+    "remark-cli": "^12.0.1"
+  }
+}

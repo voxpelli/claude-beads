@@ -1,46 +1,51 @@
 {
   "private": true,
   "type": "module",
-  "description": "vp-beads Claude Code plugin: sprint-workflow automation skills, an agent, and hooks for projects using beads and Basic Memory, plus the .mjs validation tooling that powers npm run check.",
+  "engines": {
+    "node": "^22.13.0 || >=24.0.0"
+  },
+  "description": "An npm-workspaces monorepo of Claude Code plugins for sprint-workflow automation, for projects using the diarie flat-YAML tracker and Basic Memory. Holds the root plugin (retrospective + hooks), four workspace plugins under plugins/, and the .mjs validation tooling that powers npm run check.",
   "scripts": {
-    "check": "run-p check:*",
-    "check:hooks": "node scripts/check-hooks.mjs",
+    "check": "run-p check:* && run-s check-workspaces",
+    "check:ast-grep": "ast-grep scan",
+    "check:ast-grep-test": "ast-grep test",
+    "check:format-shell": "node scripts/check-format-shell-on-edit.mjs",
     "check:lint": "eslint",
-    "check:md": "remark . --quiet --frail --ignore-path .gitignore",
+    "check:md": "remark . --quiet --frail --ignore-path .gitignore --ignore-pattern .diarie/ --ignore-pattern 'RESEARCH-*.md'",
+    "check:md-decisions": "remark '.diarie/decisions/*.md' --quiet --frail",
     "check:plugin": "node validate-plugin.mjs",
-    "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/*.sh",
-    "check:validator": "node scripts/check-validator.mjs"
+    "check:prose-commands": "node scripts/check-prose-commands.mjs",
+    "check:rule-parity": "node scripts/check-rule-parity.mjs",
+    "check:rule-parity-fixtures": "node scripts/check-rule-parity-fixtures.mjs",
+    "check:sh": "shellcheck scripts/*.sh && shfmt -d scripts/",
+    "check:tasks": "diarie validate",
+    "check:tracked-ignored": "node scripts/check-tracked-ignored.mjs",
+    "check:tsc": "tsc",
+    "check:type-coverage": "type-coverage --detail --strict --at-least 98",
+    "check:validator": "node scripts/check-validator.mjs",
+    "check:validator-plugin-fixtures": "node scripts/check-validator-plugin-fixtures.mjs",
+    "check-workspaces": "npm run check --workspaces --if-present",
+    "fix:ast-grep": "ast-grep scan --update-all"
   },
   "devDependencies": {
+    "@ast-grep/cli": "~0.44.1",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.20.1",
+    "@voxpelli/ast-grep-rules": "^0.1.0",
     "@voxpelli/eslint-config": "^25.1.0",
+    "@voxpelli/remark-preset": "^0.1.1",
+    "@voxpelli/tsconfig": "^16.2.1",
+    "comment-parser": "^1.4.6",
+    "diarie": "^0.2.0",
     "eslint": "^9.39.4",
+    "ignore": "^7.0.6",
     "js-yaml": "^4.1.0",
     "npm-run-all2": "^7.0.0",
     "remark-cli": "^12.0.0",
-    "remark-frontmatter": "^5.0.0",
-    "remark-gfm": "^4.0.1",
-    "remark-lint-unordered-list-marker-style": "^4.0.1",
-    "remark-preset-lint-consistent": "^6.0.0",
-    "remark-preset-lint-recommended": "^7.0.0",
-    "remark-validate-links": "^13.1.0"
+    "type-coverage": "^2.30.1",
+    "typescript": "^6.0.3"
   },
-  "remarkConfig": {
-    "settings": {
-      "bullet": "-",
-      "emphasis": "*",
-      "strong": "*",
-      "rule": "-",
-      "fence": "`",
-      "fences": true,
-      "listItemIndent": "one"
-    },
-    "plugins": [
-      "remark-frontmatter",
-      "remark-gfm",
-      "remark-preset-lint-consistent",
-      "remark-preset-lint-recommended",
-      "remark-validate-links",
-      ["remark-lint-unordered-list-marker-style", "-"]
-    ]
-  }
+  "workspaces": [
+    "plugins/*"
+  ]
 }

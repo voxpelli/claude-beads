@@ -1,0 +1,12 @@
+# Paths resolve relative to THIS file's directory, and multiple ruleDirs compose.
+# The package rules are consumed straight out of node_modules — no copy/sync step —
+# so the shared rules stay shared instead of being duplicated here. A ruleDirs entry
+# that does not resolve is a HARD ERROR (exit 6, "Cannot read rule directory"), unlike
+# a missing scan path, which exits 0; so a forgotten install cannot quietly produce an
+# empty gate. `check:rule-parity` additionally asserts the effective rule COUNT, because
+# the one thing that IS silent here is a package that ships fewer rules after an upgrade.
+ruleDirs:
+  - .ast-grep/rules
+  - node_modules/@voxpelli/ast-grep-rules/rules
+testConfigs:
+  - testDir: .ast-grep/rule-tests

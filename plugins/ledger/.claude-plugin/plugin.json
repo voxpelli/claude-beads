@@ -1,0 +1,12 @@
+{
+  "name": "ledger",
+  "version": "0.1.0",
+  "description": "The project's ledger of relationships with code it does not own: upstream dependency friction (npm/vendor/tool) and cross-project synergy with sibling projects. One mode-routed skill — log, resolve, review, pull, reconcile, promote — over UPSTREAM-*.md / SYNERGY-*.md and Basic Memory.",
+  "author": {
+    "name": "Pelle Wessman",
+    "url": "https://github.com/voxpelli"
+  },
+  "repository": "https://github.com/voxpelli/claude-beads",
+  "license": "MIT",
+  "keywords": ["upstream", "synergy", "cross-project", "vendor", "sibling-sync", "basic-memory", "relationship-ledger"]
+}

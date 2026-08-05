@@ -5,23 +5,131 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+Will ship as **0.19.0**. The plugin manifest is already bumped, because the plugin
+cache is keyed by version and a reinstall at an unchanged version string would swap
+the contents silently.
+
+**Read `### Removed` first.** This release removes seven slash commands and one agent.
+
+### Removed
+
+* **BREAKING — `/upstream-tracker`, `/synergy-tracker`, `/vendor-sync` and
+  `/sibling-sync` are gone.** They are merged into a single mode-routed skill,
+  **`/ledger`**, which routes by object (upstream dependency vs sibling project) and
+  verb rather than by skill name:
+
+  | was | now |
+  | --- | --- |
+  | `/upstream-tracker` | `/ledger log`, `/ledger review`, `/ledger resolve` |
+  | `/synergy-tracker` | `/ledger log`, `/ledger review` |
+  | `/vendor-sync` | `/ledger pull` |
+  | `/sibling-sync` | `/ledger reconcile` |
+
+  There is no automatic migration: a marketplace `renames` map redirects **plugins**,
+  not skills, so an old command name cannot be forwarded to a new one.
+
+* **BREAKING — `/backlog-groomer` and `/harden-memories` are retired** with no
+  successor. Backlog grooming is now editing `.diarie/tasks/*.yml` directly.
+* **BREAKING — the `sprint-review` agent is retired.** There is no `agents/` directory.
+
+### Added
+
+* **`/vp-dream`** — manual, approval-gated, fact-verifying consolidation of Claude
+  Code's file-based auto-memory (the per-project `memory/` directory and its
+  `MEMORY.md` index). A different subsystem from Basic Memory. Pure bash, no runtime
+  npm dependencies.
+* **`/migrate-tracker` and `/deintegrate-beads`** — a guided one-way cutover off beads
+  onto the flat-YAML tracker, and the separate disarm of beads' machinery (git hooks
+  behind `core.hooksPath`, and the Dolt daemon) once the migration is trusted. Neither
+  ever deletes `.beads/` or any data.
+* **Five workspace plugins** under `plugins/` — `ledger`, `swarm-wave`, `diarie-adopt`,
+  `vp-dream` and `diarie` — each with its own manifest, version and gates. `diarie` ships
+  hooks and no skills: it validates the `.diarie/` task store the moment a row is edited.
+
+### Changed
+
+* **BREAKING — the session hooks now ship from the plugin that owns each one.** The
+  root plugin's single `session-start.sh` is gone; its collectors moved whole to
+  `ledger` (open UPSTREAM files, capture nudge, tracked-private-overlay warning,
+  dormancy nudge), `swarm-wave` (recently-touched SWARM/RETRO files), `diarie-adopt`
+  (tracked beads-credential-key warning) and the new `diarie` plugin (the tracker
+  prime and in-progress-claim recovery). Installing one plugin now gets you that
+  plugin's hook and nothing else, and each labels its own compaction output. Every
+  copy of the output contract is checked against the event key it is wired under —
+  a `hookEventName` that disagrees with `hooks.json` is dropped silently at runtime,
+  so nothing else could have caught it.
+* **BREAKING — the tracker is `diarie`, not beads.** Work lives in
+  `.diarie/tasks/tasks-<slug>.yml`, read by `diarie ready` and validated by
+  `diarie validate`. beads 1.1.0's schema-migration gate panics on every write, so
+  `bd` writes are dead; `.beads/` remains readable as a frozen archive.
+* **`diarie` is a published npm package** (`diarie@^0.2.0`), developed in its own
+  repository. It is a dependency, not vendored code.
+* **A missing store is an ERROR, not an empty backlog.** `diarie` exits non-zero with
+  `{"error": …, "code": "ENOSTORE"}` on stdout under `--json`. This lets a consumer
+  tell "this project tracks its work elsewhere" apart from "this project has no work
+  left" — opposite situations that used to look identical. Ask for `--json` and do not
+  discard stderr.
+* **The tracker is optional and never forced.** Components declare an availability tier
+  and degrade along it; silently skipping a tracker step is treated as a bug.
+* `/retrospective` and `/swarm-wave` announce cross-plugin handoffs they cannot make,
+  rather than dead-ending, when a sibling plugin is not installed.
+
+### Removed
+
+* **The root plugin's `hooks/` directory.** Installing this plugin no longer registers
+  any hook. The shfmt-on-edit formatter that lived there was repo dev tooling shipped as
+  a plugin hook by accident — it only ever fires when someone edits a `.sh` file inside
+  this monorepo, which a consumer never does — and is now a repo-local
+  `.claude/settings.json` hook. Its directory allow-list became a `.sh`-anywhere-under-
+  the-repo bound in the same move, because the shell scripts had just left `hooks/` for
+  four `plugins/*/hooks/` directories and a list would have stopped matching them
+  silently.
+* **The trend-review reminder.** It counted `RETRO-*.md` files on disk to decide when a
+  sprint was a trend-review sprint. RETRO files are dissolving into Basic Memory notes,
+  so a file count cannot survive as the trigger; the cadence is rebuilt in vp-knowledge's
+  `/session-reflect` instead of being carried forward broken.
+* **The Dependabot alert check.** No plugin here owns it, it duplicates a signal GitHub
+  already surfaces at push time and in the Security tab, and it was the most fragile
+  collector in the hook (an external `gh api` call with a `per_page` cap).
+
+### Fixed
+
+* Both always-on hooks named retired commands in output injected into every session.
+* The trend-review reminder fired twice per cycle, naming two different sprints.
+* `/deintegrate-beads`'s probe could not be run from a plugin install — it imported an
+  npm package, and Claude Code does not `npm install` a git-source plugin.
+
+### Not yet installable
+
+The four `plugins/*` plugins **cannot be installed today**, and neither can the five
+skills they contain. A plugin manifest has custom-path fields for `commands`, `agents`,
+`hooks` and `mcpServers` only — there is no `skills` field, and `skills/` is scanned
+from the plugin root — so a root manifest cannot reach `plugins/*/skills/`.
+
+Installing this plugin gets you **`/retrospective` and the session hooks**. Reaching the
+rest needs a marketplace entry per plugin, which cannot be authored until this work is
+on the default branch. Until then, treat their documentation as describing the
+repository rather than an install.
+
 ## [0.18.0][] - 2026-06-04
 
 ### Added
 
-- **Private (local-only) sibling registration** (`vp-beads-a2k`). A sibling
+* **Private (local-only) sibling registration** (`vp-beads-a2k`). A sibling
   whose existence must not be committed (e.g. a proprietary open-core partner)
   can now be registered **exclusively** in the gitignored
   `.claude/synergy-registry.local.json` by setting its `file` to a
   `PRIVATE-SYNERGY-<name>.md` value. Previously `.local.json` could only
-  *override* fields of an entry already present in the committed base registry;
+  _override_ fields of an entry already present in the committed base registry;
   a `.local.json`-only entry was ignored, forcing a sibling's existence to be
   public. The `PRIVATE-` prefix is the single marker — there is no separate
   boolean — reusing the v0.17.0 `PRIVATE-SYNERGY-` content mechanism for
-  *registration* too, so the "never promoted to Basic Memory / never
+  _registration_ too, so the "never promoted to Basic Memory / never
   reciprocated" guarantees are inherited as filesystem facts (the file lives
   outside the `SYNERGY-*.md` glob).
-- **No-commit-leak invariant, validator-enforced.** A private sibling's name
+* **No-commit-leak invariant, validator-enforced.** A private sibling's name
   must never reach a committed file. `validate-plugin.mjs` now **errors** if the
   committed base registry contains a `PRIVATE-SYNERGY-*` entry, or if
   `.gitignore` carries a per-name `PRIVATE-SYNERGY-<name>.md` line (only the
@@ -32,27 +140,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`/sibling-sync` hybrid read-diff for private siblings.** A private sibling's
+* **`/sibling-sync` hybrid read-diff for private siblings.** A private sibling's
   `PRIVATE-SYNERGY-<name>.md` (its registry `file`) is read for read-only diff,
   while every committed-write path is blocked: reciprocation (workflow 4) skips
   private siblings, the action menu suppresses `bd create` for them, follow-up
   logging redirects to the gitignored file, and UPSTREAM Mode B is skipped
   (its `UPSTREAM-<name>.md` filename would leak the name; Mode A still runs).
-  A *public* sibling's glob-discovered `PRIVATE-SYNERGY-*.md` overlay is still
+  A _public_ sibling's glob-discovered `PRIVATE-SYNERGY-*.md` overlay is still
   never read by `/sibling-sync`.
-- **`/synergy-tracker` workflow 1 step 1b** gained a Visibility gate that
+* **`/synergy-tracker` workflow 1 step 1b** gained a Visibility gate that
   registers a private sibling into `.local.json` (with
   `file: PRIVATE-SYNERGY-<name>.md`, `bm-entity` omitted) and creates the
   gitignored content file. Workflow 5 (Promote to Basic Memory) and the merge
   rule (workflow 3) handle private siblings consistently.
-- **ESLint via `@voxpelli/eslint-config`** now lints the `.mjs` validation
+* **ESLint via `@voxpelli/eslint-config`** now lints the `.mjs` validation
   tooling (`check:lint`, wired into `npm run check`).
 
 ## [0.17.0][] - 2026-06-03
 
 ### Added
 
-- **`/harden-memories` skill (read-only audit).** Audits the project's
+* **`/harden-memories` skill (read-only audit).** Audits the project's
   `bd remember` store so each entry earns its per-session `bd prime` injection
   cost. Reads `bd memories`, classifies each entry with the three-question
   taxonomy (already-captured → remove; stable architecture → migrate to
@@ -63,7 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   under human control. Tier B; scoped strictly to the `bd remember` store (not
   Claude Code's Auto Dream, not Basic Memory graph hygiene). Resolves the
   vp-knowledge feature request.
-- **Private `PRIVATE-SYNERGY-<project>.md` overlay** for proprietary↔public
+* **Private `PRIVATE-SYNERGY-<project>.md` overlay** for proprietary↔public
   sibling boundaries. A gitignored companion to the committed
   `SYNERGY-<project>.md` holds extra private entries under the same four section
   headings. The `PRIVATE-` prefix keeps the overlay **outside the `SYNERGY-*.md`
@@ -78,7 +186,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Reworked the compaction-capture hooks.** Retired `precompact.sh` (PreCompact)
+* **Reworked the compaction-capture hooks.** Retired `precompact.sh` (PreCompact)
   and `post-compact.sh` (PostCompact) and folded their recover + reflect roles
   into a `source: "compact"` branch of `session-start.sh`. Verified against the
   live Claude Code hooks docs: PreCompact's `additionalContext` reaches only the
@@ -98,20 +206,20 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`### Beads-availability convention` (CLAUDE.md).** One canonical detection
+* **`### Beads-availability convention` (CLAUDE.md).** One canonical detection
   predicate (`.beads/` exists **and** `command -v bd`) and three degradation
   tiers — A require-or-fallback, B beads-specific stop, C degrade-and-announce —
   with the rule that silently skipping a `bd` step is a bug (hooks exempt). The
   tier→component mapping lives only here; components copy a canonical inline
   sentence and cite their tier letter.
-- **`/swarm-wave` Tier A require-or-fallback sourcing.** Workflow 1 (Plan a
+* **`/swarm-wave` Tier A require-or-fallback sourcing.** Workflow 1 (Plan a
   swarm sprint) now sources waves from beads, else a `ROADMAP.md`, else a manual
   work list (reusing the workflow 4 (Map file contention) prompt). Beadless
   waves track run-state in a new per-wave `SWARM-NN.md` Item Status table
   (`pending → claimed → done | carried`). Adds collision detection (next free
   `SWARM-NN`), a warning when `SWARM-*.md` files are git-tracked, and new
   description triggers.
-- **`skills/swarm-wave/references/roadmap-interpretation.md`.** A six-step
+* **`skills/swarm-wave/references/roadmap-interpretation.md`.** A six-step
   adaptive interpretation contract: classify shape first (only wave-structured
   plans qualify; feature-triage matrices and chore lists decline; unrecognized
   shapes ask), multi-shape completion detection defaulting unrecognized status
@@ -119,37 +227,37 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   declared-else-grep scope resolution, `VISION.md` is never a work source, and
   per-wave provenance confirmation. Validated against four real ROADMAP idioms.
   swarm-wave never reformats the ROADMAP.
-- **`validate-plugin.mjs` silent-skip warn-check.** A new pure
+* **`validate-plugin.mjs` silent-skip warn-check.** A new pure
   `scripts/audit-silent-skips.mjs` module flags skill/agent prose that skips a
   `bd` step silently without an announce/Tier marker; a new `check:validator`
   stage runs its fixture tests.
-- **`## Work-tracking substrates` documentation** in both `CLAUDE.md` and
+* **`## Work-tracking substrates` documentation** in both `CLAUDE.md` and
   `README.md` — beads vs `ROADMAP.md` (read in its own idiom, never prescribed)
   vs `VISION.md` (direction, not a backlog) vs manual list — plus a README
   local-only-vs-committed beads recommendation table.
 
 ### Changed
 
-- **`/retrospective` degrades to Tier C.** A `### Beads availability` preamble
+* **`/retrospective` degrades to Tier C.** A `### Beads availability` preamble
   plus announced fallbacks for the three bd-dependent steps: the health audit
   renders an announced skip line, step-5 findings append a
   `### Follow-ups (untracked)` task list to the RETRO file instead of
   `bd create`, and decisions are captured inline as a `### Decisions` block.
-- **`sprint-review` agent degrades to Tier C.** The two beads edge cases merge
+* **`sprint-review` agent degrades to Tier C.** The two beads edge cases merge
   into one canonical-predicate announce bullet; the agent announces skipped `bd`
   steps (Steps 1 and 3) instead of silently omitting them and points to
   `ROADMAP.md` when present (best-effort, never parsed or ranked).
-- **`/backlog-groomer` degrades to Tier B.** The beads-optional guard becomes a
+* **`/backlog-groomer` degrades to Tier B.** The beads-optional guard becomes a
   clean Tier B stop that names the missing predicate and redirects the planning
   triggers to `/swarm-wave` or editing `ROADMAP.md` directly.
-- **`README.md` lede softened** to state beads is the default substrate, not a
+* **`README.md` lede softened** to state beads is the default substrate, not a
   requirement.
 
 ## [0.15.1][] - 2026-06-02
 
 ### Fixed
 
-- **`session-start` hook sensitive-file check.** The hook flagged
+* **`session-start` hook sensitive-file check.** The hook flagged
   `.beads/interactions.jsonl` as "conversation logs or credentials" and offered
   a `git rm --cached` fix, contradicting its intended tracking — but that file
   is bd's `field_change` audit trail and holds no secrets. The check now warns
@@ -162,7 +270,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`/retrospective` Health Audit subsection in the trend-review workflow.**
+* **`/retrospective` Health Audit subsection in the trend-review workflow.**
   Step 4 now runs `bd doctor --json`, `bd lint --json`, `bd stale --json`,
   `bd orphans --json`, and `bd graph check --json` (parsing the
   `schema_version: 1` envelope) in parallel, surfacing counts plus the top
@@ -173,7 +281,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   per-blocker `bd show` chase), and `bd compact` candidate bullets — folded
   in from a previously separate "Beads health" subsection. (vp-beads-0e9.8,
   vp-beads-0e9.10)
-- **`/retrospective` decision-capture path in step 5.** When a sprint
+* **`/retrospective` decision-capture path in step 5.** When a sprint
   outcome is a decision (choice between viable approaches with rationale,
   reversal of a prior decision, accepted constraint), retrospective now
   prompts the user to invoke the upstream `/beads:decision` slash command
@@ -182,7 +290,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   `## Rationale`, `## Alternatives Considered`, `## Affects`). Decision-typed
   issues stay open while in force; retrospective never auto-closes them.
   (vp-beads-0e9.9)
-- **Sprint-review agent `## Boundaries` section + 5th end-of-sprint output
+* **Sprint-review agent `## Boundaries` section + 5th end-of-sprint output
   example.** The agent's contract is now explicit (no file writes, no skill
   invocation, defers all mutations to `/retrospective`, `/upstream-tracker`,
   `/synergy-tracker`, `/backlog-groomer`, and user-run `bd` commands).
@@ -191,7 +299,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   `accept-difference`). The 5th example shows the canonical 5-section
   output shape so readers can predict the agent's report without invoking it.
   (vp-beads-3vu)
-- **`/synergy-tracker` workflow 2 (Review) inverse-file glob staleness
+* **`/synergy-tracker` workflow 2 (Review) inverse-file glob staleness
   detection.** Optional best-effort enrichment that reads the sibling's
   `SYNERGY-<this-project>.md` (via the registry-with-override
   path-resolution shared with workflow 3 (Compare with sibling)) and
@@ -200,47 +308,47 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   `/sibling-sync` workflow 2 (Sync sibling SYNERGY) — workflow 2 (Review)
   here only surfaces inverse-file findings as a side-channel of the
   single-side review. (vp-beads-e3k)
-- **`validate-plugin.mjs` registry schema validation.** New checks for
+* **`validate-plugin.mjs` registry schema validation.** New checks for
   `.claude/synergy-registry.json` (array shape, required `name` + `file`,
   consistency check `file === SYNERGY-<normalized-name>.md` with canonical
   slash + leading-`@` normalization, `bm-entity` warning when prefixed
   `npm/` against the sibling-relationship convention, `relationship`
   warning when outside the `KNOWN_RELATIONSHIPS` set) and
   `.claude/vendor-registry.json` (array shape, required `prefix` + `remote`
-  - `branch` + `package`, optional `local-path`). `*.local.json` files are
+  * `branch` + `package`, optional `local-path`). `*.local.json` files are
     not validated (gitignored, machine-specific). (vp-beads-8eo)
-- **SessionStart hook surfaces open Dependabot alerts** when `gh` CLI is
+* **SessionStart hook surfaces open Dependabot alerts** when `gh` CLI is
   available and the repo has a GitHub remote. Emits a single-line
   `[security] N open Dependabot alert(s) — <URL>` summary in
   `additionalContext`. Silent on every failure path (missing `gh`, no GitHub
   remote, count of 0, rate-limited, parse errors). Single-JSON output
   contract preserved. (vp-beads-pcv)
-- **`/upstream-tracker` `argument-hint: "[workflow] [package-name]"`**
+* **`/upstream-tracker` `argument-hint: "[workflow] [package-name]"`**
   frontmatter, matching the convention used by synergy-tracker,
   backlog-groomer, and vendor-sync. (vp-beads-o8u)
 
 ### Changed
 
-- **`/swarm-wave` workflow 1 (Plan a swarm sprint) step 4 — single-owner
+* **`/swarm-wave` workflow 1 (Plan a swarm sprint) step 4 — single-owner
   rule (4g)** and **`references/file-contention-and-clustering.md` "Single
   Owner Per Issue" subsection.** Codifies the RETRO-10 lesson: when an
   issue's natural file scope crosses what would otherwise split across
   agents, assign the whole issue to one agent. Issue narrative coherence
   beats wave-level file balance. (vp-beads-dpk)
-- **`/swarm-wave` workflow 3 (Post-wave gate) step 6c — fix-loop iteration
+* **`/swarm-wave` workflow 3 (Post-wave gate) step 6c — fix-loop iteration
   cap.** If fix iterations exceed 2 within a single wave, halt and escalate
   to the user instead of launching a third fix agent. Scope is per-wave: a
   wave with multiple HIGH findings dispatches one fix agent that addresses
   all of them; the count increments once per re-gate cycle (not once per
   finding). Preventive cap to bound runaway gate failures. (vp-beads-dpk)
-- **`/upstream-tracker` redirect rule rewrite.** Distinguishes pattern-class
+* **`/upstream-tracker` redirect rule rewrite.** Distinguishes pattern-class
   observations (shared approach, divergence, extraction candidate,
   capability gap → `/synergy-tracker`) from artifact-class items (concrete
   bug reports, feature requests, contribution opportunities against
   sibling-shipped skills/hooks/agents → still upstream-tracker). The
   vp-plugins marketplace pattern (vp-beads, vp-knowledge, vp-git all consume
   each other's artifacts) requires this carve-out. (vp-beads-j59)
-- **`/synergy-tracker` relationship vocabulary canonicalized to six
+* **`/synergy-tracker` relationship vocabulary canonicalized to six
   values.** `references/synergy-entry-format.md` no longer calls the
   `relationship` field "free-form" — instead declares the canonical six
   (`sibling-plugin`, `shared-tooling`, `fork`, `consumer`,
@@ -250,20 +358,20 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   free-text fallback for the remaining two. Aligns with the validator's
   `KNOWN_RELATIONSHIPS` set; user-typed values outside the canonical six
   emit a validator warning. (vp-beads-bxc)
-- **`/synergy-tracker` workflow 2 (Review) — staleness threshold
+* **`/synergy-tracker` workflow 2 (Review) — staleness threshold
   canonicalized.** Step 5 (the inverse-file glob) now anchors staleness to
   workflow 4 (Trend review (quarterly)) canonical (≈8 sprints, two
   trend-review cycles) instead of an ad-hoc "3 months" formulation. Adds a
   lead "Bilateral first" forward-reference to `/sibling-sync` workflow 2
   (Sync sibling SYNERGY) as the authoritative bilateral tool.
-- **`/retrospective` skill — trend-review heuristic bound to RETRO file
+* **`/retrospective` skill — trend-review heuristic bound to RETRO file
   count.** Step 1 now asserts that the file count from `ls RETRO-*.md` is
   canonical for the every-4-sprints trend-review trigger; topic numbers,
   release numbers, and `bd` sprint labels do not substitute. Step 4 echoes
   this in a parenthetical. Eliminates the topic-vs-file rule drift that
   could lead a user-asserted sprint number to bypass a trend-review file by
   the mechanical rule.
-- **`validate-plugin.mjs` SYNERGY filename consistency check** now applies
+* **`validate-plugin.mjs` SYNERGY filename consistency check** now applies
   the canonical normalization (slashes → `--`, drop leading `@`) from
   `synergy-entry-format.md` "Naming convention" before computing
   `expectedFile`. Latent bug — current registry entries (`vp-knowledge`,
@@ -272,7 +380,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Resolved upstream
 
-- `bd init` now generates a canonical `.beads/.gitignore` that includes
+* `bd init` now generates a canonical `.beads/.gitignore` that includes
   `interactions.jsonl` and `.beads-credential-key`. The corresponding
   feature request in `UPSTREAM-brew--beads.md` (filed 2026-03-28) was
   empirically verified resolved (`bd init` in `mktemp -d`) and removed.
@@ -280,7 +388,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Backlog hygiene
 
-- 4 stale P4 issues from the pre-`vp-beads-0e9` backlog triaged: `vp-beads-emm`
+* 4 stale P4 issues from the pre-`vp-beads-0e9` backlog triaged: `vp-beads-emm`
   and `vp-beads-3z0` deferred to 2026-08-01; `vp-beads-xux` deferred to
   2026-09-01; `vp-beads-dca` closed (over-engineering at single-plugin scale;
   revival trigger recorded). (vp-beads-983)
@@ -289,7 +397,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`/sibling-sync` post-report follow-up action menu.** After workflows 2
+* **`/sibling-sync` post-report follow-up action menu.** After workflows 2
   (Sync sibling SYNERGY) and 3 (Sync sibling UPSTREAM) print findings,
   sibling-sync now offers a per-sibling two-tier action menu — a single
   `AskUserQuestion` call with `header: "Synergy"` + `header: "Upstream"` —
@@ -308,13 +416,13 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Changed
 
-- **`/sibling-sync` `allowed-tools`** — adds `Skill` and `AskUserQuestion`
+* **`/sibling-sync` `allowed-tools`** — adds `Skill` and `AskUserQuestion`
   for the action-menu delegation flow.
-- **`/sibling-sync` description trigger phrases** — adds `'sibling
+* **`/sibling-sync` description trigger phrases** — adds `'sibling
   follow-up'`, `'act on sibling drift'`, `'after sibling-sync'`, `'follow-up
   actions'`, and `'what to do about sibling findings'` so the skill
   triggers when a user asks what to do next about surfaced findings.
-- **`skills/sibling-sync/SKILL.md`** — new "Action-menu protocol" section
+* **`skills/sibling-sync/SKILL.md`** — new "Action-menu protocol" section
   centralizes the two-tier dispatch table, menu rendering rules, header
   values, per-action argument templates passed to delegated skills,
   precedence with `--auto-reciprocate`, idempotency disposition (Q2 option
@@ -322,7 +430,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   (delegated `Skill` errors, subagent context, `bd create` failures).
   Workflows 2 and 3 each gain a step 6 (Offer follow-up actions) that
   references the protocol section.
-- **`/sibling-sync` Cross-skill boundaries section** — adds a v0.14.0
+* **`/sibling-sync` Cross-skill boundaries section** — adds a v0.14.0
   clarifier that sibling-sync acts as an orchestrator for follow-up actions
   while still owning nothing in Basic Memory or in this project's
   SYNERGY/UPSTREAM files.
@@ -367,23 +475,23 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`/synergy-tracker` workflow 1 step 1b — guided synergy registry
+* **`/synergy-tracker` workflow 1 step 1b — guided synergy registry
   creation** (vp-beads-tbh). Auto-derives `name`, `file`, `remote`, and
   `bm-entity`; prompts only for `relationship` and (when needed)
   `local-path`. Preview-then-approve gate before write. Generates both
   `.claude/synergy-registry.json` and `.claude/synergy-registry.local.json`
   in one flow. Round-trip JSON.parse verification post-write.
-- **`/vendor-sync` workflow 0 (Bootstrap registry) — guided vendor
+* **`/vendor-sync` workflow 0 (Bootstrap registry) — guided vendor
   registry creation** (vp-beads-83g). Detects candidate `vendor/`
   subdirectories; auto-derives `prefix`, `branch`, `package`; prompts
   only for `remote` and (when needed) `local-path`. Same preview +
   round-trip verification pattern as the synergy flow. Multiple
   candidates processed sequentially. Handles `git remote show` returning
   the literal `(unknown)` for HEAD-less remotes by falling back to `main`.
-- **`AskUserQuestion`** added to `allowed-tools` in both
+* **`AskUserQuestion`** added to `allowed-tools` in both
   `/synergy-tracker` and `/vendor-sync` to support the new prompt-driven
   creation flows.
-- **`/synergy-tracker` workflow 5 (Promote to Basic Memory)** (vp-beads-e3z).
+* **`/synergy-tracker` workflow 5 (Promote to Basic Memory)** (vp-beads-e3z).
   Mirrors `/upstream-tracker` workflow 6 (Promote to Basic Memory) exactly:
   scans `SYNERGY-*.md` candidates with `_(Promoted YYYY-MM-DD)_` dedup,
   presents generalized drafts (per `references/synergy-bm-format.md`
@@ -395,18 +503,18 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   `engineering/agents/vp-plugins-<this>-and-<sibling>` relationship
   notes — the auto-derived `bm-entity` field shipped in step 1b is now
   consumed.
-- **Workflow 1 step 1b explicit `<this-project>` derivation preamble**
+* **Workflow 1 step 1b explicit `<this-project>` derivation preamble**
   (vp-beads-f28) — distinguishes `<sibling>` (tier 3 / tier 4) from
   `<this-project>` (tiers 1-4 self subject) using the four-tier algorithm
   in `references/project-name-derivation.md`. Placeholder syntax
   standardized: `<this>` → `<this-project>` throughout the file.
   JSON preview now shows a worked substitution alongside the placeholder
   schema.
-- **`_(Promoted YYYY-MM-DD)_` annotation pattern** documented in
+* **`_(Promoted YYYY-MM-DD)_` annotation pattern** documented in
   `skills/synergy-tracker/references/synergy-bm-format.md` (mirrors
   upstream-tracker's `_(Resolved ...)_` pattern). Workflow 5 step 1's
   dedup signal.
-- **`validate-plugin.mjs` workflow N (Name) convention audit**
+* **`validate-plugin.mjs` workflow N (Name) convention audit**
   (vp-beads-9we) — new `auditWorkflowReferences()` function catches
   bare `workflow N` cross-references missing the parenthetical name.
   Position-preserving masking strips frontmatter, code fences, headings,
@@ -416,101 +524,101 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Changed
 
-- **`/sibling-sync` workflow 1 step 1 + Error handling "Registry not
+* **`/sibling-sync` workflow 1 step 1 + Error handling "Registry not
   found"** (vp-beads-jfg) — converted from hard-stop to redirect: names
   `/synergy-tracker workflow 1 (Log a synergy entry) step 1b` as the
   creation flow; offers inline bootstrap if user names a sibling.
-- **`/vendor-sync` registry-absent block + Error handling "Registry not
+* **`/vendor-sync` registry-absent block + Error handling "Registry not
   found"** (vp-beads-jfg) — converted from hard-stop to redirect: names
   `/vendor-sync workflow 0 (Bootstrap registry)` as the creation flow.
-- **`/synergy-tracker` workflow 3 step 1** — existing softer fallback
+* **`/synergy-tracker` workflow 3 step 1** — existing softer fallback
   (read registry → glob → ask) augmented with a registry-creation offer
   via workflow 1 (Log a synergy entry) step 1b.
-- **Round-trip JSON validation in both creation flows** — explicit
+* **Round-trip JSON validation in both creation flows** — explicit
   `node -e 'JSON.parse(...)'` invocation pattern; base-vs-`.local.json`
   failure modes split (base failure aborts, `.local.json` failure warns
   and continues).
-- **`git check-ignore` exit-code semantics distinguished** in both
+* **`git check-ignore` exit-code semantics distinguished** in both
   creation flows: `0` = ignored, `1` = warn, `128` = report git error
   separately (was previously conflating `1` and `128`).
-- **`/synergy-tracker` workflow 1 step 8 (Eager promotion check)** —
+* **`/synergy-tracker` workflow 1 step 8 (Eager promotion check)** —
   collision fix: step 8 previously did inline `## Cross-Project Synergy`
   writes that conflicted with workflow 5's sole-owner claim. Step 8
   now offers promotion + delegates the actual write to workflow 5
   (Promote to Basic Memory)'s single-entry path. Tempo gating preserved.
-- **`/synergy-tracker` workflow 4 (Trend review)** — unconditional BM
+* **`/synergy-tracker` workflow 4 (Trend review)** — unconditional BM
   cross-reference step against `## Cross-Project Synergy` in the
   corresponding entity note (was guarded by "once workflow 5 ships").
-- **21 within-skill workflow self-references** updated to the
+* **21 within-skill workflow self-references** updated to the
   `workflow N (Name)` convention across `vendor-sync`, `synergy-tracker`,
   and `sibling-sync` (caught by the new validator).
-- **5 cross-skill bare `workflow N` references** fixed in
+* **5 cross-skill bare `workflow N` references** fixed in
   `upstream-tracker`, `sibling-sync`, `swarm-wave`, and
   `synergy-tracker/references/project-name-derivation.md`.
-- **12+ "planned" / "future workflow 5" qualifiers** dropped across
+* **12+ "planned" / "future workflow 5" qualifiers** dropped across
   9 files (workflow 5 is now shipped, no longer a forward-looking
   feature).
-- **MEMORY.md** refreshed to v0.13.0, skill count 7, and synergy-tracker
+* **MEMORY.md** refreshed to v0.13.0, skill count 7, and synergy-tracker
   workflow count 5.
 
 ### Fixed
 
-- **Workflow 5 zero-replacement loop** — `find_replace` failure mid-promotion
+* **Workflow 5 zero-replacement loop** — `find_replace` failure mid-promotion
   no longer suggests "re-run workflow 5 for this entry" (which could loop
   on persistent BM contention). Now defers the candidate, increments a
   deferred-count, and surfaces it in the step 6 report.
-- **Stale `bm-entity` fallback** — workflow 5 step 3 now warns the user
+* **Stale `bm-entity` fallback** — workflow 5 step 3 now warns the user
   and falls through to `mcp__basic-memory__search_notes` when a registered
   `bm-entity` resolves to a non-existent BM note. Mirrored in
   `synergy-bm-format.md` routing table.
-- **Vendor workflow 0 `skip` semantics** — "On `skip`, abort without writing"
+* **Vendor workflow 0 `skip` semantics** — "On `skip`, abort without writing"
   was ambiguous about batch vs. per-candidate scope. Now explicit:
   discard this candidate, continue to the next; final report lists skipped.
-- **Mode B tier-1 silent footgun** — stale sibling `local-path` silently
+* **Mode B tier-1 silent footgun** — stale sibling `local-path` silently
   fell through to tier 2 of the project-name derivation, risking wrong
   `UPSTREAM-<this-name>.md` filename construction. `/sibling-sync` Mode B
   now warns explicitly before falling through.
-- **BM ownership table mislabel** — `CLAUDE.md` and `synergy-bm-format.md`
+* **BM ownership table mislabel** — `CLAUDE.md` and `synergy-bm-format.md`
   said "sibling project entity notes"; canonical target is sibling-relationship
   notes (`engineering/agents/vp-plugins-<this-project>-and-<sibling>`).
   `projects/` / `npm/` are last-resort fallbacks for unregistered siblings
   only.
-- **`<this>` placeholder leak** — standardization to `<this-project>` was
+* **`<this>` placeholder leak** — standardization to `<this-project>` was
   incomplete in `CLAUDE.md` and `sibling-sync` description frontmatter; now
   consistent.
-- **Retrospective / workflow 5 boundary** — retrospective step 7 now
+* **Retrospective / workflow 5 boundary** — retrospective step 7 now
   explicitly forbids writing to `engineering/agents/vp-plugins-*` paths
   (workflow 5's territory).
-- **`auditWorkflowReferences` extended to `references/*.md`** — new
+* **`auditWorkflowReferences` extended to `references/*.md`** — new
   audit-only pass scans `skills/*/references/*.md` for naked `workflow N`
   references (caught 3 additional violations in `synergy-bm-format.md` and
   `swarm-wave/command-patterns.md`, also fixed).
-- **Sibling-sync redirect prose** — "run inline" misleading; now acknowledges
+* **Sibling-sync redirect prose** — "run inline" misleading; now acknowledges
   there's no actual cross-skill handoff mechanism (Claude follows the
   synergy-tracker step 1b prose in-session).
-- **`.gitignore` warning specificity** — both creation flows now print the
+* **`.gitignore` warning specificity** — both creation flows now print the
   exact line to add (`.claude/*.local.json`) instead of the vague glob
   `.claude/*.local.*`.
-- **Vendor workflow 0 `git subtree add` precondition** — workflow 0 now
+* **Vendor workflow 0 `git subtree add` precondition** — workflow 0 now
   states explicitly that the subtree must exist on disk first, with the
   exact `git subtree add` invocation for users adding new vendors.
-- **Synergy step 1b append-to-existing notice** — mirrors vendor-sync's
+* **Synergy step 1b append-to-existing notice** — mirrors vendor-sync's
   explicit "this workflow does not append; falls back to manual editing"
   acknowledgment for returning users adding a 2nd sibling.
-- **Step 1b preview source annotations** — preview now requests inline
+* **Step 1b preview source annotations** — preview now requests inline
   comments tagging auto-derived fields with their source so users can
   catch derivation errors before approving.
-- **`check:md` now respects `.gitignore`** — `remark . --quiet --frail`
+* **`check:md` now respects `.gitignore`** — `remark . --quiet --frail`
   was scanning ephemeral SWARM-NN.md and RETRO-NN.md files (gitignored
   but on disk), occasionally failing the validation pipeline on
   working-document markdown. Added `--ignore-path .gitignore` so future
   sprints don't trip the check on workflow scratch files.
-- **Workflow 5 step 3 legacy `bm-entity` warning** — emits a runtime
+* **Workflow 5 step 3 legacy `bm-entity` warning** — emits a runtime
   warning when the registered `bm-entity` does NOT match the canonical
   `engineering/agents/vp-plugins-<this-project>-and-<sibling>` form.
   Helps existing users detect pre-v0.12.1 registries before workflow 5
   scatters content across legacy single-project entity notes.
-- **`auditWorkflowReferences` strips backtick inline code** — defensive
+* **`auditWorkflowReferences` strips backtick inline code** — defensive
   fix preventing false-positive violations on convention meta-discussion
   using backticks (e.g. `` `workflow 6` `` in CLAUDE.md-style prose).
 
@@ -518,7 +626,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/synergy-tracker/references/project-name-derivation.md`** — new
+* **`skills/synergy-tracker/references/project-name-derivation.md`** — new
   shared reference doc specifying the canonical four-tier project-name
   derivation algorithm (sibling-registry back-pointer → plugin manifest
   → package manifest / registry `name` → directory basename), followed
@@ -531,30 +639,30 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Changed
 
-- **`/sibling-sync` workflow 3 Mode B step 2** — derives `<this-name>`
+* **`/sibling-sync` workflow 3 Mode B step 2** — derives `<this-name>`
   via the four-tier algorithm in the new reference doc (was a 2-tier
   inline algorithm: `plugin.json` → dir basename). Adds the
   sibling-registry back-pointer as the new tier 1, honoring the
   registry-is-authoritative rule from `synergy-entry-format.md` for
   cross-side naming. Strict upgrade — no SYNERGY/UPSTREAM filename
   changes for existing siblings.
-- **`/sibling-sync` workflow 4 step 2.2** — `<this-project>` derivation
+* **`/sibling-sync` workflow 4 step 2.2** — `<this-project>` derivation
   made explicit via cross-reference to the new doc (was an implicit
   placeholder). Same line: fixes informal cross-ref style
   (`/synergy-tracker references/...` →
   `skills/synergy-tracker/references/...`).
-- **`/sibling-sync` Guidelines "Canonical project-name derivation"
+* **`/sibling-sync` Guidelines "Canonical project-name derivation"
   bullet** — replaces 16-line inline algorithm with 6-line summary +
   cross-reference to the new doc. Tier 1 explicitly named so readers
   see the algorithm changed (not just got refactored).
-- **`/synergy-tracker` File naming** — upgraded from manifest-unaware
+* **`/synergy-tracker` File naming** — upgraded from manifest-unaware
   "repo slug or directory name" rule to convention-aligned tier 3/4
   derivation (registry `name` → directory basename → normalize). Strict
   upgrade for the realistic case; deterministic fallback for
   unregistered siblings replaces the previous wording's ambiguity.
-- **`CLAUDE.md` "Synergy tracking convention"** — replaces inline naming
+* **`CLAUDE.md` "Synergy tracking convention"** — replaces inline naming
   algorithm with cross-references to the two reference docs.
-- **`skills/synergy-tracker/references/synergy-entry-format.md`** —
+* **`skills/synergy-tracker/references/synergy-entry-format.md`** —
   bm-entity example corrected to `engineering/agents/vp-plugins-<this>-and-<sibling>`
   (was `npm/<name>`, which conflated the relationship-note convention
   with the package-friction-note convention owned by
@@ -565,7 +673,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Fixed
 
-- **`/sibling-sync` workflow 3 — reciprocal sibling-friction UPSTREAM
+* **`/sibling-sync` workflow 3 — reciprocal sibling-friction UPSTREAM
   pair detection** (vp-beads-l82). Previously workflow 3 used basename
   intersection to pair UPSTREAM files between siblings, which silently
   missed the case where each side tracks friction about the OTHER
@@ -583,7 +691,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/sibling-sync` — new skill with 4 workflows** — bilateral
+* **`skills/sibling-sync` — new skill with 4 workflows** — bilateral
   reconciliation of `SYNERGY-*.md` and `UPSTREAM-*.md` files between this
   project and its registered sibling vp-\* projects. Workflows:
   discover-siblings (registry resolution + path probing),
@@ -595,59 +703,59 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   Distinct from `/vendor-sync` (upstream → project drift, subtree pulls)
   and `/synergy-tracker` (logging entries on this side); `/sibling-sync`
   compares both sides without writing on this side.
-- **Synergy + vendor registry `local-path` schema extension** — new optional
+* **Synergy + vendor registry `local-path` schema extension** — new optional
   `local-path` field in `.claude/synergy-registry.json` and
   `.claude/vendor-registry.json` entries gives the on-disk path to the
   sibling/subtree checkout (relative paths resolve from project root).
   When absent, skills fall back to `../<name>/` (synergy) or `prefix`
   (vendor) — backward compatible.
-- **`.claude/*.local.json` companion override files** — gitignored
+* **`.claude/*.local.json` companion override files** — gitignored
   `synergy-registry.local.json` and `vendor-registry.local.json` mirror the
   `settings.local.json` convention. Per-entry merge by `name`/`package` key;
   fields in `.local.json` win. Encodes machine-specific paths without
   committing them. Consumed by sibling-sync workflow 1 (Discover sibling(s)),
   synergy-tracker workflow 3 (Compare with sibling), and vendor-sync
   workflow 1 (Determine scope).
-- **`skills/synergy-tracker/references/synergy-bm-format.md`** — new reference
+* **`skills/synergy-tracker/references/synergy-bm-format.md`** — new reference
   doc covering BM `## Cross-Project Synergy` section templates, routing
   rules, and `edit_note` gotchas. Mirrors the existing
   `basic-memory-friction-format.md` pattern from upstream-tracker.
-- **`skills/backlog-groomer` enhancements** — beads v1.0+ vocabulary updates,
+* **`skills/backlog-groomer` enhancements** — beads v1.0+ vocabulary updates,
   9-type issue table promoted to canonical project-wide reference, dedup
   primitive (`bd find-duplicates`) folded into workflow 1 (Review and
   triage), Charter scope-guard
   documentation in workflow 1 (Plan a swarm sprint).
-- **`CLAUDE.md` — Issue Types (9 total) canonical table** — promoted from
+* **`CLAUDE.md` — Issue Types (9 total) canonical table** — promoted from
   brew-beads BM note as the project-wide reference for all 9 core types
   (`task`, `bug`, `feature`, `chore`, `epic`, `decision`, `spike`, `story`,
   `milestone`) with required-sections-per-type validation map.
 
 ### Changed
 
-- **`skills/synergy-tracker/SKILL.md`** — workflow 3 (Compare with sibling)
+* **`skills/synergy-tracker/SKILL.md`** — workflow 3 (Compare with sibling)
   now resolves sibling paths via the registry + `.local.json` merge instead
   of hardcoding `../<sibling>/`. Cites the canonical staleness threshold
   for sibling-sync to defer to.
-- **`skills/vendor-sync/SKILL.md`** — symmetric registry-load update for
+* **`skills/vendor-sync/SKILL.md`** — symmetric registry-load update for
   vendor subtrees: workflow 1 (Determine scope) now merges
   `vendor-registry.local.json` if present.
-- **`skills/swarm-wave/references/wave-planning-checklist.md`** — added
+* **`skills/swarm-wave/references/wave-planning-checklist.md`** — added
   bd v1.0.0 Integration Charter scope-guard citation: cross-tracker
   orchestration is out of bd's scope, so swarm-wave owns the
   workflow-automation layer above it.
-- **`CLAUDE.md`** — Plugin Layout tree, Skills (6 to 7), sprint workflow
+* **`CLAUDE.md`** — Plugin Layout tree, Skills (6 to 7), sprint workflow
   cycle diagram updated with sibling-sync as optional bilateral diagnostic
   alongside synergy-tracker. Synergy/vendor registry conventions document
   the new `local-path` field and `.local.json` companion pattern.
-- **`README.md`** — Plugin structure tree, "How it fits together" diagram,
+* **`README.md`** — Plugin structure tree, "How it fits together" diagram,
   and new `/sibling-sync` section.
-- **`agents/sprint-review.md`** — globs `SYNERGY-*.md` for extraction
+* **`agents/sprint-review.md`** — globs `SYNERGY-*.md` for extraction
   candidates ready for action; recommends `/sibling-sync` as a parallel
   diagnostic when sibling drift is suspected.
 
 ### Fixed
 
-- **`skills/retrospective` test-command waterfall** — added `npm run check`
+* **`skills/retrospective` test-command waterfall** — added `npm run check`
   to the validation step waterfall so plugin projects (which don't have a
   `test` script) are not skipped during retrospective generation.
 
@@ -655,7 +763,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/swarm-wave` — new skill with 5 workflows** — orchestrates
+* **`skills/swarm-wave` — new skill with 5 workflows** — orchestrates
   multi-agent development sprints using the swarm wave pattern. Workflows:
   plan-sprint (file-disjoint wave partitioning with contention mapping),
   execute-wave (parallel task agents with explicit file-scope isolation),
@@ -668,53 +776,53 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Changed
 
-- **`CLAUDE.md`** — Plugin Layout tree, Skills (5 to 6), sprint workflow cycle
+* **`CLAUDE.md`** — Plugin Layout tree, Skills (5 to 6), sprint workflow cycle
   diagram updated with swarm-wave as optional parallel track.
-- **`README.md`** — Plugin structure tree, "How it fits together" diagram, and
+* **`README.md`** — Plugin structure tree, "How it fits together" diagram, and
   new `/swarm-wave` section with workflow descriptions.
-- **`.gitignore`** — added `SWARM-*.md` pattern.
+* **`.gitignore`** — added `SWARM-*.md` pattern.
 
 ## [0.10.1][] - 2026-04-05
 
 ### Changed
 
-- **Workflow reference convention** — fixed 16 bare-number and W-shorthand
+* **Workflow reference convention** — fixed 16 bare-number and W-shorthand
   references across 7 active plugin files. All cross-workflow references now
   use the `workflow N (Name)` format consistently.
-- **`validate-plugin.mjs`** — added three checks converging with vp-knowledge:
+* **`validate-plugin.mjs`** — added three checks converging with vp-knowledge:
   `agent`/`http` hook types in VALID\_HOOK\_TYPES, `user-invocable` boolean type
   validation, and agent `skills` array phantom resolution (verifies referenced
   skills exist on disk).
-- **`hooks/post-file-edit.sh`** — convergence improvements: jq error handling
+* **`hooks/post-file-edit.sh`** — convergence improvements: jq error handling
   (`2>/dev/null || true`), explicit PLUGIN\_ROOT guard with early exit, and
   `scripts/*.sh` path matching alongside `hooks/*.sh`.
-- **`paths` frontmatter** — backlog-groomer now declares `UPSTREAM-*.md` and
+* **`paths` frontmatter** — backlog-groomer now declares `UPSTREAM-*.md` and
   `SYNERGY-*.md`; vendor-sync now declares `UPSTREAM-*.md`.
 
 ## [0.10.0][] - 2026-04-05
 
 ### Fixed
 
-- **`hooks/hooks.json` — PostToolUseFailure conversion to command hook** — the
+* **`hooks/hooks.json` — PostToolUseFailure conversion to command hook** — the
   shell script `post-bm-failure-classify.sh` existed since v0.9.2 but was dead
   code: `hooks.json` still declared `type: "prompt"`, meaning a Haiku instance
   received BM recovery instructions it could never execute. Now correctly wired
   as `type: "command"`. BM failure recovery is functional for the first time.
-- **`hooks/session-start.sh` — consolidate into single JSON output** — prior
+* **`hooks/session-start.sh` — consolidate into single JSON output** — prior
   versions emitted multiple separate `{"systemMessage": ...}` objects; Claude
   Code reads only the first and silently drops the rest. Now accumulates all
   messages (sensitive-file warning, dormancy nudge, trend-review reminder) into
   a single `{"additionalContext": ...}` object using `jq` for proper JSON
   escaping. Combined dormancy nudge when both UPSTREAM and SYNERGY files exist.
   Requires `jq` at runtime (standard on macOS and most Linux).
-- **`skills/retrospective` — remove 'sprint review' trigger overlap** — the
+* **`skills/retrospective` — remove 'sprint review' trigger overlap** — the
   phrase 'sprint review' was in both the retrospective skill and the
   sprint-review agent triggers. Removed from the skill to keep the agent as the
   read-only gate and the skill as the write generator.
-- **`CLAUDE.md` — remove W-shorthand from sprint cycle diagram** — the diagram
+* **`CLAUDE.md` — remove W-shorthand from sprint cycle diagram** — the diagram
   used `W1`, `W3`, `W6`, `W7` shorthand despite the explicit convention
   prohibiting it. Replaced with spelled-out workflow references.
-- **`agents/sprint-review` — fix degraded session-context references** — two
+* **`agents/sprint-review` — fix degraded session-context references** — two
   workflow steps referenced "session context" that agents cannot access (dead
   code since the agent was created). Replaced with file-based heuristics:
   commit-message workaround detection for untracked friction, BM-timestamp
@@ -723,36 +831,36 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`scripts/check-hooks.mjs` — hook integration test suite** — 17 tests
+* **`scripts/check-hooks.mjs` — hook integration test suite** — 17 tests
   covering all 4 hook scripts: single-JSON output verification, error
   classification, silent-exit contracts, and multi-object detection. Added
   `npm run check:hooks` to the validation pipeline. Adapted from the vp-claude
   test framework pattern.
-- **`validate-plugin.mjs` — warning system** — new `warn()` function emits
+* **`validate-plugin.mjs` — warning system** — new `warn()` function emits
   non-fatal warnings alongside errors. Prompt hooks now trigger a warning about
   Haiku's lack of MCP tool access. Also added: `VALID_HOOK_TYPES` Set,
   `VALID_EFFORT_VALUES` Set, `mcp__readwise__` MCP prefix, and optional
   validation for `paths`, `effort`, `maxTurns`, and `disallowedTools` fields.
-- **`agents/sprint-review` — new frontmatter fields** — `effort: low`,
+* **`agents/sprint-review` — new frontmatter fields** — `effort: low`,
   `maxTurns: 15`, `disallowedTools: [Write, Edit]` enforce the read-only
   invariant declaratively via Claude Code v2.1.84+ runtime support.
-- **All 5 skills — `paths` frontmatter field** — declares file patterns each
+* **All 5 skills — `paths` frontmatter field** — declares file patterns each
   skill operates on, enabling Claude Code to suggest skills based on
   file-activation signals in addition to description matching.
-- **`skills/backlog-groomer` — sprint-start trigger phrases** — added 'start
+* **`skills/backlog-groomer` — sprint-start trigger phrases** — added 'start
   the sprint', 'plan the sprint', 'plan next sprint', 'what should we work on'.
-- **`CLAUDE.md` — paths field convention** — documents the `paths` frontmatter
+* **`CLAUDE.md` — paths field convention** — documents the `paths` frontmatter
   field and its activation-hint semantics.
 
 ### Changed
 
-- **`CLAUDE.md` — hook type constraint updated** — removed "known bug" language
+* **`CLAUDE.md` — hook type constraint updated** — removed "known bug" language
   about PostToolUseFailure now that the conversion is complete. Added note about
   the validator's prompt-hook warning.
-- **`CLAUDE.md` — validation section** — documents the new `check:hooks` step.
-- **`CLAUDE.md` — BM section ownership** — workflow references use spelled-out
+* **`CLAUDE.md` — validation section** — documents the new `check:hooks` step.
+* **`CLAUDE.md` — BM section ownership** — workflow references use spelled-out
   form consistent with the cross-reference convention.
-- **`package.json` — parallel checks via `npm-run-all2`** — `npm run check` now
+* **`package.json` — parallel checks via `npm-run-all2`** — `npm run check` now
   runs all 4 check stages (`check:plugin`, `check:md`, `check:sh`, `check:hooks`)
   in parallel via `run-p check:*` instead of sequential `&&` chaining.
 
@@ -760,29 +868,29 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Fixed
 
-- **`skills/synergy-tracker` — W1/W3 skip redundant sibling question** — when
+* **`skills/synergy-tracker` — W1/W3 skip redundant sibling question** — when
   the user names a sibling project in their request, use that name directly
   instead of re-asking via registry/glob fallback.
-- **`skills/synergy-tracker` — W1 step 8 first-entry guard** — skip the BM
+* **`skills/synergy-tracker` — W1 step 8 first-entry guard** — skip the BM
   promotion offer when logging the very first SYNERGY entry (user is still
   learning the workflow).
-- **`skills/synergy-tracker` — W1 step 2 dual-query pre-check** — BM
+* **`skills/synergy-tracker` — W1 step 2 dual-query pre-check** — BM
   pre-check now makes a second `search_notes` call with topic keywords (not
   just the sibling project name), catching engineering-pattern duplicates
   under `engineering/*` paths.
-- **`agents/sprint-review` — UPSTREAM-absent noise suppression** — suppress
+* **`agents/sprint-review` — UPSTREAM-absent noise suppression** — suppress
   "upstream tracking not set up" when SYNERGY files exist (user has chosen
   their tracking approach).
-- **`UPSTREAM-beads.md` → `UPSTREAM-brew--beads.md`** — renamed to follow
+* **`UPSTREAM-beads.md` → `UPSTREAM-brew--beads.md`** — renamed to follow
   the `brew:` tool-type prefix convention. Resolved entry #2 (`bd memory
   search`) — `bd memories <keyword>` already works. Kept entry #1 (gitignore
   gap verified as real).
 
 ### Changed
 
-- **`skills/synergy-tracker` — W2 fallback prerequisite note** — mentions
+* **`skills/synergy-tracker` — W2 fallback prerequisite note** — mentions
   that W3 comparison works best when the sibling repo is on disk.
-- **`skills/retrospective` — Synergy observations template** — step 3
+* **`skills/retrospective` — Synergy observations template** — step 3
   template uses 5 structured sub-bullets (Extraction Candidates ready,
   Drifting shared patterns, Active convergence paths, New patterns logged,
   Stale entries flagged). Section is conditionally omitted when no SYNERGY
@@ -792,47 +900,47 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Fixed
 
-- **`skills/synergy-tracker` — W3 error paths tightened** — stops instead of
+* **`skills/synergy-tracker` — W3 error paths tightened** — stops instead of
   speculating when no sibling context is available; adds sibling repo path
   resolution (`../<project-name>`); handles "user declines all candidates"
   and "no project identified" gracefully.
-- **`skills/synergy-tracker` — edit\_note gotcha cross-reference** — W1 step 8
+* **`skills/synergy-tracker` — edit\_note gotcha cross-reference** — W1 step 8
   (eager promotion) now warns about the `append`+`section` BM bug and points
   to upstream-tracker's reference doc for the full gotcha list.
-- **`skills/synergy-tracker/references/` — naming authority clarified** —
+* **`skills/synergy-tracker/references/` — naming authority clarified** —
   registry `name` field is authoritative for filename derivation; `bm-entity`
   noted as v0.10.0-only; template URL fallback for missing `remote`.
-- **`skills/upstream-tracker` — W6 division-of-labor: two-way → three-way** —
+* **`skills/upstream-tracker` — W6 division-of-labor: two-way → three-way** —
   now names synergy-tracker's `## Cross-Project Synergy` alongside
   upstream-tracker's `## Upstream Friction` and retrospective's `engineering/*`.
-- **`hooks/session-start.sh` — commit command quoting** — remediation command
+* **`hooks/session-start.sh` — commit command quoting** — remediation command
   in the sensitive-file warning now correctly quotes the `-m` argument.
 
 ### Changed
 
-- **`skills/synergy-tracker` — structured fields table** — consolidated table
+* **`skills/synergy-tracker` — structured fields table** — consolidated table
   of all entry fields (Status, Convergence path, Readiness, Priority, Effort,
   Last verified) added inline in W1, with cross-reference to the reference doc.
-- **`skills/synergy-tracker` — interim W4/W5 workaround** — explicitly advises
+* **`skills/synergy-tracker` — interim W4/W5 workaround** — explicitly advises
   running W2 at every 4th-sprint boundary until W4/W5 ship in v0.10.0.
-- **`skills/upstream-tracker` — synergy-tracker guard clause** — W1 step 1
+* **`skills/upstream-tracker` — synergy-tracker guard clause** — W1 step 1
   redirects sibling-project observations to `/synergy-tracker`. New scope
   boundary bullet in Guidelines.
-- **`agents/sprint-review` — SYNERGY scan depth** — step 4 now also reports
+* **`agents/sprint-review` — SYNERGY scan depth** — step 4 now also reports
   convergence-planned Divergences alongside extraction candidates. Step 5
   "Close with upstream/synergy work first" recommendation includes SYNERGY
   criteria with upstream-first ordering.
-- **`skills/retrospective` — SYNERGY depth parity** — step 2 gathers all 4
+* **`skills/retrospective` — SYNERGY depth parity** — step 2 gathers all 4
   SYNERGY sections (not just extraction candidates); step 3 guideline expanded
   to \~9 lines with "review session work" prompt and explicit `(workflow 1)`
   reference; step 4 trend review now includes SYNERGY files subsection.
-- **`skills/vendor-sync` — Guidelines section** — new section with division of
+* **`skills/vendor-sync` — Guidelines section** — new section with division of
   labor, registry-first discovery, and annotation semantics. Step 10 report
   now mentions SYNERGY overlap.
-- **`CLAUDE.md` — BM section ownership convention** — new Conventions subsection
+* **`CLAUDE.md` — BM section ownership convention** — new Conventions subsection
   documenting the three-way ownership model. synergy-tracker component
   description now mentions planned `## Cross-Project Synergy` BM section.
-- **`README.md`** — Plugin structure tree updated with synergy-tracker,
+* **`README.md`** — Plugin structure tree updated with synergy-tracker,
   upstream-tracker references, and hooks directory. "How it fits together"
   diagram updated with synergy-tracker row.
 
@@ -840,7 +948,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/synergy-tracker` — new skill** — manages `SYNERGY-*.md` files that
+* **`skills/synergy-tracker` — new skill** — manages `SYNERGY-*.md` files that
   track cross-project patterns, divergences, extraction candidates, and
   capability gaps between sibling projects. Three workflows: log a synergy
   entry, review open synergies, compare with a sibling project. Permanent file
@@ -848,46 +956,46 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   (W4 trend review, W5 promote) planned for v0.10.0. Includes
   `references/synergy-entry-format.md` with entry templates, field values,
   naming convention, and registry schema.
-- **`hooks/session-start.sh` — sensitive-file git-tracking warning** — checks
+* **`hooks/session-start.sh` — sensitive-file git-tracking warning** — checks
   if `.beads/interactions.jsonl` or `.beads/.beads-credential-key` are tracked
   by git and emits a `systemMessage` warning with remediation commands. Fires
   before the retro-count check to work in all repos.
-- **`hooks/session-start.sh` — SYNERGY dormancy nudge** — when a low-activity
+* **`hooks/session-start.sh` — SYNERGY dormancy nudge** — when a low-activity
   repo has SYNERGY tracking files, emits a one-line systemMessage suggesting
   `/synergy-tracker` review. Parallel to the existing UPSTREAM dormancy nudge.
-- **`hooks/precompact.sh` — synergy reflection item** — sixth reflection item
+* **`hooks/precompact.sh` — synergy reflection item** — sixth reflection item
   prompts for cross-project extraction opportunities identified during the
   session.
 
 ### Fixed
 
-- **`hooks/session-start.sh` — early-exit bug** — the `count -eq 0` guard
+* **`hooks/session-start.sh` — early-exit bug** — the `count -eq 0` guard
   previously exited the entire script when no RETRO files existed, suppressing
   the dormancy nudge in new repos. Restructured so dormancy nudge fires
   before the retro-count check.
 
 ### Changed
 
-- **`agents/sprint-review` — step 4 synergy scan** — globs `SYNERGY-*.md`
+* **`agents/sprint-review` — step 4 synergy scan** — globs `SYNERGY-*.md`
   files alongside `UPSTREAM-*.md`, counts extraction candidates, flags entries
   with `Readiness: ready` and stale entries.
-- **`skills/retrospective` — SYNERGY integration** — step 2 globs
+* **`skills/retrospective` — SYNERGY integration** — step 2 globs
   `SYNERGY-*.md` alongside `UPSTREAM-*.md`; step 3 adds "Synergy observations"
   section to the retro template with guideline; step 7 division-of-labor note
   updated to mention synergy-tracker.
-- **`skills/backlog-groomer` — W1 step 5** — cross-references `SYNERGY-*.md`
+* **`skills/backlog-groomer` — W1 step 5** — cross-references `SYNERGY-*.md`
   alongside `UPSTREAM-*.md` to surface extraction candidates that should have
   corresponding beads issues.
-- **`hooks/hooks.json` — PostToolUseFailure context** — recovery prompt now
+* **`hooks/hooks.json` — PostToolUseFailure context** — recovery prompt now
   mentions synergy-tracker as a Basic Memory consumer alongside upstream-tracker.
-- **`CLAUDE.md`** — Plugin Layout tree, Skills (4→5), synergy tracking
+* **`CLAUDE.md`** — Plugin Layout tree, Skills (4→5), synergy tracking
   convention, synergy registry convention, sprint workflow cycle diagram updated.
 
 ## [0.8.1][] - 2026-03-27
 
 ### Fixed
 
-- **`hooks/session-start.sh`** — guard `wc -l` pipelines with `|| count=0`
+* **`hooks/session-start.sh`** — guard `wc -l` pipelines with `|| count=0`
   fallbacks so `set -e` does not treat the assignment as fatal; add explicit
   `exit 0` to ensure the hook exits cleanly when no output is printed.
 
@@ -895,7 +1003,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/upstream-tracker` — "Upstream Opportunities" entry type** — new
+* **`skills/upstream-tracker` — "Upstream Opportunities" entry type** — new
   first-class section (`## Upstream Opportunities`) for tracking contribution
   candidates: downstream code (workarounds, extensions, enhancements) that should
   be upstreamed. New fields `Source:` (local artifact) and `Merge readiness:`
@@ -904,31 +1012,31 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   updated: W1 classification, W2 output format, W3 annotation branching, W4
   escalation timelines, W5 retro support, W6 promotion filter override
   (opportunities always eligible regardless of Ownership), W7 cross-project sync.
-- **`skills/upstream-tracker` — eager promotion for low-activity repos** — new
+* **`skills/upstream-tracker` — eager promotion for low-activity repos** — new
   W1 step 6a detects project tempo via `git rev-list --count --since="90 days ago"
   HEAD` (dormant ≤4, moderate 5–14, active 15+). In dormant/moderate repos, W1
   offers inline BM promotion ("micro-W6") immediately after logging an entry,
   preventing entries from staying trapped locally for months. Active repos see
   no change — the normal sprint cadence handles promotion.
-- **`hooks/session-start.sh` — dormancy nudge** — when a low-activity repo has
+* **`hooks/session-start.sh` — dormancy nudge** — when a low-activity repo has
   UPSTREAM tracking files, emits a one-line systemMessage suggesting W2 review
   or W6 promotion. Silent in active repos and repos without UPSTREAM files.
-- **`skills/upstream-tracker/references/` — Upstream Opportunities BM format** —
+* **`skills/upstream-tracker/references/` — Upstream Opportunities BM format** —
   `### Upstream Opportunities` subsection in `## Upstream Friction` entity notes
   with generalization transform rules and `edit_note` anchor guidance.
-- **`hooks/precompact.sh` — contribution opportunity prompt** — fifth reflection
+* **`hooks/precompact.sh` — contribution opportunity prompt** — fifth reflection
   item prompts for workarounds or extensions worth upstreaming.
 
 ### Changed
 
-- **`skills/retrospective` — step 3 upstream observations** — now prompts for
+* **`skills/retrospective` — step 3 upstream observations** — now prompts for
   contribution opportunities built during the sprint.
-- **`agents/sprint-review` — step 4 upstream scan** — counts Upstream
+* **`agents/sprint-review` — step 4 upstream scan** — counts Upstream
   Opportunities, flags `direct` readiness entries with no submitted PR.
-- **`agents/sprint-review` — step 5 recommendation** — "upstream work first"
+* **`agents/sprint-review` — step 5 recommendation** — "upstream work first"
   path now includes unsubmitted contribution opportunities as sprint-ready
   actions.
-- **`skills/vendor-sync` — steps 7 and 8b** — detects contribution-resolved
+* **`skills/vendor-sync` — steps 7 and 8b** — detects contribution-resolved
   events in changelog cross-reference; uses opportunity-specific BM annotation
   text.
 
@@ -936,7 +1044,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/backlog-groomer` — new skill with 6 workflows** — triage, reprioritize,
+* **`skills/backlog-groomer` — new skill with 6 workflows** — triage, reprioritize,
   suggest closures, investigate topics, create issues from findings, and enrich
   existing issues. Orchestrates `bd` CLI primitives (stale, duplicates, search,
   blocked) into guided grooming sessions. Research workflows use Basic Memory,
@@ -944,7 +1052,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   explicit user approval. Includes `references/backlog-health-heuristics.md`
   for staleness thresholds, closure criteria, priority/type assignment logic,
   title conventions, and description templates.
-- **`agents/sprint-review` — backlog health signal in Step 3** — checks open
+* **`agents/sprint-review` — backlog health signal in Step 3** — checks open
   issue count (>20 elevated, >30 grooming trigger), stale issues (>60 days),
   blocked chains, and in-progress pile-ups. New "Groom the backlog first"
   recommendation (5th path) in Step 5.
@@ -953,15 +1061,15 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Fixed
 
-- **`skills/retrospective` — added `mcp__basic-memory__read_note` to
+* **`skills/retrospective` — added `mcp__basic-memory__read_note` to
   `allowed-tools`** — step 7 instructs `edit_note` with `find_replace` on
   existing notes, which requires reading the note first. Same class of bug
   as the v0.6.0 `read_note` omission in upstream-tracker and vendor-sync.
   Also updated step 7 prose to explicitly call `read_note` before `edit_note`.
-- **`validate-plugin.mjs` — recursive agent directory scan** — agent validation
+* **`validate-plugin.mjs` — recursive agent directory scan** — agent validation
   now uses `readdir({ recursive: true })` to match the skills pattern. Prevents
   agents in subdirectories from being silently skipped.
-- **`hooks/hooks.json` — expanded PostToolUseFailure matcher** — added
+* **`hooks/hooks.json` — expanded PostToolUseFailure matcher** — added
   `schema_validate`, `schema_diff`, `schema_infer` to the BM error recovery
   hook matcher. These tools are used during trend-review sprints.
 
@@ -969,18 +1077,18 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`validate-plugin.mjs` — tool-reference audit** — cross-checks `mcp__*__*`
+* **`validate-plugin.mjs` — tool-reference audit** — cross-checks `mcp__*__*`
   patterns in skill/agent prose against `allowed-tools`/`tools` frontmatter.
   Ported from vp-claude. Caught a real bug on first run (`write_note` referenced
   in upstream-tracker prose but removed from allowlist).
-- **`hooks/hooks.json` — PostToolUseFailure hook for BM errors** — classifies
+* **`hooks/hooks.json` — PostToolUseFailure hook for BM errors** — classifies
   Basic Memory MCP tool failures into 5 categories (server unavailable, invalid
   argument, note not found, permission error, unknown) with actionable recovery
   guidance. Prompt hook, 10s timeout.
-- **`hooks/post-file-edit.sh` — PostToolUse shell auto-formatting** — auto-formats
+* **`hooks/post-file-edit.sh` — PostToolUse shell auto-formatting** — auto-formats
   `hooks/*.sh` with `shfmt -w` on every Edit/Write. Skips silently if shfmt not
   installed. Pattern from vp-claude.
-- **`skills/upstream-tracker/references/` — progressive disclosure** — extracted
+* **`skills/upstream-tracker/references/` — progressive disclosure** — extracted
   BM friction section template, routing table, generalization rules, and
   `edit_note` gotchas from SKILL.md to
   `references/basic-memory-friction-format.md`. SKILL.md dropped from 3,118 to
@@ -990,7 +1098,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/upstream-tracker` — Workflow 6 "Promote to Basic Memory"** —
+* **`skills/upstream-tracker` — Workflow 6 "Promote to Basic Memory"** —
   promotes generalizable upstream friction from project-local UPSTREAM files
   into cross-project Basic Memory entity notes. Supports all target types
   (npm, brew, cask, action, docker, vscode, non-package repos). Filters by
@@ -998,56 +1106,56 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
   targets `## Upstream Friction` sections with Bug/FR/Resolved subsections.
   When no Basic Memory note exists, flags for enrichment via `/package-intel`
   or `/tool-intel` instead of creating thin notes.
-- **`skills/upstream-tracker` — Workflow 7 "Sync from Basic Memory"** —
+* **`skills/upstream-tracker` — Workflow 7 "Sync from Basic Memory"** —
   discovers friction already known in Basic Memory for this project's
   dependencies but not yet tracked locally. Pull-based, user-invoked.
-- **`skills/upstream-tracker` — Workflow 1 BM deduplication pre-check** —
+* **`skills/upstream-tracker` — Workflow 1 BM deduplication pre-check** —
   before logging a new entry, checks Basic Memory for existing friction on
   the same package from other projects. Informational only.
-- **`skills/upstream-tracker` — Workflow 3 BM annotation on resolve** —
+* **`skills/upstream-tracker` — Workflow 3 BM annotation on resolve** —
   when an UPSTREAM entry is resolved, annotates the corresponding Basic Memory
   friction entry with a resolved timestamp. Annotation only — workflow 6's
   prune pass handles moves to Resolved.
-- **`skills/vendor-sync` — Step 8b BM annotation** — after auto-resolving
+* **`skills/vendor-sync` — Step 8b BM annotation** — after auto-resolving
   UPSTREAM entries via changelog/diff cross-reference, annotates the
   corresponding Basic Memory friction entries. Best-effort, skips silently
   when Basic Memory is unavailable.
-- **`agents/sprint-review` — Step 4 BM friction awareness** — when Basic
+* **`agents/sprint-review` — Step 4 BM friction awareness** — when Basic
   Memory tools are available, checks for friction notes on project
   dependencies not covered by local UPSTREAM files and suggests workflow 7.
 
 ### Fixed
 
-- **`skills/upstream-tracker` — vendor registry shape** — added missing
+* **`skills/upstream-tracker` — vendor registry shape** — added missing
   `package` field to the vendor registry object description (`{prefix, remote,
   branch}` → `{prefix, remote, branch, package}`).
-- **`skills/retrospective` — added `mcp__basic-memory__*` tools to
+* **`skills/retrospective` — added `mcp__basic-memory__*` tools to
   `allowed-tools`** — steps 4 and 7 reference these tools in the skill body
   but they were absent from the frontmatter allowlist.
 
 ### Changed
 
-- **`skills/retrospective` — step 7 division-of-labor note** — clarifies
+* **`skills/retrospective` — step 7 division-of-labor note** — clarifies
   that step 7 writes `engineering/*` notes while upstream friction about
   specific packages/tools should use `/upstream-tracker` workflow 6.
-- **`skills/retrospective` — step 3 alignment** — explicitly names
+* **`skills/retrospective` — step 3 alignment** — explicitly names
   `/upstream-tracker` for logging new friction during retrospectives.
-- **`hooks/precompact.sh` — resolved entry awareness** — added prompt for
+* **`hooks/precompact.sh` — resolved entry awareness** — added prompt for
   annotating Basic Memory when UPSTREAM entries are resolved during a session.
 
 ## [0.5.1][] - 2026-03-14
 
 ### Fixed
 
-- **`skills/vendor-sync` — added `Write` and `Grep` to `allowed-tools`** —
+* **`skills/vendor-sync` — added `Write` and `Grep` to `allowed-tools`** —
   `Write` is needed for UPSTREAM file creation edge cases during cross-reference,
   `Grep` for changelog keyword matching in Step 7. Same class of bug as the
   v0.4.0 upstream-tracker `Write` omission.
-- **`skills/vendor-sync` — Step 7 changelog diff uses pre-pull hash** —
+* **`skills/vendor-sync` — Step 7 changelog diff uses pre-pull hash** —
   replaced fragile `git diff HEAD~1` with `$PRE_PULL_HEAD` captured before
   Step 3. The previous approach broke when conflict resolution in Step 4
   added extra commits.
-- **`skills/upstream-tracker` — aligned severity vocabulary** — the structured
+* **`skills/upstream-tracker` — aligned severity vocabulary** — the structured
   `Severity:` field used `blocking/annoying/cosmetic` while the inline bracket
   notation used `blocking/degraded/minor`. Unified to `blocking/degraded/minor`
   (the established terms).
@@ -1056,7 +1164,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Fixed
 
-- **`hooks/hooks.json` — PreCompact hook converted from prompt to command** —
+* **`hooks/hooks.json` — PreCompact hook converted from prompt to command** —
   the previous `type: "prompt"` hook was non-functional: prompt hooks spawn a
   separate Haiku instance with no MCP tool access, making the
   `mcp__basic-memory__*` instructions unreachable. Now uses `type: "command"`
@@ -1068,12 +1176,12 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/vendor-sync` — changelog-aware auto-resolution** — new step 7
+* **`skills/vendor-sync` — changelog-aware auto-resolution** — new step 7
   parses the upstream `CHANGELOG.md` diff after a subtree pull and AI-matches
   entries against open `UPSTREAM-*.md` items with confidence levels (high /
   medium / low). High-confidence matches auto-resolve; medium are reported for
   user decision.
-- **`skills/upstream-tracker` — enriched entry format** — optional structured
+* **`skills/upstream-tracker` — enriched entry format** — optional structured
   fields (`Severity:`, `Ownership:`, `Workaround:`) on a continuation line below
   each entry. Backward-compatible — existing entries without these fields remain
   valid. `Severity` (blocking/annoying/cosmetic) captures daily impact,
@@ -1082,10 +1190,10 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Changed
 
-- **`skills/retrospective` — Step 7 overwrite guard** — added explicit warning
+* **`skills/retrospective` — Step 7 overwrite guard** — added explicit warning
   against calling `write_note` on existing notes (requires `overwrite=True` and
   risks data loss); reinforces the search-first pattern.
-- **`skills/retrospective` — Step 2 edge case documentation** — documented two
+* **`skills/retrospective` — Step 2 edge case documentation** — documented two
   edge cases where `git log -- RETRO-*.md` returns empty (no prior RETRO files,
   or RETRO files are gitignored), both resulting in full-history range — the
   correct graceful behavior for a first retrospective.
@@ -1094,7 +1202,7 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`hooks/hooks.json` — `PreCompact` hook** — before context compaction, scans
+* **`hooks/hooks.json` — `PreCompact` hook** — before context compaction, scans
   the conversation for sprint-relevant insights worth preserving: upstream friction,
   technical decisions, vendor discoveries. Writes findings to Basic Memory using
   `mcp__basic-memory__edit_note` / `write_note` with `[decision]`, `[lesson]`,
@@ -1103,22 +1211,22 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Fixed
 
-- **`skills/upstream-tracker`** — Added `Write` to `allowed-tools`. The "Log a
+* **`skills/upstream-tracker`** — Added `Write` to `allowed-tools`. The "Log a
   new entry" workflow creates new `UPSTREAM-*.md` files for non-vendor packages on
   first encounter; this requires `Write`, which was absent from the allowlist.
 
 ### Changed
 
-- **`CLAUDE.md`** — Added `## Releasing` section documenting the cross-repo
+* **`CLAUDE.md`** — Added `## Releasing` section documenting the cross-repo
   `marketplace.json` bump requirement and plugin cache lag behaviour.
-- **`README.md`** — Added `## Changelog` section linking to this file and noting
+* **`README.md`** — Added `## Changelog` section linking to this file and noting
   the manual marketplace entry bump required after each release.
 
 ## [0.3.0][] - 2026-03-13
 
 ### Added
 
-- **`hooks/session-start.sh`** + **`hooks/hooks.json`** — `SessionStart` hook
+* **`hooks/session-start.sh`** + **`hooks/hooks.json`** — `SessionStart` hook
   that emits a one-line trend-review reminder when the upcoming sprint (next
   sprint number divisible by 4) or current sprint (current count divisible by 4)
   is a trend-review sprint. Silent in the common case — zero per-session overhead
@@ -1126,16 +1234,16 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Changed
 
-- **`skills/retrospective`** — Step 6 "Knowledge gap audit" updated to reflect
+* **`skills/retrospective`** — Step 6 "Knowledge gap audit" updated to reflect
   vp-knowledge v0.5.0+: `/knowledge-gaps` now scans all 6 package ecosystems
   (npm, Rust, Go, PHP, Python, Ruby) and 5 tool manifest types (Brewfile, GitHub
   Actions, Dockerfile, VSCode extensions). Manual npm-only fallback removed.
-- **`skills/upstream-tracker`** — Extended to non-npm tool tracking (Homebrew
+* **`skills/upstream-tracker`** — Extended to non-npm tool tracking (Homebrew
   formulae, casks, GitHub Actions, Docker images, VSCode extensions) using the
   same ephemeral file pattern with `brew:`, `cask:`, `action:`, `docker:`,
   `vscode:` prefix notation. New subsection "Non-npm tools (ephemeral files)"
   added; file naming guideline extended with tool-type examples.
-- **`agents/sprint-review`** — Added cross-reference to the `session-reflector`
+* **`agents/sprint-review`** — Added cross-reference to the `session-reflector`
   agent (vp-knowledge) in the Recommendation step, clarifying the mental model:
   session-reflector for in-sprint capture, `/retrospective` for end-of-sprint
   synthesis.
@@ -1144,12 +1252,12 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/vendor-sync`** — Pull latest upstream changes from git subtrees,
+* **`skills/vendor-sync`** — Pull latest upstream changes from git subtrees,
   auto-resolve open `UPSTREAM-*.md` entries against the sync diff, clean stale
   vendor `node_modules`, re-link workspaces, and verify with check + test.
   Reads the subtree registry from `.claude/vendor-registry.json`. Accepts an
   optional `[package-name]` argument to sync a single subtree.
-- **`agents/sprint-review`** — Proactive, read-only end-of-sprint assessment.
+* **`agents/sprint-review`** — Proactive, read-only end-of-sprint assessment.
   Triggers automatically when a sprint closes (`bd close`, "sprint done", etc.).
   Summarises commits, open beads issues, and UPSTREAM file state, then gives one
   of five recommendations (as of v0.7.0): not ready, close normally, groom
@@ -1158,21 +1266,21 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Changed
 
-- **`skills/retrospective`** — Corrected `bd create` syntax (positional title,
+* **`skills/retrospective`** — Corrected `bd create` syntax (positional title,
   `-t`/`-p` short flags); fixed `bd list --status` flag (space, not `=`); fixed
   git log anchor to use commit hash range instead of `--since` date; renamed MCP
   tool calls to explicit `mcp__basic-memory__*` form; clarified `write_note` vs
   `edit_note` two-path logic (search first, then create or update); renumbered
   steps cleanly 1–8 (removed confusing `6.5` label); tightened description
   trigger phrases.
-- **`skills/upstream-tracker`** — Added `Bash` to `allowed-tools` (required for
+* **`skills/upstream-tracker`** — Added `Bash` to `allowed-tools` (required for
   `git rm` in resolve and trend-review workflows); trimmed description from
   \~180 words to \~80; added empty-file template for new non-vendor packages;
   added empirical resolution timelines to trend review (bugs: 5–10 sprints,
   FRs: 10–20, cross-vendor: next major version); added optional `[upstream: url]`
   trailer to all entry formats; added optional `[blocking|degraded|minor]`
   severity tag to bug entries.
-- **`skills/vendor-sync`** — Fixed `git show HEAD --stat` → `git show HEAD -- <prefix>` so the full diff is available for UPSTREAM auto-resolution; added
+* **`skills/vendor-sync`** — Fixed `git show HEAD --stat` → `git show HEAD -- <prefix>` so the full diff is available for UPSTREAM auto-resolution; added
   conflict-detection step before resolution; added `argument-hint: "[package-name]"`
   frontmatter; added fallback `git merge -X subtree=` command for when subtree
   heuristics fail; added "vendor changes" trigger phrase.
@@ -1181,11 +1289,11 @@ list. Reciprocates the feature request `liggare-mcp` filed in its
 
 ### Added
 
-- **`skills/retrospective`** — Sprint retrospective generator. Reads git history,
+* **`skills/retrospective`** — Sprint retrospective generator. Reads git history,
   `UPSTREAM-*.md` files, and conversation context to produce `RETRO-NN.md` files.
   Every 4th sprint triggers a full trend review (UPSTREAM files, beads health,
   Basic Memory graph health). Promoted and generalized from a project-local skill.
-- **`skills/upstream-tracker`** — Upstream issue tracking for vendor and npm
+* **`skills/upstream-tracker`** — Upstream issue tracking for vendor and npm
   packages. Manages `UPSTREAM-*.md` files with five workflows: log, review,
   resolve, trend-review, and retrospective-support. Vendor packages are declared
   via `.claude/vendor-registry.json` or `workspaces`. Promoted and generalized

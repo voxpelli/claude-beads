@@ -1,0 +1,430 @@
+---
+name: deintegrate-beads
+description: "De-integrate beads (bd) from a project after its tracker has been migrated. Use when the user says 'remove beads', 'uninstall bd', 'get rid of beads', 'clean up beads', 'de-beads', 'beads is still hooked in', or asks what beads left behind. Runs AFTER /migrate-tracker, once the flat-YAML store is trusted. It disarms beads' machinery — git hooks, the Dolt daemon, git config, injected CLAUDE.md blocks and Claude hooks — and NEVER deletes `.beads/` or any data."
+argument-hint: "[path-to-project]"
+user-invocable: true
+paths:
+  - ".beads/**"
+allowed-tools:
+  - Bash
+  - Read
+  - Edit
+  - Grep
+  - AskUserQuestion
+---
+
+# De-integrate Beads
+
+Takes beads' hands off a project that has already migrated to the flat-YAML
+tracker. **This is a de-integration tool, not a deletion tool** — it disarms the
+machinery and leaves every byte of data where it is. That is why it is safe to
+run, and why it is deliberately _not_ called "remove".
+
+**Why a separate skill.** `/migrate-tracker` deliberately leaves `.beads/` alone —
+its job is to move the _work_, and leaving the old tracker readable is what makes
+the cutover safe to attempt. But it also leaves the _live machinery_, which keeps
+acting on the repo long after the tracker is dead:
+
+* **`bd` installs git hooks and hides them.** It sets `git config core.hooksPath`
+  → `<abs>/.beads/hooks`, so `.git/hooks/` looks pristine while five shims
+  (`pre-commit`, `post-merge`, `pre-push`, `post-checkout`, `prepare-commit-msg`)
+  intercept every git operation. `pre-commit` shells out to `bd` and
+  **propagates its exit code** (300 s timeout). In vp-beads' own repo, every commit
+  was still routing through the dead binary weeks after the migration.
+* **A `dolt sql-server` daemon per repo**, which outlives the session and orphans
+  itself (upstream `#4282`).
+* **Injected instructions**: `bd setup claude` writes a managed block into
+  `CLAUDE.md`/`AGENTS.md` and `SessionStart` hook entries into
+  `.claude/settings.json`.
+
+The failure mode is not "a doc is stale" — it is "commits start failing", quietly,
+on a tool nobody is maintaining any more.
+
+> **Pin every command to the target.** This skill takes a `[path-to-project]` and
+> mutates **git config, running processes, and another repo's `CLAUDE.md`**. Use
+> `git -C <target>` on every git call and prefix every path with `<target>/`. An
+> unpinned `git config --unset core.hooksPath` run from _this_ repo de-integrates
+> _this_ repo — silently, and while reporting success on the other one. When no
+> path is given, `<target>` is the current project; say which one you are about to
+> act on before you act.
+
+**What it never does:** delete `.beads/`, uninstall the binary, or touch anything
+outside the project. Those are the user's calls, and workflow 5 (Report what is
+left) tells them exactly how.
+
+## Cross-skill boundaries
+
+`/migrate-tracker` moves the work and leaves bd standing. `/deintegrate-beads`
+runs afterwards and takes bd's hands off the wheel. Neither deletes data.
+
+Like `/migrate-tracker`, this skill is **exempt** from the tiering in CLAUDE.md
+`### Files-availability convention`: its precondition is a _present, committed_
+tracker plus a _present_ `.beads/`, which is the inverse of a degradation.
+
+## Prerequisites
+
+**All detection is done by `scripts/beads-probe.mjs` — a read-only probe. Do not
+re-derive it in prose.** Every check it performs was a prose bug first, and every one
+of those bugs failed _silently while reporting success_. The probe is tested
+(`npm run check`, which delegates to this workspace's own `check` script); prose is not.
+
+```bash
+node "$CLAUDE_PLUGIN_ROOT/scripts/beads-probe.mjs" --root <target>          # human
+node "$CLAUDE_PLUGIN_ROOT/scripts/beads-probe.mjs" --root <target> --json   # to act on
+```
+
+The probe imports **no** npm packages — it shells out to `npx --no-install diarie` for the migration check (the flag is load-bearing:
+a read-only probe must never network-install, and must fail fast instead of hanging) — so it
+always runs, even from a marketplace plugin cache with no `node_modules` (it no longer crashes with
+`ERR_MODULE_NOT_FOUND`). If diarie itself is not resolvable (offline, no npx cache), the probe reports
+`migration.verifyFailed: true` — see the verify gate in workflow 1 (Probe, verify, and confirm the whole plan), step 3.
+
+## Workflows
+
+### 1. Probe, verify, and confirm the whole plan
+
+**Everything destructive is gated here.** The later workflows only _execute_ what the
+user approves in this one.
+
+1. Run the probe (`--json`) against `<target>`.
+2. **`residue.beadsDirExists` must be `true`, or STOP** — there is no beads to
+   de-integrate. Without this check the whole skill runs as a chain of no-ops and
+   reports a cleanup that never happened.
+3. **`migration.trusted` must be `true`, or STOP.** It is the conjunction of **six** conditions —
+   a store directory exists holding at least one `tasks-*.yml` (`migration.files`), the task count
+   is **above zero**, **at least one store file is in `HEAD`** (`migration.committed`), the store is
+   **unambiguous** (`migration.ambiguousStore` is `false`), diarie reported **no
+   warnings** (`migration.malformed` is `false`), and the check actually **ran**
+   (`migration.verifyFailed` is `false`). Disarming bd against a store that fails any of these
+   leaves the project with **neither** tracker.
+
+   **`migration.committed` is the one people drop, and it proves LESS than its name.** It is
+   `git ls-tree HEAD` over the store's `tasks/` returning anything at all — so **one** committed
+   file makes it `true` while every freshly migrated file beside it is untracked, and `git clean
+   -xdf` still eats the work. Diff `migration.files` (basenames on disk) against
+   `migration.committedFiles` (`<storeDir>/tasks/<name>` paths in HEAD) and report the difference;
+   neither field sees uncommitted _modifications_ to an already-committed file.
+
+   The enumeration above used to omit this condition entirely **while still saying "six"**, by
+   splitting the store-file condition in two — so the one condition guarding "an uncommitted store
+   is one `git clean` from gone, and bd was the only other copy" was invisible to anyone working
+   from the list. Note it asks `git ls-tree HEAD`, not `ls-files`: a staged-but-never-committed
+   store once answered `committed: true` in a repo with no commits at all.
+
+   **Report EVERY reason that fires, not the first.** These are not exclusive branches — a repo can
+   be ambiguous _and_ unverified. The probe's plain-text output already lists all applicable reasons;
+   `--json` carries the fields below. And `/migrate-tracker` is **not** the universal remedy: it is
+   right only for a **missing** store — it refuses to overwrite one that already exists.
+
+   | Condition | What it means | Remedy |
+   | --------- | ------------- | ------ |
+   | `migration.verifyFailed` **and** `migration.storeInvisibleToCli` | The store IS there and diarie RAN; it does not recognise this store's directory name. **Two opposite causes — read `migration.storeDir` to tell them apart.** | See the sub-table below. Never emit a bare "upgrade diarie". |
+   | `migration.verifyFailed` alone, `migration.cliError` **non-null** | diarie RAN and refused. `verifyFailed` covers every reply that is neither a task total nor a clean `ENOSTORE` — so `EUSAGE`, `EEXIST`, `ETWOSTORES`, `ELOSSY` all land here. | **Read `cliError`** — it is diarie's own diagnostic and names the real problem. Do not tell the user to make diarie runnable; it ran. |
+   | `migration.verifyFailed` alone, `migration.cliError` **null** | diarie could not be _run_ at all (offline, unresolvable), or its output was unparseable. Unverified, **not** a verdict on the store. | Make diarie runnable, then re-probe. |
+   | `migration.ambiguousStore` | **Two** store directories on disk; `migration.storeDirs` names them. Picking one silently makes the loser a file nobody reads and everybody keeps editing. | **The probe has NOT inspected the loser** — every other `migration.*` field describes `storeDirs[0]` only, so nothing here counted the other store's files or tasks. Do not offer to delete it. diarie's own wording for this state is the instruction to give: "exactly one may exist; **merge them and remove the other** (`git mv` the survivor into place)". **Never pick for them.** |
+   | `migration.malformed` | diarie READ the store and reported warnings. The store is present and parsed — this is not a migration failure. | `diarie validate` in the target, repair what it flags. **Re-running `/migrate-tracker` cannot fix this.** |
+   | `migration.committed` is `false` | NOTHING under the store's `tasks/` is in `HEAD` — one `git clean` from gone, and bd was the only other copy. (`true` does not mean the converse: see the note above, and diff `migration.files` against `migration.committedFiles` for what is actually untracked.) | The user commits the store. **Never disarm bd first**; this is the "left with neither tracker" outcome the gate exists for. |
+   | no store at all | Nothing was migrated. | This is the one case that belongs to `/migrate-tracker`. |
+   | store present, `taskCount` 0 | The store exists and is empty — the migration produced nothing. | **Not** a plain `/migrate-tracker` re-run: it refuses an existing store and exits 1. Either the export was empty (a data question for the user) or the migration is to be redone deliberately, which needs `--force` and overwrites hand-edits. |
+
+   **`storeInvisibleToCli` points in opposite directions.** diarie's store is the pair
+   `diarium/` | `.diarium/`; `.diarie/` is its **legacy** name (`LEGACY_TRACKER_DIRS` — "no longer
+   the store, never READ"). So:
+
+   | `migration.storeDir` | Meaning | Remedy |
+   | -------------------- | ------- | ------ |
+   | `diarium` or `.diarium` | The CLI **predates** the store name. | Upgrade diarie to a version that knows `diarium/` — state the capability, not a version number. |
+   | `.diarie` | The CLI is **newer** than the store name. This is the **default** case for this skill, because `/migrate-tracker` produced `.diarie/`. | **Rename the store**, do not upgrade — upgrading makes it worse. `migration.cliError` carries diarie's own message, which already includes the exact `git mv` to run. Show that verbatim. |
+
+   Confirm which case you are in rather than inferring it: run `diarie --version` **in the target**
+   and report it. Note the probe itself invokes `npx --no-install diarie` without a `cwd`, so it
+   resolves from _your_ cwd, not `<target>` — say which diarie you checked.
+
+   **`diarie validate` cannot substitute for this gate, even now.** A missing store is
+   an error today (`ENOSTORE`, non-zero exit) — that half is fixed. But a store that
+   exists and holds `tasks: []` is _legitimately_ `clean` at exit 0, and rightly so: an
+   empty backlog is a valid state. So `clean` proves the store is **well-formed**, never
+   that the migration actually moved anything into it. Hence the probe counts tasks
+   rather than trusting `clean` — see `scripts/beads-probe.mjs`, where this reasoning is
+   pinned in the code.
+4. **Show the full destructive plan and confirm once** (a single `AskUserQuestion`,
+   `header: "Cleanup"`). The user consented to "de-integrate beads", not to a
+   particular set of edits in a repo they may not even have open. Show:
+   * the exact `core.hooksPath` value to be unset, its scope, and the **re-arm command**
+     the probe printed (`hooks.reArmCommand`) — verbatim; bd stores an _absolute_ path
+     and a guessed relative one will not restore it. It is scope-bearing and
+     shell-escaped, so run it as given rather than retyping it. **If it is `null`,
+     `hooks.reArmError` says why** (the scope is unknown, or the value came from `git -c`
+     and was never persisted) — there is then **no proven way to undo the unset**, so show
+     that instead of improvising a command, and treat reversibility as unestablished when
+     the user decides
+   * the pid to be signalled, and **`daemon.owned.cwd`** — the working directory inside this
+     target's `.beads/` that is the actual ownership proof. `owned.args` (the `ps` line) shows it
+     is a real `dolt sql-server`; it does NOT show whose. Do not present it as the proof
+   * any hook files to be stripped, and the `beads.*` config keys to be cleared
+   * anything the probe flagged under `hooks.otherHookManagers` or
+     `hooks.gitHooks.dormantBdHooks` / `hooks.gitHooks.unreadableGitHooks` (see
+     workflow 2 (Disarm the git hooks))
+
+### 2. Disarm the git hooks
+
+**Before stopping the daemon.** The armed `pre-commit` shim runs `bd hooks run
+pre-commit`, and any `bd` command that touches the database **re-spawns `dolt
+sql-server`** — so a daemon stopped first simply comes back on the user's very next
+commit, including the one recording this cleanup.
+
+Act on `hooks` from the probe.
+
+**Shape UNKNOWN (`hooks.shape == "unknown"`) — STOP, and do not read it as Shape B.**
+**TWO different causes produce it, and only one sets `hooks.hooksPath.error`** — check which
+before reporting anything, because the remedies are unrelated:
+
+* **`hooks.hooksPath.error` is a string** — `git config --get core.hooksPath` could not be asked,
+  so whether bd owns the hooks is not known. Note what this is _not_: an unset key exits 1 and is
+  a determinate `none`; this is the other kind of non-zero (git absent, or a repo git cannot
+  enter). **Every branch below depends on that answer.** Remedy: re-run where `git` resolves.
+* **`hooks.gitHooks.unreadableGitHooks` is non-empty** (and `hooksPath.error` is `null`) — git ran
+  fine, but a file in `.git/hooks/` could not be read, so the probe cannot say whether it is bd's.
+  The one it would be is `pre-commit`, which re-spawns the daemon. Remedy: it is a **permissions**
+  problem — have the user make the file readable (`ls -l <target>/.git/hooks/`), then re-probe.
+  Telling them to "run the probe where git resolves" here is a null remedy.
+
+Either way, disarm nothing: guessing Shape B while a live hooksPath may be overriding
+`.git/hooks/` applies the inverted remedy.
+
+**Shape A (`hooks.shape == "hooksPath"`)** — what `bd init` does by default.
+
+1. **`hooks.hooksPath.scope` must be `local`.** If it is not, `git config --local --unset`
+   **cannot clear it** — and `--unset` exits 5 either way, so treating exit 5 as a benign
+   no-op would leave the hooks armed while reporting success. **Three cases, and only one
+   proceeds:**
+   * `local` — proceed to step 3.
+   * a named non-local scope (`global`, `system`, `worktree`) — **STOP.** Clearing it
+     changes hook behaviour for repositories this cleanup was never pointed at. Report the
+     scope and the exact command that would clear it, and let the user decide. Everything
+     destructive is gated in workflow 1 (Probe, verify, and confirm the whole plan); this
+     is not a decision to take mid-run.
+   * `null` — **STOP, and do not guess.** The scope could not be determined (the probe
+     prints why). Do **not** infer one from the path: an agent that reads "not local" and
+     reaches for `--global --unset` deletes the user's unrelated global hooksPath. That
+     hazard is exactly why the probe asks git for the scope instead of string-matching it.
+2. If `hooks.hooksPath.isBeads` is `false`, the path belongs to someone else (husky,
+   lefthook, their own `hooks/`). **Leave it alone and say so.**
+3. `git -C <target> config --local --unset core.hooksPath`. `--local` is correct **because
+   step 1 established the scope is local** — it is not a default to carry into any other
+   case.
+4. **Re-poll and prove it.** `git -C <target> config --show-origin --get
+   core.hooksPath` must now print nothing containing `.beads`. Nothing else in this
+   skill proves its own effect; this does.
+
+**Then handle what the unset just re-enabled** — bd's hooksPath was overriding
+`.git/hooks/` _entirely_, so everything there was dormant and now fires:
+
+* **`hooks.gitHooks.dormantBdHooks`** — bd's own hooks, sitting in `.git/hooks/` from
+  an earlier `bd hooks install`. **Unsetting ARMS them.** Run the Shape-B strip on each
+  before declaring the hooks disarmed, or the skill ends with bd _more_ armed than it
+  found it.
+* **`hooks.gitHooks.otherGitHooks`** — third-party hooks that start firing again. List
+  them; that is a restoration, not a break.
+* **`hooks.gitHooks.unreadableGitHooks`** — files in `.git/hooks/` the probe could not
+  read at all (root-owned, mode-000, or a _directory_ with a hook's name). **Do not fold
+  these into either list above.** Whether they are bd's is unknown, and the one they
+  would be is `pre-commit` — which re-spawns the daemon — so treating them as
+  third-party is how a disarm ends with bd still armed. Unsetting hooksPath arms them
+  either way. Report them by name, say the read failed, and have the user resolve the
+  permission before you declare the hooks disarmed.
+* **`hooks.otherHookManagers`** — read the probe's `effect` field, because **the remedy
+  inverts**:
+  * `clobbered-by-bd` (**husky** — its mechanism _is_ `core.hooksPath`): bd overwrote
+    their setting on install, so unsetting leaves them with no hook manager. **Tell them
+    to re-run their installer** (`npx husky`, or `npm install` to re-run `prepare`).
+    **Never hand-write a `core.hooksPath`** — husky v8 uses `.husky`, v9 uses `.husky/_`,
+    and a guess is a fresh silent breakage introduced by a cleanup tool.
+  * `dormant-rearms-on-unset` (**lefthook**, **pre-commit**): these install into
+    `.git/hooks/` and were merely suppressed. Unsetting _restores_ them. **Nothing to do.**
+
+**Shape NONE (`hooks.shape == "none"`)** — no bd hook machinery. There is nothing to disarm
+here, and **saying so is the step** — a workflow that simply ends is indistinguishable from one
+that silently failed. Two things still need reporting, because `none` does not mean "nothing
+found": `hooks.hooksPath` may hold a live **non-bd** path (husky, lefthook, their own `hooks/`) —
+leave it alone and say whose it looks like, per `hooks.otherHookManagers` — and
+`residue.beadsConfigKeys` may be non-empty regardless, which the "Both shapes" step below still
+applies to. `hooks.shims` (files inside `.beads/hooks/`) may also be listed; those are
+**informational only and are never stripped**, because `.beads/` is never touched.
+
+**Shape B (`hooks.shape == "git-hooks"`)** — hooks written into `.git/hooks/`. Each is
+wrapped in `# --- BEGIN BEADS INTEGRATION <version> ---` … `# --- END … ---`.
+
+**The marker is version-stamped, and the stamp records the bd version that _installed_
+the hook — not the one installed now.** (This repo runs bd 1.1.0 with a `v1.0.3` marker
+on disk.) Match the **prefix**; a literal `v1.0.3` silently strips nothing.
+
+**Strip the marked block; do not delete the file** — a project may wrap its own content
+around bd's. Delete (`rm -f`) only if nothing but a shebang remains.
+
+**Do not use `bd hooks uninstall`.** Its own `--help` says it removes hooks "from
+`.git/hooks/`" — so it cannot clean Shape A, the default. More generally: do not ask a
+binary whose writes are broken to uninstall itself.
+
+**Both shapes:** clear the `beads.*` keys the probe listed
+(`git -C <target> config --local --unset <key>`), then re-poll to prove they are gone.
+**Take the FIRST field of each listed line.** `residue.beadsConfigKeys` is raw
+`git config --get-regexp` output — `beads.role maintainer`, key _and value_ on one line despite
+the field name. Pasted whole, the second token becomes git's value-pattern _regex_: it unsets
+nothing when the value does not match as one, and exits 5 — the exit code this skill insists
+elsewhere must never be read as a benign no-op.
+
+### 3. Stop the daemon
+
+Now that the hooks are disarmed, nothing will re-spawn it.
+
+1. **`daemon.safeToSignal` must be `true`.** The probe proves the pid is a live `dolt`
+   process **belonging to this target** from the process's own **working directory**
+   (`daemon.owned.cwdInTarget`): dolt runs _inside_ `<target>/.beads/dolt`, so that is
+   direct proof rather than a correlation. A `comm`-only check is not enough: on a
+   machine where _every_ repo's beads broke at once, the process most likely to have
+   inherited a reused pid **is a sibling repo's dolt daemon**.
+   **`daemon.owned.portMatches` is corroboration and is NOT part of the gate** — do not
+   reach for it when asking why `safeToSignal` is false, and do not "fix" a mismatch.
+   A pid and its port are freed _together_ when a daemon dies, so a sibling repo's dolt
+   can inherit both, which is the very hazard being defended against; a target with no
+   port file at all is signalable on cwd alone, and a perfect port match with a cwd in
+   `.beads-backup/` is not. If `safeToSignal` is false — including
+   when there is no pid file at all — **do not signal anything**; say so and move on.
+   **`daemon.owned.cwdError` says WHY it is false**, and the two cases are not the same
+   report: `null` means ownership was examined and disproven; a string means it could not
+   be examined at all (`lsof` absent, say). Say which — "not this target's daemon" is a
+   finding about the daemon, "could not determine" is a finding about this machine.
+2. **`kill <pid>` (SIGTERM). Then poll `kill -0 <pid>` about ten times, one second
+   apart.** The daemon holds `.beads/dolt/` — the entire issue history — open. **Never
+   `kill -9`**: a SIGKILL can corrupt the Dolt store, destroying the very archive this
+   skill's never-delete invariant exists to protect.
+3. **If it survives, leave it running and report that.** An orphaned daemon is a
+   nuisance; a corrupt store is unrecoverable. Carry this outcome into workflow 5
+   (Report what is left) — do not report "no daemon" when one is still up.
+4. **`daemon.otherDoltProcesses`** — report them with their pids and **do not touch
+   them**. They belong to other repos — **except when `daemon.pidError` is set**, in which case
+   the target's own pid was never established, nothing could be filtered out, and one of the
+   entries may be THIS target's daemon. Say so rather than reporting them all as strangers'.
+   **Check `daemon.processListError` too**: when it
+   is a string the list is a **lower bound**, not the set of other daemons — `ps` was
+   absent, or its output exceeded 1 MiB and was truncated. Report the list _and_ that it
+   is incomplete. An empty list under a `processListError` is not "no other daemons"; it
+   is "no answer", and the two look identical if you only read the array.
+
+### 4. De-colonize the docs and Claude config
+
+Absent in a project that never ran `bd setup claude`; present in one that did. This
+rides the confirmation taken in workflow 1 (Probe, verify, and confirm the whole plan).
+
+1. **`CLAUDE.md` / `AGENTS.md`** — do not assume the marker exists.
+   `grep -n 'BEADS INTEGRATION' <target>/CLAUDE.md <target>/AGENTS.md`, **show the
+   matched block**, then strip only between `BEGIN` and `END`. **Never regex-guess at
+   surrounding prose.** If the grep finds nothing, **say it found nothing** — do not
+   report the docs de-colonized.
+
+2. **Back up before editing JSON**: `cp -f <file> <file>.bak`. There is otherwise
+   nothing to restore from — `.claude/settings.local.json` is gitignored by convention,
+   so a git checkout will not save you.
+
+3. **`.claude/settings.json`** — remove bd's `SessionStart`/`PreCompact` hook entries
+   (they run `bd prime`). Edit the JSON directly; do not trust the broken binary's own
+   `--remove`. **`.claude/settings.local.json`** — prune `Bash(bd …)` permission entries.
+
+4. **Validate each edit twice.** `jq . <file> >/dev/null` proves _syntax_ — but an edit
+   that drops the whole `hooks` key also parses fine. So also assert **the bd entries are
+   gone AND the sibling entries survived**. On any failure, restore from the `.bak` and
+   report. A corrupt `settings.json` silently disables the target's _entire_ Claude Code
+   config.
+
+5. **Doc-grep, then report.** Sweep the target for `\bbd\b` across `CLAUDE.md`,
+   `AGENTS.md`, `README.md` and `.claude/`. Report what prose still instructs the agent
+   to use bd; **do not mass-rewrite it.** The grep is the authority on scope; an assumed
+   edit list is not.
+
+6. **Then grep for the BEHAVIOURAL residue, which the sweep above structurally cannot
+   find.** bd's deepest mark on a project is not the string `bd`; it is a _habit_ written
+   in prose that never names the tool. The canonical one is a **blanket ban on the agent's
+   own task list**:
+
+   ```bash
+   grep -rniE 'markdown TODO|ad-hoc task list|do not use .*task list|TodoWrite' \
+     <target>/CLAUDE.md <target>/AGENTS.md <target>/.claude/
+   ```
+
+   **A `\bbd\b` sweep returns nothing for it** — the sentence contains no `bd` — so a
+   de-integration that greps only the command name reports the docs clean while the ban
+   keeps steering every future session toward a tracker that is gone. This is the same
+   blindness CLAUDE.md's own `### Doc-grep the VOCABULARY, not just the command name`
+   describes, one level up: from data vocabulary to _behavioural_ vocabulary.
+
+   **Report it; offer the seam; do not impose it.** The ban is usually wrong (Claude
+   Code's built-in tracker is _ephemeral_ — it complements a durable file-backed tracker
+   rather than competing with it; see the vp-beads decision `vp-beads-tdo` in the vp-skills
+   repo root's `.diarie/decisions/` — this plugin ships no store of its own), but it is the
+   target project's call, and a skill that silently
+   rewrites a user's operating instructions is doing the very thing it was invoked to undo.
+   Show the matched lines and the one-line replacement rule:
+
+   > An ephemeral todo may never be the ONLY home of a commitment. If it must outlive the
+   > session, it belongs in the tracker.
+
+   **We shipped this bug ourselves**, which is why it is written down: vp-beads' own
+   cutover commit — the one whose stated job was retargeting the operating instructions
+   _off_ bd — carried the ban forward and **broadened** it. Nobody had to colonize us; the
+   convention was absorbed and then renewed by the very commit meant to remove it.
+
+### 5. Report what is left (touch nothing)
+
+* **What `rm -rf .beads/` would actually do** — use `residue.trackedCount` from the
+  probe, which is `git ls-files .beads`. **Three readings, not two** — `0` (nothing tracked),
+  a positive count, and
+  `null` when `residue.trackedError` is a string and the count could not be obtained at
+  all (an unrunnable `git`). Never render `null` as "nothing tracked" — and note that
+  `null > 0` is `false`, so a two-branch reading silently files it under "nothing", which
+  is the one sentence this bullet exists to prevent. Report the reason instead.
+  **Not** `check-ignore`: not-ignored is not the
+  same as tracked, and bd's own `.beads/.gitignore` ignores _contents_ while leaving
+  `config.yaml` and `metadata.json` **tracked**. So in a stock bd project, deleting
+  `.beads/` **stages file deletions in git** — it does not merely free disk. (vp-beads
+  looks otherwise only because its _own_ root `.gitignore` adds a blanket rule.)
+* **What is in `.beads/`**: the Dolt database (all issue history), the `bd remember`
+  memory store (**unreadable on 1.1.0** — same write-gate), and `.beads-credential-key`
+  (a per-machine federation key that must never be committed).
+* **State the inertness truthfully, from what actually happened.** "No hooks, no daemon"
+  is a claim, not a template: if the daemon survived SIGTERM in workflow 3 (Stop the
+  daemon), **say it is still running.** And even a stopped daemon returns the moment
+  anyone runs `bd` in that repo again.
+* **Machine-global leftovers** — name them, give the command, and state plainly that this
+  skill did **not** touch them:
+  * the binary — `brew uninstall beads`
+  * `Bash(bd …)` permission entries in `~/.claude/settings.json`, **and** any global
+    `bd prime` SessionStart hook there (`bd setup claude --global` installs one — a user
+    can finish this skill, be told the project is inert, and still have `bd prime` fire
+    in _every_ repo)
+  * `~/.beads/` — **`ls` it and report what is there.** Do not assume its contents and do
+    not recommend deleting it: a skill whose thesis is "I never delete anything" has no
+    business advising deletion of a path it has not inspected.
+
+## Guidelines
+
+* **Never delete `.beads/`, and never offer to.** The whole reason this skill is safe
+  to run is that it cannot lose data. Deletion is a separate, manual decision the user
+  makes with full sight of what is in there.
+* **Reversibility is a claim you must CHECK, not a property of this skill.** The hooksPath
+  unset is reversible only when `hooks.reArmCommand` is non-null — it captures the exact old
+  value, scope-bearing and shell-escaped. When it is `null`, `hooks.reArmError` says why and
+  there is **no proven way to undo the unset**; say that rather than improvising a command.
+  Separately, the `CLAUDE.md`/`AGENTS.md` block strips have **no captured original at all**
+  (only the JSON files get a `.bak`), so "everything here is reversible" was never true of
+  them. Report what is reversible and what is not, per item.
+* **Check before you unset.** `core.hooksPath` and the `.git/hooks/` files may not be
+  bd's. Verify ownership (the resolved `.beads/hooks` path; the `BEGIN BEADS
+  INTEGRATION` markers) before touching either.
+* **Silence is the failure mode to fear here.** Every wrong assumption in this skill —
+  a relative hooksPath, a hardcoded marker version, a task count nobody counted — fails
+  by doing _nothing_ while reporting success. When a check finds nothing, say it found
+  nothing.
+* **Report the memory store honestly.** `bd remember` content is unreachable on 1.1.0.
+  Do not imply it was migrated or preserved — it was not. Recovering it needs a
+  downgrade to 1.0.5, which is the user's decision.

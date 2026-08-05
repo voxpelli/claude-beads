@@ -1,0 +1,17 @@
+{
+  "description": "swarm-wave: after a compaction, name the SWARM/RETRO files touched in the last hour so a wave in flight is not resumed blind.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

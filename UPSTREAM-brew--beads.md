@@ -1,10 +1,26 @@
 # UPSTREAM-brew--beads
 
+> **ARCHIVE — beads is a RETIRED dependency of this project. Nothing here is actionable.**
+>
+> This project migrated off `bd` onto the `diarie` flat-YAML tracker; `bd`'s **writes are dead**
+> (the 1.1.0 migrate-gate panics on every write in every repo using the global binary), and
+> `.beads/` survives here only as a frozen, readable export. The entries below were real friction
+> when they were logged and are kept as provenance — do **not** work them, escalate them, or
+> promote them to Basic Memory as live upstream friction.
+>
+> **Why this file still exists at all:** the upstream-tracking convention deletes an ephemeral
+> non-vendor file once its entries resolve. These never resolved — they were _abandoned_ when the
+> dependency was dropped, which is a different state, and deleting the file would erase the record
+> of what the migration was escaping. Kept deliberately, marked so no reader mistakes it for live.
+>
+> _Trigger to revive: beads regains a working write path AND this project reconsiders it as a
+> dependency. Neither is expected._
+
 Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `bd` CLI). Repo transferred from `steveyegge/beads` to `gastownhall/beads` during the v1.0.0 cycle (2026-04-03); old URL still redirects, but the Homebrew formula `homepage` field still references the old URL as of 2026-05.
 
 ## Feature Requests
 
-- **Add `validation.on-update` config key (template validation gap on update)**
+* **Add `validation.on-update` config key (template validation gap on update)**
   (2026-05-04) — `bd` exposes `validation.on-create`, `validation.on-close`,
   `validation.on-sync`, and `validation.metadata.mode` config keys, but no
   `validation.on-update`. Result: an agent or user can call
@@ -23,7 +39,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   re-validates at close time so stripped acceptance criteria block the close;
   `bd lint` catches it on demand. Neither covers the in-flight window.
 
-- **DeepWiki index lags binary on `validation.*` config keys** (2026-05-04) —
+* **DeepWiki index lags binary on `validation.*` config keys** (2026-05-04) —
   Asked DeepWiki for the full list of `validation.*` config keys; it returned
   only `validation.on-create` and `validation.on-sync`. The installed binary
   (v1.0.3) accepts `bd config set validation.on-close error` and
@@ -36,7 +52,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   the binary instead. Ownership: deepwiki (not beads) · Workaround: full —
   always cross-check `bd config list` or read source.
 
-- **Expose required-sections-per-type via `bd types --required-sections` or
+* **Expose required-sections-per-type via `bd types --required-sections` or
   similar** (2026-05-04) — Validation gates enforce per-type required
   markdown sections (e.g. spike requires `## Goal` + `## Findings`, decision
   requires `## Decision` + `## Rationale` + `## Alternatives Considered`,
@@ -49,11 +65,12 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   pass validation on first try. Ownership: upstream · Workaround: partial
   — discoverable empirically per-type by attempting creates with `--json`.
 
-- **Add `--set-section <name> <content>` to `bd update` for granular spike resolution** (2026-05-05) — `bd update <id> --description=<full>` requires re-supplying the entire issue description to populate just one section (e.g. a spike's `## Findings`). For agent-driven spike-resolution workflows this means HEREDOCing the entire description with all unchanged sections preserved verbatim — cumbersome and risks transcription errors. Concrete fix: add `bd update <id> --set-section "Findings" "<content>"` (or similar) that reads the current description, splices the named section, and writes back. Particularly impactful for multi-spike sprints where 3+ spikes need findings populated from agent output. Severity: minor · Ownership: upstream · Workaround: full — HEREDOC the full description, but verbose. Source: RETRO-9 "What could improve".
+* **Add `--set-section <name> <content>` to `bd update` for granular spike resolution** (2026-05-05) — `bd update <id> --description=<full>` requires re-supplying the entire issue description to populate just one section (e.g. a spike's `## Findings`). For agent-driven spike-resolution workflows this means HEREDOCing the entire description with all unchanged sections preserved verbatim — cumbersome and risks transcription errors. Concrete fix: add `bd update <id> --set-section "Findings" "<content>"` (or similar) that reads the current description, splices the named section, and writes back. Particularly impactful for multi-spike sprints where 3+ spikes need findings populated from agent output. Severity: minor · Ownership: upstream · Workaround: full — HEREDOC the full description, but verbose. Source: RETRO-9 "What could improve".
 
-- **`bd ready` default `--limit 10` makes \~60% of ready work invisible to agents** (2026-05-05) — `bd ready` defaults to `--limit 10` (per `bd ready --help`); on a healthy backlog this hides most ready work. In a sprint this session the project had 26 ready issues but `bd ready` returned only 10 — the 14 P3/P4 ready issues under epic `vp-beads-0e9` were silently absent from the agent's view of the backlog. The `bd prime` workflow context that ships in SessionStart never mentions the limit. Two complementary fixes: (a) raise the default to e.g. 25 so most projects see all ready work, AND/OR (b) document the `--limit 10` default in `bd prime`'s "Finding Work" section so agents know to override. Severity: minor · Ownership: upstream · Workaround: full — pass `--limit 100` (or `--json | jq` for full set). Source: RETRO-9 "What could improve".
+* **`bd ready` default `--limit 10` makes \~60% of ready work invisible to agents** (2026-05-05) — `bd ready` defaults to `--limit 10` (per `bd ready --help`); on a healthy backlog this hides most ready work. In a sprint this session the project had 26 ready issues but `bd ready` returned only 10 — the 14 P3/P4 ready issues under epic `vp-beads-0e9` were silently absent from the agent's view of the backlog. The `bd prime` workflow context that ships in SessionStart never mentions the limit. Two complementary fixes: (a) raise the default to e.g. 25 so most projects see all ready work, AND/OR (b) document the `--limit 10` default in `bd prime`'s "Finding Work" section so agents know to override. Severity: minor · Ownership: upstream · Workaround: full — pass `--limit 0` (unlimited). Source: RETRO-9 "What could improve".
+  _(Partially fixed upstream — re-verified 2026-07-11 against bd 1.1.0: `bd ready --help` now reads `-n, --limit int … (use 0 for unlimited) (default 100)`. The default rose 10 → 100, so the original "60% invisible" symptom is gone for normal backlogs, but the truncation class remains above 100 and the default is still undocumented in `bd prime`. Keep open at reduced severity. **The stale "default 10" text above misled a review this session into prescribing `--limit 1000`** — the correct override is `--limit 0`.)_
 
-- **`bd ready` surfaces non-actionable issue types (`decision`, `milestone`)
+* **`bd ready` surfaces non-actionable issue types (`decision`, `milestone`)
   as if they were workable** (2026-06-03) — `bd ready` filters purely on status
   (open/reopened) plus unmet blockers; it never filters on issue **type**. So an
   open `decision` or `milestone` with no blockers appears in the ready queue
@@ -75,7 +92,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   Source: vp-beads-48f (a `decision` found sitting in `bd ready` after its
   implementation shipped).
 
-- **`bd` text-mode list output is agent-hostile (filler line, glyphs, legend)**
+* **`bd` text-mode list output is agent-hostile (filler line, glyphs, legend)**
   (2026-06-03) — Text-mode `bd` list commands (`bd list`, `bd ready`,
   `bd blocked`, `bd list --status in_progress`) emit human formatting that
   pollutes agent parsing: a `No issues found.` filler line on the empty case,
@@ -89,7 +106,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   vp-beads `session-start.sh` compaction-recovery snapshot and the
   `/harden-memories` skill already do). Source: vp-beads-17y.
 
-- **Add `--type` flag to `bd dep add` for relationship typing** (2026-05-04)
+* **Add `--type` flag to `bd dep add` for relationship typing** (2026-05-04)
   — `bd dep add` only supports the implicit "blocks/depends-on" relationship
   type. Other useful relationship types (`related`, `duplicates`,
   `references`, `superseded-by`) must be tracked via labels or comment text
@@ -108,7 +125,26 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
 
 ## Bugs
 
-- **Inconsistent metadata-key validation across `--metadata` vs `--set-metadata`/`--unset-metadata`**
+* **Dolt-daemon operational-reliability cluster (the migration's complexity-delta driver)**
+  (2026-06-09, forensic audit) — observed _live_ in this repo's `.beads/dolt-server.log`
+  and `ps`: the `dolt sql-server` daemon **restarted 22× across 9 ports** (this session
+  warned `port 51925→53274, previous unreachable`); **5 of 22 starts (23%) died before
+  "Server ready"**; **2 orphaned `dolt sql-server` processes** were running un-reaped
+  (28+69 MB); migration 28 emits fatal **"nothing to commit"** warning spam on fresh DBs.
+  Upstream: `#3516`/`#3709` (port-bound false-success + unreachable-port fallback),
+  `#2559` (connect-after-restart fails), `#4282` (orphaned servers — upstream reports 7 @
+  \~2 GB / 67 W), `#4137` (migration 28 fatal), `#4128`/`#3878` (write-path re-imports
+  JSONL per call → OOM + lock-fight at swarm scale), `#4259` (migration-0043 breaks
+  cross-machine Dolt sync). **Class: fundamental** (architectural — inherent to a
+  daemon-fronted versioned-SQL store; can't be configured away). Single-host solo use pays
+  this full tax to serve an issue list flat-files-on-git would serve with zero added
+  surface — the documented basis for the bd→flat-file migration (`vp-beads-l9i`,
+  `RESEARCH-tracker-migration-synthesis-2026-06.md` §3). _Honest caveat:_ bd's read path is
+  fast (`bd stats` \~0.38 s, `bd doctor` 70/72) and the data-loss bugs (#3948 family) are
+  config-gated and neutralized here (`export.auto=false`) — the friction is the daemon
+  layer, not the data layer.
+
+* **Inconsistent metadata-key validation across `--metadata` vs `--set-metadata`/`--unset-metadata`**
   (2026-05-04) — `bd update <id> --metadata '{"unknown-field": "x"}'` accepts the
   hyphenated key without complaint; the resulting metadata stores
   `unknown-field` as a regular field. But the granular flags
@@ -124,7 +160,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   `--unset-metadata` (and disciplined underscore-only key naming) to stay
   consistent with bd's internal convention (`execution_agent_type` etc.).
 
-- **No way to delete a metadata key once set with a name `--unset-metadata` rejects**
+* **No way to delete a metadata key once set with a name `--unset-metadata` rejects**
   (2026-05-04) — Continuation of the above bug. If a key with disallowed
   characters (hyphens, etc.) ends up in metadata via the `--metadata` JSON
   path, `--unset-metadata <key>` rejects on the regex. Setting the key to
@@ -137,7 +173,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   is theoretically possible but wildly disproportionate; in practice orphan
   keys persist as cosmetic clutter.
 
-- **`bd create --help` lists outdated `--type` allowed values** (2026-05-04)
+* **`bd create --help` lists outdated `--type` allowed values** (2026-05-04)
   — Help text for `bd create` reads
   `Issue type (bug|feature|task|epic|chore|decision); custom types require
   types.custom config`. The binary actually accepts three additional core
@@ -151,7 +187,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   `bd types` so they stay in sync. Severity: minor · Ownership: upstream
   · Workaround: full — query `bd types` for the authoritative list.
 
-- **`/beads:decision` slash command's supersede workflow uses non-existent
+* **`/beads:decision` slash command's supersede workflow uses non-existent
   `bd dep add --type related` syntax** (2026-05-04) — The
   upstream `beads` Claude Code plugin (in `beads-marketplace`, ships
   alongside the CLI from `gastownhall/beads`) includes a slash command at
@@ -170,7 +206,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   — document the working syntax manually and avoid running the slash
   command's supersede helper.
 
-- **`bd doctor`'s "Claude Hook Completeness" check ignores plugin-provided
+* **`bd doctor`'s "Claude Hook Completeness" check ignores plugin-provided
   hooks** (2026-05-04) — `bd doctor` (v1.0.3) reports a "Missing hook
   event(s): PreCompact" warning when checking for SessionStart and
   PreCompact hooks, recommending `bd setup claude` as the fix. The check
@@ -189,7 +225,7 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
   upstream · Workaround: full — functionality is unaffected; only the
   doctor report is a false positive.
 
-- **`bd close` can silently revert when `.beads/` is gitignored and auto-export
+* **`bd close` can silently revert when `.beads/` is gitignored and auto-export
   is on** (2026-06-03) — With `export.auto=true` + `export.git-add=true` and a
   gitignored `.beads/`, a `bd close` succeeds in Dolt but the auto-export
   `git add` fails (path ignored) and the next command's auto-import reverts the
@@ -206,4 +242,4 @@ Tracking friction with [brew:beads](https://github.com/gastownhall/beads) (the `
 
 ## Upstream Opportunities
 
-*No entries yet.*
+_No entries yet._

@@ -8,7 +8,27 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 
 ## Shared Patterns
 
-- **validate-plugin.mjs tool-reference audit** (2026-03-28) — Both plugins maintain a
+* **ast-grep structural-lint suite** (2026-07-11) — Adopted from vp-knowledge, which
+  had it first: `sgconfig.yml` → `.ast-grep/rules/` + `.ast-grep/rule-tests/`
+  (snapshot-tested via `ast-grep test`), `check:ast-grep` + `check:ast-grep-test`
+  stages, and a pinned `@ast-grep/cli` devDep. vp-beads copied the layout and seeded
+  it with rules of its own, notably `no-hardcoded-tracker-dir`.
+  Status: drifting · Last verified: 2026-07-29
+  Note: **this row said `aligned` while describing two things that no longer exist on
+  this side**, and was caught at a reciprocation gate — where copying it would have
+  exported the staleness into vp-claude's repo. Corrected: (1) vp-beads no longer has a
+  `scripts/check-ast-grep.mjs` runner. `check:ast-grep` is a bare `ast-grep scan`, the
+  wrapper + path list + file-count floor having been dissolved in `56740fb` on the
+  steer "why are we special?" — so the `--format github` CI switch and the
+  "byte-similar runner" drift risk are both gone with it. vp-knowledge still runs a
+  runner script; that is now the divergence, not the shared part. (2) `TRACKER_DIR` no
+  longer centralizes the store path — diarie is replacing it with `TRACKER_DIRS` /
+  `trackerDirIn(root)` because the store is becoming a pair (`diarium/` | `.diarium/`),
+  and nothing here imports it at all. `no-hardcoded-tracker-dir` is now PREVENTIVE and
+  correctly finds nothing. The shared half that remains genuinely aligned is the config
+  LAYOUT and the rule-test convention, not the invocation.
+
+* **validate-plugin.mjs tool-reference audit** (2026-03-28) — Both plugins maintain a
   `validate-plugin.mjs` that audits `mcp__*__*` tool patterns mentioned in skill/agent
   prose against the declared `allowed-tools` or `tools` frontmatter. Changes to either
   copy must stay in sync or the audit logic will diverge and miss different bug classes.
@@ -19,48 +39,54 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   vp-knowledge 358) — vp-knowledge has added the gardener read-only invariant
   and `KNOWN_MCP_PREFIXES` allowlist since. Re-converge candidate.
 
-- **post-file-edit.sh shfmt auto-format** (2026-03-28) — Both plugins use a PostToolUse
+* **post-file-edit.sh shfmt auto-format** (2026-03-28) — Both plugins use a PostToolUse
   command hook (matcher: `Edit|Write`) that runs `shfmt -w` on edited shell scripts.
   Status: aligned · Last verified: 2026-04-05
   Note: v0.10.1 converged jq error handling, PLUGIN\_ROOT guard, and `scripts/*.sh`
   path matching from vp-knowledge.
 
-- **wc -l portability guard (|| count=0 + tr -d ' ')** (2026-03-28) — Both plugins guard
+* **wc -l portability guard (|| count=0 + tr -d ' ')** (2026-03-28) — Both plugins guard
   `wc -l` pipelines against failure with `|| count=0` and strip leading whitespace with
   `tr -d ' '` (macOS `wc -l` pads with spaces).
   Status: aligned · Last verified: 2026-03-28
 
-- **edit\_note append-with-section gotcha: independently documented by both plugins**
+* **edit\_note append-with-section gotcha: independently documented by both plugins**
   (2026-03-28) — Both encountered the `edit_note` + `append` + `section` EOF bug
   independently and wrote explicit warnings into reference files.
   Status: aligned · Last verified: 2026-03-28
 
-- **check-hooks.mjs hook integration test suite** (2026-04-04) — Both plugins maintain
-  `scripts/check-hooks.mjs` with shared core infrastructure: `parseJsonObjects()`
-  with `}\s*{` multi-object detection, `runHook()` via `spawnSync`, jq preflight.
-  Status: drifting · Last verified: 2026-05-04
-  Note: Reciprocation pass on 2026-05-04 measured an \~80-line gap (vp-beads 284
-  vs vp-knowledge 366). vp-knowledge added shfmt drift + clean-file paths
-  (Sprint 18) and gh-ecosystem hook coverage (v0.29.0). Strong extraction
-  candidate for shared `@voxpelli/claude-plugin-tools`.
+* **check-hooks.mjs hook integration test suite** (2026-04-04) — Both plugins maintain
+  hook suites with the same core infrastructure: `parseJsonObjects()` with `}\s*{`
+  multi-object detection, `runHook()` via `spawnSync`, jq preflight, and
+  `deliveredContext()` reading only through the `hookSpecificOutput` envelope.
+  Status: diverging · Last verified: 2026-08-05
+  Note: vp-knowledge keeps ONE `scripts/check-hooks.mjs`; vp-beads now has FOUR, one
+  per `plugins/*` workspace that ships a hook, because a workspace that the root
+  reaches in to test cannot be extracted cleanly. Four near-identical harnesses is
+  the strongest case yet for a shared `@voxpelli/claude-plugin-tools` — and the
+  reason the copies are tolerable meanwhile is that each is destined for a different
+  repo. vp-beads' copies additionally cross-check each hook's emitted
+  `hookEventName` against the event key it is wired under in its own `hooks.json`,
+  which vp-knowledge does not do and which its own hooks need (see the envelope
+  entry under Divergences).
 
-- **BM error classification hook** (2026-04-05) — Both plugins have a
+* **BM error classification hook** (2026-04-05) — Both plugins have a
   PostToolUseFailure command hook for BM tools that classifies errors into
   categories (`[server-unavailable]`, `[note-not-found]`, `[invalid-argument]`,
   `[permission-error]`, `[unknown-error]`) and emits recovery guidance.
   Status: aligned · Last verified: 2026-04-05
 
-- **Single-JSON output contract** (2026-04-05) — Both plugins enforce that every
+* **Single-JSON output contract** (2026-04-05) — Both plugins enforce that every
   hook script emits at most one JSON object on stdout. Claude Code reads only the
   first object; multi-object emission silently drops data. Both test suites verify
   this contract.
   Status: aligned · Last verified: 2026-04-05
 
-- **jq preflight in check-hooks.mjs** (2026-04-05) — Both test suites check for
+* **jq preflight in check-hooks.mjs** (2026-04-05) — Both test suites check for
   `jq` availability before running hook tests, since several hooks depend on it.
   Status: aligned · Last verified: 2026-04-05
 
-- **ESLint via @voxpelli/eslint-config (neostandard)** (2026-06-03) — Both
+* **ESLint via @voxpelli/eslint-config (neostandard)** (2026-06-03) — Both
   plugins lint their `.mjs` validation tooling with the `voxpelli()` factory
   from `@voxpelli/eslint-config`, using the same knobs: `noMocha: true` (both
   use a hand-rolled `test()` harness, not Mocha), `semi: false`, and `cliFiles`
@@ -70,25 +96,25 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   Note: one deliberate divergence — vp-knowledge has a `lib/`, so its `cliFiles`
   keeps `lib/` library-strict and it disables `unicorn/no-null` for its NDJSON
   wire format; vp-beads has no `lib/` (every `.mjs` is a CLI tool) and instead
-  *fixed* its `null`s to `undefined` (internal sentinels, not JSON emission), so
+  _fixed_ its `null`s to `undefined` (internal sentinels, not JSON emission), so
   it does not disable `no-null`. Both disable `unicorn/import-style` (uniform
   named node-builtin imports) and `security/detect-non-literal-{fs-filename,regexp}`
   (self-file validation tooling). Distinct from the `@voxpelli/remark-config`
-  candidate below: eslint config is *already* a shared external preset both
+  candidate below: eslint config is _already_ a shared external preset both
   consume, so it is a Shared Pattern, not an extraction candidate. Reciprocal
-  not yet filed on vp-knowledge's `SYNERGY-vp-beads.md` (it adopted at 15:36
-  the same day) — surface it via `/sibling-sync`.
+  **filed** on vp-knowledge's `SYNERGY-vp-beads.md` (verified 2026-07-10 via
+  `/sibling-sync`; they pin `@voxpelli/eslint-config@^25.1.0`, commit `a7ad92d`).
 
 ## Divergences
 
-- **PreCompact hook retired** (2026-05-04) — *(Converged 2026-06-02, vp-beads
-  v0.17.0)* Both plugins previously had a PreCompact command hook (independently
+* **PreCompact hook retired** (2026-05-04) — _(Converged 2026-06-02, vp-beads
+  v0.17.0)_ Both plugins previously had a PreCompact command hook (independently
   converted from `prompt` to `command`). vp-knowledge retired theirs in v0.28.0
   (commit `624e3df`); vp-beads retired its PreCompact **and** PostCompact in
   v0.17.0. Both sides are now PreCompact-free.
   Convergence path: adopt-theirs · Status: converged
 
-- **Compaction-capture hook slot — shared finding (for siblings)** (2026-06-02) —
+* **Compaction-capture hook slot — shared finding (for siblings)** (2026-06-02) —
   Verified against the live Claude Code hooks docs
   (`https://code.claude.com/docs/en/hooks`): **PreCompact** `additionalContext`
   goes to the non-agentic summarizer (dead letter), and **PostCompact** is
@@ -119,64 +145,73 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   now PostCompact-free for context injection.
   Convergence path: adopt-theirs · Status: converged · Last verified: 2026-06-03
 
-- **PostToolUseFailure hook type** (2026-03-28) — *(Resolved 2026-04-04, v0.10.0)*
+* **PostToolUseFailure hook type** (2026-03-28) — _(Resolved 2026-04-04, v0.10.0)_
   Both plugins now use command hooks with stdin JSON parsing.
   Convergence path: adopt-theirs · Status: converged
 
-- **npm-run-all2 parallel check stages** (2026-05-29) — *(Converged 2026-05-29)*
+* **npm-run-all2 parallel check stages** (2026-05-29) — _(Converged 2026-05-29)_
   vp-claude adopted `npm-run-all2@^7.0.0` + `run-p check:*`, matching vp-beads
   and vp-git. Status: converged · Last verified: 2026-05-29
   Note: Reciprocated from vp-claude's `SYNERGY-vp-beads.md` entry. Sprint 19's
   pass falsely claimed convergence; finally real on 2026-05-29.
   Discrepancies found on verification: vp-claude has **6** sub-checks (adds
   `check:contract` and `check:distance` beyond vp-beads's 4), and `check:md`
-  lacks `--ignore-path .gitignore`. The `run-p check:*` *pattern* converged;
+  lacks `--ignore-path .gitignore`. The `run-p check:*` _pattern_ converged;
   the sub-check sets are not identical. Not documented in vp-claude CHANGELOG.
 
-- **PostToolUse BM write-validation hook** (2026-03-28) — *(Resolved 2026-04-05,
-  v0.10.1)* vp-knowledge provides `post-bm-write-validate.sh`; vp-beads relies on
+* **PostToolUse BM write-validation hook** (2026-03-28) — _(Resolved 2026-04-05,
+  v0.10.1)_ vp-knowledge provides `post-bm-write-validate.sh`; vp-beads relies on
   it via the layered plugin dependency rather than duplicating. Decision: do not
   duplicate hooks that vp-knowledge already provides.
   Convergence path: delegate-to-theirs · Status: resolved (by design)
 
-- **Agent count and model selection** (2026-03-28) — vp-knowledge has three agents
-  (knowledge-gardener, knowledge-maintainer, knowledge-primer); vp-beads has one
-  (sprint-review). vp-knowledge's gardener specifies `model: sonnet` explicitly;
-  vp-beads sprint-review uses `model: inherit`. Both approaches are deliberate.
-  Convergence path: accept-difference · Reason: different task profiles justify
-  different model strategies
+* **Agent count and model selection** (2026-03-28) — vp-knowledge has four agents
+  (knowledge-gardener, knowledge-maintainer, knowledge-primer, raindrop-gardener
+  — count corrected 2026-07-10; was recorded as three); vp-beads had one
+  (sprint-review, retired per P1.4 2026-07-20 — now has zero agents).
+  vp-knowledge's gardener specifies `model: sonnet` explicitly;
+  sprint-review used `model: inherit`. Both approaches were deliberate.
+  Convergence path: moot — sprint-review retired. vp-knowledge's approach
+  stands as the pattern for any future agent work.
 
-- **Skill invocation layering: three levels vs two levels** (2026-03-28) — vp-beads
+* **Skill invocation layering: three levels vs two levels** (2026-03-28) — vp-beads
   uses three-level invocation (SessionStart hook → user invokes skill → agent as
   read-only gate). vp-knowledge uses two-level (hints + skills, agents as workers).
   Convergence path: accept-difference · Reason: vp-beads sprint lifecycle justifies
   the extra agent layer
-  Note: Distinct from the three-tier *memory capture* hierarchy
+  Note: Distinct from the three-tier _memory capture_ hierarchy
   (`engineering/agents/three-memory-systems-taxonomy-and-graduation`).
 
-- **PreToolUse hook** (2026-04-05) — vp-knowledge has `pre-bash-no-python.sh`
+* **PreToolUse hook** (2026-04-05) — vp-knowledge has `pre-bash-no-python.sh`
   (prevents Python scripts in Bash); vp-beads has no PreToolUse hooks.
   Convergence path: accept-difference · Reason: Python prevention is
   vp-knowledge-specific (protects BM notes from script-based writes)
 
-- **PostToolUseFailure matcher scope** (2026-04-05) — vp-beads matches 7 BM tools
-  (write, edit, read, search, schema\_validate, schema\_diff, schema\_infer);
-  vp-knowledge matches 5 (write, edit, schema\_validate, schema\_diff, schema\_infer).
-  vp-beads covers more tools because it uses read/search more heavily in skills.
-  Convergence path: accept-difference · Reason: different tool usage profiles
+* **PostToolUseFailure matcher scope** (2026-04-05) — _(Resolved 2026-07-29 —
+  vp-beads deleted its hook; adopt-theirs)_ vp-beads matched 7 BM tools (write,
+  edit, read, search, schema\_validate, schema\_diff, schema\_infer);
+  vp-knowledge matches 5 (write, edit, schema\_validate, schema\_diff,
+  schema\_infer). This was filed as `accept-difference` on the reading that the
+  two plugins have different tool-usage profiles — **which mistook a duplicate
+  for a divergence.** Both plugins are always co-installed, so the two hooks
+  were not two profiles but one event handled twice, injecting contradictory
+  recovery advice into the same failure. The narrower matcher was also the
+  correct one: vp-knowledge excludes `read_note`/`search_notes` deliberately,
+  because a failed search is common and benign. Resolved by deleting vp-beads'
+  copy (`vp-beads-hkd`); vp-knowledge owns Basic Memory infrastructure.
 
-- **Hook type vocabulary** (2026-04-05) — v0.10.1 converged: both validators now
+* **Hook type vocabulary** (2026-04-05) — v0.10.1 converged: both validators now
   accept `command`, `prompt`, `agent`, `http`. Previously vp-beads only accepted
   `command`/`prompt`.
   Convergence path: adopt-theirs · Status: converged
 
-- **Frontmatter features** (2026-04-05) — vp-knowledge v0.21.0 uses `skills`
+* **Frontmatter features** (2026-04-05) — vp-knowledge v0.21.0 uses `skills`
   (agent preloading), `user-invocable: false` (reference-only skills), and `effort`
   in agent/skill frontmatter. vp-beads v0.10.1 validates these fields but does not
   use them yet (no non-invocable skills, no agent skill preloading).
   Convergence path: evaluate · Reason: adopt when vp-beads has a use case
 
-- **remark config richness: pinned settings, GFM, link and list-marker
+* **remark config richness: pinned settings, GFM, link and list-marker
   enforcement** (2026-06-02) — vp-beads (v0.16.0 lint foundation) pins
   `remarkConfig.settings` (bullet `-`, emphasis/strong `*`, rule `-`, fenced,
   one-space list indent) and adds `remark-gfm` (activates the GFM
@@ -198,7 +233,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   core is the converged surface; full convergence rides the `@voxpelli/remark-config`
   extraction candidate.
 
-- **Private SYNERGY overlay: `.local.md` suffix vs `PRIVATE-SYNERGY-` prefix**
+* **Private SYNERGY overlay: `.local.md` suffix vs `PRIVATE-SYNERGY-` prefix**
   (2026-06-03) — Both plugins protect proprietary↔public synergy content from
   bilateral comparison and BM promotion, but via different file conventions.
   vp-claude uses a `SYNERGY-<name>.local.md` file pointed to by the registry
@@ -208,41 +243,44 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   alongside the shared one, gitignored, skill-aware). This shipped design
   resolves vp-claude's `UPSTREAM-vp-beads.md` `.local.md` feature request — but
   with a different shape than proposed.
-  Convergence path: evaluate · Status: drifting · Last verified: 2026-06-03
-  Reason: decide whether to adopt vp-beads's `PRIVATE-SYNERGY-` convention
-  (migrating the gitignored `.local.md` file to a `PRIVATE-SYNERGY-` overlay) or
-  keep the `.local.md` workaround. Adoption would re-converge the marketplace on
-  one private-overlay mechanism. (Reciprocated from vp-claude's
-  `SYNERGY-vp-beads.md` 2026-06-03 — re-verify from vp-beads's POV.)
+  Convergence path: evaluate · Status: converged · Last verified: 2026-07-10
+  Reason: RESOLVED — vp-claude adopted vp-beads's `PRIVATE-SYNERGY-` convention.
+  Verified 2026-07-10 (`/sibling-sync`): no `SYNERGY-*.local.md` file remains in
+  vp-claude; its sole private sibling is filed as `PRIVATE-SYNERGY-weft-ai.md`
+  and `.gitignore` carries the `PRIVATE-SYNERGY-*.md` wildcard. Only a vestigial
+  `SYNERGY-*.local.md` gitignore line (`.gitignore:9`) survives, matching no
+  file. The marketplace is re-converged on one private-overlay mechanism.
+  Note: both sides' rows still read `drifting` at that check — the `Status:`
+  fields agreed, so bilateral drift detection could not fire. Convergence was
+  only visible from the filesystem, not from either record.
 
-- **Private sibling registration requires a committed entry (no local-only siblings)**
-  (2026-06-03) — vp-beads's `synergy-registry.local.json` only *overrides* fields
+* **Private sibling registration requires a committed entry (no local-only siblings)**
+  (2026-06-03) — vp-beads's `synergy-registry.local.json` only _overrides_ fields
   of an entry that already exists in the committed `synergy-registry.json`; a
   `.local.json`-only entry (name absent from the committed base) is ignored
   (`sibling-sync/SKILL.md:106-107`). So a fully-private proprietary
   (open-core-partner) sibling cannot be a recognized, sibling-syncable sibling
-  without a committed entry naming it — `PRIVATE-SYNERGY-` made the *content*
-  private, but *registration* (the relationship's existence) is still forced
+  without a committed entry naming it — `PRIVATE-SYNERGY-` made the _content_
+  private, but _registration_ (the relationship's existence) is still forced
   public. vp-claude wants local-only registration for proprietary partners.
-  Convergence path: propose-shared · Status: drifting · Last verified: 2026-06-03
-  Reason: filed as a feature request in vp-claude's `UPSTREAM-vp-beads.md`
-  ("synergy-registry: support local-only sibling entries"). Until shipped, the
-  workaround is either a committed entry (public footprint) or a hand-maintained
-  `PRIVATE-SYNERGY-<sibling>.md` doc kept outside the registry machinery.
-  (Reciprocated from vp-claude's `SYNERGY-vp-beads.md` 2026-06-03.)
-  **Implemented (vp-beads-a2k, pending v0.18.0):** `.local.json` now **adds**
-  private siblings when their `file` is `PRIVATE-SYNERGY-<name>.md` — reconciled
-  to ride the existing `PRIVATE-` prefix (no new `local-only` flag), so the
-  "never committed / never promoted / never reciprocated" guarantees are
-  inherited as filesystem facts. A no-commit-leak invariant (private name never
-  reaches a committed file) is enforced by `validate-plugin.mjs` (errors on a
-  `PRIVATE-SYNERGY-*` base entry or a per-name `.gitignore` line). vp-knowledge
-  may now adopt the same convention to drop its `.local.md` workaround — flip
-  this to `converged` once both sides ship.
+  Convergence path: propose-shared · Status: converged · Last verified: 2026-07-10
+  Reason: RESOLVED — both sides shipped. vp-beads's `.local.json` now **adds**
+  private siblings when their `file` is `PRIVATE-SYNERGY-<name>.md` (vp-beads-a2k,
+  shipped v0.18.0, 2026-06-04) — reconciled to ride the existing `PRIVATE-` prefix
+  (no new `local-only` flag), so the "never committed / never promoted / never
+  reciprocated" guarantees are inherited as filesystem facts. A no-commit-leak
+  invariant (private name never reaches a committed file) is enforced by
+  `validate-plugin.mjs` (errors on a `PRIVATE-SYNERGY-*` base entry or a per-name
+  `.gitignore` line). vp-claude consumes it live: `weft-ai` is registered solely in
+  its gitignored `synergy-registry.local.json` with
+  `file: PRIVATE-SYNERGY-weft-ai.md` and no committed base entry — verified
+  2026-07-10 via `/sibling-sync`. Its `UPSTREAM-vp-beads.md` feature request is
+  annotated `_(Resolved 2026-06-16)_` and its `SYNERGY-vp-beads.md` row reads
+  `converged` (LV 2026-07-07); this row was the lagging half.
 
 ## Extraction Candidates
 
-- **validate-plugin.mjs** (2026-03-28) — Both plugins maintain independent copies
+* **validate-plugin.mjs** (2026-03-28) — Both plugins maintain independent copies
   with \~98% overlap. A shared `@voxpelli/validate-claude-plugin` package would
   eliminate duplication. After v0.10.1 convergence, the remaining differences are
   plugin-specific: gardener read-only invariant (vp-knowledge), hook count in
@@ -250,14 +288,14 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   Source: validate-plugin.mjs · Readiness: needs-cleanup
   Effort: moderate
 
-- **wc -l portability guard pattern** (2026-03-28) — Safe integer counting in
+* **wc -l portability guard pattern** (2026-03-28) — Safe integer counting in
   shell hooks. Non-obvious, easy to get wrong, needed by any Claude plugin.
-  Source: hooks/session-start.sh · Readiness: ready
+  Source: plugins/ledger/hooks/session-start.sh · Readiness: ready
   Effort: trivial
 
-- **Paired bundle: `@voxpelli/claude-plugin-tools` shared package** (2026-05-04) —
+* **Paired bundle: `@voxpelli/claude-plugin-tools` shared package** (2026-05-04) —
   Cross-reference candidate linking the two preceding entries with
-  `scripts/check-hooks.mjs` (Shared Patterns, drifting) and any future plugin's
+  the hook test suites (Shared Patterns, diverging — now four copies here) and any future plugin's
   scaffolding artifacts (e.g., vp-git's `plugin-utils.mjs`). All would benefit
   from being maintained in one place — co-extraction amortizes package-creation
   cost across multiple artifacts and prevents future bilateral drift across the
@@ -266,7 +304,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   Source: this file + vp-knowledge's `SYNERGY-vp-beads.md` · Readiness: proof-of-concept
   Effort: significant
 
-- **Shared `@voxpelli/remark-config` preset** (2026-06-02) — vp-beads's
+* **Shared `@voxpelli/remark-config` preset** (2026-06-02) — vp-beads's
   `remarkConfig` (pinned `settings` plus the `remark-gfm`, `remark-validate-links`,
   two-preset, and `remark-lint-unordered-list-marker-style` plugin stack) is a
   reusable lint+format contract that vp-knowledge and vp-git could consume
@@ -279,31 +317,31 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 
 ## They Have / We Don't
 
-- **knowledge-maintainer write agent with confirmation gates** (2026-03-28) —
+* **knowledge-maintainer write agent with confirmation gates** (2026-03-28) —
   vp-knowledge has a dedicated agent for BM writes with structured confirmation
   gates. vp-beads performs BM writes inline within skill workflows with manual
   per-step approval in prose.
   Priority: consider �� Effort: moderate
 
-- **Tag vocabulary standard** (2026-03-28) — vp-knowledge maintains a formal tag
+* **Tag vocabulary standard** (2026-03-28) — vp-knowledge maintains a formal tag
   vocabulary (`[decision]`, `[lesson]`, `[gotcha]`, `[friction]`). vp-beads has
   no formal tag vocabulary: the tags were previously embedded in `precompact.sh`'s
   heredoc, but that hook was retired in v0.17.0 and the condensed `session-start.sh`
   capture nudge no longer enumerates them — so the gap is now wider, not narrower.
   Priority: consider · Effort: trivial
 
-- **Schema system (ongoing)** (2026-03-28) �� vp-knowledge uses BM schema tools
+* **Schema system (ongoing)** (2026-03-28) �� vp-knowledge uses BM schema tools
   for ongoing validation. vp-beads only uses them in retrospective trend-review.
   Priority: consider · Effort: moderate
 
-- **vp-note-quality preloadable skill** (2026-04-05) — vp-knowledge v0.21.0
+* **vp-note-quality preloadable skill** (2026-04-05) — vp-knowledge v0.21.0
   ships a non-invocable `vp-note-quality` skill with the Note Quality Checklist
   (10-item anti-pattern prevention). Agents declare `skills: [vp-note-quality]`
   to preload it. vp-beads has no equivalent quality-gate skill.
   Priority: low (vp-beads writes fewer BM notes than vp-knowledge)
   Effort: trivial to adopt if needed
 
-- **knowledge-ask Q\&A skill** (2026-04-05) — vp-knowledge v0.21.0 added a
+* **knowledge-ask Q\&A skill** (2026-04-05) — vp-knowledge v0.21.0 added a
   `/knowledge-ask` skill for natural-language BM queries. vp-beads has no
   equivalent — BM queries are embedded in skill workflow steps.
   Priority: low (different use case — vp-beads queries are structured, not ad-hoc)

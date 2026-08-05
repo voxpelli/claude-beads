@@ -1,0 +1,16 @@
+# Tests a rule this repo CONSUMES from `@voxpelli/ast-grep-rules` — see the note in
+# `no-jsdoc-any-type-test.yml`. The `valid:` cases are the rule's two deliberate exclusions, so this
+# test proves the exclusions still hold, not merely that the match still fires.
+id: no-inline-jsdoc-import
+valid:
+# A JSDoc type ALIAS — the inline import IS the definition here, so hoisting it would delete a
+# cross-module re-export and leave the alias pointing at nothing.
+- "/** @typedef {import('node:fs').Stats} Stats */"
+# Type-predicate position — the hoisted `@import` form does not resolve there, so the inline import
+# must stay. Flagging it would drive a fix that breaks the type guard.
+- "/** @returns {v is import('node:fs').Stats} */"
+# Not a JSDoc block: the rule requires a leading `/**`.
+- "/* mentions import('node:fs').Stats in prose */"
+invalid:
+- "/** @param {import('node:fs').Stats} s */"
+- "/** @type {import('node:stream').Readable} */"

@@ -1,0 +1,22 @@
+id: no-jq-raw-interpolation
+language: bash
+message: >-
+  Don't build a jq program by interpolating a shell variable into a
+  double-quoted string — use `jq -cn --arg name "$var" '{name:$name}'`
+  (single-quoted program, value bound via --arg/--argjson) instead. Raw
+  interpolation breaks on quotes/backslashes in the value and reimplements
+  jq's own escaping badly — the exact anti-pattern every fetch-*-upstream.sh
+  script's emit() helper avoids.
+severity: warning
+rule:
+  kind: string
+  regex: '\{'
+  has:
+    kind: simple_expansion
+    stopBy: end
+  inside:
+    kind: command
+    has:
+      field: name
+      regex: '^jq$'
+    stopBy: end

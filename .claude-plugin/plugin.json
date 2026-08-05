@@ -1,12 +1,12 @@
 {
   "name": "vp-beads",
-  "version": "0.18.0",
-  "description": "Sprint workflow automation: backlog grooming, retrospectives, upstream vendor tracking, cross-project synergy tracking, swarm wave orchestration, vendor sync, and bilateral sibling reconciliation for projects using beads and Basic Memory.",
+  "version": "0.19.0",
+  "description": "Sprint workflow automation for projects using the diarie flat-YAML tracker and Basic Memory. Ships /retrospective and nothing else — the session hooks moved to the plugins that own them. Five sibling plugins live in this monorepo alongside it: ledger (upstream + sibling relationship tracking), swarm-wave (multi-agent orchestration), diarie-adopt (tracker migration), vp-dream (file-memory consolidation) and diarie (the everyday tracker hooks).",
   "author": {
     "name": "Pelle Wessman",
     "url": "https://github.com/voxpelli"
   },
   "repository": "https://github.com/voxpelli/claude-beads",
   "license": "MIT",
-  "keywords": ["beads", "basic-memory", "sprint", "vendor-management", "retrospective", "backlog", "synergy", "sibling-sync", "swarm", "multi-agent"]
+  "keywords": ["diarie", "flat-yaml", "basic-memory", "sprint", "retrospective", "ledger", "upstream-tracking", "swarm", "multi-agent"]
 }

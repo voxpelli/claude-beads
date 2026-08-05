@@ -1,0 +1,12 @@
+id: no-jq-raw-interpolation
+valid:
+- |
+  #!/bin/bash
+  jq -cn --arg name "$1" '{name:$name}'
+- |
+  #!/bin/bash
+  jq -r '.versions.stable // ""' "$API_CACHE"
+invalid:
+- |
+  #!/bin/bash
+  jq -cn "{name: \"$1\"}"

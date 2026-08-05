@@ -1,5 +1,7 @@
 import { voxpelli } from '@voxpelli/eslint-config'
 
+import jsdocSingleLineTagDescription from './eslint-local-rules/jsdoc-single-line-tag-description.js'
+
 // vp-beads ships pure markdown + JSON plus the .mjs validation tooling
 // (validate-plugin.mjs and everything under scripts/). neostandard via
 // @voxpelli/eslint-config lints that tooling; type-checking rules are
@@ -13,10 +15,26 @@ import { voxpelli } from '@voxpelli/eslint-config'
 //   - cliFiles:  there is no lib/ here — every .mjs IS a CLI tool, so
 //                process.exit(), console, and sync I/O are correct everywhere.
 export default [
+  {
+    // THE WORKSPACE OWNS ITS GATES; THE ROOT STOPS REACHING IN.
+    //
+    // This config used to lint `diarie/**/*.js` through a `cliFiles` glob — while `eslint` and
+    // `@voxpelli/eslint-config` lived only in the ROOT devDependencies. So a `git subtree split
+    // --prefix=diarie` would have taken the source and left the linter behind: an extracted
+    // package with no lint config, no lint dependency, and nothing to say so.
+    //
+    // diarie now has its own `eslint.config.js` and its own devDeps, and the root delegates via
+    // `check-workspaces` → `npm run check --workspaces --if-present`. Ignoring it here is not a coverage
+    // loss — it is what stops diarie being linted TWICE, by two configs that can drift.
+    name: 'vp-beads/delegate-to-workspace',
+    ignores: ['diarie/**'],
+  },
   ...voxpelli({
     noMocha: true,
     semi: false,
-    cliFiles: ['scripts/**/*.mjs', 'validate-plugin.mjs'],
+    // `plugins/*/scripts/**` is a glob, not an enumeration: a per-plugin list has to be
+    // edited every time a workspace is added, and the dissolution adds them one at a time.
+    cliFiles: ['scripts/**/*.mjs', 'plugins/*/scripts/**/*.mjs', 'validate-plugin.mjs'],
   }),
   {
     name: 'vp-beads/repo-style',
@@ -33,5 +51,15 @@ export default [
       'security/detect-non-literal-fs-filename': 'off',
       'security/detect-non-literal-regexp': 'off',
     },
+  },
+  {
+    // Adopted from voxpelli/liggare-mcp (see SYNERGY-liggare-mcp.md): a JSDoc tag
+    // description must stay on ONE physical line and cap at 100 chars — no published
+    // eslint-plugin-jsdoc rule enforces per-tag single-line. Advisory ('warn'): it
+    // surfaces the debt without reddening the build (`eslint` here has no
+    // --max-warnings 0), matching the repo's other advisory nudge, no-jsdoc-any-type.
+    name: 'vp-beads/jsdoc-single-line',
+    plugins: { local: { rules: { 'jsdoc-single-line-tag-description': jsdocSingleLineTagDescription } } },
+    rules: { 'local/jsdoc-single-line-tag-description': 'warn' },
   },
 ]

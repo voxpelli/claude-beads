@@ -1,0 +1,44 @@
+id: no-hardcoded-tracker-dir
+valid:
+  # The sanctioned form — resolved from the schema, never a literal. Deliberately NOT naming a
+  # specific export: diarie is replacing the singular `TRACKER_DIR` with `TRACKER_DIRS` /
+  # `trackerDirIn(root)` because the store became a pair, and a fixture pinned to the old name would
+  # teach the very thing the rule's message now refuses to promise.
+  - |
+    const dir = trackerDirIn(root)
+    const tasksDir = join(root, dir, 'tasks')
+  - |
+    stdout.write(`No ${trackerDirIn(root)}/tasks/ directory found — skipping.\n`)
+  # `backlog` is ALSO a priority value. It is not a path; do not flag it.
+  - |
+    export const VALID_PRIORITIES = new Set(['critical', 'high', 'medium', 'low', 'backlog'])
+  - |
+    export const PRIORITY_MAP = { '4': 'backlog' }
+  # A tasks-<slug>.yml filename that merely contains the word.
+  - |
+    write(`${TRACKER_DIR}/tasks/tasks-backlog.yml`, body)
+invalid:
+  # A hardcoded segment in path construction.
+  - |
+    const tasksDir = join(root, '.diarie', 'tasks')
+  # A hardcoded path inside a template literal.
+  - |
+    const p = `${root}/.diarie/tasks/tasks-x.yml`
+  # A guard message that would drift out of sync after a rename.
+  - |
+    stderr.write('refusing to write under .diarie/tasks/\n')
+  # The pre-rename legacy segment.
+  - |
+    const tasksDir = join(root, 'backlog/tasks')
+  # Both post-rename forms. The store is a PAIR, so a guard that knows only one of them
+  # silently stops guarding against repos using the other.
+  - |
+    const tasksDir = join(root, '.diarium', 'tasks')
+  - |
+    const tasksDir = join(root, 'diarium', 'tasks')
+  # Smuggled into a regex literal — neither a string nor a template_string, so this walked
+  # past the rule until `kind: regex` was added.
+  - |
+    const isStore = /^\.diarium\/tasks\//
+  - |
+    if (/\.diarie\/tasks/.test(p)) return true
