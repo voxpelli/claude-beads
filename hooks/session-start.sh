@@ -11,12 +11,12 @@
 #
 #   otherwise (startup/resume/clear) → sensitive-file warning, TRACKER PRIME
 #       (ready/blocked/in-progress — the orientation the external beads plugin's
-#       `bd prime` used to give), dormancy nudge, Dependabot alert summary,
-#       trend-review reminder.
+#       `bd prime` used to give), dormancy nudge, trend-review reminder.
 #
-# Emits exactly ONE JSON object with all content merged into additionalContext.
-# Prior versions emitted multiple separate objects; Claude Code reads only the
-# first and silently drops the rest.
+# Emits exactly ONE JSON object, through `emit_context` (which owns the payload
+# shape — see its header). Claude Code reads only the first object on stdout and
+# silently drops any others, so every collector appends to `parts` and the single
+# emitter merges them.
 #
 # Empty-state contract: the compact branch always emits (recovery preamble +
 # capture nudge); the startup branch emits nothing if no conditions are met.
@@ -47,6 +47,23 @@
 # so plain globals are the honest representation anyway.
 
 set -euo pipefail
+
+# --- The output contract. Both emit sites go through here. ---
+#
+# Claude Code reads `hookSpecificOutput.additionalContext`, and `hookEventName`
+# is required. A BARE top-level `{"additionalContext": …}` is silently dropped:
+# it is valid JSON, so it takes the JSON branch rather than the "any non-JSON
+# text on stdout is added as context" branch, gets parsed as a hook payload, and
+# the unrecognised top-level key is discarded. The hook exits 0 either way and
+# nothing anywhere reports the loss — so this wrapper exists to make the shape
+# impossible to get wrong at a call site.
+#
+# [shard destination: COPIED to every shard, not moved — it is the contract, not
+# a collector. A shard that hand-rolls its own jq re-opens the same hole.]
+emit_context() {
+	jq -n --arg msg "$1" \
+		'{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $msg}}'
+}
 
 # --- Resolve the `diarie` tracker CLI. ---
 #
@@ -358,7 +375,13 @@ check_dormancy() {
 	synergy_count=$(find . -maxdepth 1 -name "SYNERGY-*.md" 2>/dev/null | wc -l | tr -d ' ') || synergy_count=0
 
 	if [ "$upstream_count" -gt 0 ] || [ "$synergy_count" -gt 0 ]; then
-		recent=$(git rev-list --count --since="90 days ago" HEAD 2>/dev/null || echo "0")
+		# A repo we CANNOT measure is not a dormant one. Collapsing a failed
+		# `git rev-list` to 0 made the failure to measure into the strongest
+		# possible evidence for the very claim it failed to support — outside a
+		# git repo, or on an unborn HEAD, the nudge fired every time. A genuine
+		# 0 (a repo with commits, none in 90 days) still exits 0 and still counts.
+		recent=$(git rev-list --count --since="90 days ago" HEAD 2>/dev/null) || recent=""
+		[ -n "$recent" ] || return 0
 		if [ "$recent" -le 4 ]; then
 			if [ "$upstream_count" -gt 0 ] && [ "$synergy_count" -gt 0 ]; then
 				# shellcheck disable=SC2016
@@ -370,55 +393,6 @@ check_dormancy() {
 				# shellcheck disable=SC2016
 				parts+=("Low-activity repo with ${synergy_count} SYNERGY tracking file(s). Extraction candidates in dormant repos can stay unacted on for months. If the \`ledger\` plugin is installed, \`/ledger review\` advances ready candidates.")
 			fi
-		fi
-	fi
-	return 0
-}
-
-# Surface open Dependabot alerts at session start so vulnerabilities are
-# visible before `git push` prints them in remote output. Silent on every
-# failure path: missing gh, no GitHub remote, rate-limited, no alerts, or
-# any non-zero exit from gh. Never blocks the hook.
-# [shard destination: root dev tooling]
-check_dependabot() {
-	if command -v gh >/dev/null 2>&1; then
-		remote_url=$(git remote get-url origin 2>/dev/null || echo "")
-		# Parse owner/repo from common GitHub remote URL forms:
-		#   git@github.com:owner/repo.git
-		#   https://github.com/owner/repo.git
-		#   https://github.com/owner/repo
-		owner_repo=""
-		case "$remote_url" in
-		git@github.com:*)
-			owner_repo="${remote_url#git@github.com:}"
-			owner_repo="${owner_repo%.git}"
-			;;
-		https://github.com/* | http://github.com/*)
-			owner_repo="${remote_url#*github.com/}"
-			owner_repo="${owner_repo%.git}"
-			;;
-		esac
-		if [ -n "$owner_repo" ]; then
-			# Validate shape: must look like "owner/repo" with no extra slashes.
-			case "$owner_repo" in
-			*/*/*) owner_repo="" ;;
-			*/*) ;;
-			*) owner_repo="" ;;
-			esac
-		fi
-		if [ -n "$owner_repo" ]; then
-			# per_page=100 caps the count at 100 — repos with more open alerts
-			# will read as "100" rather than the true total. Acceptable for a
-			# session-start nudge (not an authoritative audit).
-			alert_count=$(gh api "repos/${owner_repo}/dependabot/alerts?state=open&per_page=100" --jq 'length' 2>/dev/null || echo "")
-			# Only emit when count is a positive integer.
-			case "$alert_count" in
-			'' | *[!0-9]*) ;;
-			0) ;;
-			*)
-				parts+=("[security] ${alert_count} open Dependabot alert(s) — https://github.com/${owner_repo}/security/dependabot")
-				;;
-			esac
 		fi
 	fi
 	return 0
@@ -481,7 +455,7 @@ if [ "$source" = "compact" ]; then
 
 ${part}"
 	done
-	jq -n --arg msg "$message" '{"additionalContext": $msg}'
+	emit_context "$message"
 	exit 0
 fi
 
@@ -489,7 +463,6 @@ check_beads_credential_key
 check_private_overlays
 tracker_prime
 check_dormancy
-check_dependabot
 check_trend_review
 
 # Exit silently if nothing to report
@@ -510,4 +483,4 @@ ${part}"
 	fi
 done
 
-jq -n --arg msg "$message" '{"additionalContext": $msg}'
+emit_context "$message"

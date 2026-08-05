@@ -397,7 +397,7 @@ if (existsSync(hooksPath)) {
               error(hooksPath, `hooks.${event}: hook type must be one of: ${[...VALID_HOOK_TYPES].join(', ')}, got "${String(hk.type)}"`)
             }
             if (hk.type === 'prompt') {
-              warn(hooksPath, `hooks.${event}: prompt hooks spawn a separate Haiku instance with no MCP tool access — use type: "command" with additionalContext unless this hook intentionally requires no MCP tools`)
+              warn(hooksPath, `hooks.${event}: prompt hooks spawn a separate Haiku instance with no MCP tool access — use type: "command" emitting {"hookSpecificOutput": {"hookEventName": "${event}", "additionalContext": …}} unless this hook intentionally requires no MCP tools`)
             }
             if (typeof hk.timeout !== 'number') {
               error(hooksPath, `hooks.${event}: hook missing "timeout" (number)`)

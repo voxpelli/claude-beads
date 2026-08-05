@@ -303,41 +303,60 @@ tasks:
 
   - id: vp-beads-sss
     title: 'P1.5 Shard session-start.sh across the owning plugins (B2 blocker)'
-    status: deferred
+    status: pending
     type: task
     priority: medium
     parent: vp-beads-dis
     deps:
       - vp-beads-wsk
+      - backlog/vp-beads-vgp
     labels:
       - chore
     acceptance_criteria:
       - >-
-        each block routed to its owning plugin's hooks/ — tracker-prime + .beads-credential-key
-        warning → diarie-adopt; dormancy-nudge + PRIVATE-SYNERGY leak-warning → ledger;
-        shfmt/Dependabot → root dev tooling
+        each block routed to its owning plugin's hooks/ — tracker_prime, collect_in_progress_claims,
+        diarie_ready_cmd and post-tasks-validate.sh → a NEW `plugins/diarie` plugin;
+        check_beads_credential_key → diarie-adopt; collect_open_upstream_files, collect_capture_nudge,
+        check_private_overlays and check_dormancy → ledger; collect_recent_sprint_files → swarm-wave
+      - >-
+        `plugins/diarie` is a fifth workspace built HERE but shaped to LEAVE — destined for
+        `voxpelli/diarie-skills` on the `ast-grep/agent-skill` pattern, extracted later via
+        `git subtree split` (row vp-beads-dsx). Self-containment is the acceptance criterion:
+        every gate that touches it must be local and travel with it
+      - >-
+        `emit_context` is COPIED into each shard, never re-hand-rolled — it is the output contract,
+        and a shard that writes its own jq re-opens the dropped-payload hole. Each shard also needs
+        its own hookEventName test; `deliveredContext` cannot know which event a given hook is wired to
+      - >-
+        each shard LABELS ITS OWN compaction output rather than one plugin owning a shared preamble,
+        so a user who installs only one plugin still gets framed output
+      - >-
+        check_dependabot is DROPPED, not routed (vp-beads-hkx) — no clean owner, duplicates a signal
+        GitHub already surfaces at push time, and its own comment concedes it is not authoritative
       - >-
         the RETRO mod-4 counter is DROPPED here and rebuilt in vp-knowledge session-reflect (handoff
         #1) — it cannot survive as a file-count once RETRO dissolves into BM notes
       - 'BM-failure-classify stays vp-knowledge''s (do not duplicate vp-knowledge hooks) — MOOT since 2026-07-29: vp-beads'' copy was deleted outright (vp-beads-hkd), so there is nothing left here to route'
       - >-
-        DEFERRED 2026-07-29, not dropped. Three independent reasons: an adversarial architect ruled
-        against the shard as scoped; vp-beads-46k records a PRIOR ruling against splitting this hook
-        into files (Claude Code fires one session-start.sh; a dir adds dispatch complexity at this
-        size); and `anthropics/claude-code#16538` — "Plugin SessionStart hooks don't surface
-        additionalContext" — is closed NOT PLANNED. This row's own AC concedes it cannot be verified
-        until Phase 2 exists
+        REVIVED 2026-08-05. Both deferral premises are settled and the third is withdrawn.
+        (1) `anthropics/claude-code#16538` is NOT evidence for anything here — vp-beads-hkx measured
+        the real discriminator, and it is ENVELOPE SHAPE, not the plugin boundary: every hook in this
+        repo emitted a bare `{"additionalContext": …}`, which Claude Code discards, while Anthropic's
+        own envelope-shaped hooks delivered in the same transcripts. Cross-plugin aggregation is
+        confirmed, so the "four hooks where only the first is read" risk does not exist.
+        (2) vp-beads-46k is the WRONG CITATION — it ruled against splitting ONE plugin's hook into
+        several files, which is the opposite structure from each plugin owning one.
+        (3) The adversarial architect's objection was "don't shard a broken emitter"; hkx fixed and
+        RED-proved the emitter first, which dissolves it
       - >-
-        REVIVAL TRIGGER (both, not either): (1) Phase 2 has landed, so there is a real multi-plugin
-        install to test against, AND (2) a two-plugin experiment settles whether cross-plugin
-        SessionStart `additionalContext` actually AGGREGATES. That second one is genuinely open — a
-        claude-code-guide agent read the docs as promising it does, #16538 says otherwise, and
-        neither is primary-source proof. Shipping the shard before that is settled risks four hooks
-        where only the first is read
+        BLOCKED-ON: vp-beads-vgp (now a real dep, not a note). `validate-plugin.mjs` reads exactly
+        `join(ROOT, 'hooks', 'hooks.json')`, so the nested `plugins/*/hooks/hooks.json` this row
+        creates would land unvalidated
       - >-
-        BLOCKED-ON, if revived: vp-beads-vgp. `validate-plugin.mjs` cannot see nested
-        `plugins/*/hooks/hooks.json` at all, and this row exists to create exactly those files —
-        so the shard would land unvalidated
+        root-scoped gates that go RED when `hooks/` empties, and must be retargeted with a RED-proof
+        in the new location: `check:sh` (`shellcheck hooks/*.sh`) and check-hooks.mjs's
+        `const HOOKS = join(ROOT, 'hooks')`. Also add `plugins/*/hooks/**` to POPULATED_SURFACES in
+        check-prose-commands.mjs — that surface is scanned but not floored, so it can silently empty
       - >-
         SUPERSEDED IN PART by vp-beads-46k (2026-07-29), which took the composable half: the hook is
         now ten named collectors, each carrying a `[shard destination: X]` header naming the plugin
@@ -933,3 +952,229 @@ tasks:
       trees nest synergy-tracker; the doubled swarm-wave is the real path convention; README is the LESS
       accurate tree). `diarie validate` clean.
     updated: '2026-07-22'
+
+  # ---- The hook-delivery correction and the root retirement (2026-08-05) ----
+
+  - id: vp-beads-hkx
+    title: 'Hooks never delivered anything — wrap every emit in hookSpecificOutput'
+    status: completed
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        MEASURED, not inferred. Session transcripts distinguish `hook_success` (what a hook printed)
+        from `hook_additional_context` (what reached the model). Across them: vp-beads' "Open UPSTREAM
+        tracking file" 25 emitted / 0 delivered, "Dependabot alert" 4/0, vp-knowledge's "Knowledge graph
+        context" 29/0 — all bare-shaped; Anthropic's own envelope-shaped hooks 42 emitted / 21 delivered
+        in the same transcripts. So the tracker prime, compaction recovery, both leak guards, the
+        dormancy nudge and edit-time store validation had never reached the model in any released version
+      - >-
+        MECHANISM: bare JSON falls between the two documented paths. The docs say "any NON-JSON text
+        written to stdout is added as context", so raw text is injected — but bare JSON is valid JSON,
+        takes the JSON branch, is parsed as a hook payload, and an unrecognised top-level key is
+        discarded. Exit stays 0 and nothing reports the loss
+      - >-
+        DONE — all three emit sites wrapped. session-start.sh's two now route through a single
+        `emit_context`; post-tasks-validate.sh emits hookEventName "PostToolUse" (no fallback exists
+        there at all — plain stdout on PostToolUse is debug-log only)
+      - >-
+        DONE — check-hooks.mjs no longer encodes the defect as its specification. Its typedef claimed
+        "`additionalContext` IS the payload" and 23 sites read it, so ~15 assertions checked the contents
+        of a string nobody received. Replaced with `deliveredContext`, which reads ONLY through the
+        envelope and THROWS on any other shape, so a regression fails BY NAME at every call site
+      - >-
+        DONE — RED-proved four ways, each planted and run, not argued: (a) fixing the hooks first turned
+        the un-fixed gate RED at 12 sites, which is the coupling demonstrated; (b) planting the bare form
+        named it at every site; (c) planting an envelope with no hookEventName named that instead;
+        (d) planting a WRONG-but-valid hookEventName failed exactly 1 test of 38 — proof the other 37
+        could not see it, which is why the event-name assertions were added
+      - >-
+        DONE — validate-plugin.mjs's prompt-hook warning was itself dispensing the defect: it told plugin
+        authors to "use type: command with additionalContext". Now names the full envelope
+      - >-
+        DONE — check_dependabot dropped entirely (function, call site, 3 tests, the gh stub helper).
+        check_dormancy's fabricated positive fixed: `git rev-list ... || echo "0"` turned a FAILED
+        measurement into the strongest possible evidence for the claim it failed to support, so the nudge
+        fired on every repo with no commits and outside git entirely. An unmeasurable repo is now silent
+      - >-
+        The collector had exactly ONE assertion and it asserted the fabricated positive — the combined
+        test's own fixture read "0 commits → dormant (rev-list fails, falls back to 0)". Two focused tests
+        added, including the unmeasurable-is-not-dormant direction, and the fixture now backdates a real
+        commit so it tests a genuinely dormant repo
+      - >-
+        NOT A ROW HERE: vp-knowledge has the identical bug (29 emitted / 0 delivered). It is a separate
+        repo — UPSTREAM entry plus a handoff line, same rule that keeps drt out of our hands
+      - 'STILL OPEN: the delivery itself is unproven until vp-beads-hkp runs the loader probe. Every measurement above was of the CACHED 0.18.0 hook, not the working tree'
+    description: >-
+      The finding that reordered the whole merge sequence. Found while re-checking a DIFFERENT claim
+      (vp-beads-mpu's "no skills manifest field"), which was itself false. Gates vp-beads-sss and the
+      root retirement: sharding an unverified emitter multiplies it by four.
+    updated: '2026-08-05'
+
+  - id: vp-beads-hkp
+    title: 'Prove hook delivery with the @skills-dir loader probe'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-hkx
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        THE TRAP THIS ROW EXISTS FOR: the cache runs, the working tree does not. Fixing the tree and
+        restarting still executes the stale 0.18.0 cache, so a persisting drop would read as "the envelope
+        fix didn't work" and #16538's wrong conclusion gets re-derived from the evidence that refuted it
+      - >-
+        METHOD: symlink this repo into `~/.claude/skills/` — a folder there carrying
+        `.claude-plugin/plugin.json` loads as `<name>@skills-dir` and is DISCOVERED IN PLACE, not copied
+        to the cache. Disable the installed vp-beads first to avoid double-fire
+      - >-
+        PASS CRITERION: the marker appears in `hook_additional_context` in the transcript, per hook.
+        Read the transcript — never ask the model, and never accept "we switched to the envelope" as the
+        proof. Anthropic's own hooks measured 42 emitted / 21 delivered, so the envelope is NECESSARY and
+        not yet demonstrated SUFFICIENT
+      - 'IF IT STILL DROPS: stop. Do not shard (vp-beads-sss). The shard multiplies an unverified emitter by four'
+      - >-
+        SECOND YIELD: the same probe shows whether the loader registers manifest-declared skills. Only
+        `validate-plugin`/`claude plugin validate` has shown that so far, and validate is explicitly NOT
+        the loader — it passed a leaf-form `skills` array that would silently miss any skill added later
+    description: >-
+      The verification half of vp-beads-hkx, split out because it needs a real session restart and
+      therefore cannot complete inside the run that made the fix.
+    updated: '2026-08-05'
+
+  - id: vp-beads-rpl
+    title: 'Correct the record: the refuted distribution finding and the tracker-prime claim'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-hkx
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        CHANGELOG.md — the copy that SHIPS. Its `### Not yet installable` states "there is no `skills`
+        field, and `skills/` is scanned from the plugin root" as fact. That is the refuted claim, in
+        committed HEAD, in the file users read. Its `### Fixed` also says the hooks' dead command names
+        were "injected into every session" — nothing was injected
+      - >-
+        vp-beads-mpu — mark the DISTRIBUTION finding REFUTED. The live reference documents a `skills`
+        field that ADDS to the default scan; the claim came from a third-party plugin's CACHED teaching
+        doc, and four agents "verified" it against that same file. Keep the provenance lesson: mpu's own
+        earlier caveat said the claim "rests on a DOC reading, not a measurement", and the follow-up
+        declared "IS NOW MEASURED" on the strength of a SECOND doc reading. Reading another document is
+        not measuring
+      - >-
+        CLAUDE.md — the claim that the tracker prime now gives what `bd prime` gave was FALSE when
+        written (nothing was delivered) and becomes TRUE only once hkx ships and hkp confirms it. Also
+        the stale "local-only, don't push" line (this branch has been in draft PR #16 since 2026-07-21),
+        and "the five prose surfaces" — check-prose-commands.mjs's SURFACES has seven
+      - 'MEMORY.md — the same stale local-only claim'
+      - >-
+        Basic Memory `engineering/tooling/claude-code-plugin-mechanics` — its observation "[pattern] Bare
+        {additionalContext} is valid hook stdout per docs" is a FABRICATED CITATION. Propose the
+        correction with the two-branch mechanism from hkx (BM writes are approval-gated). It is why the
+        blog posts are right about plain stdout and the note is wrong about JSON
+    description: >-
+      A false measurement recorded as settled is what stopped the re-check. Fix it where it executes,
+      not only in a review artifact.
+    updated: '2026-08-05'
+
+  - id: vp-beads-rrp
+    title: 'Retire the root plugin: manifest becomes a marketplace'
+    status: pending
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-sss
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        `.claude-plugin/plugin.json` → `.claude-plugin/marketplace.json`. The root stops being a thing you
+        install and becomes the list of things you install. NO self-entry — there is no root plugin left
+      - >-
+        MEASURED against `ast-grep/agent-skill`, which is exactly this topology: root marketplace.json,
+        plugin in a subdirectory with its own plugin.json, skills at `<plugin>/skills/<name>/SKILL.md` —
+        the DEFAULT scan, so no `skills` manifest field is needed anywhere. Its entry uses a plain
+        relative `"source": "./ast-grep"`, so `metadata.pluginRoot` is a convenience, not a requirement
+      - >-
+        Do NOT duplicate `version` into the entries the way that exemplar does — `plugin.json` wins
+        silently, so a stale entry version misleads without failing
+      - >-
+        Deleting the root manifest must FAIL CLEANLY, not crash: validate-plugin.mjs's root-manifest
+        readJson is unguarded while its marketplace and hooks reads are existsSync-guarded, so removing it
+        throws ENOENT with a stack trace and no summary. Make "no root plugin" a declared state
+      - >-
+        `skills/retrospective/` stops shipping when the manifest goes. The directory stays until
+        vp-beads-drt; record it in the CHANGELOG as a real removal, not a footnote
+      - >-
+        Do NOT add `deps: [vp-beads-sss]`-style cycles: sss's own revival trigger names "Phase 2 has
+        landed" and this retirement is a PRECONDITION of Phase 2. The dep above is the shard only
+    description: >-
+      Merges what an earlier draft split across two ideas — the root ceasing to be a plugin and the
+      marketplace appearing are the same change seen twice.
+    updated: '2026-08-05'
+
+  - id: vp-beads-dsx
+    title: 'Extract plugins/diarie → voxpelli/diarie-skills'
+    status: deferred
+    type: task
+    priority: medium
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-sss
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        GATED on the repo existing. Creating a GitHub repo is an outward-facing act in the same class as
+        opening a PR — explicit in-the-moment approval required, and it is not mine to do unasked
+      - >-
+        PATTERN: `ast-grep/agent-skill` — a skills repo adjacent to the tool it serves. Root
+        marketplace.json, plugin subdir, skills at the default scan path. It carries NO package.json at
+        all; diarie-skills needs one for the hook test, so it is that pattern plus a gate
+      - >-
+        HISTORY IS NOT PRESERVED the way diarie's own extraction was. `diarie/` had accumulated real
+        history under its own prefix before splitting; `plugins/diarie/` is new, so
+        `git subtree split --prefix=plugins/diarie` carries only the move commit onward. The hooks' prior
+        history stays in this repo. Do not promise the extracted repo a past it will not have
+      - >-
+        PRECONDITION from sss: `plugins/diarie` must already be self-contained. Prove it by MEASURING —
+        every gate that touches it invocable from inside the directory — not by asserting it
+    description: >-
+      diarie's everyday hooks belong beside diarie, not inside a plugin named for migrating off beads.
+      Built in this repo first (vp-beads-sss) so the work is executable today with no GitHub write.
+    updated: '2026-08-05'
+
+  - id: vp-beads-dab
+    title: 'Decide whether diarie-adopt follows to diarie-skills'
+    status: deferred
+    type: task
+    priority: low
+    parent: vp-beads-dis
+    deps:
+      - vp-beads-dsx
+    labels:
+      - spike
+    acceptance_criteria:
+      - 'REVIVAL TRIGGER: vp-beads-dsx lands and the boundary is felt in practice. Deliberately not settled in advance'
+      - >-
+        THE TENSION: diarie-adopt ships real tested code (beads-probe.mjs + check-beads-probe.mjs), which
+        pulls toward the monorepo's gate tooling; against that, "everything diarie in one home" pulls the
+        other way. Both are real, which is why this is a decision row and not a chore
+      - >-
+        Whichever way it goes, `check_beads_credential_key` follows diarie-adopt — it exists because
+        `.beads/` is present, which is adoption's concern, not everyday tracker use
+    description: >-
+      Deferred by explicit choice rather than left as an open question in prose. If it moves, vp-skills
+      ends as ledger + swarm-wave + vp-dream.
+    updated: '2026-08-05'

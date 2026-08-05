@@ -30,18 +30,35 @@ let passed = 0
 let failed = 0
 
 /**
+ * The envelope Claude Code actually reads.
+ *
+ * `hookEventName` is required. Both fields stay optional in the type because
+ * these tests parse whatever stdout actually contained, not what it was supposed
+ * to contain — `deliveredContext` is what turns a wrong shape into a named
+ * failure, rather than a type error the runtime never sees.
+ *
+ * @typedef HookSpecificOutput
+ * @property {string} [hookEventName] - Required by Claude Code; names the event
+ * @property {string} [additionalContext] - Context injected into the agent
+ */
+
+/**
  * The single JSON object a hook emits on stdout.
  *
- * Both hooks that emit anything build it the same way —
- * `jq -n --arg msg "$message" '{"additionalContext": $msg}'` — so
- * `additionalContext` IS the payload; a hook with nothing to say prints nothing
- * at all rather than an object with the field missing. It stays optional here
- * because these tests parse whatever stdout actually contained, not what it was
- * supposed to contain: a hook that regressed into emitting a different shape has
- * to read as an empty context, not as a type error the runtime never sees.
+ * Claude Code delivers `hookSpecificOutput.additionalContext` and DISCARDS a
+ * bare top-level `additionalContext`: bare JSON is still valid JSON, so it takes
+ * the JSON branch rather than the "any non-JSON text on stdout is added as
+ * context" branch, and an unrecognised top-level key is dropped. A hook emitting
+ * the bare shape delivers NOTHING while exiting 0 and printing output that looks
+ * correct in a terminal — no gate downstream of stdout can see the difference,
+ * which is why the shape is asserted here rather than inferred.
+ *
+ * `additionalContext` is typed at the top level ONLY so the discarded shape can
+ * be recognised and named. Never read it.
  *
  * @typedef HookOutput
- * @property {string} [additionalContext] - Context injected into the agent
+ * @property {HookSpecificOutput} [hookSpecificOutput] - The delivered envelope
+ * @property {string} [additionalContext] - The discarded bare shape; diagnostic only
  */
 
 /**
@@ -72,6 +89,43 @@ function parseJsonObjects (stdout) {
     }
     return { count: 0, objects: [], parseError: `Invalid JSON: ${trimmed.slice(0, 100)}` }
   }
+}
+
+/**
+ * The context a hook actually DELIVERS to the model.
+ *
+ * Reads only through the envelope, and THROWS on any other shape rather than
+ * reading through to it. That is the whole point: a suite that reads the
+ * discarded top-level key asserts in detail against an interface Claude Code
+ * never consults, and certifies a hook that delivers nothing. Every assertion
+ * below is about delivered content, so the shape is a precondition of the
+ * assertion rather than a separate concern — `test()` catches the throw and
+ * reports it, so a regression fails by NAME at every call site, not as a
+ * puzzling empty string.
+ *
+ * A silent hook (no stdout) is a legitimate answer and yields ''.
+ *
+ * @param {HookOutput[]} objects - As returned by `parseJsonObjects`
+ * @returns {string} The delivered context, or '' when the hook stayed silent
+ */
+function deliveredContext (objects) {
+  if (objects.length === 0) return ''
+  const obj = objects[0] ?? {}
+  const envelope = obj.hookSpecificOutput
+
+  if (envelope === undefined) {
+    throw new Error(obj.additionalContext === undefined
+      ? 'emitted object has no hookSpecificOutput'
+      : 'emitted a BARE {"additionalContext": …}, which Claude Code discards — wrap it in hookSpecificOutput')
+  }
+  if (typeof envelope !== 'object' || envelope === null) {
+    throw new Error(`hookSpecificOutput is ${typeof envelope}, expected an object`)
+  }
+  if (typeof envelope.hookEventName !== 'string' || envelope.hookEventName === '') {
+    throw new Error('hookSpecificOutput.hookEventName is required, and is missing or empty')
+  }
+
+  return String(envelope.additionalContext ?? '')
 }
 
 /**
@@ -170,6 +224,31 @@ function makeTempGitRepo (originUrl) {
 }
 
 /**
+ * Commit in a temp repo with a backdated author AND committer date.
+ *
+ * A repo with NO commits is not a dormant repo, it is an UNMEASURABLE one, and
+ * `check_dormancy` stays silent there by design. So a fixture that wants the
+ * dormant branch has to produce the real thing: commits that exist and are old.
+ * Both date variables are set because `--since` filters on the committer date
+ * while `--date` and most tooling show the author date.
+ *
+ * @param {string} dir - Temp git repo (from makeTempGitRepo)
+ * @param {number} daysAgo - How far back to date the commit
+ */
+function commitBackdated (dir, daysAgo) {
+  const when = new Date(Date.now() - (daysAgo * 86_400_000)).toISOString()
+  writeFileSync(join(dir, '.seed'), 'x\n')
+  spawnSync('git', ['add', '.seed'], { cwd: dir })
+  spawnSync('git', [
+    '-c', 'user.email=test@example.com', '-c', 'user.name=Test',
+    'commit', '-q', '--no-gpg-sign', '-m', 'seed',
+  ], {
+    cwd: dir,
+    env: { ...process.env, GIT_AUTHOR_DATE: when, GIT_COMMITTER_DATE: when },
+  })
+}
+
+/**
  * Stage a file under .beads/ in a temp git repo so `git ls-files` tracks it.
  * Staging (not committing) is enough — `git ls-files --error-unmatch` reads the
  * index, and committing would need git user config in the temp repo.
@@ -182,26 +261,6 @@ function trackBeadsFile (dir, relPath) {
   mkdirSync(join(dir, '.beads'), { recursive: true })
   writeFileSync(full, 'x\n')
   spawnSync('git', ['add', relPath], { cwd: dir })
-}
-
-/**
- * Create a temp dir containing a stub `gh` script that prints the given
- * stdout and exits with the given status. Returns the dir path so callers
- * can prepend it to PATH.
- *
- * @param {string} stdout - Body to print
- * @param {number} [exitCode] - Exit status (default 0)
- * @returns {string} Temp directory path containing the stub
- */
-function makeGhStubDir (stdout, exitCode = 0) {
-  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-stub-'))
-  // printf with JSON-stringified payload avoids heredoc-delimiter collisions
-  // for future callers that pass multi-line JSON through this stub.
-  const script = `#!/bin/bash\nprintf '%s\\n' ${JSON.stringify(stdout)}\nexit ${exitCode}\n`
-  const ghPath = join(dir, 'gh')
-  writeFileSync(ghPath, script)
-  chmodSync(ghPath, 0o755)
-  return dir
 }
 
 /**
@@ -311,9 +370,32 @@ test('invalid store → reports the error as additionalContext', () => {
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     if (!ctx.includes('T-99')) return { ok: false, reason: `error not surfaced: ${ctx.slice(0, 200)}` }
     return { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('hookEventName is exactly "PostToolUse"', () => {
+  // `deliveredContext` asserts the envelope exists and names SOME event; it cannot
+  // know which event a given hook is wired to. Copying the SessionStart emitter
+  // into this hook satisfies every other assertion in this file and is still
+  // dropped, so this is the only check that can see it. It matters most when the
+  // emitter is copied into each shard (vp-beads-sss) — that is the moment a wrong
+  // event name becomes easy to introduce and impossible to notice.
+  const { dir, file } = makeTaskStore(DANGLING_DEP)
+  try {
+    const { stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
+      args: [ROOT],
+    })
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const event = objects[0]?.hookSpecificOutput?.hookEventName
+    return event === 'PostToolUse'
+      ? { ok: true }
+      : { ok: false, reason: `hookEventName is ${JSON.stringify(event)}, expected "PostToolUse"` }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
@@ -426,7 +508,7 @@ test('compact source: emits 1 object listing UPSTREAM packages and SWARM file', 
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     if (!ctx.includes('Context was just compacted')) {
       return { ok: false, reason: `additionalContext missing recovery preamble: ${ctx.slice(0, 200)}` }
     }
@@ -464,7 +546,7 @@ test('zero in-progress tracker tasks: empty array → no in-progress section emi
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     if (ctx.includes('In-progress tracker task')) {
       return { ok: false, reason: `unexpected in-progress section for empty tracker array: ${ctx.slice(0, 200)}` }
     }
@@ -472,6 +554,24 @@ test('zero in-progress tracker tasks: empty array → no in-progress section emi
   } finally {
     rmSync(dir, { recursive: true, force: true })
     rmSync(stubDir, { recursive: true, force: true })
+  }
+})
+
+test('hookEventName is exactly "SessionStart"', () => {
+  // The compact branch is the ONLY post-compaction slot that can inject context
+  // into the resumed agent, so a wrong event name here costs the whole recovery
+  // snapshot with nothing anywhere reporting the loss.
+  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-eventname-'))
+  try {
+    const { stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const event = objects[0]?.hookSpecificOutput?.hookEventName
+    return event === 'SessionStart'
+      ? { ok: true }
+      : { ok: false, reason: `hookEventName is ${JSON.stringify(event)}, expected "SessionStart"` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
   }
 })
 
@@ -487,7 +587,7 @@ test('compact source: empty state still emits the capture nudge (never silent)',
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     if (!ctx.includes('Context was just compacted')) {
       return { ok: false, reason: `missing recovery preamble: ${ctx.slice(0, 120)}` }
     }
@@ -515,7 +615,7 @@ test('compact source: one in-progress tracker task → recovery section with id,
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     for (const needle of ['In-progress tracker task', 'x-1', 'Implement the feature', '.diarie/tasks/']) {
       if (!ctx.includes(needle)) return { ok: false, reason: `missing "${needle}": ${ctx.slice(0, 200)}` }
     }
@@ -550,7 +650,7 @@ test('startup: tracker prime emits counts, next-ready and claims', () => {
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     for (const needle of ['2 ready', '1 blocked', '1 in progress', 'p-1 (high)', 'Claimed work']) {
       if (!ctx.includes(needle)) return { ok: false, reason: `missing "${needle}": ${ctx.slice(0, 300)}` }
     }
@@ -576,7 +676,7 @@ test('startup: reader present but NO STORE → prime stays silent', () => {
     })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = deliveredContext(objects)
     return ctx.includes('Tracker:')
       ? { ok: false, reason: `announced a tracker that does not exist: ${ctx.slice(0, 120)}` }
       : { ok: true }
@@ -604,7 +704,7 @@ test('startup: STORE present but NO reader → prime stays silent (never a broke
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = deliveredContext(objects)
     if (ctx.includes('Tracker:')) return { ok: false, reason: `emitted a tracker line with no tracker: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
@@ -651,7 +751,7 @@ test('branch isolation: compact source must NOT emit the startup tracker prime',
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = deliveredContext(objects)
     if (ctx.includes('Tracker:') || ctx.includes('next ready:')) {
       return { ok: false, reason: `startup prime leaked into the compact branch: ${ctx.slice(0, 200)}` }
     }
@@ -670,9 +770,7 @@ test('branch isolation: startup source must NOT emit compact-branch phrases', ()
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    const ctx = objects.length === 0
-      ? ''
-      : String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     if (ctx.includes('Context was just compacted') || ctx.includes('capture them now')) {
       return { ok: false, reason: `startup run leaked compact phrasing: ${ctx.slice(0, 200)}` }
     }
@@ -694,7 +792,7 @@ test('branch isolation: compact source must NOT emit startup-only nudges', () =>
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     for (const leak of ['Trend-review', 'Low-activity repo', '[security]']) {
       if (ctx.includes(leak)) return { ok: false, reason: `compact run leaked startup nudge "${leak}": ${ctx.slice(0, 200)}` }
     }
@@ -759,85 +857,9 @@ test('with 4 RETRO files (mod 0), NO trend-review text — the deleted branch st
     const { stdout } = runHook('session-start.sh', '', { cwd: dir })
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = deliveredContext(objects)
     return ctx.includes('Trend-review')
       ? { ok: false, reason: `mod==0 announced a trend-review sprint: ${ctx.slice(0, 160)}` }
-      : { ok: true }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-
-test('Dependabot alerts: stubbed gh returning 3 → 1 JSON object with security line', () => {
-  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
-  const stubDir = makeGhStubDir('3')
-  try {
-    const { status, stdout } = runHook('session-start.sh', '', {
-      cwd: dir,
-      pathPrefix: stubDir,
-    })
-    if (status !== 0) return { ok: false, reason: `exit ${status}` }
-    const { count, objects, parseError } = parseJsonObjects(stdout)
-    if (parseError) return { ok: false, reason: parseError }
-    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
-    if (!ctx.includes('[security]')) {
-      return { ok: false, reason: `additionalContext missing [security]: ${ctx.slice(0, 120)}` }
-    }
-    if (!ctx.includes('3 open Dependabot alert')) {
-      return { ok: false, reason: `additionalContext missing count phrase: ${ctx.slice(0, 120)}` }
-    }
-    if (!ctx.includes('test-owner/test-repo')) {
-      return { ok: false, reason: `additionalContext missing repo URL: ${ctx.slice(0, 120)}` }
-    }
-    return { ok: true }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-    rmSync(stubDir, { recursive: true, force: true })
-  }
-})
-
-test('Dependabot alerts: stubbed gh returning 0 → no security line', () => {
-  const dir = makeTempGitRepo('https://github.com/test-owner/test-repo.git')
-  const stubDir = makeGhStubDir('0')
-  try {
-    const { status, stdout } = runHook('session-start.sh', '', {
-      cwd: dir,
-      pathPrefix: stubDir,
-    })
-    if (status !== 0) return { ok: false, reason: `exit ${status}` }
-    const { objects, parseError } = parseJsonObjects(stdout)
-    if (parseError) return { ok: false, reason: parseError }
-    // No RETRO/UPSTREAM/SYNERGY files in the temp dir, and 0 alerts → silent.
-    if (objects.length === 0) return { ok: true }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
-    return ctx.includes('[security]')
-      ? { ok: false, reason: `unexpected security line for 0 alerts: ${ctx.slice(0, 120)}` }
-      : { ok: true }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-    rmSync(stubDir, { recursive: true, force: true })
-  }
-})
-
-test('Dependabot alerts: gh missing (PATH without gh) → no security line, no error', () => {
-  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
-  // Use a fully restricted PATH that excludes gh but keeps required tools
-  // available via absolute lookup. Easier: rely on the silent-on-failure
-  // contract and just ensure no [security] line is emitted when no stub
-  // exists. We can't safely null out PATH (jq/git/find required), so we
-  // simply do not provide a gh stub: the host's gh (if present) will run
-  // against test-owner/test-repo and fail (404 or auth error), which the
-  // hook must swallow. Either way: no [security] line.
-  try {
-    const { status, stdout } = runHook('session-start.sh', '', { cwd: dir })
-    if (status !== 0) return { ok: false, reason: `exit ${status}` }
-    const { objects, parseError } = parseJsonObjects(stdout)
-    if (parseError) return { ok: false, reason: parseError }
-    if (objects.length === 0) return { ok: true }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
-    return ctx.includes('[security]')
-      ? { ok: false, reason: `unexpected security line without alerts: ${ctx.slice(0, 120)}` }
       : { ok: true }
   } finally {
     rmSync(dir, { recursive: true, force: true })
@@ -853,7 +875,7 @@ test('sensitive-file: tracked .beads-credential-key → 1 clean JSON object warn
     // parseError would catch the old stdout-leak bug (bare path before JSON).
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     return ctx.includes('.beads-credential-key is tracked by git')
       ? { ok: true }
       : { ok: false, reason: `missing credential-key warning: ${ctx.slice(0, 120)}` }
@@ -869,9 +891,7 @@ test('sensitive-file: tracked interactions.jsonl is NOT flagged (intentional aud
     const { stdout } = runHook('session-start.sh', '', { cwd: dir })
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    const ctx = objects.length === 0
-      ? ''
-      : String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     return ctx.includes('interactions.jsonl')
       ? { ok: false, reason: `interactions.jsonl should not be flagged: ${ctx.slice(0, 120)}` }
       : { ok: true }
@@ -888,9 +908,7 @@ test('sensitive-file: tracked PRIVATE-SYNERGY-*.md private overlay → warned', 
     const { stdout } = runHook('session-start.sh', '', { cwd: dir })
     const { objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
-    const ctx = objects.length === 0
-      ? ''
-      : String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
     return ctx.includes('PRIVATE-SYNERGY-acme.md') && ctx.includes('private')
       ? { ok: true }
       : { ok: false, reason: `missing overlay warning: ${ctx.slice(0, 150)}` }
@@ -938,7 +956,7 @@ test('startup: a HEALTHY store DOES emit a Tracker line (the assertion this suit
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = deliveredContext(objects)
     if (!ctx.includes('Tracker:')) return { ok: false, reason: `no Tracker line for a real store: ${ctx.slice(0, 160)}` }
     if (!/1 in progress/.test(ctx)) return { ok: false, reason: `the live claim was not counted: ${ctx.slice(0, 160)}` }
     return { ok: true }
@@ -955,7 +973,7 @@ test('startup: a DROPPED row is ANNOUNCED — the counts are incomplete and the 
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status} — the hook must DEGRADE, never abort` }
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = deliveredContext(objects)
     if (!/loader complaint/.test(ctx)) return { ok: false, reason: `a dropped row went unannounced: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
@@ -975,7 +993,7 @@ test('compact: a DROPPED row is ANNOUNCED, and the hook still EXITS 0', () => {
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'compact' }), { cwd: dir })
     if (status !== 0) return { ok: false, reason: `exit ${status} — errexit aborted the hook; it must degrade quietly` }
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = deliveredContext(objects)
     if (!/NOT SOUND/.test(ctx)) return { ok: false, reason: `compact did not announce the unsound store: ${ctx.slice(0, 200)}` }
     return { ok: true }
   } finally {
@@ -988,7 +1006,7 @@ test('startup: a HEALTHY store is NOT accused of dropping rows', () => {
   try {
     const { stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
     const { objects } = parseJsonObjects(stdout)
-    const ctx = objects.length ? String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '') : ''
+    const ctx = deliveredContext(objects)
     if (/loader complaint|NOT SOUND/.test(ctx)) return { ok: false, reason: `false alarm on a clean store: ${ctx.slice(0, 160)}` }
     return { ok: true }
   } finally {
@@ -996,7 +1014,49 @@ test('startup: a HEALTHY store is NOT accused of dropping rows', () => {
   }
 })
 
-test('startup: ALL SIX collectors fire at once, in the documented order', () => {
+test('dormancy: an UNMEASURABLE repo is not called dormant', () => {
+  // The direction a false positive lives in. `git rev-list --count HEAD` FAILS on
+  // an unborn HEAD (and outside a repo entirely); collapsing that to 0 made the
+  // failure to measure into the strongest possible evidence for the claim, and
+  // the nudge fired every time. Asserting only the fires-when-dormant direction
+  // cannot see this — which is why it went unnoticed while the collector had a
+  // test at all.
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  try {
+    writeFileSync(join(dir, 'UPSTREAM-a.md'), 'x\n')
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const ctx = deliveredContext(objects)
+    return ctx.includes('Low-activity repo')
+      ? { ok: false, reason: `claimed dormancy for a repo with no commits to measure: ${ctx.slice(0, 160)}` }
+      : { ok: true }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('dormancy: a genuinely dormant repo (old commits) still fires', () => {
+  // The other half. Silencing the unmeasurable case must not silence the real one.
+  const dir = makeTempGitRepo('git@github.com:test-owner/test-repo.git')
+  try {
+    commitBackdated(dir, 200)
+    writeFileSync(join(dir, 'UPSTREAM-a.md'), 'x\n')
+    const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), { cwd: dir })
+    if (status !== 0) return { ok: false, reason: `exit ${status}` }
+    const { objects, parseError } = parseJsonObjects(stdout)
+    if (parseError) return { ok: false, reason: parseError }
+    const ctx = deliveredContext(objects)
+    return ctx.includes('Low-activity repo')
+      ? { ok: true }
+      : { ok: false, reason: `dormancy did not fire for a repo with 200-day-old commits: ${ctx.slice(0, 160)}` }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('startup: ALL FIVE collectors fire at once, in the documented order', () => {
   // Every other startup test fires ONE collector, so their relative ORDER is
   // unobservable across the whole suite — swap two calls in `main` and nothing
   // goes red. Measured: a byte-diff harness over 25 single-concern fixtures
@@ -1014,14 +1074,17 @@ test('startup: ALL SIX collectors fire at once, in the documented order', () => 
     0,
     '{"ready":[{"id":"backlog/R-1","priority":"high"}],"blocked":[],"needsAttention":[],"warnings":[]}'
   )
-  const ghStub = makeGhStubDir('3')
   try {
     trackBeadsFile(dir, '.beads/.beads-credential-key')
     mkdirSync(join(dir, '.diarie', 'tasks'), { recursive: true })
     writeFileSync(join(dir, '.diarie', 'tasks', 'tasks-a.yml'), 'tasks: []\n')
     writeFileSync(join(dir, 'PRIVATE-SYNERGY-partner.md'), 'x\n')
     spawnSync('git', ['add', 'PRIVATE-SYNERGY-partner.md'], { cwd: dir })
-    // UPSTREAM + SYNERGY with 0 commits → dormant (rev-list fails, falls back to 0).
+    // UPSTREAM + SYNERGY + a real commit older than the 90-day window → dormant.
+    // The commit is what makes this a dormant repo rather than an unmeasurable
+    // one; without it `check_dormancy` stays silent and this fixture would be
+    // asserting a claim the collector is no longer willing to make.
+    commitBackdated(dir, 200)
     writeFileSync(join(dir, 'UPSTREAM-a.md'), 'x\n')
     writeFileSync(join(dir, 'SYNERGY-x.md'), 'x\n')
     // 3 RETRO files → count % 4 === 3 → the "next sprint is a trend review" branch.
@@ -1029,13 +1092,13 @@ test('startup: ALL SIX collectors fire at once, in the documented order', () => 
 
     const { status, stdout } = runHook('session-start.sh', JSON.stringify({ source: 'startup' }), {
       cwd: dir,
-      pathPrefix: `${trackerStub}:${ghStub}`,
+      pathPrefix: trackerStub,
     })
     if (status !== 0) return { ok: false, reason: `exit ${status}` }
     const { count, objects, parseError } = parseJsonObjects(stdout)
     if (parseError) return { ok: false, reason: parseError }
     if (count !== 1) return { ok: false, reason: `expected 1 merged object, got ${count}` }
-    const ctx = String(/** @type {HookOutput} */ (objects[0]).additionalContext ?? '')
+    const ctx = deliveredContext(objects)
 
     // A tuple type, not `string[][]` — the loop below destructures each row and
     // hands `needle` straight to `indexOf`, which a plain nested array cannot
@@ -1046,7 +1109,6 @@ test('startup: ALL SIX collectors fire at once, in the documented order', () => 
       ['private overlay', 'private SYNERGY overlay file(s) tracked'],
       ['tracker prime', 'Tracker: '],
       ['dormancy', 'Low-activity repo'],
-      ['dependabot', '[security]'],
       ['trend review', 'Trend-review reminder'],
     ]
     let cursor = -1
@@ -1060,7 +1122,6 @@ test('startup: ALL SIX collectors fire at once, in the documented order', () => 
   } finally {
     rmSync(dir, { recursive: true, force: true })
     rmSync(trackerStub, { recursive: true, force: true })
-    rmSync(ghStub, { recursive: true, force: true })
   }
 })
 

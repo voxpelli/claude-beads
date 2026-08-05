@@ -70,5 +70,12 @@ ${errors}
 
 Fix the YAML in \`.diarie/tasks/\` before continuing — a dangling dep or bad enum silently distorts what \`diarie ready\` reports as workable."
 
-jq -n --arg msg "$msg" '{"additionalContext": $msg}'
+# Claude Code reads `hookSpecificOutput.additionalContext`, and `hookEventName` is
+# required. A bare top-level `{"additionalContext": …}` is silently dropped: it is
+# valid JSON, so it takes the JSON branch rather than the "any non-JSON text on
+# stdout is added as context" branch, and the unrecognised key is discarded.
+# For PostToolUse there is no fallback at all — plain stdout here is debug-log
+# only, so the envelope is the ONLY way this warning reaches the model.
+jq -n --arg msg "$msg" \
+	'{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
 exit 0
