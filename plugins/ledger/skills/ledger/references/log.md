@@ -36,7 +36,7 @@ what workaround was needed. Don't make the user re-explain what's already visibl
 1. **Identify the package/tool** from context. It can be a vendor package, a regular npm
    dependency, or a non-npm tool — use the prefix notation `brew:<name>`, `cask:<name>`,
    `action:<owner>/<repo>`, `docker:<image>`, `vscode:<ext>` (consistent with
-   `/tool-intel`). For a concrete request against a sibling's artifact, the target file is
+   `/intel`). For a concrete request against a sibling's artifact, the target file is
    `UPSTREAM-<sibling-name>.md` (see object routing above).
    * **1a. Basic Memory pre-check.** If BM MCP tools are available, call
      `mcp__basic-memory__search_notes` with the package name. If a matching note has an

@@ -370,7 +370,7 @@ four-section prose body:
 id: <slug>-<short-id>
 title: "..."
 type: decision
-status: open
+status: pending
 ---
 
 ## Decision
@@ -383,16 +383,22 @@ status: open
 ```
 
 The first three prose sections are required; `## Affects` is conventional and
-lists impacted components, files, or future work. Run
-`diarie validate` afterward to confirm the file passes the integrity
-gate.
+lists impacted components, files, or future work.
 
-**Lifecycle:** decision documents stay **open** while the decision is in force.
-`status: open` = active decision, `status: closed` = superseded or reversed (NOT
-closed-on-create). The retrospective never auto-closes decisions — a later
-revision supersedes the prior file by flipping its `status:` to `closed` and
-linking the successor. Do not implement supersession here; just capture the new
-decision.
+🚨 **`diarie validate` does NOT check decision files** — it globs `tasks-*.yml`
+only, so a malformed decision reports `clean: true` at exit 0. Do not cite it as
+confirmation here. Read the file back and check `status:` by eye.
+
+**Status vocabulary** — the same six as any row:
+`pending | in_progress | completed | failed | cancelled | deferred`.
+
+* `pending` — in force, execution still outstanding
+* `completed` — in force, everything it called for has landed
+* `cancelled` — superseded or reversed by a later decision
+
+The retrospective never supersedes a decision — a later revision does that by
+flipping the prior file's `status:` and linking the successor. Just capture the
+new one. Existing decision files do not all follow this mapping; use it anyway.
 
 **Tracker unavailable (Tier C):** record the decision inline in `RETRO-NN.md` as
 a `### Decisions` block carrying the same four sections, instead of writing a
@@ -480,7 +486,7 @@ Organize by engineering domain:
   avoiding duplication. For cross-project extraction opportunities tracked in
   `SYNERGY-*.md` files, use `/ledger` (sibling object) — it manages the extraction
   lifecycle and any corresponding Basic Memory notes. For packages not yet in
-  Basic Memory, suggest `/package-intel` or `/tool-intel` for enrichment first.
+  Basic Memory, suggest `/intel` (vp-knowledge) for enrichment first.
   **NEVER write to `engineering/agents/vp-plugins-*` paths from this step**
   — those are sibling-relationship notes owned by `/ledger promote`
   (sibling object). For cross-project lessons that touch a
@@ -498,3 +504,32 @@ After writing the retro, suggest updates to:
 * `README.md` — if project structure or commands changed
 
 Present suggestions to the user for approval before editing.
+
+## Cross-plugin skill handoffs (degrade-and-announce)
+
+This skill hands work off to skills in SIBLING plugins — `/ledger log`,
+`/ledger promote` and `/ledger resolve` for upstream friction and cross-project
+synergy, `/knowledge-gaps` and `/intel` for Basic Memory work. **They are
+independent installs.** `retrospective` ships in the root plugin; `ledger` is a
+separate plugin, so a project can have this skill and not that one.
+
+**Never hard-fail on an absent sibling.** Before invoking a cross-plugin skill
+via the Skill tool, treat its absence as a degrade-and-announce case, not an error:
+
+* If the target skill is installed, invoke it (with the usual approval gate).
+* If it is NOT installed, ANNOUNCE the skipped handoff and name what the user
+  would do instead — e.g. "this sprint surfaced 3 upstream-friction items, but the
+  `ledger` plugin is not installed here; record them directly in the relevant
+  `UPSTREAM-<package>.md` / `SYNERGY-<project>.md` file, or install `ledger`."
+  Never swallow the handoff silently: a silently-skipped handoff makes a project
+  that tracks this work elsewhere look like one that has none — the same failure
+  `### Files-availability convention` forbids for tracker steps.
+
+Step 6 already applies this to `/knowledge-gaps`; this section states the rule
+once for every other handoff.
+
+The guard text lives HERE, in the shipped `SKILL.md`, not only in the repo's
+`CLAUDE.md`: an installed plugin never receives the repo's root docs, so a guard
+that lived only there would not travel with the plugin. Same pattern and wording
+as swarm-wave's `## Cross-plugin skill handoffs (degrade-and-announce)` — one
+pattern, not two.

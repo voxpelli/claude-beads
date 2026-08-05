@@ -1,6 +1,6 @@
 {
   "name": "vp-beads",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "Sprint workflow automation for projects using the diarie flat-YAML tracker and Basic Memory. Ships /retrospective and the session hooks; the ledger (upstream + sibling relationship tracking), swarm-wave (multi-agent orchestration), diarie-adopt (tracker migration) and vp-dream (file-memory consolidation) plugins live in this monorepo alongside it.",
   "author": {
     "name": "Pelle Wessman",

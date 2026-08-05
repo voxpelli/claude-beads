@@ -40,8 +40,8 @@ matching relationship note exists under `engineering/agents/`, use it.
 If multiple match (or matches appear in `projects/` / `npm/` as legacy
 single-project notes), surface the candidates to the user and ask which
 note should receive the section. If no note exists, **flag for enrichment**
-(e.g. via manual creation under `engineering/agents/`, or `/package-intel` /
-`/tool-intel` for legacy single-project entity notes) instead of creating
+(e.g. via manual creation under `engineering/agents/`, or `/intel`
+for legacy single-project entity notes) instead of creating
 a thin sibling note — never create a thin sibling note as a side effect of
 synergy promotion.
 

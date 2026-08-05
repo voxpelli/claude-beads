@@ -34,6 +34,16 @@ order: on `PATH`, else the project's `node_modules/.bin/diarie`.
 
 ## What it does
 
+> **What an install actually gives you today: `/retrospective` and the session hooks.**
+>
+> The other skills below — `/ledger`, `/swarm-wave`, `/migrate-tracker`,
+> `/deintegrate-beads` and `/vp-dream` — live in separate plugins under `plugins/`
+> in this repository, and there is no marketplace entry for them yet. A plugin
+> manifest can redirect `commands`, `agents`, `hooks` and `mcpServers`, but not
+> `skills`, so the root plugin structurally cannot reach them. Documented here
+> because they are part of this repository; not yet obtainable via
+> `/plugin install`.
+
 ### `/retrospective` — Sprint retrospective generator
 
 Reads git history, open upstream tracking files, and your current conversation to pre-populate a sprint retrospective:
@@ -238,7 +248,13 @@ Add to `~/.claude/settings.json`:
 
 ### Required
 
-**[Node.js](https://nodejs.org)** — runs the tracker readers (`diarie ready`, `diarie validate`). No other tracker install is needed: the task store is plain YAML in the repo. The `diarie` CLI is [published](#the-tracker) and this repo depends on it (`diarie@^0.2.0`); `npm install` provides it at `node_modules/.bin/diarie`.
+**[Node.js](https://nodejs.org)** — runs the tracker readers (`diarie ready`, `diarie validate`). The task store is plain YAML in your repo, so there is no daemon and no database.
+
+**The `diarie` CLI, in _your_ project.** The plugin does not supply it — the hooks resolve `diarie` from `PATH` or from your own `node_modules/.bin`, never from the plugin. Add it where your work lives:
+
+```bash
+npm install --save-dev diarie   # or: npm install -g diarie
+```
 
 **[Basic Memory](https://github.com/basicmachines-co/basic-memory)** MCP server — the knowledge graph backend for writing sprint learnings:
 

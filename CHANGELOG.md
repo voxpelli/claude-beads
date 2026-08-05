@@ -7,176 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
+Will ship as **0.19.0**. The plugin manifest is already bumped, because the plugin
+cache is keyed by version and a reinstall at an unchanged version string would swap
+the contents silently.
 
-* **The tracker is a real CLI: `diarie`.** The three loose readers
-  (`scripts/ready-walker.mjs`, `validate-tasks.mjs`, `scripts/task-schema.mjs`) are now an
-  npm workspace at `diarie/` — `cli.js` + `lib/`, built on the `node-cli-template` shape
-  (`peowly` / `peowly-commands`, an InputError/ResultError boundary). Commands: `ready`,
-  `stats`, `validate`, `init`, `migrate`. It is **built but not published** (`private: true`,
-  held behind the name gate); every skill, agent and hook calls it, and resolves it on PATH →
-  `node_modules/.bin` → the project's `diarie/cli.js` → the plugin's own checkout.
-* **`--root` on every command**, replacing the `TASKS_ROOT` env convention (which still
-  works, and is what the tests use). This is what makes one binary safe to run against
-  another repo — and it is load-bearing: `.diarie/` is committed, so a marketplace install
-  ships vp-beads' own backlog into every consumer's plugin cache. A CLI that fell back to a
-  cwd-walk would hand a consumer _our_ tasks and call them theirs.
-* **`diarie stats` is a subcommand**, not flags on `ready`. `--stats` / `--stale` moved.
-  `ready --format json` is now `ready --json` — the old readers disagreed with each other
-  on this and a greenfield CLI should not inherit an incoherence from scripts that no longer
-  exist.
-* **Types.** `tsc --noEmit` (strict, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`),
-  `type-coverage` at 98%, and `knip`, all scoped to the workspace. They found real bugs — see
-  Fixed.
-* **`GlobalId`, a branded id type.** `nsId()` is the only thing that can mint one, and the
-  store's `id`/`parent`/`deps` are `GlobalId`, so a raw string cannot reach them. It catches
-  the `parent` bug below **at compile time**, which nothing weaker does: `unknown` and a
-  richer object type are both satisfied by `String(x)`, which _is_ the bug.
-* Five ast-grep rules adopted from vp-knowledge/vp-claude (`no-jsdoc-any-type`,
-  `no-jsdoc-object-typedef`, `no-commonjs-require`, `no-identifier-shadow-call`,
-  `no-jq-raw-interpolation`).
-
-### Fixed
-
-* **BREAKING — a missing store is an ERROR (`ENOSTORE`), not an empty backlog.** Pointed at a
-  directory with no `.diarie/`, the tracker printed a well-formed, entirely fictional
-  `{"ready":[],"blocked":[],"needsAttention":[]}` to **stdout**, sent its only warning to
-  **stderr — a stream ten call sites pipe to `/dev/null`** — and exited **0**. An ABSENT
-  store and an EMPTY one were indistinguishable to every consumer. Now: absent → exit 1 with
-  `{"error":…,"code":"ENOSTORE"}` on stdout; empty-but-present → exit 0, still perfectly
-  clean. `validate`'s `skipped` flag is gone with the defect it existed to paper over.
-* **An epic was offered as work** (`vp-beads-epc`). `diarie ready` led with the migration
-  epic — a container with three open children — at high priority. A parent with open children
-  is now `blocked` **by those children** (their own `children:` field: a dep must FINISH
-  FIRST, a child is CONTAINED), and an `epic`-labelled task with nothing open inside it
-  surfaces in `needsAttention` ("close it or add children") rather than vanishing.
-* **`loadTasks` handed out a half-globalized task.** It namespaced `id` and `deps` into the
-  `slug/id` id-space and left `parent` raw, so `parent` could never equal any `id`. Nothing
-  was broken by it _at the time_ — nothing read `parent`. It was a trap for the first reader
-  that did, and the container fix above was that reader: it would have found **zero children
-  for every epic**, excluded nothing, and passed a green suite. Root cause was the id rule
-  existing twice (`store.nsId` and a private `validate.glob`), one copy incomplete; it now
-  lives once, in `schema.js`.
-* **A `cancelled` / `failed` / `deferred` child entombed its parent in `blocked` forever**,
-  while the _dependency_ logic routed exactly those statuses to `needsAttention`. And a
-  `milestone` child blocked its parent permanently — milestones live in `tasks-*.yml`, are
-  never worked, so never complete. Children are now typed and bucketed exactly like deps.
-* **A dangling `parent:` was invisible to `ready`** (a dangling _dep_ was not). It now
-  surfaces — which also makes it the recurrence detector: if the id-spaces ever diverge
-  again, every parent dangles and every row says so at once.
-* **`validate`'s `doc?.tasks ?? []` laundered a broken file into a clean empty one**, making
-  `lintTasks`' own Pass-0 guard unreachable. A `task:` typo, or a truncation to just `meta:`,
-  made an entire file's backlog vanish while `validate`, `ready` and `stats` all exited 0.
-* **A parent ring (A→B→A) passed validation** — `findCycles` walked `deps` only. Each member
-  is the other's open child, so the ready-walk blocked all of them forever. Self-parenting
-  was only the one-element case.
-* **`cli(argv)`'s parameter did nothing.** `peowly-commands` takes `args`, not `argv`; the
-  key was silently ignored and the parser fell back to `process.argv`. Found by tsc.
-* **The migrator dropped data silently**: unrecognised bd edge types went unreported, and an
-  unmappable priority was coerced to `medium` with no word — while the read-only spike it
-  replaced reported both. Priority is the ready-queue's sort key.
-
-### Changed
-
-* **SessionStart tracker prime.** The startup branch of `session-start.sh` now reports what
-  is ready, blocked and claimed. It emitted **no tracker state at all** before this — the
-  `bd prime` orientation came from the _external_ beads plugin, which died with bd, so every
-  session began blind to the backlog while `CLAUDE.md` claimed otherwise. Two reads
-  (\~0.2 s against a 5 s timeout), merged into the hook's single JSON object.
-* **`hooks/post-tasks-validate.sh`** (`vp-beads-uzu`) — PostToolUse validation of
-  `.diarie/tasks/*.yml` edits. Writing a task is a hand-edit (no CRUD helper, by design), so
-  a dangling dep or bad enum could sit undetected until `npm run check`; now it is reported
-  on the edit. Silent when clean; advisory, never blocking.
-* **`/deintegrate-beads` skill.** `/migrate-tracker` moves the work but deliberately leaves
-  `.beads/` standing — and with it the _live machinery_. bd sets `core.hooksPath` →
-  `.beads/hooks/`, so `.git/hooks/` looks pristine while five shims intercept every git
-  operation; `pre-commit` shells out to `bd` and **propagates its exit code**. It also runs a
-  `dolt sql-server` daemon per repo. This disarms all of it and **never deletes `.beads/` or
-  any data** — that is what makes it safe to run. Skills: 8 → 9.
-* **`DESIGN-diarie-vs-beads.md`** — an evidence-first contrast (every claim cites an incident
-  we actually hit), including a candid "where beads is still ahead" section.
-* **`/migrate-tracker` skill** — a guided, one-way cutover of _another_ project's
-  tracker off beads onto the flat-YAML store. beads 1.1.0's write-gate broke every
-  repo using the global binary at once, so this is a path the siblings need, not a
-  vp-beads-only chore. Five workflows: detect-and-assess, export-and-archive,
-  migrate (dry-run first), verify (`validate-tasks` **plus** a dual-run against
-  `bd ready` — exactly one divergence is expected, since bd's ready-walk is
-  type-blind and lists decisions as workable), and cut-over. Skills: 7 → 8.
-* **`scripts/bootstrap-tasks.mjs` generalized** from a vp-beads one-shot into a
-  repo-agnostic migrator: `--root`, `--epic <id>=<slug>` (repeatable, routes an
-  epic and its descendants), `--default-slug`, `--title <slug>=<text>`. Verified by
-  characterization: given vp-beads's parameters it reproduces the original
-  24-issue migration **byte-for-byte**. Two things the vp-beads run could never
-  have exercised are now handled — a `parent` edge to a **closed** epic is dropped
-  rather than dangled (it would have failed `validate-tasks` in any repo with a
-  completed epic), and epic routing is transitive. Covered by a new
-  `check:bootstrap` stage; this deliberately reverses `vp-beads-bj7`'s
-  "retire the migrator after one run" decision, because a tool other repos run —
-  whose failure mode is _silent data loss_ — earns kept tests.
-* **ast-grep structural lint** (`sgconfig.yml` + `.ast-grep/rules/` +
-  `.ast-grep/rule-tests/`). Adopted
-  from vp-knowledge; see `SYNERGY-vp-knowledge.md`. Seeded with one rule,
-  **`no-hardcoded-tracker-dir`**, which enforces that the tracker path segment
-  lives only in `TRACKER_DIR` (`scripts/task-schema.mjs`) and every other tool
-  imports it — so renaming the store stays a one-line change. `@ast-grep/cli` is
-  a pinned devDep.
-
-### Changed
-
-* **BREAKING — the tracker migrated off beads (`bd`) to a flat-YAML substrate.**
-  Work now lives in `.diarie/tasks/tasks-<slug>.yml` (+ decisions as markdown in
-  `.diarie/decisions/`), read by `scripts/ready-walker.mjs` and validated by
-  `validate-tasks.mjs`. Writes are ordinary `Edit`/`Write` — no CRUD helper
-  (substrate-not-opinion). Forced by beads 1.1.0, whose schema-migration gate
-  broke every `bd` write. The tracker is named **`diarie`** and is being extracted
-  as a standalone npm CLI (not yet published); until it ships, skills call the
-  in-repo readers.
-* **`### Beads-availability convention` → `### Files-availability convention`.**
-  New predicate (`.diarie/tasks/tasks-*.yml` exists AND the reader is runnable);
-  **Tier B no longer stops** (the store is ordinary files, so an absent/empty
-  store is just an empty backlog); "silently skipping a tracker step is a bug"
-  survives, now policed against tracker tokens.
-* **All 7 skills, the sprint-review agent, and `session-start.sh` retargeted off
-  `bd`** onto the tracker. The 9 bd issue types collapsed to **4**
-  (`task`/`doc`/`decision`/`milestone`); bug/feature/chore/story/spike ride in
-  `labels:`; epic = `task` + `parent:`.
-
-### Fixed
-
-* **`validate-tasks --json` emitted no JSON at all on an unparseable store.** The
-  YAML-parse `catch` wrote to stderr and exited, bypassing the `--json` branch — so every
-  consumer that reads stdout (both hooks) saw empty output and concluded there was nothing
-  to report, on the single commonest hand-edit mistake. `--json` now always emits JSON.
-* **The migrator destroyed decision bodies.** Normalization of bd's literal-backslash-n
-  artifact lived inside the task path; the decision path got the raw body. A decision is
-  _entirely_ prose, so its whole payload rendered as one line of gibberish. vp-beads never
-  saw it — only a sibling repo would have.
-* **`!.diarie/` does not work as a gitignore negation** (git will not descend into an
-  excluded directory to re-include what is inside it). Corrected to `!.diarie/**` in the
-  README, `/migrate-tracker`, and the migrator's own error message.
-* **`scripts/beads-probe.mjs` carried the vacuous gate it was built to kill.** `git
-  ls-files` reads the index, so a staged-but-never-committed store reported as committed;
-  and counting `- id:` by regex counted _prose_ (bd bodies are preserved as block scalars)
-  as tasks. Both now answer from `git ls-tree HEAD` and a real YAML parse. Daemon ownership
-  is proven from the process CWD rather than a port coincidence.
-* **`## Work-tracking substrates` still named beads "the default and richest substrate".**
-  It is dead and is no longer a substrate at all.
-* The SessionStart prime announced `Tracker: 0 ready` in repos with **no tracker** — it
-  gated on the reader alone rather than on the canonical store-plus-reader predicate. Not a
-  silent skip but a confident false report.
-* **`### Session completion` ordered dead writes.** It told every session to run `bd close`
-  and `bd dolt push`, both of which have been impossible since bd 1.1.0. Retargeted to the
-  YAML store.
-* **`### Do not run bd setup claude` kept a right conclusion on false reasoning** — it claimed
-  this plugin's hook "already injects equivalent workflow context plus all persistent
-  memories". Neither half was true. Rewritten.
-* The 9-type table, the 60 s write-throttle quirk, and the "Wave 2 pending" section are
-  history, not instructions; removed (`vp-beads-e42`).
+**Read `### Removed` first.** This release removes seven slash commands and one agent.
 
 ### Removed
 
-* **`/harden-memories` skill.** Its store was `bd remember`, which no longer
-  exists. Skills: 8 → 7.
+* **BREAKING — `/upstream-tracker`, `/synergy-tracker`, `/vendor-sync` and
+  `/sibling-sync` are gone.** They are merged into a single mode-routed skill,
+  **`/ledger`**, which routes by object (upstream dependency vs sibling project) and
+  verb rather than by skill name:
+
+  | was | now |
+  | --- | --- |
+  | `/upstream-tracker` | `/ledger log`, `/ledger review`, `/ledger resolve` |
+  | `/synergy-tracker` | `/ledger log`, `/ledger review` |
+  | `/vendor-sync` | `/ledger pull` |
+  | `/sibling-sync` | `/ledger reconcile` |
+
+  There is no automatic migration: a marketplace `renames` map redirects **plugins**,
+  not skills, so an old command name cannot be forwarded to a new one.
+
+* **BREAKING — `/backlog-groomer` and `/harden-memories` are retired** with no
+  successor. Backlog grooming is now editing `.diarie/tasks/*.yml` directly.
+* **BREAKING — the `sprint-review` agent is retired.** There is no `agents/` directory.
+
+### Added
+
+* **`/vp-dream`** — manual, approval-gated, fact-verifying consolidation of Claude
+  Code's file-based auto-memory (the per-project `memory/` directory and its
+  `MEMORY.md` index). A different subsystem from Basic Memory. Pure bash, no runtime
+  npm dependencies.
+* **`/migrate-tracker` and `/deintegrate-beads`** — a guided one-way cutover off beads
+  onto the flat-YAML tracker, and the separate disarm of beads' machinery (git hooks
+  behind `core.hooksPath`, and the Dolt daemon) once the migration is trusted. Neither
+  ever deletes `.beads/` or any data.
+* **Four workspace plugins** under `plugins/` — `ledger`, `swarm-wave`, `diarie-adopt`
+  and `vp-dream` — each with its own manifest, version and gates.
+
+### Changed
+
+* **BREAKING — the tracker is `diarie`, not beads.** Work lives in
+  `.diarie/tasks/tasks-<slug>.yml`, read by `diarie ready` and validated by
+  `diarie validate`. beads 1.1.0's schema-migration gate panics on every write, so
+  `bd` writes are dead; `.beads/` remains readable as a frozen archive.
+* **`diarie` is a published npm package** (`diarie@^0.2.0`), developed in its own
+  repository. It is a dependency, not vendored code.
+* **A missing store is an ERROR, not an empty backlog.** `diarie` exits non-zero with
+  `{"error": …, "code": "ENOSTORE"}` on stdout under `--json`. This lets a consumer
+  tell "this project tracks its work elsewhere" apart from "this project has no work
+  left" — opposite situations that used to look identical. Ask for `--json` and do not
+  discard stderr.
+* **The tracker is optional and never forced.** Components declare an availability tier
+  and degrade along it; silently skipping a tracker step is treated as a bug.
+* `/retrospective` and `/swarm-wave` announce cross-plugin handoffs they cannot make,
+  rather than dead-ending, when a sibling plugin is not installed.
+
+### Fixed
+
+* Both always-on hooks named retired commands in output injected into every session.
+* The trend-review reminder fired twice per cycle, naming two different sprints.
+* `/deintegrate-beads`'s probe could not be run from a plugin install — it imported an
+  npm package, and Claude Code does not `npm install` a git-source plugin.
+
+### Not yet installable
+
+The four `plugins/*` plugins **cannot be installed today**, and neither can the five
+skills they contain. A plugin manifest has custom-path fields for `commands`, `agents`,
+`hooks` and `mcpServers` only — there is no `skills` field, and `skills/` is scanned
+from the plugin root — so a root manifest cannot reach `plugins/*/skills/`.
+
+Installing this plugin gets you **`/retrospective` and the session hooks**. Reaching the
+rest needs a marketplace entry per plugin, which cannot be authored until this work is
+on the default branch. Until then, treat their documentation as describing the
+repository rather than an install.
 
 ## [0.18.0][] - 2026-06-04
 

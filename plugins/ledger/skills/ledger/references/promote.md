@@ -39,7 +39,7 @@ promoted, and private names never reach BM.
    * **Note exists, no `## Upstream Friction`** — `edit_note` `insert_before_section` on
      `Relations` to add the full section with the entry.
    * **No note exists** — do NOT create a thin note. Flag: "No Basic Memory note for
-     `<package>`. Run `/package-intel <package>` (or `/tool-intel <tool>`), then re-run
+     `<package>`. Run `/intel <package>` (vp-knowledge), then re-run
      `promote`."
 5. **Prune pass.** For BM entries annotated `_(Resolved …)_`, offer to move them to the
    `### Resolved` subsection (user confirms each). **This is the only path that moves entries
@@ -69,7 +69,7 @@ on onboarding, or for cross-project awareness.
    Add it?" Also surface `### Upstream Opportunities`: "…a known contribution opportunity…
    \[title — merge readiness]."
 5. **Flag missing notes.** For packages with local UPSTREAM entries but no BM note, suggest
-   `/package-intel` / `/tool-intel` (enables future `promote`).
+   `/intel` (enables future `promote`).
 6. **User decides** per entry: add locally (via `log` (upstream) steps), skip, or dismiss.
 
 ---
