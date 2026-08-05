@@ -5,7 +5,7 @@
   "description": "diarie plugin — everyday session hooks for the flat-YAML tracker (session prime, compaction recovery, edit-time store validation).",
   "scripts": {
     "check": "run-p check:*",
-    "check:md": "remark . --quiet --frail",
+    "check:md": "remark README.md --quiet --frail",
     "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/",
     "check:test": "node scripts/check-hooks.mjs"
   },

@@ -712,8 +712,23 @@ colonization `/deintegrate-beads` exists to _undo_. Do not re-invite it.
 It is also pointless now: `bd`'s writes are dead (the 1.1.0 migrate gate) and this
 repo's tracker is flat-YAML. The orientation `bd prime` used to give is now the
 **tracker prime** in `plugins/diarie/hooks/session-start.sh`, which reads `.diarie/`
-directly — and which reaches the model only since the envelope fix (`vp-beads-hkx`),
-so it is a live replacement rather than a planned one.
+directly.
+
+🚨 **Do not upgrade that to "reaches the model" — it does not, by any install path.**
+The hook emits the right envelope (`vp-beads-hkx`) and speaks correctly when run,
+but nothing loads `plugins/diarie` as a plugin: the root manifest has no `plugins`
+field, there is no `marketplace.json` yet, and that is exactly what `vp-beads-rrp`
+is for. It runs in _this_ repo only because `.claude/settings.local.json` registers
+the four sharded hooks by absolute path — machine-local dogfooding, gitignored, not
+a contract. Emission, registration and delivery are three separate claims, and
+conflating them is the error `vp-beads-rpl` exists to correct elsewhere in this
+file.
+
+**And SessionStart delivery has never been measured for our own hooks.**
+`vp-beads-hkp` measured `PostToolUse`; SessionStart cannot be triggered mid-session,
+so the evidence for it is the Anthropic 42/21 control — strong, but an inference.
+Say "speaks" for a standalone run and reserve "delivers" for a transcript that shows
+`hook_additional_context`.
 
 _(Historical correction, since this section was wrong for a while and the wrongness
 was load-bearing: the \~1.5k-token `bd prime` injection came from the **external
