@@ -1153,6 +1153,39 @@ tasks:
       not only in a review artifact.
     updated: '2026-08-05'
 
+  - id: vp-beads-adp
+    title: 'BLOCKER before any push to a new public remote: the native-autodream-contract reference'
+    status: pending
+    type: task
+    priority: high
+    parent: vp-beads-dis
+    labels:
+      - chore
+    acceptance_criteria:
+      - >-
+        `plugins/vp-dream/skills/vp-dream/references/native-autodream-contract.md` reconstructs Claude
+        Code's native `autoDream` behaviour and has only ever existed in an unpublished branch.
+        Decision `vp-beads-top` chose the NEW-REPO path, which makes pushing it a FRESH ACT OF
+        PUBLICATION — the question is now live rather than hypothetical
+      - >-
+        WHY THIS ROW EXISTS AT ALL: the IP / ToS / reverse-engineering question was recorded only in
+        the DESCRIPTION of `vp-beads-vpd`, which is `completed`. A closed row is not a home for an
+        open question — nothing surfaces it, `diarie ready` cannot see it, and the plan referenced it
+        by an id that reads as done. It is the same failure class as a deferred plan section with no
+        revival trigger
+      - >-
+        RESOLUTION IS THE USER'S, not mine: keep as-is, rewrite as behaviour-observed-from-outside
+        rather than contract-reconstructed, or drop the reference and let the SKILL.md stand alone.
+        Do NOT decide this by inference from the fact that it already sits in a pushed branch —
+        `feat/tracker-design-exploration` is on an existing repo whose visibility was already settled
+      - >-
+        BLOCKS the first push to `voxpelli/vp-skills`, NOT `rrp` — `rrp` is a local manifest change
+        and can land on this branch either way
+    description: >-
+      Extracted from vp-beads-vpd's description on 2026-08-05 when decision vp-beads-top selected the
+      new-repo topology and turned a deferred question into a precondition.
+    updated: '2026-08-05'
+
   - id: vp-beads-rrp
     title: 'Retire the root plugin: manifest becomes a marketplace'
     status: pending
@@ -1164,6 +1197,14 @@ tasks:
     labels:
       - chore
     acceptance_criteria:
+      - >-
+        UNBLOCKED BY DECISION 2026-08-05 (`vp-beads-top`): main is frozen and this becomes
+        `voxpelli/vp-skills`, so there is no bridge release and no root plugin to preserve. The
+        first AC below ("NO self-entry") was mutually exclusive with the bridge option, which is
+        what forced the topology fork to be answered before this row could start
+      - >-
+        NOT gated on `vp-beads-adp` — that blocks the first PUSH to a new remote, not this local
+        manifest change
       - >-
         `.claude-plugin/plugin.json` → `.claude-plugin/marketplace.json`. The root stops being a thing you
         install and becomes the list of things you install. NO self-entry — there is no root plugin left
