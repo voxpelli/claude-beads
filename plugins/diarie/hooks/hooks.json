@@ -1,0 +1,17 @@
+{
+  "description": "diarie tracker hooks: validate the flat-YAML task store immediately after an agent edits it.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-tasks-validate.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

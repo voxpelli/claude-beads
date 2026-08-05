@@ -351,13 +351,17 @@ plugins/                                workspace plugins (own package.json + ch
       references/                       native-autodream-contract,
                                         synthesis-rationale
       scripts/audit-memory.sh           Descriptive memory-dir audit (pure bash)
+  diarie/                               Hooks only, no skills
+    hooks/
+      hooks.json
+      post-tasks-validate.sh            Validate .diarie/tasks/ on edit; silent when clean
+    scripts/check-hooks.mjs             Its own hook suite
 scripts/                                dev-only gates; see Validation
 eslint-local-rules/
 hooks/
   hooks.json                            Hook definitions (2 event types)
   session-start.sh                      Tracker prime (startup) + compaction recovery (source=compact) + sensitive-file warning, dormancy nudges, trend-review
   post-file-edit.sh                     Auto-format hooks/*.sh with shfmt
-  post-tasks-validate.sh                Validate .diarie/tasks/ on edit; silent when clean
 ```
 
 ## How it fits together

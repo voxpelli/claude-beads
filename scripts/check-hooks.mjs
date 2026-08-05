@@ -1,7 +1,10 @@
 /**
- * Hook integration tests for vp-beads.
- * Verifies each hook script emits valid JSON output (0 or 1 objects)
- * and meets its behavioral contract.
+ * Hook integration tests for the ROOT plugin's hooks only.
+ *
+ * Verifies each hook script emits valid JSON output (0 or 1 objects) and meets
+ * its behavioral contract. Scope is `hooks/` — a `plugins/*` workspace owns its
+ * own hook suite under its own `check:` key, per decision vp-beads-gow, so that
+ * it travels with the package rather than being reached in from here.
  *
  * Adapted from vp-claude's check-hooks.mjs pattern.
  */
@@ -330,130 +333,6 @@ test('silent when file is not under hooks/', () => {
   return count === 0
     ? { ok: true }
     : { ok: false, reason: `expected silent, got ${count} objects` }
-})
-
-// =============================================================
-// post-tasks-validate.sh
-// =============================================================
-
-console.log('\npost-tasks-validate.sh')
-
-test('exists and is readable', () => ({ ok: existsSync(join(HOOKS, 'post-tasks-validate.sh')) }))
-
-/**
- * Build a temp project holding a `.diarie/tasks/` store with the given YAML.
- *
- * @param {string} yaml
- * @returns {{ dir: string, file: string }}
- */
-function makeTaskStore (yaml) {
-  const dir = mkdtempSync(join(tmpdir(), 'vp-beads-taskstore-'))
-  const tasksDir = join(dir, '.diarie', 'tasks')
-  mkdirSync(tasksDir, { recursive: true })
-  const file = join(tasksDir, 'tasks-x.yml')
-  writeFileSync(file, yaml)
-  return { dir, file }
-}
-
-const VALID_TASK = 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n'
-const DANGLING_DEP = 'meta:\n  slug: x\ntasks:\n  - id: T-1\n    title: a\n    status: pending\n    type: task\n    deps: [T-99]\n'
-
-test('invalid store → reports the error as additionalContext', () => {
-  // The whole point of the hook. Regression here is SILENT: the agent keeps
-  // editing a store whose ready-walk is now lying about what is workable.
-  const { dir, file } = makeTaskStore(DANGLING_DEP)
-  try {
-    const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
-      args: [ROOT],
-    })
-    if (status !== 0) return { ok: false, reason: `exit ${status}` }
-    const { count, objects, parseError } = parseJsonObjects(stdout)
-    if (parseError) return { ok: false, reason: parseError }
-    if (count !== 1) return { ok: false, reason: `expected 1 object, got ${count}` }
-    const ctx = deliveredContext(objects)
-    if (!ctx.includes('T-99')) return { ok: false, reason: `error not surfaced: ${ctx.slice(0, 200)}` }
-    return { ok: true }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-
-test('hookEventName is exactly "PostToolUse"', () => {
-  // `deliveredContext` asserts the envelope exists and names SOME event; it cannot
-  // know which event a given hook is wired to. Copying the SessionStart emitter
-  // into this hook satisfies every other assertion in this file and is still
-  // dropped, so this is the only check that can see it. It matters most when the
-  // emitter is copied into each shard (vp-beads-sss) — that is the moment a wrong
-  // event name becomes easy to introduce and impossible to notice.
-  const { dir, file } = makeTaskStore(DANGLING_DEP)
-  try {
-    const { stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
-      args: [ROOT],
-    })
-    const { objects, parseError } = parseJsonObjects(stdout)
-    if (parseError) return { ok: false, reason: parseError }
-    const event = objects[0]?.hookSpecificOutput?.hookEventName
-    return event === 'PostToolUse'
-      ? { ok: true }
-      : { ok: false, reason: `hookEventName is ${JSON.stringify(event)}, expected "PostToolUse"` }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-
-test('invalid store: `clean: false` must not be swallowed by jq\'s // operator', () => {
-  // Guards a real bug found in review: `.clean // empty` treats FALSE as absent, so
-  // the alternative fired on exactly the invalid-store case and the hook went silent
-  // precisely when it had something to say. It only spoke when there was nothing to
-  // report. Asserts the failing path produces output at all.
-  const { dir, file } = makeTaskStore(DANGLING_DEP)
-  try {
-    const { stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
-      args: [ROOT],
-    })
-    return stdout.trim().length > 0
-      ? { ok: true }
-      : { ok: false, reason: 'invalid store produced NO output — the false-is-absent bug is back' }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-
-test('valid store → silent (no noise on every task edit)', () => {
-  const { dir, file } = makeTaskStore(VALID_TASK)
-  try {
-    const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
-      args: [ROOT],
-    })
-    if (status !== 0) return { ok: false, reason: `exit ${status}` }
-    return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `expected silence, got: ${stdout.slice(0, 120)}` }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-})
-
-test('non-task file → silent (fires only for .diarie/tasks/)', () => {
-  const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({
-    tool_input: { file_path: '/tmp/some/README.md' },
-  }), { args: [ROOT] })
-  if (status !== 0) return { ok: false, reason: `exit ${status}` }
-  return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `unexpected output: ${stdout.slice(0, 120)}` }
-})
-
-test('no resolvable validator → silent, exit 0 (never a spam loop)', () => {
-  // A marketplace plugin cache has no node_modules, so the plugin's validate-tasks
-  // cannot import js-yaml. A hook that cannot validate must say nothing.
-  const { dir, file } = makeTaskStore(DANGLING_DEP)
-  try {
-    const { status, stdout } = runHook('post-tasks-validate.sh', JSON.stringify({ tool_input: { file_path: file } }), {
-      args: ['/nonexistent-plugin-root'],
-      scrubValidator: true,
-    })
-    if (status !== 0) return { ok: false, reason: `exit ${status}` }
-    return stdout.trim() === '' ? { ok: true } : { ok: false, reason: `expected silence, got: ${stdout.slice(0, 120)}` }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
 })
 
 // =============================================================

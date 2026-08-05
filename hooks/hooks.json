@@ -1,5 +1,5 @@
 {
-  "description": "Sprint workflow hooks: tracker prime + compaction-recovery + trend-review reminder at session start, task-store validation on edit, shell auto-formatting.",
+  "description": "Sprint workflow hooks: tracker prime + compaction-recovery + trend-review reminder at session start, shell auto-formatting on edit.",
   "hooks": {
     "PostToolUse": [
       {
@@ -9,11 +9,6 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-file-edit.sh ${CLAUDE_PLUGIN_ROOT}",
             "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-tasks-validate.sh ${CLAUDE_PLUGIN_ROOT}",
-            "timeout": 10
           }
         ]
       }

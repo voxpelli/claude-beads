@@ -44,8 +44,9 @@ the contents silently.
   onto the flat-YAML tracker, and the separate disarm of beads' machinery (git hooks
   behind `core.hooksPath`, and the Dolt daemon) once the migration is trusted. Neither
   ever deletes `.beads/` or any data.
-* **Four workspace plugins** under `plugins/` — `ledger`, `swarm-wave`, `diarie-adopt`
-  and `vp-dream` — each with its own manifest, version and gates.
+* **Five workspace plugins** under `plugins/` — `ledger`, `swarm-wave`, `diarie-adopt`,
+  `vp-dream` and `diarie` — each with its own manifest, version and gates. `diarie` ships
+  hooks and no skills: it validates the `.diarie/` task store the moment a row is edited.
 
 ### Changed
 

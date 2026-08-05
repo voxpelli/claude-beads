@@ -14,6 +14,21 @@
 # unrelated error surfaces on any edit. That is honest, not a bug.
 set -euo pipefail
 
+# --- The output contract. Every emit site goes through here. ---
+#
+# Claude Code reads `hookSpecificOutput.additionalContext`, and `hookEventName` is
+# required and must name the event this hook is wired to in hooks.json. A bare
+# top-level `{"additionalContext": …}` is silently dropped: it is valid JSON, so it
+# takes the JSON branch rather than the "any non-JSON text on stdout is added as
+# context" branch, and the unrecognised key is discarded. For PostToolUse there is
+# no fallback at all — plain stdout here is debug-log only, so the envelope is the
+# ONLY way this warning reaches the model. A hand-rolled jq at a call site is how
+# that hole reopens, so the shape lives in exactly one place per hook.
+emit_context() {
+	jq -n --arg msg "$1" \
+		'{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
+}
+
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || true)
 [ -n "$FILE_PATH" ] || exit 0
@@ -70,12 +85,5 @@ ${errors}
 
 Fix the YAML in \`.diarie/tasks/\` before continuing — a dangling dep or bad enum silently distorts what \`diarie ready\` reports as workable."
 
-# Claude Code reads `hookSpecificOutput.additionalContext`, and `hookEventName` is
-# required. A bare top-level `{"additionalContext": …}` is silently dropped: it is
-# valid JSON, so it takes the JSON branch rather than the "any non-JSON text on
-# stdout is added as context" branch, and the unrecognised key is discarded.
-# For PostToolUse there is no fallback at all — plain stdout here is debug-log
-# only, so the envelope is the ONLY way this warning reaches the model.
-jq -n --arg msg "$msg" \
-	'{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
+emit_context "$msg"
 exit 0

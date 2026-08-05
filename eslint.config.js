@@ -32,7 +32,9 @@ export default [
   ...voxpelli({
     noMocha: true,
     semi: false,
-    cliFiles: ['scripts/**/*.mjs', 'plugins/diarie-adopt/scripts/**/*.mjs', 'validate-plugin.mjs'],
+    // `plugins/*/scripts/**` is a glob, not an enumeration: a per-plugin list has to be
+    // edited every time a workspace is added, and the dissolution adds them one at a time.
+    cliFiles: ['scripts/**/*.mjs', 'plugins/*/scripts/**/*.mjs', 'validate-plugin.mjs'],
   }),
   {
     name: 'vp-beads/repo-style',

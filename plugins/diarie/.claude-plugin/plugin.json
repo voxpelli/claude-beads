@@ -1,0 +1,12 @@
+{
+  "name": "diarie",
+  "version": "0.1.0",
+  "description": "Everyday session hooks for the diarie flat-YAML tracker: a SessionStart prime reporting what is ready, blocked and claimed, compaction recovery for in-progress claims, and edit-time validation of .diarie/tasks/. Hooks only — no skills. For projects that already track their work in a .diarie/ store.",
+  "author": {
+    "name": "Pelle Wessman",
+    "url": "https://github.com/voxpelli"
+  },
+  "repository": "https://github.com/voxpelli/claude-beads",
+  "license": "MIT",
+  "keywords": ["diarie", "flat-yaml", "tracker", "session-start", "compaction-recovery", "validation"]
+}

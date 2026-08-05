@@ -1,0 +1,17 @@
+{
+  "name": "@vp-skills/diarie",
+  "private": true,
+  "type": "module",
+  "description": "diarie plugin — everyday session hooks for the flat-YAML tracker (session prime, compaction recovery, edit-time store validation).",
+  "scripts": {
+    "check": "run-p check:*",
+    "check:md": "remark . --quiet --frail",
+    "check:sh": "shellcheck hooks/*.sh && shfmt -d hooks/",
+    "check:test": "node scripts/check-hooks.mjs"
+  },
+  "devDependencies": {
+    "@voxpelli/remark-preset": "^0.1.1",
+    "npm-run-all2": "^7.0.0",
+    "remark-cli": "^12.0.1"
+  }
+}

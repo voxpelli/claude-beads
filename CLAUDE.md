@@ -51,12 +51,18 @@ plugins/                              # workspace-plugins (own package.json + .r
       scripts/audit-memory.sh         # descriptive memory-directory audit (pure bash)
     scripts/
       check-audit-memory.sh           # Tests for the audit — wired in as vp-dream's `check:test`
-hooks/
+  diarie/                             # HOOKS ONLY, no skills — and shaped to LEAVE (see below)
+    README.md
+    hooks/
+      hooks.json
+      post-tasks-validate.sh          # Validate .diarie/tasks/ on edit; report errors, silent when clean
+    scripts/
+      check-hooks.mjs                 # Its own hook suite — wired in as diarie's `check:test`
+hooks/                                # the ROOT plugin's hooks; emptying as vp-beads-sss proceeds
   hooks.json                          # Hook definitions (2 event types)
   session-start.sh                    # Tracker prime (startup) + compaction recovery (source=compact)
                                       #   + sensitive-file warning, dormancy nudge, trend-review reminder
   post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt
-  post-tasks-validate.sh              # Validate .diarie/tasks/ on edit; report errors, silent when clean
 scripts/                              # dev-only gates; see ## Validation
 eslint-local-rules/
 CLAUDE.md · README.md · CHANGELOG.md
@@ -70,7 +76,8 @@ Hooks are shell scripts. Everything under `scripts/` is dev tooling, reached onl
 
 ### Skills (6)
 
-Six `SKILL.md` files on disk — one in the root plugin, five across the four workspace plugins. If
+Six `SKILL.md` files on disk — one in the root plugin, five across the workspace plugins (`diarie`
+is the one that carries none; it ships hooks only). If
 this count and the list below disagree with `find . -name SKILL.md`, the file is wrong, not the disk.
 
 * **ledger** (`plugins/ledger/`) — The project's ledger of relationships with code it does not own:
@@ -756,8 +763,9 @@ The root's remaining `check:*` keys cover the **plugin only** —
 `check:ast-grep` + `check:ast-grep-test`, `check:hooks`, and
 `check:tasks` (`diarie validate` — validating _this repo's own store_ via the installed
 diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces --if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
-Workspace members today: **all four** `plugins/*` — `ledger` (relationship tracking), `swarm-wave`
-(wave orchestration), `diarie-adopt` (migration tooling) and `vp-dream` (memory consolidation). Each
+Workspace members today: **all five** `plugins/*` — `ledger` (relationship tracking), `swarm-wave`
+(wave orchestration), `diarie-adopt` (migration tooling), `vp-dream` (memory consolidation) and
+`diarie` (the everyday tracker hooks, destined for `voxpelli/diarie-skills`). Each
 owns its own `check` aggregate that the root delegates to; `--if-present` means a workspace without
 one is skipped SILENTLY, so adding a plugin without a `check` key removes it from the gate without
 anything going red. **diarie is NOT a workspace** — it is an external npm dependency (`diarie@^0.2.0`)
