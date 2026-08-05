@@ -2877,21 +2877,39 @@ tasks:
     title: 'validate-plugin gaps: nested hooks.json unread, quoted/relative hook paths unchecked, event names unvalidated'
     status: pending
     type: task
-    priority: high
+    priority: medium
     labels:
       - bug
     acceptance_criteria:
       - >-
-        ON THE CRITICAL PATH as of 2026-08-05, which is why this is now `high` and not `medium`. The
-        nested-hooks.json half is the sole remaining blocker on `dissolution/vp-beads-sss` (shard the
-        session-start hook across the owning plugins), which in turn blocks `vp-beads-rrp` (retire the
-        root plugin). sss creates exactly the nested `plugins/*/hooks/hooks.json` files this validator
-        cannot see, so shipping it first lands them unvalidated
+        SPLIT 2026-08-05, and OFF the critical path as a result. This row was briefly raised to `high`
+        as the sole blocker on `dissolution/vp-beads-sss`; that was a bookkeeping accident. A 13-AC
+        batch mixing measured code defects with an ASK-FIRST dependency decision is not a finishable
+        dependency, so the parts sss actually needs became `vp-beads-vhn` (DONE) and the decision became
+        `vp-beads-vdo` (deferred). sss now depends on vhn. Back to `medium` with the remainder
       - >-
-        The other two halves (quoted/relative hook paths, unvalidated event names) are NOT on that path
-        and can ship separately. Note the event-name half gained a consumer-side precedent meanwhile:
-        `check-hooks.mjs` now asserts each hook emits the `hookEventName` matching the event it is wired
-        to, after a wrong-but-valid name was measured to fail exactly 1 test of 38
+        SHIPPED IN vp-beads-vhn, do not re-do: nested `plugins/*/hooks/hooks.json` discovery; the
+        quoted- and relative-command-path gaps; unvalidated hook event names; the three null-element
+        crashes (hook entry, hook definition, marketplace `plugins[]`); presence-only required manifest
+        fields; skill-directory-vs-frontmatter-`name`. Each RED-proved and each mutation-proved
+      - >-
+        MOVED TO vp-beads-vdo: the whole "adopt vp-routines' extracted validators" weighing. Re-measure
+        its gain list before deciding — most of what it listed as upstream's advantage has since been
+        fixed on our side by vhn
+      - >-
+        WHAT ACTUALLY REMAINS HERE, and it is the harder half — every item is about the audits' REACH
+        rather than a bug in a check: `references/*.md` get only `auditWorkflowReferences`, so the
+        tool-reference audit points at the file where the ledger skill's logic is NOT;
+        `auditToolReferences` matches only `mcp__*`, so a skill instructing "use the Grep tool" with
+        Grep absent from `allowed-tools` is invisible; the version surface grew 1 -> 5 manifests with no
+        coherence guard; and the marketplace version check is STRUCTURALLY INERT here (this repo has no
+        marketplace.json — a check that cannot fire is not a check, same class as `vp-beads-exf`)
+      - >-
+        AND THE ONE WORTH KEEPING LONGEST — C6: the ledger merge RELOCATED logic out of the only file
+        the prose audits inspect, so the audit's reach shrank with NO signal. A guard losing coverage
+        because its SUBJECT moved is the dissolution's characteristic risk, and it recurs at every
+        further plugin split. vhn's `hooks.json` inventory line is one small answer to that shape;
+        the general one is still open
       - >-
         NESTED hooks.json IS NEVER READ. `validate-plugin.mjs`'s `hooksPath` const — the one guarded by
         the `existsSync(hooksPath)` block under the `--- hooks.json (optional) ---` banner — hardcodes
@@ -3124,3 +3142,104 @@ tasks:
       verified against the code or the installed package before filing; nothing is carried on a
       reviewer's assertion alone. The prose-level findings from the same round shipped in `9e3b5ca`.
     updated: '2026-07-29'
+
+  - id: vp-beads-vhn
+    title: 'validate-plugin: nested hooks.json discovery + the hook-command defects it exposed'
+    status: completed
+    type: task
+    priority: high
+    labels:
+      - bug
+    acceptance_criteria:
+      - >-
+        SPLIT OUT of `vp-beads-vgp` so `dissolution/vp-beads-sss` depends on something FINISHABLE.
+        vgp is a 13-AC batch that bundles measured code defects with an ASK-FIRST dependency decision
+        (`vp-beads-vdo`); blocking the critical path on all of it would have been a bookkeeping
+        accident, not a judgement. vgp stays open with its remainder
+      - >-
+        DONE — `hooks.json` is DISCOVERED, not one hardcoded path: root plus every `plugins/*`
+        workspace, with `${CLAUDE_PLUGIN_ROOT}` resolving to the OWNING plugin's directory
+        (`dirname(dirname(hooks.json))`) rather than the repo root. sss creates exactly these files;
+        without this the whole shard would have landed unvalidated while the validator reported success
+      - >-
+        DONE — the script-existence check no longer skips the two forms that need it most. It used to
+        `find(p => p.startsWith('/') || p.startsWith('./'))`, so a QUOTED path (correct practice for a
+        path that may contain spaces) and a RELATIVE path both sailed through. Now it asks which token
+        IS the script — the one after a recognised interpreter — strips quotes, and treats a relative
+        path as an ERROR regardless of existence, because hooks run with the USER'S project as cwd
+      - >-
+        DONE — hook EVENT NAMES are validated, with the severity split that makes the list maintainable:
+        a near-miss of a known event (`SesionStart`) is an ERROR naming the intended one, because a
+        typo'd event registers cleanly and then never fires; a wholly unknown name is a WARNING, because
+        Claude Code keeps adding events and a hard list would false-red on the next one
+      - >-
+        DONE — three uncaught crashes are now positioned errors: a `null` element in a hooks event
+        array, a `null` hook definition, and a `null` `plugins[]` entry in marketplace.json. A crash is
+        not a validation failure — it exits before the summary and LOSES every finding gathered up to
+        that point, so CI reads "the validator is broken" rather than "your plugin is"
+      - >-
+        DONE — required manifest fields are no longer presence-only. `field in manifest` passed
+        `name: ""` and `description: null` at exit 0; both root and per-plugin manifests now go through
+        one `checkManifestFields` that requires a non-empty string
+      - >-
+        DONE — a skill's DIRECTORY name is compared to its frontmatter `name`. The directory is what
+        gets invoked; the two disagreeing means a `/slash` invocation or a cross-skill reference written
+        against either one silently addresses nothing
+      - >-
+        DONE — `hooks.json` count joins the success inventory. Discovery that finds nothing must SAY so;
+        this is the same reasoning that put skill NAMES in that line rather than a bare "passed"
+      - >-
+        RED-PROVED, and the tests were mutation-proved in turn — 12 new fixture cases (20 total), then
+        five mutations run against them. Reverting discovery to the old root-only path reddens exactly
+        the 8 nested cases; disabling `stripQuotes` reddens exactly the quoted case; no-op'ing the
+        relative branch reddens exactly the relative case; restoring presence-only fields reddens
+        exactly the two empty/null-field cases; removing the dirname check reddens exactly that one.
+        Non-overlapping, so each case is load-bearing for its own claim rather than riding on discovery
+      - >-
+        DELIBERATE CONTROL, not an oversight: a wholly-unknown event stays GREEN. Without that case the
+        typo check would be indistinguishable from a rule that rejects every event absent from a list
+        someone must remember to update — and this repo has been bitten by exactly that shape before
+      - >-
+        NOT DONE HERE, rehomed rather than dropped: `scripts/check-hooks.mjs`'s identical blind spot
+        (`const HOOKS = join(ROOT, 'hooks')`) belongs to `dissolution/vp-beads-sss`, which already
+        carries an AC for retargeting it with a RED-proof in the new location — that is the moment
+        nested hook files first exist to be found
+    description: >-
+      The critical-path half of vp-beads-vgp. Every claim re-measured under VALIDATE_PLUGIN_ROOT, since
+      validate-plugin.mjs IGNORES argv and would otherwise silently validate this repo and print
+      "passed" — which reads exactly like a fixture that passed.
+    updated: '2026-08-05'
+
+  - id: vp-beads-vdo
+    title: 'DECIDE: adopt vp-routines'' extracted validators, or keep ours'
+    status: deferred
+    type: task
+    priority: medium
+    labels:
+      - spike
+    acceptance_criteria:
+      - >-
+        SPLIT OUT of `vp-beads-vgp` (2026-08-05) because it is an ASK-FIRST dependency call wearing a
+        bug row's clothes, and it was transitively blocking the critical path. It must not gate
+        `dissolution/vp-beads-sss`
+      - >-
+        THE CANDIDATE: vp-routines has extracted `@voxpelli/claude-plugin-validator` and
+        `@voxpelli/claude-skill-validator`. Both are `private: true` / `0.0.0` — NOT published — so
+        adoption today means a `file:` dep or vendoring, which is precisely the ASK-FIRST gate
+      - >-
+        MEASURED GAINS, head-to-head: it resolves relative hook paths against the plugin dir; guards the
+        null elements; catches empty-string fields and `REPLACE_ME` scaffold text; is `dir`-taking, so
+        nested plugins dissolve as a shape rather than a fix. NOTE most of these have SINCE been fixed
+        on our side by `vp-beads-vhn` — re-measure the delta before deciding, do not price it from this
+        list
+      - >-
+        MEASURED COSTS: five checks have no upstream equivalent and would be LOST — the naked
+        `workflow N (Name)` audit, the `auditSilentSkips` Files-availability guard, the whole
+        PRIVATE-SYNERGY no-commit-leak apparatus, and the `plugins/*`-dir-with-skills-but-no-manifest
+        positive error. Upstream also has ~13 checks ours lacks, and it FALSE-POSITIVES on quoted hook
+        paths — a bug ours no longer has
+      - 'REVIVAL TRIGGER: either package is published, or the dissolution reaches a point where per-workspace validation is needed and a `dir`-taking validator is the cheaper route'
+    description: >-
+      Genuinely a decision, not a defect — which is why it is its own row. Both directions are
+      defensible and the answer is the user's, not the validator's.
+    updated: '2026-08-05'

@@ -198,5 +198,168 @@ runCase(
     !r.stdout.includes('NONE FOUND')
 )
 
+// --- Nested hooks.json (vp-beads-vgp) ---
+//
+// Until these existed, `plugins/*/hooks/hooks.json` was NEVER READ: the validator hardcoded one
+// root path, so a byte-identical garbage file exited 1 at `hooks/` and 0 at `plugins/x/hooks/`.
+// vp-beads-sss creates exactly these files, so the gap would have landed the whole shard
+// unvalidated while the validator reported success.
+
+// The literal token Claude Code substitutes at runtime. Held in a const so the fixtures below can
+// build commands with real template strings instead of scattering `no-template-curly-in-string`
+// suppressions at every use.
+// eslint-disable-next-line no-template-curly-in-string -- that literal token is the point
+const PLUGIN_ROOT = '${CLAUDE_PLUGIN_ROOT}'
+
+/**
+ * @param {Record<string, unknown>} hooksMap
+ * @returns {string}
+ */
+function hooksFile (hooksMap) {
+  return JSON.stringify({ hooks: hooksMap })
+}
+
+/**
+ * One well-formed command hook, so each case plants only the ONE defect it is about.
+ *
+ * @param {string} [cmd]
+ * @returns {Record<string, unknown>}
+ */
+function okHook (cmd = `bash ${PLUGIN_ROOT}/hooks/run.sh`) {
+  return { matcher: '', hooks: [{ type: 'command', command: cmd, timeout: 5 }] }
+}
+
+/**
+ * A plugin workspace with a manifest and a real target script, plus the caller's files.
+ *
+ * @param {Record<string, string>} files
+ * @returns {Record<string, string>}
+ */
+function withPlugin (files) {
+  return {
+    'plugins/hooked/.claude-plugin/plugin.json': manifest({ name: 'hooked', version: '0.0.0', description: 'has hooks' }),
+    'plugins/hooked/hooks/run.sh': '#!/bin/bash\ntrue\n',
+    ...files,
+  }
+}
+
+// 9. the founding gap: a nested hooks.json is read at all
+runCase(
+  'NESTED hooks.json with a bogus hook type → RED, and names the nested file',
+  withPlugin({
+    'plugins/hooked/hooks/hooks.json': hooksFile({
+      PostToolUse: [{ matcher: '', hooks: [{ type: 'banana', command: 'x', timeout: 5 }] }],
+    }),
+  }),
+  (r) => r.status === 1 && r.stderr.includes('plugins/hooked/hooks/hooks.json') && r.stderr.includes('banana')
+)
+
+// 10. a null element must be a positioned error, not a crash that loses every prior finding
+runCase(
+  'NESTED hooks.json with a `null` entry → clean error, NOT a TypeError crash',
+  withPlugin({
+    'plugins/hooked/hooks/hooks.json': '{"hooks":{"PostToolUse":[null]}}',
+  }),
+  (r) => r.status === 1 && r.stderr.includes('must be an object') && !r.stderr.includes('TypeError')
+)
+
+// 11. a null hook DEFINITION, one level deeper than case 10
+runCase(
+  'a `null` hook definition → clean error, NOT a TypeError crash',
+  withPlugin({
+    'plugins/hooked/hooks/hooks.json': '{"hooks":{"PostToolUse":[{"matcher":"","hooks":[null]}]}}',
+  }),
+  (r) => r.status === 1 && r.stderr.includes('hook definition must be an object') && !r.stderr.includes('TypeError')
+)
+
+// 12. QUOTED path — correct practice for a path that may contain spaces, and previously skipped
+runCase(
+  'quoted nonexistent command path → RED (the old guard matched only bare tokens)',
+  withPlugin({
+    'plugins/hooked/hooks/hooks.json': hooksFile({ PostToolUse: [okHook(`bash "${PLUGIN_ROOT}/hooks/NOPE.sh"`)] }),
+  }),
+  (r) => r.status === 1 && r.stderr.includes('does not exist')
+)
+
+// 13. RELATIVE path — broken at runtime regardless of existence, because hooks run with the
+//     USER'S project as cwd. The file below EXISTS, so only a cwd-aware check can go red.
+runCase(
+  'relative command path → RED even though the file exists (hooks run in the user\'s cwd)',
+  withPlugin({
+    'plugins/hooked/hooks/hooks.json': hooksFile({ PostToolUse: [okHook('bash hooks/run.sh')] }),
+  }),
+  (r) => r.status === 1 && r.stderr.includes('RELATIVE')
+)
+
+// 14. a misspelled event registers cleanly and never fires — silent and permanent
+runCase(
+  'misspelled hook event (`SesionStart`) → RED, and suggests the real one',
+  withPlugin({
+    'plugins/hooked/hooks/hooks.json': hooksFile({ SesionStart: [okHook()] }),
+  }),
+  (r) => r.status === 1 && r.stderr.includes('SessionStart')
+)
+
+// 15. …and the control that keeps case 14 honest: an event that is merely UNKNOWN (Claude Code
+//     keeps adding them) must warn, not fail. Without this, the typo check would be indistinguishable
+//     from a rule that rejects every event not on a list someone has to remember to update.
+runCase(
+  'wholly unknown event → warns but stays GREEN, so a new Claude Code event cannot false-red',
+  withPlugin({
+    'plugins/hooked/hooks/hooks.json': hooksFile({ QuantumFlux: [okHook()] }),
+  }),
+  (r) => r.status === 0 && r.stderr.includes('QuantumFlux')
+)
+
+// 16. …and the control that keeps discovery from being vacuous: a valid nested file must be
+//     COUNTED. Cases 9-15 all assert on failure text, which a validator that never found the file
+//     could not produce — but a validator that found it and counted zero would still look fine.
+runCase(
+  'a valid nested hooks.json is COUNTED in the inventory, not silently skipped',
+  withPlugin({
+    'plugins/hooked/hooks/hooks.json': hooksFile({ PostToolUse: [okHook()] }),
+  }),
+  (r) => r.status === 0 && r.stdout.includes('1 hooks.json')
+)
+
+// --- Presence-only checks, and one more crash (vp-beads-vgp) ---
+
+// 17. `field in manifest` is not the check it looks like
+runCase(
+  'manifest with `name: ""` → RED (presence is not the check)',
+  {
+    '.claude-plugin/plugin.json': manifest({ name: '', version: '0.0.0', description: 'empty name' }),
+  },
+  (r) => r.status === 1 && r.stderr.includes('non-empty string')
+)
+
+// 18. …and its YAML-null twin, which behaved identically
+runCase(
+  'manifest with `description: null` → RED, and says what it got',
+  {
+    '.claude-plugin/plugin.json': '{"name":"x","version":"0.0.0","description":null}',
+  },
+  (r) => r.status === 1 && r.stderr.includes('null')
+)
+
+// 19. same crash class as the hooks arrays, one level out
+runCase(
+  'marketplace.json with a `null` plugins[] entry → clean error, NOT a TypeError crash',
+  {
+    '.claude-plugin/marketplace.json': '{"name":"m","plugins":[null]}',
+  },
+  (r) => r.status === 1 && r.stderr.includes('must be an object') && !r.stderr.includes('TypeError')
+)
+
+// 20. the directory is what gets invoked; the frontmatter name is what the skill calls itself
+runCase(
+  'skill directory name disagreeing with its frontmatter `name` → RED',
+  {
+    'plugins/named/.claude-plugin/plugin.json': manifest({ name: 'named', version: '0.0.0', description: 'name mismatch' }),
+    'plugins/named/skills/actual-dir/SKILL.md': validSkill().replace('name: demo', 'name: something-else'),
+  },
+  (r) => r.status === 1 && r.stderr.includes('actual-dir') && r.stderr.includes('something-else')
+)
+
 console.log(`\n${passed + failed} fixture cases: ${passed} passed, ${failed} failed`)
 if (failed > 0) process.exit(1)

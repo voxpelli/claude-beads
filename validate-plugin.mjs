@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { dirname, isAbsolute, join, relative } from 'node:path'
 
 import yaml from 'js-yaml'
 
@@ -290,17 +290,50 @@ function auditWorkflowReferences (file, content) {
  * }} PluginManifest
  */
 
+/**
+ * Name a value's kind for an error message.
+ *
+ * `typeof null` is `'object'` and `typeof []` is `'object'` — which is precisely the confusion the
+ * messages using this exist to clear up, since "must be an object, got object" helps nobody. The
+ * one `null` literal in the file lives here rather than at each call site.
+ *
+ * @param {unknown} value
+ * @returns {string}
+ */
+function kindOf (value) {
+  if (value === null) return 'null'
+  return Array.isArray(value) ? 'array' : typeof value
+}
+
+/**
+ * The three fields every plugin manifest must carry, root and `plugins/*` alike.
+ *
+ * PRESENCE IS NOT THE CHECK. `field in manifest` passed a manifest with `name: ""` and
+ * `description: ""` — measured, exit 0, "Plugin validation passed" — and a YAML-null `name:`
+ * behaved the same. An empty name is not a manifest that has a name; it is one that will fail at
+ * install time instead of here, which is the only place it is cheap to fail.
+ *
+ * @param {string} manifestPath
+ * @param {Record<string, unknown>} manifest
+ */
+function checkManifestFields (manifestPath, manifest) {
+  for (const field of ['name', 'version', 'description']) {
+    const value = manifest[field]
+    if (value === undefined) {
+      error(manifestPath, `Missing required field: ${field}`)
+    } else if (typeof value !== 'string' || value.trim() === '') {
+      error(manifestPath, `Required field "${field}" must be a non-empty string, got ${kindOf(value)}`)
+    }
+  }
+}
+
 const pluginPath = join(ROOT, '.claude-plugin', 'plugin.json')
 const plugin = await readJson(pluginPath)
 if (plugin !== undefined) {
   if (!isRecord(plugin)) {
     error(pluginPath, 'plugin.json must be a JSON object')
   } else {
-    for (const field of ['name', 'version', 'description']) {
-      if (!(field in plugin)) {
-        error(pluginPath, `Missing required field: ${field}`)
-      }
-    }
+    checkManifestFields(pluginPath, plugin)
   }
 }
 
@@ -314,11 +347,7 @@ for (const dir of PLUGIN_DIRS) {
     if (!isRecord(manifest)) {
       error(manifestPath, 'plugin.json must be a JSON object')
     } else {
-      for (const field of ['name', 'version', 'description']) {
-        if (!(field in manifest)) {
-          error(manifestPath, `Missing required field: ${field}`)
-        }
-      }
+      checkManifestFields(manifestPath, manifest)
     }
   }
 }
@@ -343,6 +372,12 @@ if (existsSync(marketplacePath)) {
     const pluginVersion = /** @type {PluginManifest} */ (plugin).version
     const entries = Array.isArray(m.plugins) ? m.plugins : []
     for (const entry of entries) {
+      // Same crash class as the hooks arrays: a `null` element threw on `.source` and took the
+      // whole run with it, losing every finding gathered before it.
+      if (!isRecord(entry)) {
+        error(marketplacePath, `plugins[] entry must be an object, got ${kindOf(entry)}`)
+        continue
+      }
       const e = /** @type {MarketplaceEntry} */ (entry)
       if (e.source === './' && e.version !== pluginVersion) {
         error(
@@ -367,57 +402,167 @@ if (existsSync(marketplacePath)) {
  * @typedef {{ type?: unknown, timeout?: unknown, command?: unknown }} HookDefinition
  */
 
-const hooksPath = join(ROOT, 'hooks', 'hooks.json')
-if (existsSync(hooksPath)) {
+/**
+ * Claude Code's hook events. Open-ended by nature — new ones get added — so an unrecognised name
+ * is a WARNING, not an error. But a NEAR-MISS of a known name is a typo, and a typo'd event
+ * registers cleanly and then never fires: silent, permanent, and invisible to every other gate.
+ * Those get an error, which is the whole point of keeping the list.
+ */
+const KNOWN_HOOK_EVENTS = new Set([
+  'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Notification',
+  'Stop', 'SubagentStop', 'PreCompact', 'PostCompact',
+  'SessionStart', 'SessionEnd',
+])
+
+/** Interpreters whose NEXT argument is the script. Matched on the basename, so `/bin/bash` counts. */
+const HOOK_INTERPRETERS = new Set(['bash', 'sh', 'zsh', 'dash', 'node', 'python', 'python3', 'deno', 'bun'])
+
+/**
+ * Levenshtein distance, capped in practice by the short strings it compares.
+ *
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+function editDistance (a, b) {
+  /** @type {number[]} */
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    const curr = [i]
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      curr[j] = Math.min((curr[j - 1] ?? 0) + 1, (prev[j] ?? 0) + 1, (prev[j - 1] ?? 0) + cost)
+    }
+    prev = curr
+  }
+  return prev[b.length] ?? 0
+}
+
+/**
+ * Strip one layer of matching surrounding quotes.
+ *
+ * Quoting a path is CORRECT practice when it may contain spaces, so a guard that only recognises
+ * bare tokens skips exactly the commands written most carefully.
+ *
+ * @param {string} token
+ * @returns {string}
+ */
+function stripQuotes (token) {
+  const m = /^(["'])(.*)\1$/.exec(token)
+  return m?.[2] ?? token
+}
+
+/**
+ * Validate one `hooks.json`.
+ *
+ * Extracted from a single hardcoded root path so `plugins/*\/hooks/hooks.json` is reached too —
+ * `vp-beads-sss` creates exactly those files, and until this existed they would have landed
+ * completely unvalidated while the validator reported success.
+ *
+ * `baseDir` is what `${CLAUDE_PLUGIN_ROOT}` resolves to for this file — and equally, the directory
+ * a relative command path would have had to be relative to.
+ *
+ * @param {string} hooksPath - The hooks.json to read
+ * @param {string} baseDir - The owning plugin's directory
+ * @returns {Promise<void>}
+ */
+async function validateHooksFile (hooksPath, baseDir) {
   const hooksData = await readJson(hooksPath)
-  if (hooksData !== undefined) {
-    const h = /** @type {HooksFile} */ (hooksData)
-    if (!h.hooks || typeof h.hooks !== 'object') {
-      error(hooksPath, 'Missing top-level "hooks" object')
-    } else {
-      // eslint-disable-next-line prefer-destructuring -- the JSDoc cast on h.hooks is needed for Object.entries below
-      const hooks = /** @type {Record<string, unknown>} */ (h.hooks)
-      for (const [event, entries] of Object.entries(hooks)) {
-        if (!Array.isArray(entries)) {
-          error(hooksPath, `hooks.${event} must be an array`)
+  if (hooksData === undefined) return
+
+  const h = /** @type {HooksFile} */ (hooksData)
+  if (!isRecord(h.hooks)) {
+    error(hooksPath, 'Missing top-level "hooks" object')
+    return
+  }
+
+  for (const [event, entries] of Object.entries(h.hooks)) {
+    if (!KNOWN_HOOK_EVENTS.has(event)) {
+      const near = [...KNOWN_HOOK_EVENTS].find((k) =>
+        k.toLowerCase() === event.toLowerCase() || editDistance(k, event) <= 2)
+      if (near) {
+        error(hooksPath, `hooks.${event}: unknown hook event — did you mean "${near}"? A misspelled event registers cleanly and then never fires`)
+      } else {
+        warn(hooksPath, `hooks.${event}: not a known hook event. If Claude Code added it, extend KNOWN_HOOK_EVENTS; otherwise this hook never fires`)
+      }
+    }
+
+    if (!Array.isArray(entries)) {
+      error(hooksPath, `hooks.${event} must be an array`)
+      continue
+    }
+
+    for (const entry of entries) {
+      // A `null` element used to throw on `.matcher` and take the whole run with it. A crash is
+      // not a validation failure: it exits before the summary and LOSES every finding gathered so
+      // far, so CI reads "the validator is broken" rather than "your plugin is".
+      if (!isRecord(entry)) {
+        error(hooksPath, `hooks.${event}: entry must be an object, got ${kindOf(entry)}`)
+        continue
+      }
+      const e = /** @type {HookMatcherEntry} */ (entry)
+      if (typeof e.matcher !== 'string') {
+        error(hooksPath, `hooks.${event}: entry missing "matcher" (string)`)
+      }
+      if (!Array.isArray(e.hooks)) {
+        error(hooksPath, `hooks.${event}: entry missing "hooks" (array)`)
+        continue
+      }
+
+      for (const hook of e.hooks) {
+        if (!isRecord(hook)) {
+          error(hooksPath, `hooks.${event}: hook definition must be an object, got ${kindOf(hook)}`)
           continue
         }
-        for (const entry of entries) {
-          const e = /** @type {HookMatcherEntry} */ (entry)
-          if (typeof e.matcher !== 'string') {
-            error(hooksPath, `hooks.${event}: entry missing "matcher" (string)`)
-          }
-          if (!Array.isArray(e.hooks)) {
-            error(hooksPath, `hooks.${event}: entry missing "hooks" (array)`)
-            continue
-          }
-          for (const hook of e.hooks) {
-            const hk = /** @type {HookDefinition} */ (hook)
-            if (!VALID_HOOK_TYPES.has(String(hk.type))) {
-              error(hooksPath, `hooks.${event}: hook type must be one of: ${[...VALID_HOOK_TYPES].join(', ')}, got "${String(hk.type)}"`)
-            }
-            if (hk.type === 'prompt') {
-              warn(hooksPath, `hooks.${event}: prompt hooks spawn a separate Haiku instance with no MCP tool access — use type: "command" emitting {"hookSpecificOutput": {"hookEventName": "${event}", "additionalContext": …}} unless this hook intentionally requires no MCP tools`)
-            }
-            if (typeof hk.timeout !== 'number') {
-              error(hooksPath, `hooks.${event}: hook missing "timeout" (number)`)
-            }
-            // Validate command hook paths
-            if (hk.type === 'command' && typeof hk.command === 'string') {
-              // eslint-disable-next-line no-template-curly-in-string -- literal placeholder token Claude Code substitutes at runtime, not a JS template
-              const resolved = hk.command.replaceAll('${CLAUDE_PLUGIN_ROOT}', ROOT)
-              // Extract the file path from the command (after "bash " or similar)
-              const parts = resolved.split(/\s+/)
-              const scriptPath = parts.find((p) => p.startsWith('/') || p.startsWith('./'))
-              if (scriptPath && !existsSync(scriptPath)) {
+        const hk = /** @type {HookDefinition} */ (hook)
+        if (!VALID_HOOK_TYPES.has(String(hk.type))) {
+          error(hooksPath, `hooks.${event}: hook type must be one of: ${[...VALID_HOOK_TYPES].join(', ')}, got "${String(hk.type)}"`)
+        }
+        if (hk.type === 'prompt') {
+          warn(hooksPath, `hooks.${event}: prompt hooks spawn a separate Haiku instance with no MCP tool access — use type: "command" emitting {"hookSpecificOutput": {"hookEventName": "${event}", "additionalContext": …}} unless this hook intentionally requires no MCP tools`)
+        }
+        if (typeof hk.timeout !== 'number') {
+          error(hooksPath, `hooks.${event}: hook missing "timeout" (number)`)
+        }
+
+        if (hk.type === 'command' && typeof hk.command === 'string') {
+          // eslint-disable-next-line no-template-curly-in-string -- literal placeholder token Claude Code substitutes at runtime, not a JS template
+          const resolved = hk.command.replaceAll('${CLAUDE_PLUGIN_ROOT}', baseDir)
+
+          // ASK WHICH TOKEN IS THE SCRIPT, don't pattern-match for one. The old
+          // `parts.find(p => p.startsWith('/') || p.startsWith('./'))` missed the two forms that
+          // need checking most: a QUOTED path (correct practice, and the leading char is then a
+          // quote) and a RELATIVE path (broken at runtime regardless of existence, because hooks
+          // run with the USER'S project as cwd, not the plugin's).
+          const tokens = resolved.split(/\s+/).filter(Boolean).map((t) => stripQuotes(t))
+          const interp = tokens.findIndex((t) => HOOK_INTERPRETERS.has(t.split('/').pop() ?? t))
+          const script = tokens[interp === -1 ? 0 : interp + 1]
+
+          if (script !== undefined && (script.includes('/') || /\.(?:sh|mjs|cjs|js|ts|py)$/.test(script))) {
+            if (isAbsolute(script)) {
+              if (!existsSync(script)) {
                 error(hooksPath, `hooks.${event}: referenced file does not exist: ${hk.command}`)
               }
+            } else {
+              const wouldBe = join(baseDir, script)
+              error(hooksPath, `hooks.${event}: command path is RELATIVE (${script}) — hooks run with the user's project as cwd, not the plugin's, so this resolves somewhere unpredictable and usually fails. Use \${CLAUDE_PLUGIN_ROOT}/${relative(baseDir, wouldBe)}`)
             }
           }
         }
       }
     }
   }
+}
+
+// DISCOVERY, not one hardcoded path. Root plus every plugin workspace; `${CLAUDE_PLUGIN_ROOT}`
+// resolves to the owning plugin's directory, which is `dirname(dirname(hooks.json))` in both cases.
+const hooksFiles = [
+  join(ROOT, 'hooks', 'hooks.json'),
+  ...PLUGIN_ALL_DIRS.map((dir) => join(dir, 'hooks', 'hooks.json')),
+].filter((p) => existsSync(p))
+
+for (const p of hooksFiles) {
+  await validateHooksFile(p, dirname(dirname(p)))
 }
 
 // --- .claude/synergy-registry.json (optional) ---
@@ -652,6 +797,16 @@ for (const file of skillFiles) {
       error(file, `Missing required frontmatter field: ${field}`)
     }
   }
+  // The DIRECTORY is what Claude Code invokes; the frontmatter `name` is what the skill calls
+  // itself. Nothing compared them, so `skills/wrongname/` declaring `name: other` passed — and the
+  // two disagreeing is not cosmetic: a cross-skill reference or a `/slash` invocation written
+  // against one of them silently addresses nothing.
+  const declaredName = fm['name']
+  const dirName = dirname(file).split('/').pop()
+  if (typeof declaredName === 'string' && dirName !== undefined && declaredName !== dirName) {
+    error(file, `frontmatter name "${declaredName}" does not match its directory "${dirName}" — the directory is what gets invoked`)
+  }
+
   if ('allowed-tools' in fm && !Array.isArray(fm['allowed-tools'])) {
     error(file, 'allowed-tools must be an array')
   }
@@ -820,6 +975,7 @@ if (errors.length > 0) {
     `${skillNames.length} skill(s)`,
     `${referenceFiles.length} reference file(s)`,
     `${agentFiles.length} agent(s)`,
+    `${hooksFiles.length} hooks.json`,
   ].join(', ')
   console.log(`Plugin validation passed — audited ${inventory}.`)
   if (skillNames.length > 0) {

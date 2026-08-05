@@ -309,7 +309,7 @@ tasks:
     parent: vp-beads-dis
     deps:
       - vp-beads-wsk
-      - backlog/vp-beads-vgp
+      - backlog/vp-beads-vhn
     labels:
       - chore
     acceptance_criteria:
