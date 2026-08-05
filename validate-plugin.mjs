@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative } from 'node:path'
+import {
+  dirname, isAbsolute, join, relative,
+} from 'node:path'
 
 import yaml from 'js-yaml'
 

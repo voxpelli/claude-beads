@@ -78,6 +78,14 @@ the contents silently.
 
 ### Removed
 
+* **The root plugin's `hooks/` directory.** Installing this plugin no longer registers
+  any hook. The shfmt-on-edit formatter that lived there was repo dev tooling shipped as
+  a plugin hook by accident — it only ever fires when someone edits a `.sh` file inside
+  this monorepo, which a consumer never does — and is now a repo-local
+  `.claude/settings.json` hook. Its directory allow-list became a `.sh`-anywhere-under-
+  the-repo bound in the same move, because the shell scripts had just left `hooks/` for
+  four `plugins/*/hooks/` directories and a list would have stopped matching them
+  silently.
 * **The trend-review reminder.** It counted `RETRO-*.md` files on disk to decide when a
   sprint was a trend-review sprint. RETRO files are dissolving into Basic Memory notes,
   so a file count cannot survive as the trigger; the cadence is rebuilt in vp-knowledge's

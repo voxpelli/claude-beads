@@ -56,13 +56,19 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
   Status: aligned · Last verified: 2026-03-28
 
 * **check-hooks.mjs hook integration test suite** (2026-04-04) — Both plugins maintain
-  `scripts/check-hooks.mjs` with shared core infrastructure: `parseJsonObjects()`
-  with `}\s*{` multi-object detection, `runHook()` via `spawnSync`, jq preflight.
-  Status: drifting · Last verified: 2026-05-04
-  Note: Reciprocation pass on 2026-05-04 measured an \~80-line gap (vp-beads 284
-  vs vp-knowledge 366). vp-knowledge added shfmt drift + clean-file paths
-  (Sprint 18) and gh-ecosystem hook coverage (v0.29.0). Strong extraction
-  candidate for shared `@voxpelli/claude-plugin-tools`.
+  hook suites with the same core infrastructure: `parseJsonObjects()` with `}\s*{`
+  multi-object detection, `runHook()` via `spawnSync`, jq preflight, and
+  `deliveredContext()` reading only through the `hookSpecificOutput` envelope.
+  Status: diverging · Last verified: 2026-08-05
+  Note: vp-knowledge keeps ONE `scripts/check-hooks.mjs`; vp-beads now has FOUR, one
+  per `plugins/*` workspace that ships a hook, because a workspace that the root
+  reaches in to test cannot be extracted cleanly. Four near-identical harnesses is
+  the strongest case yet for a shared `@voxpelli/claude-plugin-tools` — and the
+  reason the copies are tolerable meanwhile is that each is destined for a different
+  repo. vp-beads' copies additionally cross-check each hook's emitted
+  `hookEventName` against the event key it is wired under in its own `hooks.json`,
+  which vp-knowledge does not do and which its own hooks need (see the envelope
+  entry under Divergences).
 
 * **BM error classification hook** (2026-04-05) — Both plugins have a
   PostToolUseFailure command hook for BM tools that classifies errors into
@@ -289,7 +295,7 @@ on top and relies on vp-knowledge's hooks — do not duplicate them here.
 
 * **Paired bundle: `@voxpelli/claude-plugin-tools` shared package** (2026-05-04) —
   Cross-reference candidate linking the two preceding entries with
-  `scripts/check-hooks.mjs` (Shared Patterns, drifting) and any future plugin's
+  the hook test suites (Shared Patterns, diverging — now four copies here) and any future plugin's
   scaffolding artifacts (e.g., vp-git's `plugin-utils.mjs`). All would benefit
   from being maintained in one place — co-extraction amortizes package-creation
   cost across multiple artifacts and prevents future bilateral drift across the

@@ -363,10 +363,9 @@ plugins/                                workspace plugins (own package.json + ch
       post-tasks-validate.sh            Validate .diarie/tasks/ on edit; silent when clean
     scripts/check-hooks.mjs             Its own hook suite
 scripts/                                dev-only gates; see Validation
+  format-shell-on-edit.sh               shfmt-on-edit for this repo's *.sh, registered in
+                                        .claude/settings.json (not shipped in any plugin)
 eslint-local-rules/
-hooks/
-  hooks.json
-  post-file-edit.sh                     Auto-format hooks/*.sh with shfmt (repo dev tooling)
 ```
 
 ## How it fits together

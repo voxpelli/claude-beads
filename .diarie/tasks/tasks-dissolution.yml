@@ -303,8 +303,7 @@ tasks:
 
   - id: vp-beads-sss
     title: 'P1.5 Shard session-start.sh across the owning plugins (B2 blocker)'
-    status: in_progress
-    agent: claude
+    status: completed
     type: task
     priority: medium
     parent: vp-beads-dis
@@ -367,11 +366,43 @@ tasks:
         NOTE the third AC above ("BM-failure-classify stays vp-knowledge's") reads as routing for a
         future shard — it is NOT. vp-beads-hkd found that duplicate hook FIRING TODAY, in the
         released 0.18.0 cache. Fix it there, not here
+      - >-
+        DONE 2026-08-05 across three commits (e9d9f15, 370ed22, and this one). The root `hooks/`
+        directory is GONE, not merely thinned: every shipped hook belongs to a `plugins/*` workspace,
+        and `post-file-edit.sh` left the plugin entirely to become `scripts/format-shell-on-edit.sh`
+        registered in a committed `.claude/settings.json`
+      - >-
+        THE ONE THING THIS ROW DID NOT ANTICIPATE, and it is the shard's real risk: `deliveredContext`
+        asserts an envelope exists and names SOME event, but nothing knew WHICH event a hook was wired
+        to. One hook could not get that wrong; five copies of `emit_context` across five hooks.json
+        files can, and a SessionStart emitter pasted into a PostToolUse hook satisfies every other
+        assertion while Claude Code drops it silently. Each plugin suite now drives every wired script
+        from its OWN hooks.json and compares the emitted `hookEventName` to the key it sits under.
+        A wired script with NO stimulus is a FAILURE, never a skip — which is how the newly-sharded
+        session-start.sh announced itself before it had tests
+      - >-
+        RED-PROVED, each mutation printed as a diff before the exit code was read: wrong event name ·
+        the bare `{"additionalContext"}` shape · a hook wired with no stimulus · a planted workspace
+        failure reddening the ROOT (naming `check:test` → `check-workspaces`) · the new
+        `plugins/*/hooks/**` floor in POPULATED_SURFACES · and both directions of the format hook's
+        path bound, with DISJOINT failures
+      - >-
+        A RED FROM THE WRONG GATE PROVES NOTHING. The first attempt at the POPULATED_SURFACES proof
+        typo'd the glob — which trips `check-prose-commands`' own ground-truth self-test before the
+        corpus scan runs, so it exited 1 for an unrelated reason. The honest proof was to move the
+        real `plugins/*/hooks/*.sh` files aside and watch the floor name the surface
+      - >-
+        GATE OWNERSHIP: root `check:hooks` is retired; `check:sh` retargets to `scripts/` (the only
+        shell left at the root) and `check:format-shell` tests the settings.json formatter. That
+        formatter's OLD suite had two assertions and both were negative — it could see a hook that
+        spoke when it should not and was blind to one that never formatted anything. Both directions
+        are asserted now, and the positive one caught that a directory allow-list would have silently
+        stopped matching the sharded plugin hooks
     description: >-
       Plan step 1.5. The mega-hook spans ≥4 destinations; name each block's destination explicitly.
       Related but distinct from the backlog row about extracting session-start concerns into named
       functions (that refactors within one hook; this shards across plugins).
-    updated: '2026-07-29'
+    updated: '2026-08-05'
 
   - id: vp-beads-rfs
     title: 'P1.6 Enumerated reference / vocabulary sweep (S8 — doc-grep as INPUT)'

@@ -64,16 +64,19 @@ plugins/                              # workspace-plugins (own package.json + .r
       session-start.sh                # startup: TRACKER PRIME · compact: in-progress claims
       post-tasks-validate.sh          # Validate .diarie/tasks/ on edit; report errors, silent when clean
     scripts/check-hooks.mjs
-hooks/                                # the ROOT plugin's remaining hook
-  hooks.json
-  post-file-edit.sh                   # Auto-format hooks/*.sh with shfmt (repo dev tooling)
 scripts/                              # dev-only gates; see ## Validation
+  format-shell-on-edit.sh             # shfmt-on-edit for THIS repo's *.sh — registered in
+                                      #   .claude/settings.json, not shipped in any plugin
+.claude/settings.json                 # repo-local hooks (committed); permissions stay in
+                                      #   the gitignored settings.local.json
 eslint-local-rules/
 CLAUDE.md · README.md · CHANGELOG.md
 ```
 
-Every `plugins/*` directory carries its own `.claude-plugin/plugin.json`, and each one that ships a
-hook carries its own `hooks/hooks.json` — the validator reads all of them.
+**There is no root `hooks/` directory.** Every hook this repo ships belongs to a `plugins/*`
+workspace, which also carries its own `.claude-plugin/plugin.json` and its own `hooks/hooks.json` —
+the validator reads all of them. The root plugin ships `/retrospective` and nothing else, until
+`vp-beads-rrp` turns its manifest into a marketplace.
 
 There is **no `agents/` directory** — the `sprint-review` agent was retired with `backlog-groomer`
 (`vp-beads-rt2`). Skills are markdown; `diarie-adopt` and `vp-dream` additionally ship small scripts.
@@ -768,10 +771,11 @@ authoritative list is the keys in `package.json`, not this paragraph.
   travel with it. A root that lints a workspace is a workspace that cannot be extracted
   cleanly; that warning is correct **for lint** and was never true for audit.
 
-The root's remaining `check:*` keys cover the **plugin only** —
+The root's remaining `check:*` keys cover the **root only** —
 `check:plugin` (validate-plugin.mjs) + `check:validator`,
-`check:md` (remark), `check:lint` (eslint), `check:sh` (shellcheck + shfmt),
-`check:ast-grep` + `check:ast-grep-test`, `check:hooks`, and
+`check:md` (remark), `check:lint` (eslint), `check:sh` (shellcheck + shfmt over `scripts/`, the
+only shell left at the root), `check:ast-grep` + `check:ast-grep-test`, `check:format-shell` (the
+`.claude/settings.json` shfmt-on-edit hook), and
 `check:tasks` (`diarie validate` — validating _this repo's own store_ via the installed
 diarie binary, not the package). **`check-workspaces` = `npm run check --workspaces --if-present`** delegates to every workspace under the `plugins/*` glob — each owns its own `check` aggregate.
 Workspace members today: **all five** `plugins/*` — `ledger` (relationship tracking), `swarm-wave`
@@ -779,8 +783,13 @@ Workspace members today: **all five** `plugins/*` — `ledger` (relationship tra
 `diarie` (the everyday tracker hooks, destined for `voxpelli/diarie-skills`). Each
 owns its own `check` aggregate that the root delegates to; `--if-present` means a workspace without
 one is skipped SILENTLY, so adding a plugin without a `check` key removes it from the gate without
-anything going red. **diarie is NOT a workspace** — it is an external npm dependency (`diarie@^0.2.0`)
-and owns all its own gates in its own repo.
+anything going red.
+
+🚨 **Two different things are called `diarie`, and the distinction is load-bearing.** The npm
+**package** `diarie@^0.2.0` is an EXTERNAL dependency that owns all its gates in its own repo —
+never edit its backlog here. The **workspace** `plugins/diarie` (`@vp-skills/diarie`) is a plugin
+in this monorepo that ships hooks for consuming that package. A sentence about "diarie's gates"
+means the first; a sentence about "the diarie plugin" means the second.
 
 🚨 **`run-p check:*` does NOT match a `test` key.** A workspace's tests reach the aggregate ONLY if
 exposed under a **`check:`-prefixed** script (e.g. `check:test`) — `run-p check:*` never matches a
@@ -1046,15 +1055,18 @@ a hand-rolled `"strict": true` silently drops every `TS4111`, because
 `noPropertyAccessFromIndexSignature` comes from the shared base and is **not** implied by
 `--strict`. Measured on `plugins/diarie-adopt`: 98 errors with the shared base, 77 without.
 
-🚨 **`no-jq-raw-interpolation` guarded NOTHING until 2026-07-14.** It is `language: bash`, it
-exists _because "the hooks build jq programs"_ — and `hooks/` was not in the scan bound, while
-`scripts/` contains zero `.sh` files. It passed `ast-grep test` 6/6 the entire time, on synthetic
-snippets. **`ast-grep test` cannot see this**: it replays inline fixtures and never learns whether
-a rule's language has anything to read. A rule can be perfect, tested, and pointed at nothing.
+🚨 **A rule can be perfect, tested, and pointed at nothing.** `no-jq-raw-interpolation` is
+`language: bash` and exists _because the hooks build jq programs_ — and for its whole first life the
+scan bound held no `.sh` files at all, while it passed `ast-grep test` 6/6 on synthetic snippets.
+**`ast-grep test` cannot see this**: it replays inline fixtures and never learns whether a rule's
+language has anything to read. The bare scan now reaches every `.sh` in the repo —
+`plugins/*/hooks/` and `scripts/format-shell-on-edit.sh` — so ask
+`ast-grep scan --inspect entity` which files a rule actually applied to rather than reading its
+globs and assuming.
 
 ### Hook type constraint
 
-All hooks in this plugin must use `type: "command"` — prompt hooks spawn a
+All hooks in this repo must use `type: "command"` — prompt hooks spawn a
 separate Haiku instance with no MCP tool access, making them silently
 non-functional for any hook that needs BM or other MCP tools. The validator
 warns on prompt hooks to prevent this bug class. The validator also accepts
